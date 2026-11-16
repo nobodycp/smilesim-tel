@@ -7,7 +7,12 @@ import { cn } from '../../lib/cn';
  *
  * Every variant but `link` is a box: 6px corners (ADR 0021 D19), weight 600, no browser border, a colour-only
  * transition (not the outline colour, so the focus outline does not fade in), the crimson focus ring
- * (2px of page colour, then 2px of `--rd-accent`), half strength and no pointer when disabled, and a 0.97 press.
+ * (2px of page colour, then 2px of `--rd-accent`), the one disabled strength (`opacity-disabled`, 45%) and no
+ * pointer when disabled, a 0.97 press, and at least 44px high at 720px and under (the touch rule, also for a link
+ * drawn as a button through `asChild`, which the legacy `.canvas button` rule never reached). Tailwind migration T6.2
+ * added the touch height, the one disabled strength (it was 50%), the busy state (`aria-busy`, set by `loading`: the
+ * spinner before the label, the button disabled) and the pressed state (`aria-pressed="true"`: the variant's hover
+ * look held, ADR 0021 D13 — a pressed button never changes variant).
  * - primary: the crimson fill (`--rd-accent-fill`, hover `--rd-accent-fill-hover`, white text), no shadow; every
  *   primary is crimson (ADR 0021 D2);
  * - secondary: the soft track (`--rd-surface-2`, an inset 1px ink line at 11%, hover `--rd-surface-3`); the line
@@ -23,24 +28,27 @@ const box = [
   'border-0 border-solid border-transparent font-semibold',
   'transition-[color,background-color,border-color,text-decoration-color,fill,stroke] duration-fast ease-standard',
   'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
-  'disabled:pointer-events-none disabled:opacity-50 not-disabled:active:scale-97',
+  'disabled:pointer-events-none disabled:opacity-disabled not-disabled:active:scale-97 max-touch:min-h-11',
 ];
 
 export const buttonVariants = cva('', {
   variants: {
     variant: {
-      primary: [box, 'bg-accent-fill text-on-accent shadow-none not-disabled:hover:bg-accent-fill-hover'],
+      primary: [
+        box,
+        'bg-accent-fill text-on-accent shadow-none not-disabled:hover:bg-accent-fill-hover aria-pressed:bg-accent-fill-hover',
+      ],
       secondary: [
         box,
-        'border border-transparent bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3',
+        'border border-transparent bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3 aria-pressed:bg-surface-3',
         'focus-visible:inset-ring-0',
       ],
-      ghost: [box, 'bg-transparent text-ink-2 hover:bg-surface-3 hover:text-ink'],
-      danger: [box, 'border border-danger/45 bg-transparent text-danger hover:bg-danger-soft'],
+      ghost: [box, 'bg-transparent text-ink-2 hover:bg-surface-3 hover:text-ink aria-pressed:bg-surface-3 aria-pressed:text-ink'],
+      danger: [box, 'border border-danger/45 bg-transparent text-danger hover:bg-danger-soft aria-pressed:bg-danger-soft'],
       link: [
         'cursor-pointer border-0 bg-transparent p-0 text-start text-inherit hover:underline',
         'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink',
-        'disabled:pointer-events-none disabled:opacity-50',
+        'disabled:pointer-events-none disabled:opacity-disabled',
       ],
     },
     size: {

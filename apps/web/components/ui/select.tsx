@@ -39,6 +39,13 @@ import { cn } from '../../lib/cn';
  * width) wide; elsewhere 6px below the field, at least as wide as the field. A row: 34px, 6px / 10px padding, 4px
  * corners, `--rd-ink-2` 13px medium, `--rd-surface` and ink under the pointer and on keyboard focus (with a 2px
  * crimson outline inside), the chosen one crimson and bold with a tick at the end.
+ *
+ * Tailwind migration T6.2 completed the states from the system's own parts: disabled is the one disabled strength
+ * (`opacity-disabled`; it was 60%) over the `--rd-surface-2` fill; `aria-invalid="true"` draws `Input`'s inset 1px
+ * `--rd-danger` line while the field is not focused; the chevron is `--rd-muted` (an icon on a control needs 3:1;
+ * `--rd-faint` was under it, audit 3.10-05); the pager place is 44px at 720px and under like the others (it was 40px
+ * under 641px). `SelectEmpty` is the list's row for nothing to choose (no rows yet, or none left): the row's size in
+ * `--rd-muted`, not focusable.
  */
 
 const EMPTY = '__select-empty__';
@@ -54,22 +61,25 @@ export type SelectChip = {
 };
 export const SelectChipContext = React.createContext<SelectChip | null>(null);
 
-const field = 'w-full cursor-default rounded-sm border border-solid pe-9 shadow-sm focus:border-accent focus:shadow-none focus:ring-3 focus:ring-focus disabled:bg-surface-2';
+const field = [
+  'w-full cursor-default rounded-sm border border-solid pe-9 shadow-sm focus:border-accent focus:shadow-none focus:ring-3 focus:ring-focus disabled:bg-surface-2',
+  'aria-invalid:not-focus:inset-ring aria-invalid:not-focus:inset-ring-danger',
+];
 
 const triggerVariants = cva(
-  'relative flex min-h-0 items-center py-0 text-start text-ink transition-shadow duration-fast ease-standard focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+  'relative flex min-h-0 items-center py-0 text-start text-ink transition-shadow duration-fast ease-standard focus:outline-none disabled:cursor-not-allowed disabled:opacity-disabled',
   {
     variants: {
       place: {
-        field: [field, 'h-9 border-field/70 bg-sunken ps-3 text-base leading-5 max-[721px]:h-11'],
-        desk: [field, 'h-8.5 border-field/70 bg-sunken ps-3 text-base leading-5 max-[721px]:h-11'],
-        dialog: [field, 'h-8.5 border-field/70 bg-sunken ps-3 text-base leading-5 max-[721px]:h-11'],
-        pane: [field, 'h-8.5 border-field bg-surface ps-2 text-md leading-5 max-[721px]:h-11'],
-        pager: [field, 'h-7 border-field bg-surface ps-2 text-md max-sm:h-10 max-sm:min-h-10'],
+        field: [field, 'h-9 border-field-line bg-sunken ps-3 text-base leading-5 max-touch:h-11'],
+        desk: [field, 'h-8.5 border-field-line bg-sunken ps-3 text-base leading-5 max-touch:h-11'],
+        dialog: [field, 'h-8.5 border-field-line bg-sunken ps-3 text-base leading-5 max-touch:h-11'],
+        pane: [field, 'h-8.5 border-field bg-surface ps-2 text-md leading-5 max-touch:h-11'],
+        pager: [field, 'h-7 border-field bg-surface ps-2 text-md max-touch:h-11'],
         chip: [
           'ms-2.5 h-7.5 w-auto min-w-18 max-w-64 flex-none cursor-pointer rounded-none px-2.5',
-          'border-0 border-s border-solid border-s-ink/11 bg-surface text-[12.5px] font-semibold leading-5 shadow-none',
-          'focus:shadow-[inset_0_-2px_0_var(--rd-accent)]',
+          'border-0 border-s border-solid border-s-ink/11 bg-surface text-chip font-semibold leading-5 shadow-none',
+          'focus:shadow-thread',
         ],
       },
       drawer: {
@@ -154,7 +164,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
         >
           <SelectPrimitive.Value className="block min-w-0 truncate" />
           {chip?.clearable && value !== '' ? null : (
-            <ChevronDown aria-hidden="true" className="pointer-events-none absolute inset-y-0 end-3 my-auto size-4 text-faint" />
+            <ChevronDown aria-hidden="true" className="pointer-events-none absolute inset-y-0 end-3 my-auto size-4 text-muted" />
           )}
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
@@ -166,7 +176,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             alignOffset={hanging ? hanging.align : 0}
             collisionPadding={8}
             className={cn(
-              'z-[calc(var(--rd-z-dialog)+2)] max-h-[min(360px,60vh)] max-w-[min(320px,92vw)] overflow-hidden rounded-sm',
+              'z-dialog-list max-h-[min(360px,60vh)] max-w-[min(320px,92vw)] overflow-hidden rounded-sm',
               'bg-surface-2 shadow-pop inset-ring inset-ring-ink/11 origin-top motion-safe:animate-[filter-pop-in_140ms_ease-out]',
               !hanging && 'min-w-(--radix-select-trigger-width)',
             )}
@@ -213,3 +223,15 @@ export const SelectItem = React.forwardRef<React.ComponentRef<typeof SelectPrimi
   ),
 );
 SelectItem.displayName = 'SelectItem';
+
+/** The list's row for nothing to choose: the caller gives the words (no rows yet, or none left). Not a choice. */
+export function SelectEmpty({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      role="presentation"
+      data-slot="select-empty"
+      className={cn('flex min-h-8.5 select-none items-center px-2.5 py-1.5 text-start text-md font-medium text-muted', className)}
+      {...props}
+    />
+  );
+}

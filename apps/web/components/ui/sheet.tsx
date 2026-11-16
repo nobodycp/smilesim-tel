@@ -21,8 +21,14 @@ import { cn } from '../../lib/cn';
  * - end: the look of the filter bar's phone drawer (components/filter-bar.tsx, the former graphite.css drawer rules):
  *   the full height at the reading end, min(380px, 92vw) wide, the surface fill, `--rd-shadow-pop`, 18px at the
  *   sides and bottom and none on top, a column 12px apart, scrolling; it slides in over 220ms (`filter-slide`,
- *   graphite.css) when motion is allowed; the overlay is `--rd-scrim`; one step over the dialog layer.
- * Not carried: a bottom sheet. No legacy panel has that look to port; completing it is T6.
+ *   graphite.css) when motion is allowed; the overlay is `--rd-scrim`; one step over the dialog layer
+ *   (`--rd-z-dialog-drawer`);
+ * - bottom (Tailwind migration T6.2, built from the end sheet's parts, no legacy panel to port): the full width at the
+ *   bottom of the window, at most 85% of the dynamic viewport high, the surface fill, `--rd-shadow-pop`, a 1px
+ *   `--rd-line` rule on top and the stand-alone surface's 10px corners (`--rd-radius-panel`) on its two top
+ *   corners, 16px at the sides and 18px at the bottom (none on top: its head sets it), a column 12px apart,
+ *   scrolling; it rises in (`rd-rise`, 220ms, `--rd-ease-out`) when motion is allowed; the overlay is `--rd-scrim`;
+ *   the end sheet's layer.
  * Handles: `data-slot="sheet"` (with `data-side`) and `"sheet-overlay"`.
  */
 
@@ -37,23 +43,29 @@ const overlayVariants = cva('fixed inset-0', {
     side: {
       start: 'z-overlay bg-scrim-strong backdrop-blur-[2px]',
       end: 'z-dialog bg-scrim',
+      bottom: 'z-dialog bg-scrim',
     },
   },
   defaultVariants: { side: 'start' },
 });
 
-const sheetVariants = cva('fixed inset-y-0 flex flex-col shadow-pop', {
+const sheetVariants = cva('fixed flex flex-col shadow-pop', {
   variants: {
     side: {
       start: [
-        'start-0 z-drawer w-[min(300px,86vw)] border-e border-line bg-bg px-3 pt-3.5 pb-3',
+        'inset-y-0 start-0 z-drawer w-[min(300px,86vw)] border-e border-line bg-bg px-3 pt-3.5 pb-3',
         '[--sheet-off:-105%] rtl:[--sheet-off:105%]',
         'motion-safe:data-[state=open]:animate-[rd-sheet-in_340ms_cubic-bezier(0.32,0.72,0,1)]',
         'motion-safe:data-[state=closed]:animate-[rd-sheet-out_340ms_cubic-bezier(0.32,0.72,0,1)_forwards]',
       ],
       end: [
-        'end-0 z-[calc(var(--rd-z-dialog)+1)] w-[min(380px,92vw)] flex-nowrap items-stretch gap-3 overflow-y-auto',
+        'inset-y-0 end-0 z-dialog-drawer w-[min(380px,92vw)] flex-nowrap items-stretch gap-3 overflow-y-auto',
         'bg-surface px-4.5 pt-0 pb-4.5 motion-safe:animate-[filter-slide_220ms_var(--rd-ease-out)]',
+      ],
+      bottom: [
+        'inset-x-0 bottom-0 z-dialog-drawer max-h-[85dvh] flex-nowrap items-stretch gap-3 overflow-y-auto',
+        'rounded-t-panel border-t border-line bg-surface px-4 pt-0 pb-4.5',
+        'motion-safe:animate-[rd-rise_220ms_var(--rd-ease-out)]',
       ],
     },
   },

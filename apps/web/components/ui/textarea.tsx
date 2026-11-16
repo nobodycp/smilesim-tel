@@ -8,12 +8,15 @@ import { cn } from "../../lib/cn";
  * bottom and 12px sides, a 1px solid border at 70% of `--rd-field`, 6px corners, the inset `--rd-sunken` fill, ink
  * text, resized only in height; on focus the crimson thread (an `--rd-accent` border, the 3px `--rd-focus` ring, no
  * outline). The type is inherited, as with `Input`. No height is set: the content and `rows` give it, never under
- * 72px. `aria-invalid="true"` draws the same inset danger line as `Input`.
+ * 72px. `aria-invalid="true"` draws the same inset danger line as `Input`, and read-only and disabled are `Input`'s
+ * (Tailwind migration T6.2): a dashed border, no fill and `--rd-muted` text; the one disabled strength.
  */
 export const textareaVariants = cva([
-  "min-h-18 w-full resize-y rounded-sm border border-solid border-field/70 bg-sunken px-3 py-2 text-ink",
+  "min-h-18 w-full resize-y rounded-sm border border-solid border-field-line bg-sunken px-3 py-2 text-ink",
   "focus:border-accent focus:outline-none focus:ring-3 focus:ring-focus",
   "aria-invalid:not-focus:inset-ring aria-invalid:not-focus:inset-ring-danger",
+  "read-only:not-disabled:border-dashed read-only:not-disabled:bg-transparent read-only:not-disabled:text-muted",
+  "disabled:cursor-not-allowed disabled:opacity-disabled",
 ]);
 
 export interface TextareaProps

@@ -19,12 +19,14 @@ import { cn } from '../../lib/cn';
  *   12px at each side, 12px from the bottom, each toast as wide as it;
  * - a toast: a row, 10px between the message and the close button, at most min(420px, window less 32px) wide (no
  *   limit under 641px), 11px above and below, 14px at the reading start and 8px at the end, no border but a 3px
- *   start edge in `--rd-success` (`tone="error"`: `--rd-danger`), 6px corners, the surface fill, an inset 1px
+ *   start edge in `--rd-success` (`tone="error"`: `--rd-danger`; `warning`: `--rd-warning`; `info`: `--rd-info`,
+ *   the two tones Tailwind migration T6.2 added from the status colours), 6px corners, the surface fill, an inset 1px
  *   `--rd-line` under `--rd-shadow-pop`, ink; it rises in over 220ms (`rd-toast-in`, dialog.css) when motion is
  *   allowed;
  * - the message: no margin, 13px semibold;
- * - the close button: a 28px square (44px at 720px and under), no border or fill, 4px corners, `--rd-faint` 16px,
- *   ink on `--rd-surface-2` under the pointer.
+ * - the close button: a 28px square (44px at 720px and under), no border or fill, 4px corners, `--rd-muted` 16px
+ *   (it was `--rd-faint`, under the 3:1 an icon that acts needs: audit 3.10-05, Tailwind migration T6.2), ink on
+ *   `--rd-surface-2` under the pointer.
  * Handles: `data-slot="toast"` (with `data-tone`).
  */
 
@@ -57,6 +59,8 @@ const toastVariants = cva(
       tone: {
         success: 'border-s-success',
         error: 'border-s-danger',
+        warning: 'border-s-warning',
+        info: 'border-s-info',
       },
     },
     defaultVariants: { tone: 'success' },
@@ -94,8 +98,8 @@ export const ToastClose = React.forwardRef<
   <ToastPrimitive.Close
     ref={ref}
     className={cn(
-      'grid size-7 flex-none cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-xl text-faint',
-      'hover:bg-surface-2 hover:text-ink max-[721px]:min-h-11 max-[721px]:min-w-11',
+      'grid size-7 flex-none cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-xl text-muted',
+      'hover:bg-surface-2 hover:text-ink max-touch:min-h-11 max-touch:min-w-11',
       className,
     )}
     {...props}

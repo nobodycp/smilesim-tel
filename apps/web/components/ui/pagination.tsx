@@ -20,8 +20,10 @@ export const PAGE_SIZE_OPTIONS: PageSize[] = [...PAGE_SIZES, "all"];
  * - previous / next: a quiet secondary, 30px, no fill and no inset line until hovered, ink-2 text, 14px chevrons that
  *   face the reading direction;
  * - a page: 30px square at least, 8px sides, no border, 4px corners, no fill, 12.5px bold `--rd-ink-2`, the colour
- *   transition; hovered `--rd-surface-2`; the current one ink on the page colour; 40px under 641px (at 720px and
- *   under the legacy `.canvas button` rule still makes it 44px high);
+ *   transition; hovered `--rd-surface-2`; the current one ink on the page colour; at least 44 × 44 at 720px and
+ *   under (the touch rule; it was 40px under 641px, 44px high only through the legacy `.canvas button` rule); on
+ *   keyboard focus the 2px `--rd-accent` outline drawn inside it (the focus mark of an item in a strip or a list;
+ *   Tailwind migration T6.2);
  * - the gap: an ellipsis with 4px sides in `--rd-faint`.
  */
 const NAV_BUTTON = "h-7.5 bg-transparent text-ink-2 inset-ring-0 hover:bg-surface-2";
@@ -93,7 +95,7 @@ export function Pagination({
         <span>{status}</span>
         {showSizeSelector && (
           <label className="inline-flex items-center gap-1.5">
-            <span className="text-[11.5px]">{t.perPage}</span>
+            <span className="text-caption">{t.perPage}</span>
             <span className="inline-block w-22">
             <Select
               value={String(pageSize)}
@@ -140,10 +142,11 @@ export function Pagination({
                   onClick={() => onPageChange(item)}
                   aria-current={item === page ? "page" : undefined}
                   className={cn(
-                    "h-7.5 min-w-7.5 rounded-xs border-0 bg-transparent px-2 text-[12.5px] font-bold text-ink-2",
+                    "h-7.5 min-w-7.5 rounded-xs border-0 bg-transparent px-2 text-chip font-bold text-ink-2",
                     "transition-[color,background-color,border-color,text-decoration-color,fill,stroke] duration-fast ease-standard",
                     "hover:bg-surface-2 aria-[current=page]:bg-ink aria-[current=page]:text-bg",
-                    "max-sm:h-10 max-sm:min-w-10",
+                    "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent",
+                    "max-touch:min-h-11 max-touch:min-w-11",
                   )}
                 >
                   {item}

@@ -103,6 +103,11 @@
   --color-chart-suspended: var(--rd-chart-suspended);
   --color-danger: var(--rd-danger);
   --color-danger-soft: var(--rd-danger-soft);
+  --color-info: var(--rd-info);
+  --color-info-soft: var(--rd-info-soft);
+  --color-violet: var(--rd-violet);
+  --color-violet-soft: var(--rd-violet-soft);
+  --color-field-line: var(--rd-field-line);
   --color-focus: var(--rd-focus);
   --color-scrim: var(--rd-scrim);
   --color-scrim-strong: var(--rd-scrim-strong);
@@ -127,6 +132,40 @@
   --text-lg: var(--rd-text-lg);
   --text-xl: var(--rd-text-xl);
   --text-2xl: var(--rd-text-2xl);
+  --text-caption: var(--rd-text-caption);
+  --text-chip: var(--rd-text-chip);
+  --text-block: var(--rd-text-block);
+  --text-item: var(--rd-text-item);
+  --text-3xl: var(--rd-text-3xl);
+  --text-4xl: var(--rd-text-4xl);
+  --text-5xl: var(--rd-text-5xl);
+  --text-6xl: var(--rd-text-6xl);
+  --text-page: var(--rd-text-page);
+  --text-figure-sm: var(--rd-text-figure-sm);
+  --text-figure: var(--rd-text-figure);
+  --text-figure-lead-sm: var(--rd-text-figure-lead-sm);
+  --text-figure-lead: var(--rd-text-figure-lead);
+
+  /* Line heights and letter spacing (Tailwind migration T6.2, ADR 0021 D6 a: today's values, named). Tailwind's own
+     `leading-none` / `-tight` / `-normal` (1, 1.25, 1.5) stay; `leading-1-3` = 1.3, `leading-1-15` = 1.15, and so on. */
+  --leading-1-1: var(--rd-leading-1-1);
+  --leading-1-15: var(--rd-leading-1-15);
+  --leading-1-2: var(--rd-leading-1-2);
+  --leading-1-3: var(--rd-leading-1-3);
+  --leading-1-35: var(--rd-leading-1-35);
+  --leading-1-4: var(--rd-leading-1-4);
+  --leading-1-45: var(--rd-leading-1-45);
+  --leading-1-55: var(--rd-leading-1-55);
+  --leading-1-6: var(--rd-leading-1-6);
+  --tracking-title: var(--rd-tracking-title);
+  --tracking-figure: var(--rd-tracking-figure);
+  --tracking-head: var(--rd-tracking-head);
+  --tracking-number: var(--rd-tracking-number);
+  --tracking-code: var(--rd-tracking-code);
+  --tracking-caps: var(--rd-tracking-caps);
+
+  /* One disabled look for every control: `opacity-disabled` (Tailwind migration T6.2). */
+  --opacity-disabled: var(--rd-opacity-disabled);
 
   /* The 4px step: `p-1` = --rd-space-1, `gap-2.5` = --rd-space-2-5, `m-0.5` = --rd-space-0-5, `p-6` = --rd-space-6. */
   --spacing: var(--rd-space-1);
@@ -138,6 +177,10 @@
   --z-index-drawer: var(--rd-z-drawer);
   --z-index-shell-toast: var(--rd-z-shell-toast);
   --z-index-dialog: var(--rd-z-dialog);
+  --z-index-sidebar: var(--rd-z-sidebar);
+  --z-index-dialog-drawer: var(--rd-z-dialog-drawer);
+  --z-index-dialog-list: var(--rd-z-dialog-list);
+  --z-index-dialog-popover: var(--rd-z-dialog-popover);
   --z-index-top: var(--rd-z-top);
 
   --transition-duration-fast: var(--rd-dur-fast);
@@ -155,6 +198,9 @@
   --shadow-frame: var(--rd-shadow-frame);
   --shadow-sm: var(--rd-shadow-sm);
   --shadow-pop: var(--rd-shadow-pop);
+  --shadow-thread: var(--rd-shadow-thread);
+  --shadow-glow: var(--rd-shadow-glow);
+  --shadow-glow-accent: var(--rd-shadow-glow-accent);
 
   /* next/font sets --font-sans (Noto Kufi Arabic) and --font-he (IBM Plex Sans Hebrew) on <html> (app/layout.tsx);
      the default `--font-sans` is cleared so Tailwind never declares a variable of that name. `font-body` is the
@@ -162,10 +208,12 @@
   --font-*: initial;
   --font-body: var(--font-sans), var(--font-he), Tahoma, sans-serif;
 
-  /* The width scale (DESIGN.md): max 640 / 767 / 899 / 1099, min 641 / 768 / 900 / 1100.
-     `sm:` = min-width 641px, `max-sm:` = under 641px (max 640), and so on. */
+  /* The width scale (DESIGN.md): max 640 / 720 / 767 / 899 / 1099, min 641 / 721 / 768 / 900 / 1100.
+     `sm:` = min-width 641px, `max-sm:` = under 641px (max 640), and so on. `max-touch:` = 720px and under, where every
+     control is at least 44px high (the touch rule; Tailwind migration T6.2 named the `max-[721px]:` literal). */
   --breakpoint-*: initial;
   --breakpoint-sm: 641px;
+  --breakpoint-touch: 721px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 900px;
   --breakpoint-xl: 1100px;
@@ -203,6 +251,8 @@
     --rd-panel-line: color-mix(in srgb, var(--rd-ink) 14%, var(--rd-line));
     --rd-qr-tile: #ffffff;
     --rd-field: #8a8a8a;
+    /* The border every text field, text area and select draws: `--rd-field` at 70% (Graphite's fields). */
+    --rd-field-line: color-mix(in srgb, var(--rd-field) 70%, transparent);
     --rd-ink: #161616;
     --rd-ink-2: #474747;
     --rd-muted: #6a6a6a;
@@ -249,6 +299,13 @@
     --rd-warning-soft: color-mix(in srgb, var(--rd-warning) 12%, transparent);
     --rd-danger: #c8291b;
     --rd-danger-soft: rgba(200, 41, 27, 0.09);
+    /* Two more status tones (Tailwind migration T6.2): `info` (a task waiting on a provider) and `violet` (a success
+       that could not be settled), drawn by Badge. Text ≥4.5:1 on its soft fill over the surface, surface-2, surface-3
+       and the page, in both themes. */
+    --rd-info: #1a5da3;
+    --rd-info-soft: color-mix(in srgb, var(--rd-info) 10%, transparent);
+    --rd-violet: #5f45b8;
+    --rd-violet-soft: color-mix(in srgb, var(--rd-violet) 10%, transparent);
     --rd-focus: rgba(217, 48, 73, 0.18);
     --rd-scrim: rgba(10, 10, 10, 0.48);
     --rd-scrim-strong: rgba(0, 0, 0, 0.5);
@@ -270,6 +327,44 @@
     --rd-text-lg: 15px;
     --rd-text-xl: 16px;
     --rd-text-2xl: 18px;
+    /* Off-scale sizes, named at today's value (ADR 0021 D6 a; Tailwind migration T6.2): a caption (table head, card
+       names, the badge pill), a chip value (filter chips, period and page buttons, the badge mark, the tooltip), a
+       block title (settings blocks, fact values, sidebar items), an item title (operation and mode cards, the
+       drawer's items). */
+    --rd-text-caption: 11.5px;
+    --rd-text-chip: 12.5px;
+    --rd-text-block: 13.5px;
+    --rd-text-item: 14.5px;
+    /* Display steps above 18px: 20 / 22 / 24 / 26px; the page title of `Desk` and the home (1.25rem); the figure
+       values of the figure tiles (1.45rem, 1.2rem on a phone) and of a lead tile (1.9rem, 1.6rem on a phone). */
+    --rd-text-3xl: 20px;
+    --rd-text-4xl: 22px;
+    --rd-text-5xl: 24px;
+    --rd-text-6xl: 26px;
+    --rd-text-page: 1.25rem;
+    --rd-text-figure-sm: 1.2rem;
+    --rd-text-figure: 1.45rem;
+    --rd-text-figure-lead-sm: 1.6rem;
+    --rd-text-figure-lead: 1.9rem;
+    /* Line heights the screens use besides 1, 1.25 and 1.5, and letter spacing: a title and a figure close up, a
+       table head, a line number, a language code and small capitals open up. */
+    --rd-leading-1-1: 1.1;
+    --rd-leading-1-15: 1.15;
+    --rd-leading-1-2: 1.2;
+    --rd-leading-1-3: 1.3;
+    --rd-leading-1-35: 1.35;
+    --rd-leading-1-4: 1.4;
+    --rd-leading-1-45: 1.45;
+    --rd-leading-1-55: 1.55;
+    --rd-leading-1-6: 1.6;
+    --rd-tracking-title: -0.015em;
+    --rd-tracking-figure: -0.01em;
+    --rd-tracking-head: 0.02em;
+    --rd-tracking-number: 0.03em;
+    --rd-tracking-code: 0.06em;
+    --rd-tracking-caps: 0.12em;
+    /* A control that cannot be used now: one strength for all of them (Tailwind migration T6.2). */
+    --rd-opacity-disabled: 0.45;
     /* Spacing (5.3d): a 4px step; -1-5, -2-5 and -3-5 are the half steps the screens use. */
     --rd-space-0-5: 2px;
     --rd-space-1: 4px;
@@ -290,6 +385,12 @@
     --rd-z-shell-toast: 60;
     --rd-z-dialog: 70;
     --rd-z-top: 80;
+    /* The steps between (Tailwind migration T6.2): the sidebar one over the topbar; over a dialog, a side drawer, then a
+       list (the `Select` list, the name picker's list), then a popover (the date field's month). */
+    --rd-z-sidebar: calc(var(--rd-z-topbar) + 1);
+    --rd-z-dialog-drawer: calc(var(--rd-z-dialog) + 1);
+    --rd-z-dialog-list: calc(var(--rd-z-dialog) + 2);
+    --rd-z-dialog-popover: calc(var(--rd-z-dialog) + 3);
     /* Motion (5.3d). Longer, one-off timings (the sign-in choreography, the bell) stay where they are used. */
     --rd-dur-fast: 150ms;
     --rd-dur-base: 180ms;
@@ -299,6 +400,11 @@
     --rd-shadow-frame: 0 1px 0 rgba(0, 0, 0, 0.03);
     --rd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --rd-shadow-pop: 0 24px 50px -20px rgba(0, 0, 0, 0.28);
+    /* The crimson thread under a chosen segment, tab or period, and under a focused chip value; the glow of a status
+       mark in its own colour, and of a crimson mark. Theme-independent: they read the theme's colours. */
+    --rd-shadow-thread: inset 0 -2px 0 var(--rd-accent);
+    --rd-shadow-glow: 0 0 8px currentColor;
+    --rd-shadow-glow-accent: 0 0 8px var(--rd-accent);
     color-scheme: light;
   }
   .dark {
@@ -358,6 +464,10 @@
     --rd-warning-soft: rgba(255, 181, 71, 0.12);
     --rd-danger: #ff6b5b;
     --rd-danger-soft: rgba(255, 107, 91, 0.12);
+    --rd-info: #6cb4ff;
+    --rd-info-soft: color-mix(in srgb, var(--rd-info) 12%, transparent);
+    --rd-violet: #b3a4ff;
+    --rd-violet-soft: color-mix(in srgb, var(--rd-violet) 12%, transparent);
     --rd-focus: rgba(255, 77, 99, 0.22);
     --rd-scrim: rgba(0, 0, 0, 0.7);
     --rd-scrim-strong: rgba(0, 0, 0, 0.5);
@@ -609,10 +719,12 @@
   }
   [data-slot='dialog-body'] label:not(.check) { display: grid; gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; text-align: start; }
   [data-slot='dialog-body'] label .hint { font-size: var(--rd-text-sm); font-weight: 500; }
-  [data-slot='dialog'] button:disabled { opacity: 0.45; cursor: not-allowed; }
+  [data-slot='dialog'] button:disabled { opacity: var(--rd-opacity-disabled); cursor: not-allowed; }
 
   /* Checkbox and radio, drawn by the system instead of the browser (was styles/controls.css; spec
-     2026-11-11-ui-consistency-pass, D5): an 18px box on the surface, crimson with a light mark when on. */
+     2026-11-11-ui-consistency-pass, D5): an 18px box on the surface, crimson with a light mark when on. The empty
+     box's border is `--rd-field` (3:1 on the surface in both themes; ink at 32% was under it, audit 3.10-08) and a
+     disabled one takes the one disabled strength, as `Checkbox` / `RadioGroupItem` (Tailwind migration T6.2). */
   input[type='checkbox'],
   input[type='radio'] {
     appearance: none;
@@ -625,7 +737,7 @@
     flex: 0 0 18px;
     margin: 0;
     padding: 0;
-    border: 1.5px solid color-mix(in srgb, var(--rd-ink) 32%, transparent);
+    border: 1.5px solid var(--rd-field);
     border-radius: var(--rd-radius-xs);
     background: var(--rd-surface);
     cursor: pointer;
@@ -646,7 +758,7 @@
   input[type='checkbox']:focus-visible,
   input[type='radio']:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
   input[type='checkbox']:disabled,
-  input[type='radio']:disabled { opacity: 0.45; cursor: not-allowed; }
+  input[type='radio']:disabled { opacity: var(--rd-opacity-disabled); cursor: not-allowed; }
 
   /* Breakpoints, then the 44px touch targets under 720px (was styles/responsive.css). */
   @media (max-width: 767px) {
@@ -678,7 +790,7 @@
   input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea,
   .pane-body textarea {
     background-color: var(--rd-sunken);
-    border-color: color-mix(in srgb, var(--rd-field) 70%, transparent);
+    border-color: var(--rd-field-line);
   }
   input:not([type='checkbox']):not([type='radio']):not([type='file']):focus, select:focus, textarea:focus,
   .pane-body textarea:focus {

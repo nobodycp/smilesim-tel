@@ -25,9 +25,12 @@ import { cn } from '../../lib/cn';
  * - a tab: 36px high, 16px sides, square, no border or fill, `--rd-muted` 13px semibold on one line, 6px between its
  *   label and its count; each after the first draws a 1px ink line at 11% on its start edge; under the pointer (when
  *   enabled) ink on `--rd-surface-2`; the selected one ink bold on `--rd-surface-2` with the 2px crimson thread
- *   underneath; a disabled one at 40% with the default cursor; at least 44px high at 720px and under, 40px and
- *   centred on as many lines as it needs, with 8px sides, under 641px;
+ *   underneath; a disabled one dimmed (see below); at least 44px high at 720px and under, centred on as many lines
+ *   as it needs, with 8px sides, under 641px;
  * - the count: an 18px-high crimson figure at least 18px wide, 5px sides, 4px corners, 11px bold tabular digits.
+ * Tailwind migration T6.2: keyboard focus is the 2px `--rd-accent` outline drawn inside the tab (the focus mark of an
+ * item in a strip or a list; the strip's scroll box never cuts it); a disabled tab is at the one disabled strength
+ * (it was 40%) with a not-allowed pointer; a phone keeps the 44px touch height (it was 40px under 641px).
  * Handles: `data-slot="tabs"` on the strip, `data-slot="tab"` on a tab.
  */
 
@@ -68,10 +71,11 @@ export const TabsTrigger = React.forwardRef<
       'inline-flex h-9 flex-none cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-none border-0 bg-transparent px-4',
       'text-md font-semibold text-muted not-first:border-s not-first:border-s-ink/11',
       'not-disabled:hover:bg-surface-2 not-disabled:hover:text-ink',
-      'aria-selected:bg-surface-2 aria-selected:font-bold aria-selected:text-ink aria-selected:shadow-[inset_0_-2px_0_var(--rd-accent)]',
-      'disabled:cursor-default disabled:opacity-40',
-      'max-[721px]:min-h-11',
-      'max-sm:min-h-10 max-sm:justify-center max-sm:whitespace-normal max-sm:px-2 max-sm:text-center',
+      'aria-selected:bg-surface-2 aria-selected:font-bold aria-selected:text-ink aria-selected:shadow-thread',
+      'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',
+      'disabled:cursor-not-allowed disabled:opacity-disabled',
+      'max-touch:min-h-11',
+      'max-sm:justify-center max-sm:whitespace-normal max-sm:px-2 max-sm:text-center',
       className,
     )}
     {...props}

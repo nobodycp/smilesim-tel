@@ -17,8 +17,20 @@ import { cn } from '../../lib/cn';
  *   1px ink line at 11% on its start edge; the chosen one sits on `--rd-surface-2` in ink with the 2px crimson thread
  *   underneath; at least 44px high at 720px and under (the touch rule of responsive.css). With `fill` a long label
  *   stays on one line and ends in an ellipsis.
- * Not carried, because no legacy rule outside a dialog reaches a segment with it: a disabled look and a focus mark
- * (the browser's own focus ring stays).
+ * States no legacy rule reached (Tailwind migration T6.2, from the system's own parts): under the pointer an
+ * unchosen, usable segment turns ink on `--rd-surface-2` (as a tab does); keyboard focus is the 2px `--rd-accent`
+ * outline drawn inside the segment (the focus mark of an item in a strip or a list: tabs, segments, periods, page
+ * numbers, list rows), so the group's clipping never cuts it; a disabled segment (or a disabled group) is at the one
+ * disabled strength with a not-allowed pointer.
+ *
+ * `SegmentedToggle` / `SegmentedToggleItem` are the toggle form (Tailwind migration T6.2), the look of the period
+ * switch (graphite.css `.period`, drawn by hand in features/reports/report-kit.tsx and features/wallets/wallet-head.tsx
+ * until T6.3): a `role="group"` row of plain buttons, each `aria-pressed`, every one in the Tab order (no roving),
+ * the caller keeping the choice. The row keeps its width, 4px corners, a 1px inset `--rd-line` edge, clipped; the
+ * whole row under 768px, its buttons sharing it with 6px sides. A button: 34px (44px at 720px and under), 12px
+ * sides, no border or fill, `--rd-muted` 12.5px semibold on one line, ink under the pointer; each after the first
+ * draws a 1px `--rd-line` on its start edge; the pressed one sits on `--rd-surface-2` in ink over the crimson thread;
+ * the focus mark is the strip's (2px `--rd-accent` inside).
  */
 const segmentedVariants = cva('gap-0 overflow-hidden rounded-sm border-0 bg-transparent p-0 inset-ring inset-ring-ink/11', {
   variants: {
@@ -32,9 +44,12 @@ const segmentedVariants = cva('gap-0 overflow-hidden rounded-sm border-0 bg-tran
 
 const segmentVariants = cva(
   [
-    'h-8 rounded-none border-0 bg-transparent px-2.5 py-0 text-sm font-bold text-muted max-[721px]:min-h-11',
+    'h-8 rounded-none border-0 bg-transparent px-2.5 py-0 text-sm font-bold text-muted max-touch:min-h-11',
     'not-first:border-s not-first:border-s-ink/11',
-    'data-[state=on]:bg-surface-2 data-[state=on]:text-ink data-[state=on]:shadow-[inset_0_-2px_0_var(--rd-accent)]',
+    'not-disabled:data-[state=off]:hover:bg-surface-2 not-disabled:data-[state=off]:hover:text-ink',
+    'data-[state=on]:bg-surface-2 data-[state=on]:text-ink data-[state=on]:shadow-thread',
+    'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',
+    'disabled:cursor-not-allowed disabled:opacity-disabled',
   ],
   {
     variants: {
@@ -85,3 +100,42 @@ export const SegmentedItem = React.forwardRef<
   return <ToggleGroup.Item ref={ref} data-slot="segmented-item" className={cn(segmentVariants({ fill }), className)} {...props} />;
 });
 SegmentedItem.displayName = 'SegmentedItem';
+
+/** The toggle form's row (see above). Name it with `aria-label`. */
+export function SegmentedToggle({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      role="group"
+      data-slot="segmented-toggle"
+      className={cn('inline-flex flex-none overflow-hidden rounded-xs inset-ring inset-ring-line max-md:w-full', className)}
+      {...props}
+    />
+  );
+}
+
+export interface SegmentedToggleItemProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-pressed'> {
+  /** This button is the chosen one. */
+  pressed: boolean;
+}
+
+/** One button of the toggle form: `aria-pressed` from `pressed`. A caller's `className` comes last and wins (`cn`). */
+export const SegmentedToggleItem = React.forwardRef<HTMLButtonElement, SegmentedToggleItemProps>(
+  ({ className, pressed, type = 'button', ...props }, ref) => (
+    <button
+      ref={ref}
+      type={type}
+      aria-pressed={pressed}
+      data-slot="segmented-toggle-item"
+      className={cn(
+        'h-8.5 cursor-pointer whitespace-nowrap border-0 bg-transparent px-3 text-chip font-semibold text-muted hover:text-ink',
+        'not-first:border-s not-first:border-s-line max-md:flex-1 max-md:px-1.5 max-touch:min-h-11',
+        'aria-pressed:bg-surface-2 aria-pressed:text-ink aria-pressed:shadow-thread',
+        'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',
+        'disabled:cursor-not-allowed disabled:opacity-disabled',
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
+SegmentedToggleItem.displayName = 'SegmentedToggleItem';

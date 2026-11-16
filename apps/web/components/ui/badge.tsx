@@ -13,8 +13,9 @@ export type BadgeVariant = "default" | "success" | "warning" | "danger" | "muted
  * - with `dot` (graphite's diamond status mark): no fill, no ring, no side padding, 7px between the mark and the
  *   words, 12.5px; the mark is a 7px square turned 45deg with 1px corners in the text colour, glowing 8px in it
  *   (`muted` does not glow).
- * `info` and `violet` read tokens that do not exist yet (DESIGN.md), so the legacy rules drew no fill, no ring and
- * the surrounding text colour; that is ported as it is until their tokens land (T6).
+ * `info` and `violet` have their own tokens since Tailwind migration T6.2 (`--rd-info`, `--rd-violet` and their soft
+ * fills, both themes, text ≥4.5:1 on the soft fill): the pill and the mark draw them as every other tone (before,
+ * their tokens did not exist and they drew no fill, no ring and the surrounding text colour).
  * Handles: `data-slot="badge"` (the legacy placement rules read it), `data-testid="badge"` (a caller's own wins).
  */
 const badgeVariants = cva("inline-flex w-fit items-center whitespace-nowrap rounded-xs py-0.5 font-semibold", {
@@ -25,12 +26,12 @@ const badgeVariants = cva("inline-flex w-fit items-center whitespace-nowrap roun
       warning: "text-warning",
       danger: "text-danger",
       muted: "text-muted",
-      info: "text-inherit",
-      violet: "text-inherit",
+      info: "text-info",
+      violet: "text-violet",
     },
     dot: {
-      false: "gap-1.5 px-2 text-[11.5px]",
-      true: "gap-1.75 bg-transparent px-0 text-[12.5px]",
+      false: "gap-1.5 px-2 text-caption",
+      true: "gap-1.75 bg-transparent px-0 text-chip",
     },
   },
   compoundVariants: [
@@ -39,7 +40,8 @@ const badgeVariants = cva("inline-flex w-fit items-center whitespace-nowrap roun
     { dot: false, variant: "warning", className: "bg-warning-soft inset-ring inset-ring-warning/15" },
     { dot: false, variant: "danger", className: "bg-danger-soft inset-ring inset-ring-danger/15" },
     { dot: false, variant: "muted", className: "bg-surface-2 inset-ring inset-ring-line" },
-    { dot: false, variant: ["info", "violet"], className: "bg-transparent" },
+    { dot: false, variant: "info", className: "bg-info-soft inset-ring inset-ring-info/15" },
+    { dot: false, variant: "violet", className: "bg-violet-soft inset-ring inset-ring-violet/15" },
   ],
   defaultVariants: { variant: "default", dot: false },
 });
@@ -57,7 +59,7 @@ export function Badge({
         <span
           className={cn(
             "size-1.75 shrink-0 rotate-45 rounded-[1px] bg-current",
-            variant === "muted" ? "shadow-none" : "shadow-[0_0_8px_currentColor]",
+            variant === "muted" ? "shadow-none" : "shadow-glow",
           )}
           aria-hidden="true"
         />

@@ -17,7 +17,8 @@ import { cn } from '../../lib/cn';
  * - the scrim: fixed over the whole window above every layer but the toasts (`--rd-z-dialog`), `--rd-scrim` with an
  *   8px backdrop blur, the panel centred in it with 16px around;
  * - the panel: a column, min(560px, 100%) wide (confirm 460px, wide 760px), at most min(720px, window less 48px)
- *   tall, clipped, no border (graphite's `border: 0` over dialog.css's line), 6px corners (`--rd-radius-sm`), the
+ *   tall (the dynamic viewport height, so a phone's browser bars never hide its foot: Tailwind migration T6.2,
+ *   audit 3.2-10), clipped, no border (graphite's `border: 0` over dialog.css's line), 6px corners (`--rd-radius-sm`), the
  *   surface fill, an inset 1px ink line at 11% under `--rd-shadow-pop`, and a 2px `--rd-accent` thread across its
  *   top (graphite `::before`); it drops in over 200ms (`rd-drop`, graphite.css) when motion is allowed;
  * - the head: a row, 12px between its parts, 16px on top and the sides and 14px below, a 1px `--rd-line` rule under
@@ -40,7 +41,7 @@ export const DialogClose = DialogPrimitive.Close;
 
 const panelVariants = cva(
   [
-    'relative flex max-h-[min(720px,calc(100vh_-_48px))] flex-col overflow-hidden p-0',
+    'relative flex max-h-[min(720px,calc(100dvh_-_48px))] flex-col overflow-hidden p-0',
     'rounded-sm border-0 bg-surface shadow-pop inset-ring inset-ring-ink/11',
     "before:block before:h-0.5 before:flex-none before:bg-accent before:content-['']",
     'motion-safe:animate-[rd-drop_200ms_var(--rd-ease-out)]',

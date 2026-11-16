@@ -21,7 +21,10 @@ import { cn } from '../../lib/cn';
  * - `TCell`: 46px, 8px / 14px padding (8px at the sides on the canvas up to 1100px wide), a 1px transparent rule under
  *   it except on the last row, centred but the first at the reading start, one line; even rows tinted
  *   (`--rd-surface-2` at 55%, unless `striped` is off), the row under the pointer `--rd-accent-soft`. A cell that
- *   holds money uses tabular figures.
+ *   holds money uses tabular figures. Tailwind migration T6.2 added two row states in the same tint: a selected row
+ *   (`aria-selected="true"` on the `TRow`; a phone's card takes it on the whole card) and a row that holds the
+ *   keyboard focus (its link, button or ⋯ under `:focus-visible`), so the row a keyboard user is on reads as the
+ *   row under the pointer does.
  * - Column kinds: `num` (tabular figures), `actions` (6rem, 8px at the sides: the RowMenu column), `fit` (as narrow
  *   as its content; first in a card it sits beside the title instead of being it), and `kind`: `msisdn` (a line
  *   number: at the reading start, semibold, 0.03em, tabular), `when` (a time: tabular), `wrap` (a long text: it
@@ -119,6 +122,7 @@ export function TRow({ className, ...props }: React.ComponentProps<'tr'>) {
         body && cards && [
           'max-sm:relative max-sm:grid max-sm:grid-cols-2 max-sm:gap-x-3.5 max-sm:gap-y-2.5',
           'max-sm:border-b max-sm:border-line max-sm:px-4 max-sm:py-3.5 max-sm:even:bg-ink/3',
+          'max-sm:aria-selected:bg-accent-soft max-sm:has-[:focus-visible]:bg-accent-soft',
         ],
         className,
       ) || undefined}
@@ -206,6 +210,9 @@ export function TCell({
         // The tints sit on the cells; a phone's card takes them on the whole row instead.
         striped && (cards ? 'sm:[tr:nth-child(even)>&]:bg-surface-2/55' : '[tr:nth-child(even)>&]:bg-surface-2/55'),
         cards ? 'sm:[tbody>tr:hover>&]:bg-accent-soft' : '[tbody>tr:hover>&]:bg-accent-soft',
+        cards
+          ? 'sm:[tbody>tr[aria-selected=true]>&]:bg-accent-soft sm:[tbody>tr:has(:focus-visible)>&]:bg-accent-soft'
+          : '[tbody>tr[aria-selected=true]>&]:bg-accent-soft [tbody>tr:has(:focus-visible)>&]:bg-accent-soft',
         num && 'tabular-nums',
         actions && 'w-24 px-2',
         kind && KIND[kind],

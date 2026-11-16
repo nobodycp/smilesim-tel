@@ -16,7 +16,11 @@ export const RadioGroup = React.forwardRef<
 >(({ className, ...props }, ref) => <RadioGroupPrimitive.Root ref={ref} data-slot="radio-group" className={className} {...props} />);
 RadioGroup.displayName = 'RadioGroup';
 
-/** A round box (the checkbox's look, see checkbox.tsx) with an 8px dot when chosen. */
+/**
+ * A round box (the checkbox's look, see checkbox.tsx) with an 8px dot when chosen; `aria-invalid="true"` draws an
+ * empty one's border in `--rd-danger` (Tailwind migration T6.2). A choice drawn as a card is `RadioCard`
+ * (radio-card.tsx).
+ */
 export const RadioGroupItem = React.forwardRef<
   React.ComponentRef<typeof RadioGroupPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>

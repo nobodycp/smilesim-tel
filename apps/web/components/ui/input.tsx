@@ -17,15 +17,20 @@ import { cn } from "../../lib/cn";
  * 44px at 720px and under (the touch rule of responsive.css, frame.css and dialog.css).
  * Surfaces: sunken (the default, graphite's inset field), surface (a field inside a `.pane`, where pane.css's own
  * `--rd-surface` fill outranks graphite's).
- * Not carried, because no legacy rule reaches a text field with it: a read-only look (forms.css `input[readonly]` loses
- * to the field rule on every property) and a disabled look. Number fields without spin arrows stay the global rule in
- * graphite.css until T5.1 moves the element rules into `@layer base`.
+ * States no legacy rule reached (Tailwind migration T6.2, from the system's own parts):
+ * - read-only: the look forms.css wrote for `input[readonly]` (and lost to the field rule on every property): a
+ *   dashed border, no fill, `--rd-muted` text; the focus ring stays, so a keyboard user still sees where they are;
+ * - disabled: the one disabled strength (`opacity-disabled`) and a not-allowed pointer, as every control.
+ * The border is `--rd-field-line` (`--rd-field` at 70%, the token of the same value). Number fields without spin
+ * arrows are the global `input[type=number]` rule in app/tailwind.css.
  */
 export const inputVariants = cva(
   [
-    "w-full rounded-sm border border-solid border-field/70 text-ink max-[721px]:h-11",
+    "w-full rounded-sm border border-solid border-field-line text-ink max-touch:h-11",
     "focus:border-accent focus:outline-none focus:ring-3 focus:ring-focus",
     "aria-invalid:not-focus:inset-ring aria-invalid:not-focus:inset-ring-danger",
+    "read-only:not-disabled:border-dashed read-only:not-disabled:bg-transparent read-only:not-disabled:text-muted",
+    "disabled:cursor-not-allowed disabled:opacity-disabled",
   ],
   {
     variants: {

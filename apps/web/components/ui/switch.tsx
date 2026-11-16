@@ -17,24 +17,32 @@ import { cn } from '../../lib/cn';
  *   when on (a negative shift in RTL);
  * - colour and slide ease over `--rd-dur-fast`.
  * A Radix Switch inside a `<form>` also renders a hidden checkbox after the button so form events see the change.
+ * Tailwind migration T6.2: disabled is the one disabled strength (`opacity-disabled`, the same 45%); `pending` is the
+ * state of a switch whose change is being saved: `aria-busy="true"`, a progress pointer, and the track at the
+ * disabled strength with its colour kept (the knob stays where it was pressed). It changes no behaviour: the caller
+ * still decides whether a press is taken while it saves.
  */
 export const Switch = React.forwardRef<
   React.ComponentRef<typeof SwitchPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> & {
+    /** The change is being saved: the busy look (see above). */
+    pending?: boolean;
+  }
+>(({ className, pending = false, ...props }, ref) => (
   <SwitchPrimitive.Root
     ref={ref}
     data-slot="switch"
+    aria-busy={pending || undefined}
     className={cn(
-      'group/switch grid h-8 w-9 place-items-center border-0 bg-transparent p-0 max-[721px]:size-11',
-      'disabled:cursor-not-allowed disabled:opacity-45',
+      'group/switch grid h-8 w-9 place-items-center border-0 bg-transparent p-0 max-touch:size-11',
+      'disabled:cursor-not-allowed disabled:opacity-disabled aria-busy:cursor-progress',
       'focus-visible:rounded-pill focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-focus',
       className,
     )}
     {...props}
   >
     <span
-      className="relative h-5 w-9.5 rounded-xs bg-danger transition-[background-color,translate] duration-fast ease-[ease] group-data-[state=checked]/switch:bg-success"
+      className="relative h-5 w-9.5 rounded-xs bg-danger transition-[background-color,translate,opacity] duration-fast ease-[ease] group-data-[state=checked]/switch:bg-success group-aria-busy/switch:opacity-disabled"
     >
       <SwitchPrimitive.Thumb className="absolute start-0.75 top-0.75 size-3.5 rounded-[2px] bg-on-mark transition-[background-color,translate] duration-fast ease-[ease] data-[state=checked]:translate-x-4.5 rtl:data-[state=checked]:-translate-x-4.5" />
     </span>

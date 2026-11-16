@@ -14,7 +14,7 @@ import { cn } from '../../lib/cn';
  * The look is the legacy calendar panel's (graphite.css `.date-pop`, gone since the date field moved here, T2.8):
  * 6px below its anchor and lined up with its reading start by default, 10px padding, 6px corners (`--rd-radius-sm`),
  * the surface fill, an inset 1px `--rd-line` under `--rd-shadow-pop`, three steps above the dialog layer
- * (`--rd-z-dialog` + 3) so it opens over a dialog that holds its button and under the toasts. Its width is the
+ * (`--rd-z-dialog-popover`, the dialog layer + 3) so it opens over a dialog that holds its button and under the toasts. Its width is the
  * caller's (the calendar is 280px). Handle: `data-slot="popover"`.
  */
 
@@ -35,7 +35,7 @@ export const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        'z-[calc(var(--rd-z-dialog)_+_3)] rounded-sm bg-surface p-2.5 shadow-pop inset-ring inset-ring-line outline-none',
+        'z-dialog-popover rounded-sm bg-surface p-2.5 shadow-pop inset-ring inset-ring-line outline-none',
         className,
       )}
       {...props}

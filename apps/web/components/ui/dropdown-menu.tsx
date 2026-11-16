@@ -24,6 +24,8 @@ import { cn } from '../../lib/cn';
  *   turns `--rd-surface` and ink. `danger`: danger red, its tile `--rd-danger-soft`, the line `--rd-danger-soft` under
  *   the pointer or focus;
  * - the separator: a 1px `--rd-line-soft` rule, 4px above and below, 6px in from each side.
+ * A disabled item (Radix `disabled`: skipped by the keyboard, `data-disabled` and `aria-disabled` on the line) is at
+ * the one disabled strength with a not-allowed pointer and no hover fill (Tailwind migration T6.2).
  */
 
 export const DropdownMenu = MenuPrimitive.Root;
@@ -54,7 +56,8 @@ DropdownMenuContent.displayName = 'DropdownMenuContent';
 const itemVariants = cva(
   [
     'flex min-h-9.5 w-full cursor-pointer items-center gap-2.5 whitespace-nowrap rounded-sm border-0 bg-transparent',
-    'py-1 ps-1 pe-2 rtl:ps-2 rtl:pe-1 text-start text-base font-semibold leading-tight max-[721px]:min-h-11',
+    'py-1 ps-1 pe-2 rtl:ps-2 rtl:pe-1 text-start text-base font-semibold leading-tight max-touch:min-h-11',
+    'data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:opacity-disabled',
     '[&>svg]:box-content [&>svg]:size-3.75 [&>svg]:flex-none [&>svg]:rounded-xs [&>svg]:p-1.5',
   ],
   {

@@ -11,25 +11,32 @@ import { cn } from '../../lib/cn';
  * `--rd-accent-fill` (border too) and its light mark (`--rd-on-accent`) grows in; under the pointer, an empty box
  * that is not disabled takes the `--rd-accent` border; on keyboard focus a 2px `--rd-accent` outline 2px out; at
  * 45% with a not-allowed pointer when disabled. Fill, border and mark ease over `--rd-dur-fast`.
+ * Tailwind migration T6.2: the empty box's border is `--rd-field` (3:1 on the surface in both themes; ink at 32% was
+ * under it, audit 3.10-08, and the base `input[type=checkbox]` rule follows); disabled is the one disabled strength
+ * (`opacity-disabled`, the same 45%); `aria-invalid="true"` draws the border in `--rd-danger` while the box is empty;
+ * a checkbox can be `checked="indeterminate"` (some of a group): the fill with a short light bar instead of the tick.
  * Shared with radio-group.tsx.
  */
 export const choiceBoxClass = cn(
   'inline-grid size-4.5 min-w-4.5 max-w-4.5 flex-none cursor-pointer place-content-center align-middle',
-  'm-0 border-[1.5px] border-solid border-ink/32 bg-surface p-0',
+  'm-0 border-[1.5px] border-solid border-field bg-surface p-0',
   'transition-[background-color,border-color] duration-fast ease-[ease]',
   'data-[state=checked]:border-accent-fill data-[state=checked]:bg-accent-fill',
+  'data-[state=indeterminate]:border-accent-fill data-[state=indeterminate]:bg-accent-fill',
+  'aria-invalid:data-[state=unchecked]:border-danger',
   'not-disabled:data-[state=unchecked]:hover:border-accent',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-  'disabled:cursor-not-allowed disabled:opacity-45',
+  'disabled:cursor-not-allowed disabled:opacity-disabled',
 );
 
 /** The mark inside the box: it is always there, scaled to nothing while unticked, so it grows in. */
 export const choiceMarkClass =
-  'bg-on-accent scale-0 transition-transform duration-fast ease-[ease] data-[state=checked]:scale-100';
+  'bg-on-accent scale-0 transition-transform duration-fast ease-[ease] data-[state=checked]:scale-100 data-[state=indeterminate]:scale-100';
 
 /**
- * A checkbox on Radix Checkbox: a `role="checkbox"` button with `aria-checked` and `data-state="checked|unchecked"`.
- * It takes its name from a wrapping `<label>`, `aria-label` or `aria-labelledby`. `data-slot="checkbox"` is its handle.
+ * A checkbox on Radix Checkbox: a `role="checkbox"` button with `aria-checked` (`"mixed"` when indeterminate) and
+ * `data-state="checked|unchecked|indeterminate"`. It takes its name from a wrapping `<label>`, `aria-label` or
+ * `aria-labelledby`. `data-slot="checkbox"` is its handle.
  */
 export const Checkbox = React.forwardRef<
   React.ComponentRef<typeof CheckboxPrimitive.Root>,
@@ -38,7 +45,11 @@ export const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root ref={ref} data-slot="checkbox" className={cn(choiceBoxClass, 'rounded-xs', className)} {...props}>
     <CheckboxPrimitive.Indicator
       forceMount
-      className={cn(choiceMarkClass, 'size-2.5 [clip-path:polygon(14%_44%,0_65%,50%_100%,100%_16%,80%_0%,43%_62%)]')}
+      className={cn(
+        choiceMarkClass,
+        'size-2.5 [clip-path:polygon(14%_44%,0_65%,50%_100%,100%_16%,80%_0%,43%_62%)]',
+        'data-[state=indeterminate]:h-0.5 data-[state=indeterminate]:rounded-pill data-[state=indeterminate]:[clip-path:none]',
+      )}
     />
   </CheckboxPrimitive.Root>
 ));
