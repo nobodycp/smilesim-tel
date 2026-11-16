@@ -66,7 +66,7 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
   });
 
   const post = (who: string, body: object, key?: string) => {
-    const call = request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${sessions[who]}`);
+    const call = request(app.getHttpServer()).post('/v1/notices/read').set('Cookie', `sid=${sessions[who]}`);
     return (key ? call.set('Idempotency-Key', key) : call).send(body);
   };
 

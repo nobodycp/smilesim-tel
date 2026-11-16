@@ -147,12 +147,17 @@ goes down; the backend map updated in the same commit.
   one cannot be added without a surface. `access` hands the `@Actor()` decorator and the actor's shape under the
   one name `Actor` (declared together in `actor.interceptor.ts`): one name cannot be re-exported from two files.
   Commit: see `git log --grep 'R.12'`.
-- [ ] **R.11c** `/office/*` removed. **BLOCKED_EXTERNAL_VALIDATION** (2026-11-14). It needs what no local test can
-  give: a deployed release that serves both paths (R.11b) and whose logs show no `[LegacyPaths] old paths used:` line
-  for the whole release, and no web image older than R.11b left as a rollback target. Then: `RESOURCE_PREFIXES =
-  ['v1']`, the `office` twins leave the middleware's lists by themselves, `LegacyPathCounter` and its module go,
-  the route specs drop the `/office/` rows, and `scripts/backup/rehearsal-smoke.mjs` and the handover move to
-  `/v1/…`. Until then nothing is removed.
+- [x] **R.11c** `/office/*` removed (2026-11-16, on the owner's word). It had been recorded as blocked on what no
+  local test can give: a deployed release serving both paths with no `[LegacyPaths] old paths used:` line for the
+  whole release, and no web image older than R.11b left as a rollback target. **Neither was observed**: the owner
+  chose to remove the old paths without the watched release. Done: `RESOURCE_PREFIXES = ['v1']`, so the `office`
+  twins left the controllers and the middleware's lists by themselves; `LegacyPathCounter`, its module and its
+  spec are gone; the specs call `/v1/…`, the route table proves every old path answers 404 and records nothing;
+  `scripts/backup/rehearsal-smoke.mjs` and the handover use `/v1/…`. Kept on purpose: the duplicate guard's key
+  still hashes a resource path in the form it had under the first prefix (`canonicalPath`), so a key a release
+  before R.11c stored still matches the same write after it. What the missing observation costs is in the
+  handover (section 14): a web older than R.11b does not work with this API, and a jump from a release older than
+  R.11b has no order without an interruption. Commit: see `git log --grep 'R.11c'`.
 
 Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 

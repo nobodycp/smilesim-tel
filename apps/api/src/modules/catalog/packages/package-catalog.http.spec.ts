@@ -71,47 +71,47 @@ describe('package catalog routes over HTTP', () => {
   };
 
   it('reads the package sheet for the branch, with counts, targets and resolved modes', async () => {
-    const response = await as('clerk', 'get', '/office/packages/p1/sheet');
+    const response = await as('clerk', 'get', '/v1/packages/p1/sheet');
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       code: 'p1', providerCode: 'lian', companyCode: 'wecom', branchCost: 2000, renewalSubscriberPrice: 2800,
       esimPriceEffective: 300, esimPriceSource: 'company', lines: 2, activeLines: 1, renewals: ['p2'], switches: [],
     });
     expect(response.body.modes.charge).toBe('manual');
-    expect((await as('ag1', 'get', '/office/packages/p1/sheet')).status).toBe(403);
-    expect((await as('owner', 'get', '/office/packages/none/sheet')).status).toBe(404);
+    expect((await as('ag1', 'get', '/v1/packages/p1/sheet')).status).toBe(403);
+    expect((await as('owner', 'get', '/v1/packages/none/sheet')).status).toBe(404);
   });
 
   it('sets package flags and one action mode with its flag pair; refuses an empty change', async () => {
-    expect((await as('owner', 'patch', '/office/packages/p1/mode', { enabled: false, bogus: true })).body).toEqual({ ok: true });
-    expect((await as('owner', 'patch', '/office/packages/p1/mode', { action: 'charge', mode: 'auto' })).body).toEqual({ ok: true });
+    expect((await as('owner', 'patch', '/v1/packages/p1/mode', { enabled: false, bogus: true })).body).toEqual({ ok: true });
+    expect((await as('owner', 'patch', '/v1/packages/p1/mode', { action: 'charge', mode: 'auto' })).body).toEqual({ ok: true });
     const [flags, mode] = writes.map((w) => (w.args as { data: Record<string, unknown> }).data);
     expect(flags).toEqual({ enabled: false });
     expect(mode).toMatchObject({ autoCharge: true, allowCharge: true, actionModes: expect.objectContaining({ charge: 'auto' }) });
-    expect((await as('owner', 'patch', '/office/packages/p1/mode', {})).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('clerk', 'patch', '/office/packages/p1/mode', { enabled: true })).status).toBe(403);
+    expect((await as('owner', 'patch', '/v1/packages/p1/mode', {})).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('clerk', 'patch', '/v1/packages/p1/mode', { enabled: true })).status).toBe(403);
   });
 
   // Until 2026-11-08 the mode route checked the edit grant only; an agent given `edit` could change modes for everyone.
   it('refuses package modes to a non-branch account even when it holds the edit grant', async () => {
-    const response = await as('ag1', 'patch', '/office/packages/p1/mode', { enabled: true });
+    const response = await as('ag1', 'patch', '/v1/packages/p1/mode', { enabled: true });
     expect(response.status).toBe(403);
     expect(response.body).toMatchObject({ code: 'FORBIDDEN' });
     expect(writes).toEqual([]);
   });
 
   it('replaces renewal and switch targets inside one company and provider', async () => {
-    expect((await as('owner', 'put', '/office/packages/p1/renewals', { targets: ['p2'] })).body).toEqual({ ok: true });
-    expect((await as('owner', 'put', '/office/packages/p1/switches', { targets: [] })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/packages/p1/renewals', { targets: ['p2'] })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/packages/p1/switches', { targets: [] })).body).toEqual({ ok: true });
     expect(writes.map((w) => w.op)).toEqual(['renewal.deleteMany', 'renewal.createMany', 'switch.deleteMany']);
     expect(writes[1].args).toEqual({ data: [{ packageId: 'id-p1', targetPackageId: 'id-p2' }] });
     for (const targets of [['p1'], ['p2', 'p2'], ['other'], ['nope'], [3]]) {
-      expect((await as('owner', 'put', '/office/packages/p1/renewals', { targets })).body).toMatchObject({ code: 'INVALID' });
+      expect((await as('owner', 'put', '/v1/packages/p1/renewals', { targets })).body).toMatchObject({ code: 'INVALID' });
     }
-    expect((await as('ag1', 'put', '/office/packages/p1/renewals', { targets: [] })).status).toBe(403);
+    expect((await as('ag1', 'put', '/v1/packages/p1/renewals', { targets: [] })).status).toBe(403);
   });
 
   it('refuses clearing a custom price outside the branch, and for an unknown account', async () => {
-    expect((await as('owner', 'delete', '/office/packages/p1/custom-prices/nobody')).status).toBe(404);
+    expect((await as('owner', 'delete', '/v1/packages/p1/custom-prices/nobody')).status).toBe(404);
   });
 });

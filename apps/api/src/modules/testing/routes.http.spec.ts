@@ -7,15 +7,15 @@ import { ROUTES, type RouteRow } from './routes';
 
 // Every office route as the app serves it, whichever controller holds it: the method and path, and the activity
 // event it writes. Called without a session, each one refuses with 401 and logs the refusal under its own event.
-// The table lives in testing/office-routes.ts.
+// The table lives in testing/routes.ts.
 
 // Routes that judge something before the session, so an anonymous call with the sample body answers 400 INVALID:
 // `leave` reads the impersonation session itself; `handoff` has no session yet (it trades a one-time code for one). The carrier switch (not defined yet, always refused) asks for the
 // session first since 2026-11-08, like every other line route. The price and terms
 // writes used to parse their body first; since 2026-11-08 (owner decision, 401 first) they ask for the session first.
 const BEFORE_SESSION: Record<string, number> = {
-  'POST /office/handoff': 400,
-  'POST /office/leave': 400,
+  'POST /v1/handoff': 400,
+  'POST /v1/leave': 400,
 };
 
 describe('office routes without a session', () => {
@@ -52,8 +52,13 @@ describe('office routes without a session', () => {
     await refusesAndLogs(method, path, event, `${method} ${path}`);
   });
 
-  // Slice R.11b: every route is served under `/v1/` as well, with the same answer and the same event.
-  it.each(ROUTES.map(([method, path, event]) => [method, path.replace(/^\/office\//, '/v1/'), event, path] as const))('%s %s (the /v1/ path) refuses and logs the same event', async (method, path, event, old) => {
-    await refusesAndLogs(method, path, event, `${method} ${old}`);
+  // Slice R.11c: the old prefix is gone. No route answers under `/office/`, with or without a body, and nothing
+  // is written for a request to one.
+  it.each(ROUTES)('%s %s is not served under /office/ any more', async (method, path) => {
+    const before = recorded.length;
+    const old = path.replace(/^\/v1\//, '/office/');
+    const answer = await request(app.getHttpServer())[method.toLowerCase() as 'get'](old).set('Origin', 'http://localhost:3000');
+    expect({ old, status: answer.status }).toEqual({ old, status: 404 });
+    expect(recorded.length).toBe(before);
   });
 });

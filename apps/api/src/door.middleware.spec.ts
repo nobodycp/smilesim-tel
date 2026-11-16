@@ -19,7 +19,7 @@ describe('DoorMiddleware', () => {
     return { middleware: new DoorMiddleware(store), home, entered };
   }
 
-  async function run(middleware: DoorMiddleware, door: string, cookie: string, route = { method: 'GET', url: '/office/me' }) {
+  async function run(middleware: DoorMiddleware, door: string, cookie: string, route = { method: 'GET', url: '/v1/me' }) {
     const sent: { status?: number; code?: string; passed: boolean } = { passed: false };
     const res = {
       status(code: number) { sent.status = code; return this; },
@@ -50,10 +50,10 @@ describe('DoorMiddleware', () => {
   // or the handoff that opens an entered account there.
   it('lets a sign-in and the handoff through a door whatever session the browser brings', async () => {
     const { middleware, home } = await setup();
-    for (const url of ['/auth/login', '/auth/passkey-login', '/auth/passkey-login/options', '/office/handoff', '/office/handoff?x=1']) {
+    for (const url of ['/auth/login', '/auth/passkey-login', '/auth/passkey-login/options', '/v1/handoff', '/v1/handoff?x=1']) {
       expect((await run(middleware, 'pos', `sid=${home}`, { method: 'POST', url })).passed).toBe(true);
     }
     expect((await run(middleware, 'pos', `sid=${home}`, { method: 'GET', url: '/auth/login' })).code).toBe('DOOR_MISMATCH');
-    expect((await run(middleware, 'pos', `sid=${home}`, { method: 'POST', url: '/office/leave' })).code).toBe('DOOR_MISMATCH');
+    expect((await run(middleware, 'pos', `sid=${home}`, { method: 'POST', url: '/v1/leave' })).code).toBe('DOOR_MISMATCH');
   });
 });

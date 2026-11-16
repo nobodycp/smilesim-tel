@@ -16,8 +16,8 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 which target module owns each file and what it may import (`architecture-map.fixture.ts`), and which file may
 write money, a provider operation, an outbox message or a verdict. A new production file needs an owner in the
 map. A rule there names no folder: moving a file does not take it out of a rule. What no refactor may change
-about money is `docs/architecture/financial-invariants.md`. A write route that is not under `/office/` must be
-stated in `http-security-contract.spec.ts` with why it has no duplicate guard.
+about money is `docs/architecture/financial-invariants.md`. A write route whose controller says
+`@NotDuplicateGuarded` must be stated in `http-security-contract.spec.ts` with why it has no duplicate guard.
 
 ## 1. Money
 
@@ -103,8 +103,8 @@ stated in `http-security-contract.spec.ts` with why it has no duplicate guard.
 
 ## 5. Structure
 
-1. One folder per domain: a module of ADR 0020 under `modules/<module>/` (`modules/office/<domain>/` until the
-   slice that moves it):
+1. One folder per domain: a module of ADR 0020 under `modules/<module>/`, imported by other modules through its
+   `index.ts` only:
    `*.controller.ts` (HTTP only) → `*.schemas.ts` (zod) → `*.service.ts` (use cases) → `*.rules.ts` (pure, tested)
    → Prisma access. A controller holds no rule; a rule file imports no Nest, no Prisma.
 1a. A service names the collaborators it uses (`UnitOfWork`, `AccountTree`, `WalletLedger`, `PriceLadder`,

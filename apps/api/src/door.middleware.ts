@@ -11,7 +11,7 @@ import { resourcePaths } from './modules/platform/route-prefixes';
  * (`COOKIE_DOMAIN`), so a browser signed in on another door brings that session here; refusing it would leave the
  * door with no way in. These routes replace the cookie, so they pass whatever session came with them.
  */
-// The hand-off starts a session under each prefix it is served under (slice R.11b).
+// The hand-off starts a session; its path comes from the one list of prefixes.
 const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', ...resourcePaths('handoff')]);
 
 function startsSession(req: Request): boolean {

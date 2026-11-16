@@ -68,7 +68,7 @@ function check(rule: string, found: Hit[]) {
 }
 
 // The rules below look at every module, not at one folder: since slice R.0 (ADR 0020) a file that leaves
-// `modules/office/` stays under the same rules. `domains` is all the application code under `modules/`.
+// `modules/v1/` stays under the same rules. `domains` is all the application code under `modules/`.
 const domains = production.filter(({ file }) => file.startsWith('modules/'));
 const controllers = domains.filter(({ file }) => file.endsWith('.controller.ts'));
 

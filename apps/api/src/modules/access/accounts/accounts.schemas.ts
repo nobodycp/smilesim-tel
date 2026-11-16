@@ -15,7 +15,7 @@ const codes = z.array(z.string().max(64)).max(200).optional().default([]);
 /** What an account may be opened as: a layer below the actor, or an employee of the branch. */
 export const CREATE_LAYERS = ['main_agent', 'agent', 'pos', 'staff'] as const;
 
-/** `POST /office/users` */
+/** `POST /v1/users` */
 export const CreateUserBody = z.object({
   loginName,
   nickname: optionalText(200),
@@ -26,11 +26,11 @@ export const CreateUserBody = z.object({
 });
 export type CreateUserBody = z.input<typeof CreateUserBody>;
 
-/** `POST /office/users/:loginName/password` */
+/** `POST /v1/users/:loginName/password` */
 export const SetAccountPasswordBody = z.object({ password });
 export type SetAccountPasswordBody = z.input<typeof SetAccountPasswordBody>;
 
-/** `PATCH /office/users/:loginName/access` */
+/** `PATCH /v1/users/:loginName/access` */
 export const AccessBody = z.object({
   extraGrants: codes,
   deniedGrants: codes,
@@ -39,7 +39,7 @@ export const AccessBody = z.object({
 });
 export type AccessBody = z.input<typeof AccessBody>;
 
-/** `POST /office/handoff` */
+/** `POST /v1/handoff` */
 export const HandoffBody = z.object({ code: z.string().min(1).max(100) });
 export type HandoffBody = z.input<typeof HandoffBody>;
 

@@ -5,7 +5,7 @@ import type { Actor } from '../access/types';
 import type { NoticeInboxService } from './notice-inbox.service';
 import { NoticesController } from './notices.controller';
 
-// The live notices stream (`GET /office/notices/stream`), moved to `modules/notifications` by slice R.2 and not
+// The live notices stream (`GET /v1/notices/stream`), moved to `modules/notifications` by slice R.2 and not
 // changed: it subscribes the account's channel, writes each message as an event, pings and checks the session on
 // every 25 s beat, ends the stream when the session is no longer live, and unsubscribes once when the browser goes.
 

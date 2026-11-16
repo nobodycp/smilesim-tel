@@ -4,8 +4,8 @@ import request from 'supertest';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { apiTestApp } from '../testing/api-test-app';
 
-// GET /office/wallets over HTTP, written before the wallet routes left office.controller.ts.
-describe('GET /office/wallets', () => {
+// GET /v1/wallets over HTTP, written before the wallet routes left office.controller.ts.
+describe('GET /v1/wallets', () => {
   let app: INestApplication;
   let session: string;
 
@@ -41,7 +41,7 @@ describe('GET /office/wallets', () => {
   });
 
   it('lists the wallets the agent sees: its own and its points of sale, with parent and relation', async () => {
-    const response = await request(app.getHttpServer()).get('/office/wallets').set('Cookie', `sid=${session}`);
+    const response = await request(app.getHttpServer()).get('/v1/wallets').set('Cookie', `sid=${session}`);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       items: [
@@ -51,7 +51,7 @@ describe('GET /office/wallets', () => {
       nextCursor: null,
       total: 2,
     });
-    const junk = await request(app.getHttpServer()).get('/office/wallets?cursor=junk').set('Cookie', `sid=${session}`);
+    const junk = await request(app.getHttpServer()).get('/v1/wallets?cursor=junk').set('Cookie', `sid=${session}`);
     expect(junk.status).toBe(400);
   });
 });

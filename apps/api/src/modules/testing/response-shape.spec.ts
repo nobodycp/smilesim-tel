@@ -41,7 +41,7 @@ const PACKAGE_SHEET_KEYS = [
   'inheritedModes', 'providerModes',
 ];
 
-// GET /office/packages: one row a package on sale. The price columns above the viewer and the run modes come as
+// GET /v1/packages: one row a package on sale. The price columns above the viewer and the run modes come as
 // null outside the branch (plan backend-loose-ends B.4).
 const PACKAGE_ROW_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'activateMode', 'sellable', 'activateInput', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
@@ -121,12 +121,12 @@ async function posServiceWith(tables: Record<string, unknown>) {
 const at = new Date(Date.UTC(2026, 9, 1));
 
 describe('office response shapes', () => {
-  it('answers /office/me with the keys of DeskMe (the web\'s type, `OfficeMe` before slice W.1)', async () => {
+  it('answers /v1/me with the keys of DeskMe (the web\'s type, `OfficeMe` before slice W.1)', async () => {
     const { service, gate } = await serviceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) } });
     expect(keysOf(await service.me(gate))).toEqual(sorted(ME_KEYS));
   });
 
-  it('answers /office/home with the keys of HomePayload and of its rows', async () => {
+  it('answers /v1/home with the keys of HomePayload and of its rows', async () => {
     const { service, gate } = await serviceWith({
       task: { count: async () => 2 },
       line: { count: async () => 3 },
@@ -139,7 +139,7 @@ describe('office response shapes', () => {
     expect(keysOf(home.operations[0])).toEqual(sorted(HOME_OPERATION_KEYS));
   });
 
-  it('answers /office/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
+  it('answers /v1/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
     const row = {
       id: 'ln-1',
       msisdn: '0550000001',
@@ -161,7 +161,7 @@ describe('office response shapes', () => {
     expect(keysOf(listed.poses[0])).toEqual(sorted(POS_CHOICE_KEYS));
   });
 
-  it('answers /office/companies with the fixed company shelf and package counts', async () => {
+  it('answers /v1/companies with the fixed company shelf and package counts', async () => {
     const packageRows = [
       {
         code: 'lian-wecom-500',
@@ -352,7 +352,7 @@ describe('office response shapes', () => {
     expect(where).toEqual({ companyId: { not: null }, enabled: true, forSale: true });
   });
 
-  it('answers /office/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
+  it('answers /v1/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
     const tables = { package: { findMany: async () => [catalogPackage] } };
     const asBranch = await serviceWith(tables);
     const branchRow = (await asBranch.service.packages(asBranch.gate)).packages[0];

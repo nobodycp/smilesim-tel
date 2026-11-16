@@ -52,17 +52,17 @@ describe('reports and line refusals over HTTP', () => {
   };
 
   it('opens reports to the owner and to branch staff with the reports grant only', async () => {
-    expect((await as('clerk', 'get', '/office/reports/providers')).body).toMatchObject({ code: 'REPORTS_BRANCH_ONLY' });
-    expect((await as('ag1', 'get', '/office/reports/providers')).body).toMatchObject({ code: 'REPORTS_BRANCH_ONLY' });
-    expect((await as('analyst', 'get', '/office/reports/providers')).status).toBe(200);
-    expect((await as('owner', 'get', '/office/reports/nothing')).status).toBe(404);
+    expect((await as('clerk', 'get', '/v1/reports/providers')).body).toMatchObject({ code: 'REPORTS_BRANCH_ONLY' });
+    expect((await as('ag1', 'get', '/v1/reports/providers')).body).toMatchObject({ code: 'REPORTS_BRANCH_ONLY' });
+    expect((await as('analyst', 'get', '/v1/reports/providers')).status).toBe(200);
+    expect((await as('owner', 'get', '/v1/reports/nothing')).status).toBe(404);
   });
 
   it('reports providers and packages, and the operations ledger', async () => {
-    expect((await as('owner', 'get', '/office/reports/providers')).body).toEqual({
+    expect((await as('owner', 'get', '/v1/reports/providers')).body).toEqual({
       items: [{ providerName: 'ليان', companyName: 'ويكوم', packageName: 'باقة', price: 2000, lines: 4 }], nextCursor: null, total: 1,
     });
-    expect((await as('owner', 'get', '/office/reports/operations')).body).toEqual({
+    expect((await as('owner', 'get', '/v1/reports/operations')).body).toEqual({
       total: 1,
       items: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLoginName: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
       nextCursor: null,
@@ -70,9 +70,9 @@ describe('reports and line refusals over HTTP', () => {
   });
 
   it('refuses a disconnect quote and a reactivation on a number locked for a package switch', async () => {
-    expect((await as('owner', 'get', '/office/lines/ln1/disconnect-quote')).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
-    expect((await as('owner', 'post', '/office/lines/ln1/reactivate', { outcome: 'success' })).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
+    expect((await as('owner', 'get', '/v1/lines/ln1/disconnect-quote')).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
+    expect((await as('owner', 'post', '/v1/lines/ln1/reactivate', { outcome: 'success' })).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
     // The outcome is judged before the number is read.
-    expect((await as('owner', 'post', '/office/lines/ln1/reactivate', { outcome: 'maybe' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'post', '/v1/lines/ln1/reactivate', { outcome: 'maybe' })).body).toMatchObject({ code: 'INVALID' });
   });
 });

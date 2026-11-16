@@ -89,7 +89,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     return { status: response.status, body: response.body as Record<string, unknown> };
   };
   const said = (got: Answer) => (got.status < 300 ? 'ok' : `${got.status} ${String(got.body.code)}`);
-  const at = (action: string) => `/office/providers/${code}/dispatch${action}`;
+  const at = (action: string) => `/v1/providers/${code}/dispatch${action}`;
   const status = async () => (await call('owner', 'get', at(''))).body;
   const credential = (value: string, who: Who = 'owner') => call(who, 'put', at('/credential'), { value });
   const provider = () => prisma.provider.findUniqueOrThrow({ where: { id: ids.provider } });
@@ -97,7 +97,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   /** An automatic activation at the provider: which route it took, by what it left in the database. */
   const sell = async () => {
-    const got = await call('pos', 'post', '/office/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial() }, `s12-key-${randomUUID()}`);
+    const got = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial() }, `s12-key-${randomUUID()}`);
     if (typeof got.body.taskId !== 'string') return { route: `${got.status} ${String(got.body.code)}`, taskId: '', operationId: '' };
     const operation = await prisma.providerOperation.findUnique({ where: { taskId: got.body.taskId } });
     return { route: operation ? 'dispatch' : 'manual', taskId: got.body.taskId, operationId: operation?.id ?? '' };
@@ -271,8 +271,8 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       }
       expect([await provider(), await credentials()]).toEqual(before);
       // A provider that is not there, and a credential that is not one.
-      expect(said(await call('owner', 'post', `/office/providers/no-such-provider/dispatch/approve`))).toBe('404 NOT_FOUND');
-      expect(said(await call('owner', 'put', `/office/providers/no-such-provider/dispatch/credential`, { value: SANDBOX_CREDENTIAL }))).toBe('404 NOT_FOUND');
+      expect(said(await call('owner', 'post', `/v1/providers/no-such-provider/dispatch/approve`))).toBe('404 NOT_FOUND');
+      expect(said(await call('owner', 'put', `/v1/providers/no-such-provider/dispatch/credential`, { value: SANDBOX_CREDENTIAL }))).toBe('404 NOT_FOUND');
       for (const value of ['', 'short', 'x'.repeat(4001), 42, null]) expect(said(await call('owner', 'put', at('/credential'), { value } as never))).toBe('400 INVALID');
       expect(said(await call('owner', 'put', at('/credential'), {}))).toBe('400 INVALID');
       // A value that already has the sealed form is not a credential.
@@ -315,7 +315,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(read).toMatchObject({ hasCredential: true, target: 'sandbox' });
       expect(Object.keys(read).sort()).toEqual(['approvedAt', 'approvedByLoginName', 'approvedDeployment', 'approvedTarget', 'deployment', 'dispatchOn', 'eligible', 'hasCredential', 'listed', 'opens', 'pausedAt', 'refusal', 'target', 'workerReady']);
       // No answer of any provider route carries it, clear or sealed.
-      const answers = JSON.stringify([put.body, read, (await call('owner', 'get', '/office/providers')).body, (await call('owner', 'get', `/office/providers/${code}/settings`)).body, (await call('owner', 'post', at('/approve'))).body]);
+      const answers = JSON.stringify([put.body, read, (await call('owner', 'get', '/v1/providers')).body, (await call('owner', 'get', `/v1/providers/${code}/settings`)).body, (await call('owner', 'post', at('/approve'))).body]);
       for (const secret of [SANDBOX_CREDENTIAL, 'S12A-', stored[0].sealedValue.slice(6, 40)]) expect(answers).not.toContain(secret);
       expect(output).not.toContain('S12A-');
       expect(await prisma.outboxMessage.count({ where: { payload: { path: ['value'], not: 'x' }, createdAt: { gt: new Date(Date.now() - 5_000) }, aggregateId: ids.provider } })).toBe(0);
@@ -489,7 +489,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await status()).toMatchObject({ eligible: true, workerReady: true, opens: true });
       expect((await sell()).route).toBe('dispatch');
       // The request cannot ask for it or against it: the hint is not read on this route, in production there is none.
-      const hinted = await call('pos', 'post', '/office/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial(), outcome: 'success' }, `s12-key-${randomUUID()}`);
+      const hinted = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial(), outcome: 'success' }, `s12-key-${randomUUID()}`);
       expect(hinted.body).toEqual({ applied: false, taskId: expect.any(String) });
       // Each condition in turn, as the API's own settings.
       for (const settings of [{ dispatch: null }, { dispatch: '0' }, { adapters: `${code}-other` }, { target: null }, { target: 'live' as const }, { adapters: '*' }]) {
@@ -631,7 +631,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       // Nothing was released by the pause.
       expect(await wallet()).toMatchObject({ balance: START, held: 3 * PRICE });
       // The submitter withdraws one (D7).
-      expect(said(await call('pos', 'post', `/office/tasks/${first.taskId}/cancel`))).toBe('ok');
+      expect(said(await call('pos', 'post', `/v1/tasks/${first.taskId}/cancel`))).toBe('ok');
       expect(await operation(first.operationId)).toMatchObject({ status: 'failed', lastError: 'abandoned' });
       expect(await wallet()).toMatchObject({ held: 2 * PRICE });
       // Resumed: the one that waited is sent by the timer's pass, once; the cancelled one never.
@@ -740,7 +740,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await sendWaiting(worker)).toBe(0);
       expect(await operation(operationId)).toMatchObject({ status: 'requested', attempts: 1, waivedAttempts: 1 });
       // Its submitter may withdraw it now (D7), which a pending operation would not have let them.
-      expect(said(await call('pos', 'post', `/office/tasks/${taskId}/cancel`))).toBe('ok');
+      expect(said(await call('pos', 'post', `/v1/tasks/${taskId}/cancel`))).toBe('ok');
       expect(await operation(operationId)).toMatchObject({ status: 'failed', lastError: 'abandoned' });
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
       expect(calls).toEqual([]);
@@ -1429,7 +1429,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await operation(inWindow.operationId)).toMatchObject({ status: 'requested', attempts: 0 });
       expect(await prisma.task.findUniqueOrThrow({ where: { id: inWindow.taskId } })).toMatchObject({ status: 'working', held: PRICE });
       const other = await (async () => { await aged(1_000); const sold = await sell(); await aged(READY_TTL_MS + 1_000); return sold; })();
-      expect(said(await call('pos', 'post', `/office/tasks/${other.taskId}/cancel`))).toBe('ok');
+      expect(said(await call('pos', 'post', `/v1/tasks/${other.taskId}/cancel`))).toBe('ok');
       expect(calls).toEqual([]);
       // A worker is back: it says so again, and sends what waited, once.
       await attest(worker);
@@ -1528,8 +1528,8 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const twoProviders = async () => {
       deployment({ adapters: `${code},${otherCode}` });
       for (const provided of [code, otherCode]) {
-        expect(said(await call('owner', 'put', `/office/providers/${provided}/dispatch/credential`, { value: SANDBOX_CREDENTIAL }))).toBe('ok');
-        expect(said(await call('owner', 'post', `/office/providers/${provided}/dispatch/approve`))).toBe('ok');
+        expect(said(await call('owner', 'put', `/v1/providers/${provided}/dispatch/credential`, { value: SANDBOX_CREDENTIAL }))).toBe('ok');
+        expect(said(await call('owner', 'post', `/v1/providers/${provided}/dispatch/approve`))).toBe('ok');
       }
       const worker = await workerWith();
       expect(worker.gateway.held().sort()).toEqual([code, otherCode].sort());
@@ -1572,7 +1572,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       // The paused provider's 150 are older and their ids sort first: every order the old pass could use meets them first.
       const closed = await record(ids.other, '00000000', 150);
       const open_ = await record(ids.provider, 'ffffffff', 10);
-      expect(said(await call('owner', 'post', `/office/providers/${otherCode}/dispatch/pause`))).toBe('ok');
+      expect(said(await call('owner', 'post', `/v1/providers/${otherCode}/dispatch/pause`))).toBe('ok');
       const pass = passOver(worker);
       expect(await pass.round()).toBe(10);
       const rows = await ours();
@@ -1585,7 +1585,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       for (let round = 0; round < 3; round += 1) expect(await pass.round()).toBe(0);
       expect(calls).toHaveLength(10);
       // Resumed: its 150 go, once each, and nothing of the open provider's goes again.
-      expect(said(await call('owner', 'post', `/office/providers/${otherCode}/dispatch/resume`))).toBe('ok');
+      expect(said(await call('owner', 'post', `/v1/providers/${otherCode}/dispatch/resume`))).toBe('ok');
       // A round sends at most a hundred: the 150 take two, and recovery is not kept waiting behind them.
       expect([await pass.round(), await pass.round(), await pass.round()]).toEqual([100, 50, 0]);
       expect(calls).toHaveLength(160);
@@ -1597,7 +1597,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const worker = await twoProviders();
       const closed = await record(ids.other, '00000000', 150);
       const open_ = await record(ids.provider, 'ffffffff', 10);
-      await call('owner', 'post', `/office/providers/${otherCode}/dispatch/pause`);
+      await call('owner', 'post', `/v1/providers/${otherCode}/dispatch/pause`);
       // Count what the pass looks at, and in what order.
       const seen = { looked: [] as string[], reads: [] as number[] };
       const { looked, reads } = seen;
@@ -1812,7 +1812,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   describe('a worker that does not send still settles, and an eSIM result it cannot open is left as it is (S.12b.0)', () => {
     const ESIM = 'LPA:1$smdp.s12b0.example$S12A-ESIM-ACTIVATION-CODE-9Q4W7E2R6T';
     const sellEsim = async () => {
-      const got = await call('pos', 'post', '/office/lines', { packageCode: code, posLoginName: name('pos'), esim: true }, `s12-key-${randomUUID()}`);
+      const got = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), esim: true }, `s12-key-${randomUUID()}`);
       const row = await prisma.providerOperation.findUniqueOrThrow({ where: { taskId: String(got.body.taskId) } });
       return { taskId: String(got.body.taskId), operationId: row.id };
     };

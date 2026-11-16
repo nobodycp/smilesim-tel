@@ -5,7 +5,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { apiTestApp } from '../testing/api-test-app';
 
 // The activity log route over HTTP, written before it left office.controller.ts.
-describe('GET /office/audit', () => {
+describe('GET /v1/audit', () => {
   let app: INestApplication;
   let session: string;
   let asked: { where: Record<string, unknown> }[];
@@ -41,7 +41,7 @@ describe('GET /office/audit', () => {
 
   it('answers the page of events and passes every filter to the query', async () => {
     const response = await request(app.getHttpServer())
-      .get('/office/audit?action=fund&result=fail&layer=pos&q=%20ag1%20&from=2026-11-01&to=2026-11-08')
+      .get('/v1/audit?action=fund&result=fail&layer=pos&q=%20ag1%20&from=2026-11-01&to=2026-11-08')
       .set('Cookie', `sid=${session}`);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -60,20 +60,20 @@ describe('GET /office/audit', () => {
   });
 
   it('refuses a filter value it does not know, and drops a parameter it does not name', async () => {
-    const refused = await request(app.getHttpServer()).get('/office/audit?result=maybe').set('Cookie', `sid=${session}`);
+    const refused = await request(app.getHttpServer()).get('/v1/audit?result=maybe').set('Cookie', `sid=${session}`);
     expect(refused.status).toBe(400);
     expect(refused.body).toMatchObject({ code: 'INVALID' });
     expect(asked).toHaveLength(0);
-    const extra = await request(app.getHttpServer()).get('/office/audit?result=ok&utm_source=x').set('Cookie', `sid=${session}`);
+    const extra = await request(app.getHttpServer()).get('/v1/audit?result=ok&utm_source=x').set('Cookie', `sid=${session}`);
     expect(extra.status).toBe(200);
     expect(asked[0].where).toMatchObject({ result: 'ok' });
   });
 
   it('answers 401 without a session and 400 for a cursor it did not issue', async () => {
-    const anonymous = await request(app.getHttpServer()).get('/office/audit');
+    const anonymous = await request(app.getHttpServer()).get('/v1/audit');
     expect(anonymous.status).toBe(401);
     expect(anonymous.body).toMatchObject({ code: 'LOGIN_REQUIRED' });
-    const foreign = await request(app.getHttpServer()).get('/office/audit?cursor=nope').set('Cookie', `sid=${session}`);
+    const foreign = await request(app.getHttpServer()).get('/v1/audit?cursor=nope').set('Cookie', `sid=${session}`);
     expect(foreign.status).toBe(400);
     expect(foreign.body).toMatchObject({ code: 'INVALID' });
   });

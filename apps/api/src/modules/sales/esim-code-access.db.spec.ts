@@ -120,8 +120,8 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
 
   it('no list carries a code: the numbers list under every filter and for every layer, the task list, and neither writes an event', async () => {
     const paths = [
-      '/office/lines', '/office/lines?sim=esim', '/office/lines?status=active', `/office/lines?loginName=acc-${tag}-posa`, '/office/lines?q=05',
-      '/office/tasks', '/office/tasks?status=working',
+      '/v1/lines', '/v1/lines?sim=esim', '/v1/lines?status=active', `/v1/lines?loginName=acc-${tag}-posa`, '/v1/lines?q=05',
+      '/v1/tasks', '/v1/tasks?status=working',
     ];
     for (const who of ['posA', 'agent', 'main', 'owner', 'staff'] as const) {
       for (const path of paths) {
@@ -131,7 +131,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
         expectNoCode(JSON.stringify(response.body));
       }
     }
-    const mine = await get('posA', '/office/lines?sim=esim');
+    const mine = await get('posA', '/v1/lines?sim=esim');
     // The rows are all there, with everything else a row has: only the code is gone.
     expect(mine.body.items.map((item: { id: string }) => item.id)).toEqual(expect.arrayContaining(Object.values(line)));
     expect(mine.body.items[0]).toMatchObject({ esim: true, status: 'active', packageName: 'acc' });
@@ -141,9 +141,9 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
 
   it('the line detail hands the code to its point of sale, the accounts above it on its path and the branch', async () => {
     for (const who of ['posA', 'agent', 'main', 'owner', 'staff'] as const) {
-      const sealedRead = await get(who, `/office/lines/${line.sealed}`);
+      const sealedRead = await get(who, `/v1/lines/${line.sealed}`);
       expect([who, sealedRead.status, sealedRead.body.line?.esimQr]).toEqual([who, 200, CODE.sealed]);
-      const clearRead = await get(who, `/office/lines/${line.clear}`);
+      const clearRead = await get(who, `/v1/lines/${line.clear}`);
       expect([who, clearRead.status, clearRead.body.line?.esimQr]).toEqual([who, 200, CODE.clear]);
     }
   });
@@ -151,22 +151,22 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
   it('a sibling point of sale, another agent and a point of sale of another branch of the tree get nothing: not the code, not the line', async () => {
     for (const who of ['posB', 'agent2', 'posC'] as const) {
       for (const id of [line.sealed, line.clear]) {
-        const response = await get(who, `/office/lines/${id}`);
+        const response = await get(who, `/v1/lines/${id}`);
         expect([who, response.status, response.body.code]).toEqual([who, 404, 'NOT_FOUND']);
         expectNoCode(JSON.stringify(response.body));
       }
-      expect([who, (await get(who, `/office/tasks/${task.own}`)).status]).toEqual([who, 404]);
+      expect([who, (await get(who, `/v1/tasks/${task.own}`)).status]).toEqual([who, 404]);
     }
     expect(events()).toEqual([]);
   });
 
   it('a task\'s detail follows the same rule; an account that only opened the task, and is not above the point of sale, reads the task without its code', async () => {
     for (const who of ['posA', 'agent', 'main', 'owner'] as const) {
-      expect([who, (await get(who, `/office/tasks/${task.own}`)).body.task?.esimQr]).toEqual([who, CODE.task]);
-      expect([who, (await get(who, `/office/tasks/${task.onLine}`)).body.task?.esimQr]).toEqual([who, CODE.sealed]);
+      expect([who, (await get(who, `/v1/tasks/${task.own}`)).body.task?.esimQr]).toEqual([who, CODE.task]);
+      expect([who, (await get(who, `/v1/tasks/${task.onLine}`)).body.task?.esimQr]).toEqual([who, CODE.sealed]);
     }
     recorded.length = 0;
-    const moved = await get('agent2', `/office/tasks/${task.movedSubmitter}`);
+    const moved = await get('agent2', `/v1/tasks/${task.movedSubmitter}`);
     expect(moved.status).toBe(200);
     // It still sees the task it opened, with the serial and the kind, and no code.
     expect(moved.body.task).toMatchObject({ id: task.movedSubmitter, esim: true, esimQr: null });
@@ -174,14 +174,14 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     expectNoCode(JSON.stringify(moved.body));
     expect(events()).toEqual([]);
     // The same task, read by an account that is on the path, carries the code and is recorded.
-    expect((await get('agent', `/office/tasks/${task.movedSubmitter}`)).body.task.esimQr).toBe(CODE.clear);
+    expect((await get('agent', `/v1/tasks/${task.movedSubmitter}`)).body.task.esimQr).toBe(CODE.clear);
     expect(events()).toEqual([{ action: 'esim_read', subjectKind: 'task', subjectRef: task.movedSubmitter, result: 'ok', ip: 'string' }]);
   });
 
   it('each time a code leaves there is one event naming the line or the task, and none when no code leaves', async () => {
-    await get('posA', `/office/lines/${line.sealed}`);
-    await get('agent', `/office/lines/${line.sealed}`);
-    await get('owner', `/office/tasks/${task.own}`);
+    await get('posA', `/v1/lines/${line.sealed}`);
+    await get('agent', `/v1/lines/${line.sealed}`);
+    await get('owner', `/v1/tasks/${task.own}`);
     expect(events()).toEqual([
       { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed, result: 'ok', ip: 'string' },
       { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed, result: 'ok', ip: 'string' },
@@ -192,12 +192,12 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     expectNoCode(JSON.stringify(recorded));
 
     recorded.length = 0;
-    expect((await get('posA', `/office/lines/${line.none}`)).body.line.esimQr).toBeNull();
-    expect((await get('posB', `/office/lines/${line.sealed}`)).status).toBe(404);
-    expect((await get('posA', `/office/lines/${randomUUID()}`)).status).toBe(404);
+    expect((await get('posA', `/v1/lines/${line.none}`)).body.line.esimQr).toBeNull();
+    expect((await get('posB', `/v1/lines/${line.sealed}`)).status).toBe(404);
+    expect((await get('posA', `/v1/lines/${randomUUID()}`)).status).toBe(404);
     let refused = 0;
     const output = await capturedOutput(async () => {
-      refused = (await get('posA', `/office/lines/${line.damaged}`)).status;
+      refused = (await get('posA', `/v1/lines/${line.damaged}`)).status;
     });
     expect(refused).toBe(500);
     expectNoCode(output);
@@ -215,10 +215,10 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
       let status = 0;
       let body = '';
       const output = await capturedOutput(async () => {
-        const response = await get('posA', `/office/lines/${line.sealed}`);
+        const response = await get('posA', `/v1/lines/${line.sealed}`);
         status = response.status;
         body = JSON.stringify(response.body);
-        const viaTask = await get('posA', `/office/tasks/${task.own}`);
+        const viaTask = await get('posA', `/v1/tasks/${task.own}`);
         status = Math.min(status, viaTask.status);
         body += JSON.stringify(viaTask.body);
       });
@@ -227,7 +227,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
       expectNoCode(body);
       expectNoCode(output);
       // A read that hands over no code needs no record and still answers.
-      expect((await get('posA', `/office/lines/${line.none}`)).status).toBe(200);
+      expect((await get('posA', `/v1/lines/${line.none}`)).status).toBe(200);
     } finally {
       recorder.recordOrFail = real;
     }
@@ -259,7 +259,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     let issued = '';
     let lineId = '';
     const output = await capturedOutput(async () => {
-      const response = await request(app.getHttpServer()).post('/office/lines').set('Cookie', cookie.owner)
+      const response = await request(app.getHttpServer()).post('/v1/lines').set('Cookie', cookie.owner)
         .send({ packageCode: `acc-${tag}`, posLoginName: `acc-${tag}-posa`, esim: true, outcome: 'success' });
       expect([response.status, response.body.applied]).toEqual([201, true]);
       issued = response.body.line.esimQr;
@@ -302,8 +302,8 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     }
     // The list still does not carry it, and the detail does, with its record.
     recorded.length = 0;
-    expect(holds(JSON.stringify((await get('owner', '/office/lines?sim=esim')).body))).toBe(false);
-    expect((await get('posA', `/office/lines/${lineId}`)).body.line.esimQr).toBe(issued);
+    expect(holds(JSON.stringify((await get('owner', '/v1/lines?sim=esim')).body))).toBe(false);
+    expect((await get('posA', `/v1/lines/${lineId}`)).body.line.esimQr).toBe(issued);
     expect(events()).toEqual([{ action: 'esim_read', subjectKind: 'line', subjectRef: lineId, result: 'ok', ip: 'string' }]);
   });
 });

@@ -19,43 +19,43 @@ import { ProviderOperationsQuery } from '../providers/providers.schemas';
 // parameter the route does not name is ignored. Called as the branch owner over empty tables.
 
 const REFUSED: [path: string, why: string][] = [
-  ['/office/lines?status=bogus', 'a status that is not one'],
-  ['/office/lines?status=active&status=frozen', 'a filter sent twice'],
-  ['/office/tasks?status=open', 'a task status that is not one'],
-  ['/office/tasks?action=explode', 'an operation that is not one'],
-  ['/office/notices?group=everything', 'a group that is not one'],
-  ['/office/notices?unread=yes', 'a switch that is neither on nor off'],
-  ['/office/users?layer=staff', 'a layer that is not one'],
-  ['/office/directory?mine=maybe', 'a switch that is neither on nor off'],
-  ['/office/audit?action=nothing', 'an action the log never writes'],
-  ['/office/audit?from=yesterday', 'a day that is not a date'],
-  ['/office/finance?kind=gift', 'a kind no entry carries'],
-  ['/office/finance?scope=everything', 'a scope that is not one'],
-  ['/office/finance/export?layer=moon', 'a layer that is not one'],
-  ['/office/finance/summary?days=5', 'a window the summary does not offer'],
-  ['/office/finance/profits?to=never', 'a day that is not a date'],
-  ['/office/ledger?direction=sideways', 'a direction that is not one'],
-  ['/office/provider-operations?match=maybe', 'a match state that is not one'],
-  ['/office/provider-accounts/sky?from=soon', 'a day that is not a date'],
-  ['/office/reports/balances?negative=2', 'a switch that is neither on nor off'],
-  ['/office/reports/supply?from=x', 'a day that is not a date'],
-  ['/office/overview?period=week', 'a period the home does not offer'],
+  ['/v1/lines?status=bogus', 'a status that is not one'],
+  ['/v1/lines?status=active&status=frozen', 'a filter sent twice'],
+  ['/v1/tasks?status=open', 'a task status that is not one'],
+  ['/v1/tasks?action=explode', 'an operation that is not one'],
+  ['/v1/notices?group=everything', 'a group that is not one'],
+  ['/v1/notices?unread=yes', 'a switch that is neither on nor off'],
+  ['/v1/users?layer=staff', 'a layer that is not one'],
+  ['/v1/directory?mine=maybe', 'a switch that is neither on nor off'],
+  ['/v1/audit?action=nothing', 'an action the log never writes'],
+  ['/v1/audit?from=yesterday', 'a day that is not a date'],
+  ['/v1/finance?kind=gift', 'a kind no entry carries'],
+  ['/v1/finance?scope=everything', 'a scope that is not one'],
+  ['/v1/finance/export?layer=moon', 'a layer that is not one'],
+  ['/v1/finance/summary?days=5', 'a window the summary does not offer'],
+  ['/v1/finance/profits?to=never', 'a day that is not a date'],
+  ['/v1/ledger?direction=sideways', 'a direction that is not one'],
+  ['/v1/provider-operations?match=maybe', 'a match state that is not one'],
+  ['/v1/provider-accounts/sky?from=soon', 'a day that is not a date'],
+  ['/v1/reports/balances?negative=2', 'a switch that is neither on nor off'],
+  ['/v1/reports/supply?from=x', 'a day that is not a date'],
+  ['/v1/overview?period=week', 'a period the home does not offer'],
 ];
 
 const ACCEPTED = [
-  '/office/lines?status=expiring&q=055&utm_source=mail',
-  '/office/lines?status=&q=',
-  '/office/tasks?status=working&action=activate&fbclid=1',
-  '/office/notices?group=wallet&unread=1',
-  '/office/users?layer=agent&q=a',
-  '/office/directory?mine=1',
-  '/office/audit?action=fund&result=fail&layer=pos&from=2026-11-01&to=2026-11-10&addresses=1',
-  '/office/finance?kind=fund&layer=pos&scope=money&from=2026-11-01',
-  '/office/finance/summary?days=90',
-  '/office/ledger?kind=charge&direction=out',
-  '/office/provider-operations?kind=activate&match=pending&provider=sky',
-  '/office/reports/balances?layer=pos&negative=1',
-  '/office/overview?period=day',
+  '/v1/lines?status=expiring&q=055&utm_source=mail',
+  '/v1/lines?status=&q=',
+  '/v1/tasks?status=working&action=activate&fbclid=1',
+  '/v1/notices?group=wallet&unread=1',
+  '/v1/users?layer=agent&q=a',
+  '/v1/directory?mine=1',
+  '/v1/audit?action=fund&result=fail&layer=pos&from=2026-11-01&to=2026-11-10&addresses=1',
+  '/v1/finance?kind=fund&layer=pos&scope=money&from=2026-11-01',
+  '/v1/finance/summary?days=90',
+  '/v1/ledger?kind=charge&direction=out',
+  '/v1/provider-operations?kind=activate&match=pending&provider=sky',
+  '/v1/reports/balances?layer=pos&negative=1',
+  '/v1/overview?period=day',
 ];
 
 describe('query filters', () => {
@@ -89,7 +89,7 @@ describe('query filters', () => {
   });
 
   it('judges the session before the query', async () => {
-    const anonymous = await request(app.getHttpServer()).get('/office/lines?status=bogus');
+    const anonymous = await request(app.getHttpServer()).get('/v1/lines?status=bogus');
     expect(anonymous.status).toBe(401);
   });
 });

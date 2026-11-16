@@ -65,7 +65,7 @@ describe('notices over HTTP', () => {
   const get = (path: string) => request(app.getHttpServer()).get(path).set('Cookie', `sid=${session}`);
 
   it('lists the inbox newest first with the unread count and the total', async () => {
-    const response = await get('/office/notices');
+    const response = await get('/v1/notices');
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       unread: 2,
@@ -82,7 +82,7 @@ describe('notices over HTTP', () => {
 
   it('filters by group and unread, and pages from a cursor', async () => {
     const cursor = encodeCursor(at(2), 'n2');
-    const response = await get(`/office/notices?group=tasks&unread=1&cursor=${cursor}`);
+    const response = await get(`/v1/notices?group=tasks&unread=1&cursor=${cursor}`);
     expect(response.status).toBe(200);
     const where = (calls.findMany[0] as { where: Record<string, unknown> }).where;
     expect(where).toMatchObject({ userId: 'pos1', readAt: null, kind: { in: expect.arrayContaining(['task.opened']) } });
@@ -90,16 +90,16 @@ describe('notices over HTTP', () => {
   });
 
   it('refuses a cursor it did not issue with 400 INVALID', async () => {
-    const response = await get('/office/notices?cursor=not-ours');
+    const response = await get('/v1/notices?cursor=not-ours');
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({ code: 'INVALID' });
   });
 
   it('answers 401 without a session, on the list, the read, and the stream', async () => {
     for (const call of [
-      () => request(app.getHttpServer()).get('/office/notices'),
-      () => request(app.getHttpServer()).post('/office/notices/read').send({}),
-      () => request(app.getHttpServer()).get('/office/notices/stream'),
+      () => request(app.getHttpServer()).get('/v1/notices'),
+      () => request(app.getHttpServer()).post('/v1/notices/read').send({}),
+      () => request(app.getHttpServer()).get('/v1/notices/stream'),
     ]) {
       const response = await call();
       expect(response.status).toBe(401);
@@ -109,13 +109,13 @@ describe('notices over HTTP', () => {
   });
 
   it('marks one notice read, or all of them when no id is sent', async () => {
-    const one = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({ id: 'n3' });
+    const one = await request(app.getHttpServer()).post('/v1/notices/read').set('Cookie', `sid=${session}`).send({ id: 'n3' });
     expect(one.status).toBe(201);
     expect(one.body).toEqual({ ok: true });
-    const all = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({});
+    const all = await request(app.getHttpServer()).post('/v1/notices/read').set('Cookie', `sid=${session}`).send({});
     expect(all.status).toBe(201);
     // An id that is not text is refused, not read as "all of them".
-    const malformed = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({ id: 42 });
+    const malformed = await request(app.getHttpServer()).post('/v1/notices/read').set('Cookie', `sid=${session}`).send({ id: 42 });
     expect(malformed.status).toBe(400);
     expect(malformed.body.code).toBe('INVALID');
     expect(calls.updateMany).toEqual([
@@ -127,7 +127,7 @@ describe('notices over HTTP', () => {
   it('opens the live stream for the signed-in user', async () => {
     const server = app.getHttpServer();
     await new Promise<void>((resolve, reject) => {
-      const call = request(server).get('/office/notices/stream').set('Cookie', `sid=${session}`).buffer(false);
+      const call = request(server).get('/v1/notices/stream').set('Cookie', `sid=${session}`).buffer(false);
       call.parse((response, done) => {
         expect(response.statusCode).toBe(200);
         expect(response.headers['content-type']).toBe('text/event-stream');

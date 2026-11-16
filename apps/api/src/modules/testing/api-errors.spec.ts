@@ -59,14 +59,14 @@ describe('office refusals', () => {
   });
 
   it('answers 401 LOGIN_REQUIRED without a session', async () => {
-    const response = await request(app.getHttpServer()).get('/office/me');
+    const response = await request(app.getHttpServer()).get('/v1/me');
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ message: 'يلزم تسجيل الدخول', code: 'LOGIN_REQUIRED' });
   });
 
   it('answers 403 FORBIDDEN when a point of sale adds a company', async () => {
     const response = await request(app.getHttpServer())
-      .post('/office/companies')
+      .post('/v1/companies')
       .set('Cookie', `sid=${posSession}`)
       .send({ providerCode: 'sky', companyCode: 'golan' });
     expect(response.status).toBe(403);
@@ -90,7 +90,7 @@ describe('office refusals', () => {
     (kernel as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => [] },
     };
-    const response = await request(app.getHttpServer()).get('/office/reports/nothing').set('Cookie', `sid=${admin}`);
+    const response = await request(app.getHttpServer()).get('/v1/reports/nothing').set('Cookie', `sid=${admin}`);
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ message: 'غير موجود', code: 'NOT_FOUND' });
   });

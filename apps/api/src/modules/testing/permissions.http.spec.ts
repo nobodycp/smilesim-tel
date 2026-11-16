@@ -21,136 +21,136 @@ const COLUMNS = ['owner', 'staff0', 'staffall', 'main', 'agent', 'pos'] as const
 // never checks the `read` or `accounting` grants. Owner decision (ADR 0006): left as is until the staff roles are
 // defined; enforcing the grants then changes these rows on purpose.
 const EXPECTED: [route: string, access: string][] = [
-  ['GET /office/audit', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['GET /office/audit/export', 'yyyyyy'], // the log's own filter, as a CSV
-  ['GET /office/companies', 'yyynnn'],
-  ['POST /office/companies', 'ynynnn'], // spec 2026-11-09-admin-review, 3: owner or edit grant
-  ['PUT /office/companies/CODE1/sim', 'ynynnn'],
-  ['PUT /office/companies/CODE1/image', 'ynynnn'], // review 2026-11-10, S11: owner or edit grant
-  ['GET /office/directory', 'yyyyyy'],
-  ['GET /office/finance', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['GET /office/finance/export', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['GET /office/finance/summary', 'yyyyyy'],
-  ['GET /office/finance/profits', 'yyyyyy'],
-  ['GET /office/finance/profits/export', 'yyyyyy'],
-  ['POST /office/handoff', 'yyyyyy'], // no session needed: judged by the one-time code, covered by its domain spec
-  ['GET /office/home', 'yyyyyy'],
-  ['GET /office/offers', 'ynynnn'],
-  ['POST /office/offers', 'ynynnn'],
-  ['GET /office/offers/live', 'yyyyyy'],
-  ['PATCH /office/offers/ID1', 'ynynnn'],
-  ['DELETE /office/offers/ID1', 'ynynnn'],
-  ['POST /office/offers/ID1/move', 'ynynnn'],
-  ['GET /office/overview', 'yyyyyy'], // every layer; the providers card only for the branch with reports or accounting
-  ['POST /office/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/ledger', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['GET /office/lines', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['POST /office/lines', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/lines/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/addon', 'yyyyyy'], // judged after the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/charge', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/company-switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/disconnect', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/lines/ID1/disconnect-quote', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/esim', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/extend', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/freeze', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/reactivate', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/refresh', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/rename', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/sim', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/lines/ID1/unfreeze', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/me', 'yyyyyy'],
-  ['GET /office/notices', 'yyyyyy'],
-  ['POST /office/notices/read', 'yyyyyy'],
-  ['GET /office/packages', 'yyyyyy'],
-  ['POST /office/packages', 'ynynnn'],
-  ['PATCH /office/packages/CODE1/chain', 'ynynnn'],
-  ['PATCH /office/packages/CODE1/details', 'ynynnn'],
-  ['GET /office/packages/CODE1/addons', 'yyynnn'],
-  ['POST /office/packages/CODE1/addons', 'ynynnn'],
-  ['PATCH /office/packages/CODE1/addons/ID1', 'ynynnn'],
-  ['DELETE /office/packages/CODE1/addons/ID1', 'ynynnn'],
-  ['GET /office/packages/CODE1/custom-prices', 'yyynnn'],
-  ['DELETE /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PUT /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/packages/CODE1/line-prices', 'yyyyyn'],
-  ['PUT /office/packages/CODE1/line-prices', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PATCH /office/packages/CODE1/mode', 'ynynnn'],
-  ['PUT /office/packages/CODE1/renewals', 'ynynnn'],
-  ['GET /office/packages/CODE1/sheet', 'yyynnn'],
-  ['PUT /office/packages/CODE1/switches', 'ynynnn'],
-  ['GET /office/provider-accounts', 'ynynnn'],
-  ['GET /office/provider-accounts/CODE1', 'ynynnn'],
-  ['PATCH /office/provider-accounts/CODE1/credit', 'ynynnn'],
-  ['PATCH /office/provider-accounts/CODE1/matching', 'ynynnn'],
-  ['POST /office/provider-accounts/CODE1/simulate-statement', 'ynynnn'],
-  ['POST /office/provider-accounts/CODE1/entries', 'ynynnn'],
-  ['GET /office/provider-accounts/CODE1/export', 'ynynnn'],
-  ['GET /office/provider-accounts/CODE1/reconciliations', 'ynynnn'],
-  ['POST /office/provider-accounts/CODE1/reconciliations', 'ynynnn'],
-  ['POST /office/provider-accounts/CODE1/statements/preview', 'ynynnn'],
-  ['PATCH /office/reconciliation-items/ID1', 'ynynnn'],
-  ['GET /office/reconciliations/ID1', 'ynynnn'],
-  ['GET /office/provider-operations', 'ynynnn'],
-  ['GET /office/providers', 'yyynnn'],
-  ['PATCH /office/providers/CODE1/esim-price', 'ynynnn'],
-  ['GET /office/providers/CODE1/catalog/companies', 'ynynnn'],
-  ['GET /office/providers/CODE1/catalog/products', 'ynynnn'],
-  ['GET /office/providers/CODE1/settings', 'yyynnn'],
+  ['GET /v1/audit', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/audit/export', 'yyyyyy'], // the log's own filter, as a CSV
+  ['GET /v1/companies', 'yyynnn'],
+  ['POST /v1/companies', 'ynynnn'], // spec 2026-11-09-admin-review, 3: owner or edit grant
+  ['PUT /v1/companies/CODE1/sim', 'ynynnn'],
+  ['PUT /v1/companies/CODE1/image', 'ynynnn'], // review 2026-11-10, S11: owner or edit grant
+  ['GET /v1/directory', 'yyyyyy'],
+  ['GET /v1/finance', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/finance/export', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/finance/summary', 'yyyyyy'],
+  ['GET /v1/finance/profits', 'yyyyyy'],
+  ['GET /v1/finance/profits/export', 'yyyyyy'],
+  ['POST /v1/handoff', 'yyyyyy'], // no session needed: judged by the one-time code, covered by its domain spec
+  ['GET /v1/home', 'yyyyyy'],
+  ['GET /v1/offers', 'ynynnn'],
+  ['POST /v1/offers', 'ynynnn'],
+  ['GET /v1/offers/live', 'yyyyyy'],
+  ['PATCH /v1/offers/ID1', 'ynynnn'],
+  ['DELETE /v1/offers/ID1', 'ynynnn'],
+  ['POST /v1/offers/ID1/move', 'ynynnn'],
+  ['GET /v1/overview', 'yyyyyy'], // every layer; the providers card only for the branch with reports or accounting
+  ['POST /v1/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/ledger', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/lines', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['POST /v1/lines', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/lines/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/addon', 'yyyyyy'], // judged after the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/charge', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/company-switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/disconnect', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/lines/ID1/disconnect-quote', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/esim', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/extend', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/freeze', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/reactivate', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/refresh', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/rename', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/sim', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/lines/ID1/unfreeze', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/me', 'yyyyyy'],
+  ['GET /v1/notices', 'yyyyyy'],
+  ['POST /v1/notices/read', 'yyyyyy'],
+  ['GET /v1/packages', 'yyyyyy'],
+  ['POST /v1/packages', 'ynynnn'],
+  ['PATCH /v1/packages/CODE1/chain', 'ynynnn'],
+  ['PATCH /v1/packages/CODE1/details', 'ynynnn'],
+  ['GET /v1/packages/CODE1/addons', 'yyynnn'],
+  ['POST /v1/packages/CODE1/addons', 'ynynnn'],
+  ['PATCH /v1/packages/CODE1/addons/ID1', 'ynynnn'],
+  ['DELETE /v1/packages/CODE1/addons/ID1', 'ynynnn'],
+  ['GET /v1/packages/CODE1/custom-prices', 'yyynnn'],
+  ['DELETE /v1/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PUT /v1/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/packages/CODE1/line-prices', 'yyyyyn'],
+  ['PUT /v1/packages/CODE1/line-prices', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PATCH /v1/packages/CODE1/mode', 'ynynnn'],
+  ['PUT /v1/packages/CODE1/renewals', 'ynynnn'],
+  ['GET /v1/packages/CODE1/sheet', 'yyynnn'],
+  ['PUT /v1/packages/CODE1/switches', 'ynynnn'],
+  ['GET /v1/provider-accounts', 'ynynnn'],
+  ['GET /v1/provider-accounts/CODE1', 'ynynnn'],
+  ['PATCH /v1/provider-accounts/CODE1/credit', 'ynynnn'],
+  ['PATCH /v1/provider-accounts/CODE1/matching', 'ynynnn'],
+  ['POST /v1/provider-accounts/CODE1/simulate-statement', 'ynynnn'],
+  ['POST /v1/provider-accounts/CODE1/entries', 'ynynnn'],
+  ['GET /v1/provider-accounts/CODE1/export', 'ynynnn'],
+  ['GET /v1/provider-accounts/CODE1/reconciliations', 'ynynnn'],
+  ['POST /v1/provider-accounts/CODE1/reconciliations', 'ynynnn'],
+  ['POST /v1/provider-accounts/CODE1/statements/preview', 'ynynnn'],
+  ['PATCH /v1/reconciliation-items/ID1', 'ynynnn'],
+  ['GET /v1/reconciliations/ID1', 'ynynnn'],
+  ['GET /v1/provider-operations', 'ynynnn'],
+  ['GET /v1/providers', 'yyynnn'],
+  ['PATCH /v1/providers/CODE1/esim-price', 'ynynnn'],
+  ['GET /v1/providers/CODE1/catalog/companies', 'ynynnn'],
+  ['GET /v1/providers/CODE1/catalog/products', 'ynynnn'],
+  ['GET /v1/providers/CODE1/settings', 'yyynnn'],
   // ADR 0019, D18: a provider's dispatch switch is the branch owner's alone, whatever grants an employee holds.
-  ['GET /office/providers/CODE1/dispatch', 'ynnnnn'],
-  ['POST /office/providers/CODE1/dispatch/approve', 'ynnnnn'],
-  ['POST /office/providers/CODE1/dispatch/pause', 'ynnnnn'],
-  ['POST /office/providers/CODE1/dispatch/resume', 'ynnnnn'],
-  ['PUT /office/providers/CODE1/dispatch/credential', 'ynnnnn'],
-  ['PATCH /office/providers/CODE1/settings', 'ynynnn'],
-  ['GET /office/reports/providers', 'ynynnn'],
-  ['GET /office/reports/operations', 'ynynnn'],
-  ['GET /office/reports/balances/export', 'yyyyyy'],
-  ['GET /office/reports/supply/export', 'ynynnn'],
-  ['GET /office/reports/balances', 'yyyyyy'],
-  ['GET /office/reports/supply', 'ynynnn'],
-  ['GET /office/roles', 'ynnnnn'],
-  ['POST /office/roles', 'ynnnnn'],
-  ['PUT /office/roles/ID1', 'ynnnnn'],
-  ['DELETE /office/sell-prices/CODE1', 'nnnyyn'],
-  ['PUT /office/sell-prices/CODE1', 'nnnyyn'],
-  ['GET /office/tasks', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['GET /office/tasks/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/tasks/ID1/complete', 'ynynnn'],
-  ['POST /office/tasks/ID1/notes', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/providers/CODE1/dispatch', 'ynnnnn'],
+  ['POST /v1/providers/CODE1/dispatch/approve', 'ynnnnn'],
+  ['POST /v1/providers/CODE1/dispatch/pause', 'ynnnnn'],
+  ['POST /v1/providers/CODE1/dispatch/resume', 'ynnnnn'],
+  ['PUT /v1/providers/CODE1/dispatch/credential', 'ynnnnn'],
+  ['PATCH /v1/providers/CODE1/settings', 'ynynnn'],
+  ['GET /v1/reports/providers', 'ynynnn'],
+  ['GET /v1/reports/operations', 'ynynnn'],
+  ['GET /v1/reports/balances/export', 'yyyyyy'],
+  ['GET /v1/reports/supply/export', 'ynynnn'],
+  ['GET /v1/reports/balances', 'yyyyyy'],
+  ['GET /v1/reports/supply', 'ynynnn'],
+  ['GET /v1/roles', 'ynnnnn'],
+  ['POST /v1/roles', 'ynnnnn'],
+  ['PUT /v1/roles/ID1', 'ynnnnn'],
+  ['DELETE /v1/sell-prices/CODE1', 'nnnyyn'],
+  ['PUT /v1/sell-prices/CODE1', 'nnnyyn'],
+  ['GET /v1/tasks', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/tasks/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/tasks/ID1/complete', 'ynynnn'],
+  ['POST /v1/tasks/ID1/notes', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   // ADR 0019, D15: the branch owner, or a branch account holding `accounting`; nobody below the branch.
-  ['GET /office/provider-decisions', 'ynynnn'], // the same gate as a decision: what waits, with its evidence
-  ['GET /office/tasks/ID1/provider-decision', 'ynynnn'],
-  ['POST /office/tasks/ID1/provider-decision', 'ynynnn'],
-  ['POST /office/tasks/ID1/provider-decision/approval', 'ynynnn'],
-  ['POST /office/tasks/ID1/reject', 'ynynnn'],
-  ['POST /office/tasks/ID1/release', 'ynynnn'],
-  ['POST /office/tasks/ID1/take', 'ynynnn'],
-  ['GET /office/users', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['POST /office/users', 'ynyyyn'], // review 2026-11-10, S11: in the branch, owner or edit (staff: owner or staff grant)
-  ['DELETE /office/users/LOGIN1', 'ynynnn'], // staff or edit, then 404 for a login that is not there
-  ['GET /office/users/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PATCH /office/users/LOGIN1/access', 'ynnnnn'],
-  ['POST /office/users/LOGIN1/enter', 'ynynnn'],
-  ['POST /office/users/LOGIN1/freeze', 'ynynnn'],
-  ['GET /office/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PUT /office/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PUT /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['PUT /office/users/LOGIN1/packages/CODE1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/users/LOGIN1/password', 'ynyyyn'], // review 2026-11-10, S3: in the branch, owner or staff grant
-  ['POST /office/users/LOGIN1/restore', 'ynynnn'],
-  ['POST /office/users/LOGIN1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/users/LOGIN1/transfer-preview', 'ynyyyn'],
-  ['GET /office/wallets', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['PATCH /office/wallets/LOGIN1/ceiling', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['POST /office/wallets/LOGIN1/deduct', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/wallets/LOGIN1/fund', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/provider-decisions', 'ynynnn'], // the same gate as a decision: what waits, with its evidence
+  ['GET /v1/tasks/ID1/provider-decision', 'ynynnn'],
+  ['POST /v1/tasks/ID1/provider-decision', 'ynynnn'],
+  ['POST /v1/tasks/ID1/provider-decision/approval', 'ynynnn'],
+  ['POST /v1/tasks/ID1/reject', 'ynynnn'],
+  ['POST /v1/tasks/ID1/release', 'ynynnn'],
+  ['POST /v1/tasks/ID1/take', 'ynynnn'],
+  ['GET /v1/users', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['POST /v1/users', 'ynyyyn'], // review 2026-11-10, S11: in the branch, owner or edit (staff: owner or staff grant)
+  ['DELETE /v1/users/LOGIN1', 'ynynnn'], // staff or edit, then 404 for a login that is not there
+  ['GET /v1/users/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PATCH /v1/users/LOGIN1/access', 'ynnnnn'],
+  ['POST /v1/users/LOGIN1/enter', 'ynynnn'],
+  ['POST /v1/users/LOGIN1/freeze', 'ynynnn'],
+  ['GET /v1/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PUT /v1/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PUT /v1/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['PUT /v1/users/LOGIN1/packages/CODE1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/users/LOGIN1/password', 'ynyyyn'], // review 2026-11-10, S3: in the branch, owner or staff grant
+  ['POST /v1/users/LOGIN1/restore', 'ynynnn'],
+  ['POST /v1/users/LOGIN1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/users/LOGIN1/transfer-preview', 'ynyyyn'],
+  ['GET /v1/wallets', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['PATCH /v1/wallets/LOGIN1/ceiling', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['POST /v1/wallets/LOGIN1/deduct', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /v1/wallets/LOGIN1/fund', 'yyyyyy'], // read/accounting not checked (see spec)
 ];
 
 const ACTORS: { id: (typeof COLUMNS)[number]; layer: string; isBranchOwner: boolean; liveGrants: string }[] = [
@@ -227,11 +227,5 @@ describe('office permission matrix', () => {
   it.each(EXPECTED)('%s → %s', async (route, access) => {
     const [method, path] = route.split(' ');
     expect(await matrixRow(method, path)).toBe(access);
-  });
-
-  // Slice R.11b: the same permissions under `/v1/`, route for route.
-  it.each(EXPECTED)('%s under /v1/ → %s', async (route, access) => {
-    const [method, path] = route.split(' ');
-    expect(await matrixRow(method, path.replace(/^\/office\//, '/v1/'))).toBe(access);
   });
 });

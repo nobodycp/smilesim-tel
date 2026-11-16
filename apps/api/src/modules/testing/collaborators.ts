@@ -8,6 +8,6 @@ import { UnitOfWork } from '../platform/unit-of-work';
 
 /**
  * The collaborators the office services are built from, wherever their module is. A spec app that serves the
- * routes over one service's own in-memory tables replaces exactly these (`testing/office-graph.ts` `providers()`).
+ * routes over one service's own in-memory tables replaces exactly these (`testing/service-graph.ts` `providers()`).
  */
 export const SHARED_COLLABORATORS = [UnitOfWork, AccountTree, ActorResolver, LayerRoles, PriceLadder, WalletLedger, LineAccess];

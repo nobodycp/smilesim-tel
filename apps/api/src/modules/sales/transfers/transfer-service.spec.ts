@@ -881,7 +881,7 @@ describe('transfer: a number', () => {
   });
 });
 
-describe('the transfer routes under /office', () => {
+describe('the transfer routes under /v1', () => {
   let app: INestApplication | undefined;
   const recorded: unknown[][] = [];
 
@@ -921,7 +921,7 @@ describe('the transfer routes under /office', () => {
     const { service, gates } = await busyAgent();
     app = await appFor(service);
     const get = (gate: { sessionId: string } | null, search: string) => {
-      const call = request(app!.getHttpServer()).get(`/office/users/ag1/transfer-preview${search}`);
+      const call = request(app!.getHttpServer()).get(`/v1/users/ag1/transfer-preview${search}`);
       return gate ? call.set('Cookie', `sid=${gate.sessionId}`) : call;
     };
 
@@ -950,7 +950,7 @@ describe('the transfer routes under /office', () => {
     const { service, gates } = await busyAgent();
     app = await appFor(service);
     const post = (gate: { sessionId: string }, login: string, body: object) =>
-      request(app!.getHttpServer()).post(`/office/users/${login}/transfer`).set('Cookie', `sid=${gate.sessionId}`).send(body);
+      request(app!.getHttpServer()).post(`/v1/users/${login}/transfer`).set('Cookie', `sid=${gate.sessionId}`).send(body);
 
     const ok = await post(gates.branch, 'ag1', agentMove({ linePrices: 'recapture' }));
     expect(ok.status).toBe(201);
@@ -978,7 +978,7 @@ describe('the transfer routes under /office', () => {
     edit(accounts, 'ag1', { liveGrants: 'transferLines' });
     app = await appFor(service);
     const post = (gate: { sessionId: string }, body: object) =>
-      request(app!.getHttpServer()).post('/office/lines/ln1/transfer').set('Cookie', `sid=${gate.sessionId}`).send(body);
+      request(app!.getHttpServer()).post('/v1/lines/ln1/transfer').set('Cookie', `sid=${gate.sessionId}`).send(body);
 
     const forbidden = await post(gates.ag1, lineMove());
     expect(forbidden.status).toBe(403);

@@ -51,7 +51,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
   /** The manual route: the simulated provider refuses, so a task is opened. */
   const body = (over: Record<string, unknown> = {}) => ({ packageCode: `rk-${tag}`, posLoginName: `rk-${tag}-posa`, outcome: 'fail', ...over });
   const post = (who: keyof typeof u | { cookie: string }, sent: Record<string, unknown>, requestKey?: string, on: INestApplication = app) => {
-    const call = request(on.getHttpServer()).post('/office/lines').set('Cookie', typeof who === 'string' ? cookie[who] : who.cookie);
+    const call = request(on.getHttpServer()).post('/v1/lines').set('Cookie', typeof who === 'string' ? cookie[who] : who.cookie);
     return (requestKey === undefined ? call : call.set('Idempotency-Key', requestKey)).send(sent);
   };
   const tasks = () => prisma.task.findMany({ where: { posId: { in: [u.posA, u.posB] } }, orderBy: { createdAt: 'asc' } });
@@ -225,7 +225,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
     const requestKey = key();
     const sent = body({ iccid: serial() });
     const first = await post('posA', sent, requestKey);
-    const cancelled = await request(app.getHttpServer()).post(`/office/tasks/${first.body.taskId}/cancel`).set('Cookie', cookie.posA).send({});
+    const cancelled = await request(app.getHttpServer()).post(`/v1/tasks/${first.body.taskId}/cancel`).set('Cookie', cookie.posA).send({});
     expect(cancelled.status).toBe(201);
     expect(await wallet()).toMatchObject({ balance: 1_000_000, held: 0 });
     const again = await post('posA', sent, requestKey);

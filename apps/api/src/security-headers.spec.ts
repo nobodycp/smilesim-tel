@@ -10,7 +10,7 @@ function headersFor(path: string, production: boolean) {
 
 describe('securityHeaders', () => {
   it('denies framing and sniffing, sends no referrer, and locks the content policy', () => {
-    expect(headersFor('/office/me', false)).toEqual({
+    expect(headersFor('/v1/me', false)).toEqual({
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'Referrer-Policy': 'no-referrer',
@@ -20,6 +20,6 @@ describe('securityHeaders', () => {
 
   it('leaves the Swagger page its scripts and adds HSTS in production', () => {
     expect(headersFor('/docs', false)['Content-Security-Policy']).toBeUndefined();
-    expect(headersFor('/office/me', true)['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains');
+    expect(headersFor('/v1/me', true)['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains');
   });
 });

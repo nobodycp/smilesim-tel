@@ -18,7 +18,7 @@ export const RATE_LIMIT_SIGN_IN = 30;
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 /** The routes a caller with no session uses to get one. */
-// The hand-off is a sign-in under each prefix it is served under (slice R.11b: `/v1/handoff` and `/office/handoff`).
+// The hand-off is a sign-in; its path comes from the one list of prefixes (`/v1/handoff`).
 const SIGN_IN = [/^\/auth\/login$/, /^\/auth\/passkey-login(\/options)?$/, ...resourcePaths('handoff').map((path) => new RegExp(`^${path}$`))];
 // Not counted: the long-lived notices stream (one per open tab) and the health probe.
 const EXEMPT = [...resourcePaths('notices/stream').map((path) => new RegExp(`${path}$`)), /^\/health$/];

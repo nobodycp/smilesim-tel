@@ -63,7 +63,7 @@ describe('what the duplicate guard keeps and answers on a marked route', () => {
   const redisUrl = process.env.TEST_REDIS_URL;
 
   const post = (path: 'probe' | 'plain', body: object, key?: string, cookie = sid) => {
-    const call = request(app.getHttpServer()).post(`/office/${path}`).set('Cookie', `sid=${cookie}`);
+    const call = request(app.getHttpServer()).post(`/v1/${path}`).set('Cookie', `sid=${cookie}`);
     return (key ? call.set('Idempotency-Key', key) : call).send(body);
   };
   const fragments = (text: string) => Array.from({ length: 8 }, (_, at) => text.slice(30 + at * 37, 30 + at * 37 + 20)).filter((part) => part.length === 20);

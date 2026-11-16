@@ -107,7 +107,7 @@ export class AccountsController {
   }
 
   @Post('users/:loginName/enter')
-  @ApiOperation({ summary: 'Enter an account: answers its door and a one-time handoff code (`POST /office/handoff` on that door sets the cookies)' })
+  @ApiOperation({ summary: 'Enter an account: answers its door and a one-time handoff code (`POST /v1/handoff` on that door sets the cookies)' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
   @Activity('enter', 'account', param('loginName'))

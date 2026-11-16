@@ -33,7 +33,7 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
 | W.1, W.2 Web names | DONE | `99c50fa` |
 | R.11a HTTP security | DONE | `518f039` |
 | R.11b Route migration | DONE | `5cc9f2f` |
-| R.11c Legacy route removal | BLOCKED_EXTERNAL_VALIDATION | `808f49f` (documentation) |
+| R.11c Legacy route removal | DONE on the owner's word, without the watched release (2026-11-16) | see `git log --grep 'R.11c'` |
 | R.12 Surfaces for the other seven modules | DONE | see `git log --grep 'R.12'` |
 
 ## Guard counts
@@ -437,4 +437,28 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
   unrecorded, which was the pattern, not the routes). On port 3000: `/api/auth/profile` 401 without a session,
   `/api/auth/login` 401 `BAD_CREDENTIALS` for an empty body.
 - **Not done, on purpose:** the audit's "activity through the interceptor" and "0 branches" (plan, R.A).
+
+## R.11c Legacy route removal — DONE on the owner's word (2026-11-16)
+
+- **The condition that was not met.** The slice was blocked on a deployed release that served both paths and
+  showed no old-path hit, and on no web image older than R.11b being a rollback target. No such release was
+  observed from here; the owner asked for the removal as it is. The cost is stated in the handover (Arabic,
+  sections 13 and 14): a web older than R.11b gets 404 from this API, and a deployment older than R.11b cannot
+  reach this release in one step without an interruption (two steps through `bbdde78`, or one maintenance window).
+- **What changed:** `RESOURCE_PREFIXES = ['v1']` (`platform/route-prefixes.ts`); the 19 resource controllers and
+  the middleware's single-route rules follow from that list. `platform/legacy-paths.ts`, `LegacyPathsModule` and
+  its spec removed, with the module's line in `registry.ts`. Specs and the route table call `/v1/…` (a mechanical
+  `/office/` → `/v1/` in 32 files); the tests written for the two-prefix period are replaced: `routes.http.spec.ts`
+  now proves each of the 132 old paths answers 404 and records nothing; `permissions.http.spec.ts` runs the matrix
+  once; `http-security-contract.spec.ts` counts 103 write routes (76 under `/v1`, 26 under `/auth`, 1 branding)
+  where it counted 179 with the twins.
+- **What did not change, on purpose:** the duplicate guard's key. `canonicalPath` still gives a resource path the
+  form it had under the first prefix before it is hashed, so an `Idempotency-Key` (24 h) or a same-write key
+  (10 s) stored by a release before the removal matches the same write after it. The contract spec pins that form.
+- **Checked:** api typecheck 0, lint 0 (api, web). The 28 changed spec files on PostgreSQL and Redis: 836 passed.
+  Auth, the architecture guards, the duplicate guard and the worker wiring: 25 files, 268 passed. On port 3000:
+  `/api/v1/me` and `/api/v1/lines` 401 without a session, `/api/office/me` and `/api/office/lines` 404, health 200.
+  The web holds no `/office/` path (no web file changed). The full API suite and Playwright are for GitHub CI.
+- **For the plan that follows (package durations, D.5):** it names `platform/legacy-paths.ts` to count the callers
+  of the routes it retires. That file is gone; D.5 needs its own counter or none.
 

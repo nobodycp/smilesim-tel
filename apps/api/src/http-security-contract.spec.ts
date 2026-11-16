@@ -6,7 +6,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DuplicateGuardInterceptor, NotDuplicateGuarded } from './modules/platform/duplicate-guard.interceptor';
 import { ROUTES } from './modules/testing/routes';
-import { RESOURCE_PREFIXES, resourcePaths } from './modules/platform/route-prefixes';
+import { RESOURCE_PREFIXES, canonicalPath, resourcePaths } from './modules/platform/route-prefixes';
 
 // What protects a write route, and what a route would lose by moving (ADR 0020, slice R.0).
 //
@@ -48,9 +48,9 @@ function routesOf(): { routes: Route[]; controllers: { file: string; prefix: str
     const file = relative(SRC, path);
     const text = readFileSync(path, 'utf8');
     const declared = /@Controller\(\s*'?([^')]*)'?\s*\)/.exec(text)?.[1] ?? '';
-    // A resource controller is served under every resource prefix (slice R.11b): `/v1/…` and the old `/office/…`.
+    // A resource controller is served under the resource prefixes: `/v1/…` only since slice R.11c.
     const prefixes = declared === 'RESOURCE_CONTROLLER_PREFIXES' ? [...RESOURCE_PREFIXES] as string[] : [declared];
-    const prefix = prefixes.includes('office') ? 'office' : declared;
+    const prefix = prefixes[0];
     const head = text.slice(0, text.indexOf('export class'));
     const classNotGuarded = /@NotDuplicateGuarded\(/.test(head);
     controllers.push({ file, prefix, interceptors: /@UseInterceptors\(([^)]*)\)/.exec(head)?.[1] ?? '' });
@@ -164,19 +164,19 @@ describe('the write routes, as the source has them', () => {
     expect(controllers).toHaveLength(24);
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(35);
     // The empty prefix is the health probe: one read, no write.
-    expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'office']);
-    // The same routes under both prefixes, one for one.
-    const under = (prefix: string) => writes.filter((route) => route.controller === prefix).map((route) => `${route.method} ${route.path.slice(prefix.length + 2)}`).sort();
-    expect(under('v1')).toEqual(under('office'));
+    expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'v1']);
+    // One prefix for the resources (slice R.11c): no route is declared under `office`.
+    expect([...RESOURCE_PREFIXES]).toEqual(['v1']);
+    expect(routes.filter((route) => route.path.startsWith('/office'))).toEqual([]);
     const count = (prefix: string) => writes.filter((route) => route.controller === prefix).length;
-    // Every resource write is served twice during the overlap (slice R.11b): under `/v1/` and under `/office/`.
-    expect({ office: count('office'), v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ office: 76, v1: 76, auth: 26, branding: 1, all: 179 });
+    // Between R.11b and R.11c every resource write was served twice (also under `/office/`): 179 then, 103 now.
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 76, auth: 26, branding: 1, all: 103 });
   });
 
-  it('agrees with the route table of the office (testing/office-routes.ts): the same write routes, by method and shape', () => {
+  it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
     // The table names sample values (ID1, CODE1, LOGIN1 …); the controllers name parameters. Both become `:x`.
     const shape = (path: string) => path.replace(/\/:[A-Za-z]+/g, '/:x').replace(/\/(ID|CODE|LOGIN|MSISDN|LAYER|KEY)\d*[A-Z0-9]*(?=\/|$)/g, '/:x');
-    const fromSource = writes.filter((route) => route.controller === 'office').map((route) => `${route.method} ${shape(route.path)}`).sort();
+    const fromSource = writes.filter((route) => route.controller === 'v1').map((route) => `${route.method} ${shape(route.path)}`).sort();
     const fromTable = ROUTES.filter(([method]) => method !== 'GET').map(([method, path]) => `${method} ${shape(path)}`).sort();
     expect(fromSource).toEqual(fromTable);
   });
@@ -211,18 +211,18 @@ describe('the duplicate guard and the idempotency key', () => {
   });
 
   it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
-    // The plan R.11 move, made on the real routes: every `/office/` route given another path. The guard is decided
-    // by the controller, so the same 152 (76 under each prefix) are guarded and nothing new is unguarded.
+    // A move made on the real routes: every `/v1/` route given another path. The guard is decided by the
+    // controller, so the same 76 are guarded and nothing new is unguarded.
     const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
-    const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/office\//, '/v1/') }));
+    const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/v1\//, '/elsewhere/') }));
     expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
-    expect(moved.filter(guarded)).toHaveLength(152);
+    expect(moved.filter(guarded)).toHaveLength(76);
   });
 });
 
 describe('authorization and activity follow the controller, not the path', () => {
-  it('every controller of the office resolves the actor, but the one that starts and ends an entered session', () => {
-    const office = controllers.filter((controller) => controller.prefix === 'office');
+  it('every resource controller resolves the actor, but the one that starts and ends an entered session', () => {
+    const office = controllers.filter((controller) => controller.prefix === 'v1');
     expect(office).toHaveLength(19);
     const without = office.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
     // `handoff` has no session yet and `leave` ends one: the service checks the session itself.
@@ -230,8 +230,8 @@ describe('authorization and activity follow the controller, not the path', () =>
     expect(office.find((controller) => controller.file.endsWith('account-session.controller.ts'))?.interceptors).toBe('ActivityInterceptor');
   });
 
-  it('the controllers outside the office have no interceptor: they check the session and record by hand', () => {
-    const others = controllers.filter((controller) => controller.prefix !== 'office');
+  it('the controllers outside the resource prefix have no interceptor: they check the session and record by hand', () => {
+    const others = controllers.filter((controller) => controller.prefix !== 'v1');
     expect(others.map((controller) => [controller.file, controller.interceptors])).toEqual([
       ['health.controller.ts', ''],
       ...AUTH_CONTROLLERS.map((file) => [file, '']),
@@ -261,16 +261,16 @@ describe('the protections that are on every route', () => {
     // A route renamed without its line in the middleware would lose its rule (a sign-in limit, the stream's
     // exemption, the right to start a session) with no error.
     const all = new Set(routes.map(named));
-    for (const route of ['POST /auth/login', 'POST /auth/passkey-login', 'POST /auth/passkey-login/options', 'POST /office/handoff', 'POST /v1/handoff', 'GET /office/notices/stream', 'GET /v1/notices/stream']) {
+    for (const route of ['POST /auth/login', 'POST /auth/passkey-login', 'POST /auth/passkey-login/options', 'POST /v1/handoff', 'GET /v1/notices/stream']) {
       expect({ route, exists: all.has(route) }).toEqual({ route, exists: true });
     }
-    // The single-route rules name the route under every prefix it is served under (slice R.11b), from the one list.
+    // The single-route rules take the route's path from the one list of prefixes.
     const limit = readFileSync(join(SRC, 'rate-limit.middleware.ts'), 'utf8');
     expect(limit).toContain("const SIGN_IN = [/^\\/auth\\/login$/, /^\\/auth\\/passkey-login(\\/options)?$/, ...resourcePaths('handoff').map((path) => new RegExp(`^${path}$`))];");
     expect(limit).toContain("const EXEMPT = [...resourcePaths('notices/stream').map((path) => new RegExp(`${path}$`)), /^\\/health$/];");
     const door = readFileSync(join(SRC, 'door.middleware.ts'), 'utf8');
     expect(door).toContain("const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', ...resourcePaths('handoff')]);");
-    expect(resourcePaths('handoff')).toEqual(['/v1/handoff', '/office/handoff']);
+    expect(resourcePaths('handoff')).toEqual(['/v1/handoff']);
   });
 });
 
@@ -280,22 +280,15 @@ let ran: Record<string, number> = {};
 
 @Controller()
 class Probe {
-  @Post('office/probe-old')
+  @Post('v1/probe')
   inside() {
     ran.inside = (ran.inside ?? 0) + 1;
     return { ok: true };
   }
 
-  @Post('v1/probe-new')
+  @Post('elsewhere/probe')
   outside() {
     ran.outside = (ran.outside ?? 0) + 1;
-    return { ok: true };
-  }
-
-  /** One route under both prefixes, as every resource controller is declared since slice R.11b. */
-  @Post(['v1/probe-both', 'office/probe-both'])
-  both() {
-    ran.both = (ran.both ?? 0) + 1;
     return { ok: true };
   }
 }
@@ -334,34 +327,34 @@ describe('what the controller decides (the guard over HTTP)', () => {
     return key ? call.set('Idempotency-Key', key) : call;
   };
 
-  it('under the old prefix: the same write sent twice runs once, with or without a key', async () => {
-    await send('/office/probe-old');
-    await send('/office/probe-old');
+  it('under the resource prefix: the same write sent twice runs once, with or without a key', async () => {
+    await send('/v1/probe');
+    await send('/v1/probe');
     expect(ran.inside).toBe(1);
-    await send('/office/probe-old', 'contract-key-0001');
-    await send('/office/probe-old', 'contract-key-0001');
+    await send('/v1/probe', 'contract-key-0001');
+    await send('/v1/probe', 'contract-key-0001');
     expect(ran.inside).toBe(2);
   });
 
   it('outside the prefix, the same: a route that moves keeps its guard and its key (slice R.11a)', async () => {
-    // Before R.11a this test said the opposite: outside `/office/` the same write ran twice and its key was ignored.
-    await send('/v1/probe-new');
-    const repeat = await send('/v1/probe-new');
+    // Before R.11a this test said the opposite: outside the prefix the same write ran twice and its key was ignored.
+    await send('/elsewhere/probe');
+    const repeat = await send('/elsewhere/probe');
     expect(ran.outside).toBe(1);
     expect(repeat.headers['idempotent-replay']).toBe('true');
-    await send('/v1/probe-new', 'contract-key-0002');
-    await send('/v1/probe-new', 'contract-key-0002');
+    await send('/elsewhere/probe', 'contract-key-0002');
+    await send('/elsewhere/probe', 'contract-key-0002');
     expect(ran.outside).toBe(2);
   });
 
-  it('the same write sent to its two paths is one write (slice R.11b: the guard keys the canonical path)', async () => {
-    await send('/v1/probe-both');
-    const repeat = await send('/office/probe-both');
-    expect(ran.both).toBe(1);
-    expect(repeat.headers['idempotent-replay']).toBe('true');
-    await send('/office/probe-both', 'contract-key-0004');
-    await send('/v1/probe-both', 'contract-key-0004');
-    expect(ran.both).toBe(2);
+  it('a key taken before the old prefix was removed still matches: the key keeps its own form of the path (slice R.11c)', () => {
+    // The guard hashes the path in the form it had under the first prefix. A release before R.11c wrote keys in
+    // that form for `/v1/…` and `/office/…` alike; changing the form would let a write remembered by one release
+    // through a second time on the next.
+    expect(canonicalPath('/v1/lines/ID1/extend')).toBe('/office/lines/ID1/extend');
+    expect(canonicalPath('/v1/lines/ID1/extend?x=1')).toBe('/office/lines/ID1/extend?x=1');
+    // Not a resource path: as it is.
+    expect(canonicalPath('/auth/login')).toBe('/auth/login');
   });
 
   it('a controller that says it is not guarded runs every repeat: nothing is kept or replayed for it', async () => {

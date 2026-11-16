@@ -46,7 +46,7 @@ docker compose up --build
 ```
 apps/api/        الـ API
   src/modules/auth/     الدخول والجلسات والتحقق الثنائي
-  src/modules/office/   عمليات المكتب: الأرقام والرزم والمحافظ والمهام
+  src/modules/<وحدة>/   وحدة لكل مجال: sales (الأرقام)، catalog (الرزم)، wallets (المحافظ)، tasks (المهام) وغيرها
   prisma/               المخطط والهجرات
 apps/web/        الواجهة
   app/                  الصفحات و globals.css

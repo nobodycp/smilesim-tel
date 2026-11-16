@@ -158,7 +158,7 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
     const explicit = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'].slice(0, 120) : '';
     const hash = (text: string) => createHash('sha256').update(text).digest('hex');
     // What the request is: its route and its body.
-    // The route under its canonical path (slice R.11b): the same write sent under its two prefixes is one.
+    // The route in the key's own form of its path (`canonicalPath`): the form keys have had since before `/v1`.
     const request = hash(`${req.method} ${canonicalPath(req.originalUrl)}\n${JSON.stringify(req.body ?? null)}`);
     const key = `write:${hash(`${sessionId}\n${explicit ? `key:${explicit}` : request}`)}`;
     const seconds = explicit ? KEYED_WRITE_SECONDS : SAME_WRITE_SECONDS;

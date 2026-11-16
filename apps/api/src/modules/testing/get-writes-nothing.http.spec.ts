@@ -33,7 +33,7 @@ describe('a GET route writes nothing', () => {
     await app.close();
   });
 
-  const reads = ROUTES.filter(([method, path]) => method === 'GET' && path !== '/office/notices/stream');
+  const reads = ROUTES.filter(([method, path]) => method === 'GET' && path !== '/v1/notices/stream');
 
   it.each(reads)('%s %s', async (method, path) => {
     written.length = 0;

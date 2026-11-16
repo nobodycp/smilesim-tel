@@ -44,10 +44,10 @@ import type { TransferAccountBody } from '../sales/transfers/transfers.service';
 /**
  * Test-only adapter: the office methods as the specs have always called them, `(gate, ...)`, each
  * resolving the actor and handing the call to the domain service that owns it. Production code never uses it;
- * every route lives in a domain controller under `modules/office/<domain>/`.
+ * every route lives in a domain controller under `modules/v1/<domain>/`.
  */
 export class ApiFacade {
-  /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (testing/office-graph.ts). */
+  /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (testing/service-graph.ts). */
   private readonly graph: ServiceGraph;
 
   // The members below without `private` are the hooks specs reach in by: the client, the notice writer, a

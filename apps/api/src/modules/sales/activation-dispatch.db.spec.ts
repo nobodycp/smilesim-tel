@@ -69,7 +69,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     return { status: response.status, body: response.body as Record<string, unknown>, replay: response.headers['idempotent-replay'] as string | undefined };
   };
   const sale = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ packageCode: name('pkg'), posLoginName: name('pos'), iccid: serial(), ...over });
-  const activate = (who: keyof typeof sid, body: Record<string, unknown>, idempotencyKey?: string) => send(app, who, '/office/lines', body, idempotencyKey);
+  const activate = (who: keyof typeof sid, body: Record<string, unknown>, idempotencyKey?: string) => send(app, who, '/v1/lines', body, idempotencyKey);
   const said = (got: Answer) => (got.status < 300 ? `ok ${got.body.applied === false ? 'task' : 'line'}` : `${got.status} ${String(got.body.code)}`);
   /** A dispatched activation, opened: its task and its operation. */
   const opened = async (over: Record<string, unknown> = {}) => {
@@ -261,7 +261,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(await wallet()).toMatchObject({ balance: START, held: 2 * PRICE });
       // They are the branch's at once, as before.
       const taskId = byHand.body.taskId as string;
-      expect((await send(app, 'owner', `/office/tasks/${taskId}/complete`, { note: 'by hand' })).status).toBeLessThan(300);
+      expect((await send(app, 'owner', `/v1/tasks/${taskId}/complete`, { note: 'by hand' })).status).toBeLessThan(300);
       expect(await lines()).toHaveLength(1);
       await expectInvariants();
     });
@@ -384,7 +384,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       try {
         const body = sale({ msisdn: number() });
         const idempotencyKey = key();
-        const call = () => request(guarded.app.getHttpServer()).post('/office/lines').set('Cookie', `sid=${session}`).set('Idempotency-Key', idempotencyKey).send(body);
+        const call = () => request(guarded.app.getHttpServer()).post('/v1/lines').set('Cookie', `sid=${session}`).set('Idempotency-Key', idempotencyKey).send(body);
         const all = await Promise.all(Array.from({ length: 12 }, call));
         expect(all.map((response) => response.status).filter((status) => status !== 201)).toEqual([]);
         expect(new Set(all.map((response) => (response.body as { taskId: string }).taskId)).size).toBe(1);
@@ -477,9 +477,9 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       if (flag) process.env.PROVIDER_DISPATCH = flag;
       else delete process.env.PROVIDER_DISPATCH;
       // The same package and provider the spec's gateway dispatches, through the real gateway.
-      const done = await send(real, 'pos', '/office/lines', sale({ outcome: 'success' }), key());
-      const refused = await send(real, 'pos', '/office/lines', sale({ outcome: 'fail' }), key());
-      const keyless = await send(real, 'pos', '/office/lines', sale({ outcome: 'fail' }));
+      const done = await send(real, 'pos', '/v1/lines', sale({ outcome: 'success' }), key());
+      const refused = await send(real, 'pos', '/v1/lines', sale({ outcome: 'fail' }), key());
+      const keyless = await send(real, 'pos', '/v1/lines', sale({ outcome: 'fail' }));
       expect([said(done), said(refused), said(keyless)]).toEqual(['ok line', 'ok task', 'ok task']);
       expect(await operations()).toEqual([]);
       expect(await prisma.outboxMessage.count({ where: { createdAt: { gt: new Date(Date.now() - 10_000) }, topic: OPERATION_REQUESTED, aggregateId: { in: (await tasks()).map((row) => row.id) } } })).toBe(0);
@@ -540,7 +540,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.handlerName])).toEqual([['task.opened', [ids.owner], SYSTEM_SENDER_NAME]]);
       expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE, note: PROVIDER_FAILED_NOTE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
-      expect((await send(app, 'owner', `/office/tasks/${taskId}/reject`, { reason: 'the provider refused it' })).status).toBeLessThan(300);
+      expect((await send(app, 'owner', `/v1/tasks/${taskId}/reject`, { reason: 'the provider refused it' })).status).toBeLessThan(300);
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
       expect(await lines()).toHaveLength(0);
       // Never sent again for this task (D3).
@@ -560,9 +560,9 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.excerpt])).toEqual([['task.note', [ids.owner], PROVIDER_UNKNOWN_NOTE]]);
       expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
-      expect((await send(app, 'owner', `/office/tasks/${taskId}/complete`, { note: 'x' })).status).toBe(409);
-      expect((await send(app, 'owner', `/office/tasks/${taskId}/reject`, { reason: 'x' })).status).toBe(409);
-      expect((await send(app, 'pos', `/office/tasks/${taskId}/cancel`)).status).toBe(409);
+      expect((await send(app, 'owner', `/v1/tasks/${taskId}/complete`, { note: 'x' })).status).toBe(409);
+      expect((await send(app, 'owner', `/v1/tasks/${taskId}/reject`, { reason: 'x' })).status).toBe(409);
+      expect((await send(app, 'pos', `/v1/tasks/${taskId}/cancel`)).status).toBe(409);
       // Never sent a second time.
       expect(await dispatch.dispatcher.handle(operationId)).toBe('skipped');
       expect(gateway.calls).toHaveLength(1);
@@ -586,7 +586,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
 
     it('the submitter cancels while nothing has left: the operation is abandoned, the hold released, and a late message sends nothing', async () => {
       const { taskId, operationId } = await opened();
-      expect((await send(app, 'pos', `/office/tasks/${taskId}/cancel`)).status).toBeLessThan(300);
+      expect((await send(app, 'pos', `/v1/tasks/${taskId}/cancel`)).status).toBeLessThan(300);
       expect(await operation(operationId)).toMatchObject({ status: 'failed', lastError: 'abandoned' });
       expect(await task(taskId)).toMatchObject({ status: 'cancelled' });
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
@@ -602,7 +602,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       for (let round = 0; round < 30; round += 1) {
         const { taskId, operationId } = await opened();
         const calls = gateway.calls.length;
-        const [cancel, handled] = await Promise.all([send(app, 'pos', `/office/tasks/${taskId}/cancel`), dispatch.dispatcher.handle(operationId)]);
+        const [cancel, handled] = await Promise.all([send(app, 'pos', `/v1/tasks/${taskId}/cancel`), dispatch.dispatcher.handle(operationId)]);
         const row = await operation(operationId);
         if (cancel.status < 300) {
           expect([handled, row.status, row.lastError, gateway.calls.length - calls]).toEqual(['skipped', 'failed', 'abandoned', 0]);
@@ -651,9 +651,9 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
           dispatch.dispatcher.handle(operationId).then(() => dispatch.settlement.apply(operationId)),
           dispatch.dispatcher.handle(operationId),
           dispatch.settlement.apply(operationId),
-          ...(index % 2 === 0 ? [send(app, 'pos', `/office/tasks/${taskId}/cancel`)] : []),
-          send(app, 'owner', `/office/tasks/${taskId}/reject`, { reason: 'mixed' }),
-          send(app, 'owner', `/office/tasks/${taskId}/complete`, { note: 'mixed' }),
+          ...(index % 2 === 0 ? [send(app, 'pos', `/v1/tasks/${taskId}/cancel`)] : []),
+          send(app, 'owner', `/v1/tasks/${taskId}/reject`, { reason: 'mixed' }),
+          send(app, 'owner', `/v1/tasks/${taskId}/complete`, { note: 'mixed' }),
         ]);
         const results = await Promise.allSettled([...openings, ...onEarlier]);
         settled.push(...results);
