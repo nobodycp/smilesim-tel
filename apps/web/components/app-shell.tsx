@@ -38,10 +38,12 @@ import { useDesk } from '../lib/desk-session';
 import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
 import { usePopover } from '../lib/use-popover';
+import { cn } from '../lib/cn';
 import { BrandLogo } from './brand-logo';
 import { Avatar } from './ui/avatar';
 import { IconButton } from './ui/icon-button';
-import { LanguageSwitch, ThemeToggle } from './chrome';
+import { Sheet, SheetContent, SheetTitle } from './ui/sheet';
+import { LanguageSwitch, ThemeToggle, topbarIcon } from './chrome';
 import { ShellSearch } from './shell-search';
 import { ShellPath, type PathSection } from './crumbs';
 import { OutageBar, OutagePanel } from './outage';
@@ -83,6 +85,54 @@ const serverCollapsed = () => false;
 
 const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
+/*
+ * The shell's look (Tailwind migration T3.1, ADR 0022), ported from shell.css with its graphite.css, base.css and
+ * responsive.css takes, in cascade order. The page frame inside it (`main.canvas`, `.canvas-inner.wide`) stays on
+ * desk/frame.css until T3.3: many sheets and primitives still read `.canvas` as their context.
+ */
+
+// The crimson thread at the start of the current page (and of a folded group that holds it).
+const THREAD = "before:absolute before:inset-y-2.75 before:start-0 before:w-0.5 before:rounded-2xs before:bg-accent before:content-['']";
+
+/**
+ * A sidebar or drawer line (legacy `.nav-link`): 40px, 12px at the sides, 12px between the 19px icon and the name,
+ * muted 13.5px semibold; under the pointer the raised fill and ink. `active`: ink on the raised fill with the thread,
+ * the icon crimson; `holds` (a group head over the current page): ink, the icon crimson, the thread on the rail;
+ * `nested`: 34px, 22px in, 13px medium, no thread; in the drawer 46px and 14.5px (nested 40px).
+ */
+function navLinkClass({
+  active = false,
+  holds = false,
+  nested = false,
+  drawer = false,
+  rail = false,
+  logout = false,
+}: { active?: boolean; holds?: boolean; nested?: boolean; drawer?: boolean; rail?: boolean; logout?: boolean }) {
+  return cn(
+    'relative flex h-10 w-full items-center gap-3 overflow-hidden rounded-sm border-0 bg-transparent px-3 py-0',
+    'text-start text-[13.5px] font-semibold text-muted [transition:background-color_140ms_ease,color_140ms_ease]',
+    'hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink',
+    '[&>svg]:size-4.75 [&>svg]:flex-none',
+    nested && 'h-8.5 overflow-visible ps-5.5 text-md font-medium',
+    drawer && (nested ? 'h-10 text-[14.5px]' : 'h-11.5 text-[14.5px]'),
+    active && 'text-ink',
+    active && !nested && cn('bg-surface-2', THREAD),
+    (active || holds) && '[&>svg]:text-accent',
+    holds && 'text-ink',
+    holds && rail && THREAD,
+    logout && 'hover:text-danger',
+  );
+}
+
+/** A name in the sidebar (legacy `.label`): one line; on the folded rail it fades and slides 8px towards the end. */
+function labelClass(rail: boolean, sidebar: boolean) {
+  return cn(
+    'whitespace-nowrap',
+    sidebar && 'motion-safe:[transition:opacity_180ms_ease,translate_260ms_cubic-bezier(0.32,0.72,0,1)]',
+    rail && 'pointer-events-none translate-x-2 opacity-0 rtl:-translate-x-2',
+  );
+}
+
 type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean; count?: number };
 // A collapsible run of items under one head (the Admin section's "Settings"). It opens when one
 // of its items is the page, or when clicked; the collapsed rail shows its items as plain icons.
@@ -116,18 +166,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (result.ok) reloadAt(doorUrl('admin', '/users'));
   }
 
+  // The drawer is a Sheet (components/ui/sheet.tsx, Radix Dialog): Escape, a press on the scrim, the page's scroll
+  // lock and the focus are its own.
+  // From 900px the drawer is hidden (lg:hidden), but an open modal Dialog would keep the page's pointer and scroll
+  // lock: a window that grows past 900px while the drawer is open (a rotated tablet, a resized desktop) closes it.
+  // The drawer opens only from the menu button, which shows under 900px, so the effect waits for the change.
   useEffect(() => {
     if (!mobileOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileOpen(false);
+    const wide = window.matchMedia('(min-width: 900px)');
+    const onChange = (event: MediaQueryListEvent) => {
+      if (event.matches) setMobileOpen(false);
     };
-    const previous = document.body.style.overflow;
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
-    };
+    wide.addEventListener('change', onChange);
+    return () => wide.removeEventListener('change', onChange);
   }, [mobileOpen]);
 
   async function openNotice(row: NoticeRow) {
@@ -159,7 +210,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!flyout?.items) return;
     const onDown = (event: MouseEvent) => {
       const target = event.target as Element | null;
-      if (target?.closest('.side-flyout, .sidebar')) return;
+      if (target?.closest('[data-slot="side-flyout"], [data-slot="sidebar"]')) return;
       setFlyout(null);
     };
     const onKey = (event: KeyboardEvent) => {
@@ -322,12 +373,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navLink = (item: NavItem, mobile: boolean, nested = false) => {
     const active = isActive(item.href);
+    const rail = collapsed && !mobile;
     const ItemIcon = item.icon;
     return (
       <Link
         key={item.href}
         href={item.href}
-        className={['nav-link', nested ? 'nested' : '', active ? 'active' : ''].filter(Boolean).join(' ')}
+        className={navLinkClass({ active, nested, drawer: mobile })}
         aria-current={active ? 'page' : undefined}
         onClick={() => {
           setMobileOpen(false);
@@ -337,52 +389,103 @@ export function AppShell({ children }: { children: ReactNode }) {
         onFocus={mobile || nested ? undefined : (event) => hint(event, item.label)}
         onBlur={() => setFlyout(null)}
       >
-        {nested ? <span className="nav-bullet" aria-hidden="true" /> : <ItemIcon {...glyph} />}
-        <span className="label">{item.label}</span>
-        {item.count ? <span className="nav-count num" aria-label={`${item.count}`}>{item.count > 99 ? '99+' : item.count}</span> : null}
+        {nested ? (
+          // A small diamond on the group's hairline; the current page's glows crimson.
+          <span
+            className={cn(
+              'absolute -start-[2.5px] size-1.75 rotate-45 rounded-[2px] bg-bg inset-ring-[1.5px] inset-ring-faint',
+              active && 'bg-accent inset-ring-0 shadow-[0_0_8px_var(--rd-accent)]',
+            )}
+            aria-hidden="true"
+          />
+        ) : (
+          <ItemIcon {...glyph} />
+        )}
+        <span className={cn(labelClass(rail, !mobile), nested && active && 'text-accent')}>{item.label}</span>
+        {item.count ? (
+          // The open tasks: a small crimson square at the line's end; on the folded rail, a corner mark.
+          <span
+            className={cn(
+              'ms-auto grid h-5 min-w-5 place-items-center rounded-xs bg-accent-fill px-1.5 text-xs font-bold text-on-accent',
+              rail && 'absolute end-2 top-1.25 h-4 min-w-4 px-1 text-2xs',
+            )}
+            aria-label={`${item.count}`}
+          >
+            {item.count > 99 ? '99+' : item.count}
+          </span>
+        ) : null}
       </Link>
     );
   };
 
   const sidebar = (mobile: boolean) => {
     const rail = collapsed && !mobile;
+    const name = <p className="m-0 text-lg font-bold leading-[1.35] text-ink">{branding.name}</p>;
     return (
       <>
-        <div className="brand-block">
+        {/* Brand row: the saved logo or the cut-corner tile, the name and the door. */}
+        <div className="mb-2 flex h-12 items-center gap-2.75 overflow-hidden whitespace-nowrap px-2.25">
           {branding.logo ? (
-            <BrandLogo className="brand-block-logo" />
+            <BrandLogo className={cn('max-h-8.5 max-w-30 flex-none', rail && 'max-w-8.5')} />
           ) : (
-            <div className="brand-mark" aria-hidden="true">
+            <div
+              className={cn(
+                'grid size-8.5 flex-none place-items-center rounded-sm bg-accent-fill text-primary-fg shadow-card',
+                '[clip-path:polygon(0_0,calc(100%_-_9px)_0,100%_9px,100%_100%,0_100%)]',
+                'rtl:[clip-path:polygon(9px_0,100%_0,100%_100%,0_100%,0_9px)] [&>svg]:size-4.5 [&>svg]:stroke-on-accent',
+              )}
+              aria-hidden="true"
+            >
               <Wifi {...glyph} />
             </div>
           )}
-          <div className="brand-copy label">
-            <p className="brand-name">{branding.name}</p>
-            <p className="brand-sub">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
+          <div className={cn('min-w-0', labelClass(rail, !mobile))}>
+            {/* The drawer is a dialog; the office's name is its title. */}
+            {mobile ? <SheetTitle asChild>{name}</SheetTitle> : name}
+            <p className="m-0 text-xs leading-[1.35] text-muted">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
           </div>
           {mobile && (
-            <IconButton className="drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
+            <IconButton className="ms-auto" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
               <X {...glyph} />
             </IconButton>
           )}
         </div>
         {!mobile && (
-          // The handle on the sidebar's edge (Graphite): shows on hover, folds the sidebar to a rail of icons; «[» too.
+          // The round handle on the sidebar's edge (Graphite): shows on hover or keyboard focus, folds the sidebar to
+          // a rail of icons; «[» too. The hover is a plain :hover, not group-hover (which Tailwind wraps in
+          // @media (hover: hover)), so a tap on a touch-only wide screen reveals it as the legacy .sidebar:hover did.
           <button
             type="button"
-            className="side-handle"
+            className={cn(
+              'absolute -end-3.25 top-18.5 z-2 grid size-6.5 place-items-center rounded-pill border-0 bg-surface-2 p-0',
+              'text-ink-2 opacity-0 shadow-pop ring-1 ring-line [transition:opacity_160ms_ease,color_140ms_ease]',
+              'hover:text-accent focus-visible:opacity-100 [[data-slot=sidebar]:hover_&]:opacity-100',
+            )}
             onClick={toggleCollapsed}
             title={`${collapsed ? t.expand : t.collapse}  [`}
             aria-label={collapsed ? t.expand : t.collapse}
             aria-expanded={!collapsed}
           >
-            <ChevronLeft {...glyph} className="flip-ltr" />
+            <ChevronLeft
+              {...glyph}
+              className={cn('size-3.75 [transition:rotate_320ms_cubic-bezier(0.32,0.72,0,1)]', !collapsed && 'rotate-180')}
+            />
           </button>
         )}
-        <nav className="side-nav" aria-label={t.mainNav}>
+        <nav className="-mx-1 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1 [scrollbar-width:thin]" aria-label={t.mainNav}>
           {visibleGroups.map((group) => (
-            <div key={group.title || 'home'} className="side-section">
-              {group.title && <p className="nav-label"><span className="label">{group.title}</span></p>}
+            <div key={group.title || 'home'} className="mb-1.5">
+              {group.title && (
+                // A section's title; on the folded rail a hairline.
+                <p
+                  className={cn(
+                    'mx-0 mt-2.5 mb-0.5 flex h-6.5 items-center overflow-hidden px-3 text-xs font-bold tracking-[0.03em] text-faint',
+                    rail && "my-1.5 h-3.5 after:mx-1.5 after:h-px after:flex-1 after:bg-line after:content-['']",
+                  )}
+                >
+                  <span className={labelClass(rail, !mobile)}>{group.title}</span>
+                </p>
+              )}
               {group.items.map((entry) => {
                 if (!isGroup(entry)) return navLink(entry, mobile);
                 const holds = entry.items.some((item) => isActive(item.href));
@@ -390,13 +493,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 const HeadIcon = entry.icon;
                 const bodyId = `nav-group-${entry.key}${mobile ? '-drawer' : ''}`;
                 return (
-                  <div key={entry.key} className={open ? 'nav-group open' : 'nav-group'}>
+                  <div key={entry.key}>
                     {rail ? (
                       // Folded: the head never leaves the page; hovering or pressing it opens its pages as a flyout menu
                       // beside the rail (Graphite).
                       <button
                         type="button"
-                        className={holds ? 'nav-link nav-group-head holds' : 'nav-link nav-group-head'}
+                        className={navLinkClass({ holds, rail: true })}
                         aria-label={entry.label}
                         aria-haspopup="menu"
                         aria-expanded={flyout?.label === entry.label}
@@ -404,23 +507,34 @@ export function AppShell({ children }: { children: ReactNode }) {
                         onClick={(event) => hint(event, entry.label, entry.items)}
                       >
                         <HeadIcon {...glyph} />
-                        <span className="label">{entry.label}</span>
+                        <span className={labelClass(rail, !mobile)}>{entry.label}</span>
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className={holds ? 'nav-link nav-group-head holds' : 'nav-link nav-group-head'}
+                        className={navLinkClass({ holds, drawer: mobile })}
                         aria-expanded={open}
                         aria-controls={bodyId}
                         onClick={() => setOpenGroups((current) => ({ ...current, [entry.key]: !open }))}
                       >
                         <HeadIcon {...glyph} />
-                        <span className="label">{entry.label}</span>
-                        <ChevronDown {...glyph} className="nav-group-chevron" />
+                        <span className={labelClass(rail, !mobile)}>{entry.label}</span>
+                        <ChevronDown
+                          {...glyph}
+                          className={cn('ms-auto size-3.75! [transition:rotate_260ms_cubic-bezier(0.32,0.72,0,1)]', open && 'rotate-180')}
+                        />
                       </button>
                     )}
                     {open && (
-                      <div id={bodyId} className="nav-group-body">
+                      // The group's pages hang from a hairline, each with a small diamond.
+                      <div
+                        id={bodyId}
+                        className={cn(
+                          'relative grid gap-px ps-5',
+                          "before:absolute before:inset-y-1.5 before:start-5.25 before:w-px before:bg-line before:content-['']",
+                          'motion-safe:animate-[side-open_260ms_cubic-bezier(0.32,0.72,0,1)]',
+                        )}
+                      >
                         {entry.items.map((item) => navLink(item, mobile, true))}
                       </div>
                     )}
@@ -430,32 +544,35 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="side-foot">
+        <div className="mt-1.5 grid gap-0.5 border-t border-solid border-line pt-2.5">
           {/* Language and theme live in the topbar at every width (spec 2026-11-09-admin-review, 7). */}
           {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
           <Link
             href="/settings"
-            className="side-user"
+            className={cn(
+              'flex h-12.5 items-center gap-2.75 overflow-hidden rounded-md px-1.5 text-start hover:bg-surface-2',
+              rail && 'px-2',
+            )}
             data-testid="side-user"
             onClick={() => setMobileOpen(false)}
             onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
             onBlur={() => setFlyout(null)}
           >
             <Avatar>{initial}</Avatar>
-            <span className="label">
-              <b><bdi>{shown}</bdi></b>
-              <small>{role || ' '}</small>
+            <span className={cn('min-w-0', labelClass(rail, !mobile))}>
+              <b className="block overflow-hidden text-ellipsis text-md text-ink"><bdi>{shown}</bdi></b>
+              <small className="block text-xs text-muted">{role || ' '}</small>
             </span>
           </Link>
           <button
             type="button"
-            className="nav-link side-logout"
+            className={navLinkClass({ drawer: mobile, logout: true })}
             onClick={logout}
             onMouseEnter={mobile ? undefined : (event) => hint(event, t.logout)}
             onBlur={() => setFlyout(null)}
           >
             <LogOut {...glyph} />
-            <span className="label">{t.logout}</span>
+            <span className={labelClass(rail, !mobile)}>{t.logout}</span>
           </button>
         </div>
       </>
@@ -465,24 +582,50 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
     <title>{tabTitle(pageTitle, branding.name, unread)}</title>
-    <div className="app-shell">
-      {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
-      <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} data-testid="sidebar" onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
+    <div className="flex h-dvh overflow-hidden bg-bg">
+      {/* Sidebar (Graphite): the canvas colour, a hairline at its edge; folded on a wide screen it is a 76px rail whose
+          names fade and come back as flyouts beside the icons. Under 900px the drawer takes its place. */}
+      <aside
+        className={cn(
+          'relative z-[calc(var(--rd-z-topbar)_+_1)] flex w-67 min-w-0 flex-none flex-col',
+          'border-e border-solid border-line bg-bg px-3 pt-3.5 pb-3 max-lg:hidden',
+          'motion-safe:[transition:width_320ms_cubic-bezier(0.32,0.72,0,1)]',
+          collapsed && 'w-19',
+        )}
+        data-testid="sidebar"
+        data-slot="sidebar"
+        data-collapsed={collapsed ? '' : undefined}
+        onMouseLeave={() => setFlyout(null)}
+      >
+        {sidebar(false)}
+      </aside>
       {flyout && collapsed ? (
+        // Beside a hovered rail icon: its name, or a group's pages as a small menu.
         <div
-          className={flyout.items ? 'side-flyout is-menu' : 'side-flyout'}
+          data-slot="side-flyout"
+          className={cn(
+            'pointer-events-none fixed start-21.5 z-dialog w-max max-w-70 whitespace-nowrap rounded-sm bg-surface-2 px-3 py-1.75',
+            'text-[12.5px] font-semibold text-ink shadow-pop inset-ring inset-ring-line [transform:translateY(-50%)]',
+            'motion-safe:animate-[side-flyin_160ms_cubic-bezier(0.32,0.72,0,1)] motion-safe:rtl:[animation-name:side-flyin-rtl]',
+            // A menu: a bridge over the gap at its start, so the pointer can travel from the icon into it.
+            flyout.items &&
+              "pointer-events-auto grid min-w-47.5 gap-px p-1.5 [transform:translateY(-22px)] before:absolute before:inset-y-0 before:-start-3 before:w-3 before:content-['']",
+          )}
           style={{ top: flyout.top }}
           role={flyout.items ? 'menu' : 'tooltip'}
           onMouseEnter={() => setFlyout(flyout)}
           onMouseLeave={() => setFlyout(null)}
         >
-          <b>{flyout.label}</b>
+          <b className={cn('font-semibold', flyout.items && 'px-2.5 py-1.5 text-[11.5px] text-muted')}>{flyout.label}</b>
           {flyout.items?.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               role="menuitem"
-              className={isActive(item.href) ? 'active' : undefined}
+              className={cn(
+                'flex h-8.5 items-center rounded-xs px-2.5 text-md font-semibold text-ink-2 hover:bg-surface hover:text-ink',
+                isActive(item.href) && 'text-accent hover:text-accent',
+              )}
               aria-current={isActive(item.href) ? 'page' : undefined}
               onClick={() => setFlyout(null)}
             >
@@ -491,74 +634,140 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </div>
       ) : null}
-      {/* Closed, the drawer is off screen but still in the page: `inert` keeps it out of the tab order and the
-          accessibility tree until it opens. */}
-      <aside className={mobileOpen ? 'drawer open' : 'drawer'} data-testid="drawer" inert={!mobileOpen}>{sidebar(true)}</aside>
-      <div className="app-main">
-        <header className="topbar" data-testid="topbar">
-          <div className="topbar-start" data-testid="topbar-start">
-            <button type="button" className="shell-icon menu-btn" data-testid="menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
+      {/* Under 900px the sidebar is this drawer at the reading start, a Sheet (Radix Dialog): mounted only while open,
+          so a closed drawer takes neither the keyboard nor the accessibility tree. */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="start" data-testid="drawer" aria-describedby={undefined} className="lg:hidden" overlayClassName="lg:hidden">
+          {sidebar(true)}
+        </SheetContent>
+      </Sheet>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* The topbar (Graphite): the path, then «ابحث أو انتقل», the wallet chip, the notices, the theme and the
+            language, over a crimson hairline. Under 900px the path takes its own row under the icons. */}
+        <header
+          className={cn(
+            'sticky top-0 z-topbar flex min-h-16 items-center justify-between gap-3 border-b border-solid border-line',
+            'bg-bg/88 py-[0.6rem] backdrop-blur-[14px] backdrop-saturate-160 @container/topbar max-md:gap-1.5 max-md:px-4 md:px-7',
+            'max-lg:flex-wrap max-lg:gap-y-1.5 max-lg:py-2',
+            "after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-accent after:opacity-35 after:content-['']",
+          )}
+          data-testid="topbar"
+        >
+          <div
+            className="flex min-w-0 flex-[1_1_auto] items-center gap-[0.65rem] max-md:flex-none max-md:gap-1.5 max-lg:contents"
+            data-testid="topbar-start"
+          >
+            <button type="button" className={cn(topbarIcon, 'hidden max-lg:inline-flex')} data-testid="menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
               <Menu {...glyph} />
             </button>
             <ShellPath pathname={pathname} sections={sections} />
           </div>
-          <div className="topbar-tools" data-testid="topbar-tools">
+          <div className="flex flex-none items-center justify-end gap-2 max-md:gap-1 max-lg:ms-auto" data-testid="topbar-tools">
             <ShellSearch pages={sections.map((item) => ({ href: item.href, label: item.label }))} />
             {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. The branch
-                has no wallet: its balance is unlimited (spec 2026-11-09-admin-review, 7). */}
-            {layer === 'branch' ? null : <div className="wallet-chip" data-testid="wallet-chip">
-              <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
+                has no wallet: its balance is unlimited (spec 2026-11-09-admin-review, 7). Under 768px only the mark. */}
+            {layer === 'branch' ? null : <div className="relative flex-none" data-testid="wallet-chip">
+              <Link
+                href="/wallet"
+                className={cn(
+                  'inline-flex size-11 min-w-11 items-center justify-center gap-2 whitespace-nowrap rounded-sm border-0 bg-surface-2 px-3',
+                  'font-bold text-ink inset-ring inset-ring-line hover:bg-surface-3',
+                  'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink md:h-9 md:w-auto md:min-w-10',
+                  '[&_svg]:size-3.75 [&_svg]:text-accent',
+                )}
+                aria-label={t.walletPage}
+              >
                 <Wallet {...glyph} />
                 {shownBalance !== null && (
-                  <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} data-testid="wallet-balance" dir="ltr">
+                  <span className="tabular-nums text-ink max-md:hidden" data-testid="wallet-balance" dir="ltr">
                     {formatShekel(shownBalance)}
                   </span>
                 )}
-                <span className="wallet-word">{t.walletPage}</span>
+                <span className="hidden">{t.walletPage}</span>
               </Link>
             </div>}
             {/* Then, in reading order, the notices, the theme and the language — the language at the very end of the bar
-                (the left in Arabic and Hebrew, the right in English; spec 2026-11-09-admin-review, 7 as corrected in 8.6). */}
-            <div className="notice-wrap" ref={noticeRoot}>
+                (the left in Arabic and Hebrew, the right in English; spec 2026-11-09-admin-review, 7 as corrected in 8.6).
+                Under 768px the notices open as a sheet under the whole topbar, 8px from each screen edge. */}
+            <div className="relative max-md:static" ref={noticeRoot}>
               <button
                 ref={noticeTrigger}
                 type="button"
-                className={unread > 0 ? 'shell-icon notice-btn is-active' : 'shell-icon notice-btn'}
+                className={cn(
+                  topbarIcon,
+                  'relative',
+                  // Unread notices: the bell swings now and then.
+                  unread > 0 && '[&_svg]:origin-[50%_4px] motion-safe:[&_svg]:animate-[shell-bell_2.4s_ease-in-out_infinite]',
+                )}
                 data-testid="notice-btn"
                 aria-label={t.notices}
                 aria-expanded={noticeOpen}
                 onClick={toggleNotices}
               >
                 <Bell {...glyph} />
-                {unread > 0 && <span className="notice-count">{unread > 9 ? '9+' : unread}</span>}
+                {unread > 0 && (
+                  // A glowing crimson dot; the count is there for screen readers (font size 0).
+                  <span className="absolute end-1.75 top-1.75 size-2 min-w-0 overflow-hidden rounded-pill bg-accent p-0 text-center text-[0px] font-bold leading-0 text-on-mark shadow-[0_0_8px_var(--rd-accent)] ring-2 ring-bg">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
               </button>
               {noticeOpen && (
-                <div className="shell-panel notice-panel" data-testid="notice-panel" role="menu">
-                  <div className="notice-panel-head">
-                    <p className="shell-panel-title">{t.notices}</p>
+                <div
+                  className={cn(
+                    'absolute end-0 top-[calc(100%_+_0.6rem)] z-popover max-h-120 w-[min(22rem,80vw)] min-w-64 overflow-auto',
+                    'rounded-lg border border-solid border-panel-line bg-surface p-[0.45rem] shadow-pop',
+                    'max-md:inset-x-2 max-md:w-auto max-md:max-w-none',
+                    'max-md:max-h-[min(480px,calc(100dvh_-_100%_-_0.6rem_-_var(--rd-space-2)))]',
+                  )}
+                  data-testid="notice-panel"
+                  role="menu"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="m-0 px-[0.6rem] pt-[0.35rem] pb-2 font-bold">{t.notices}</p>
                     {unread > 0 && (
-                      <button type="button" className="notice-mark-all" onClick={() => void markRead()}>
+                      <button
+                        type="button"
+                        className="flex-none cursor-pointer rounded-pill border-0 bg-transparent px-[0.6rem] py-1 text-[0.78rem] font-semibold text-muted hover:bg-surface-2 hover:text-ink"
+                        onClick={() => void markRead()}
+                      >
                         {t.markAllRead}
                       </button>
                     )}
                   </div>
                   {notices.length === 0 ? (
-                    <p className="shell-empty">{t.noNotices}</p>
+                    <p className="mx-0 mt-1 mb-0 rounded-card bg-surface-2 p-[0.7rem] text-[0.85rem] text-muted">{t.noNotices}</p>
                   ) : notices.map((row) => (
                     <button
                       key={row.id}
                       type="button"
-                      className={row.read ? 'shell-item' : 'shell-item unread'}
+                      className={cn(
+                        'grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5 rounded-card border-0 bg-transparent',
+                        'px-[0.7rem] py-[0.55rem] text-start text-[0.9rem] font-medium hover:bg-surface-hover',
+                      )}
                       data-testid="notice-item"
                       onClick={() => void openNotice(row)}
                     >
-                      <strong>{noticeTitle(t, row)}</strong>
-                      <small className="notice-age">{noticeAge(t, row.createdAt)}</small>
-                      <small className="notice-detail" data-testid="notice-detail">{noticeDetail(t, row)}</small>
+                      <strong
+                        className={cn(
+                          'min-w-0 truncate',
+                          // Unread: a crimson dot before the title.
+                          !row.read &&
+                            "before:me-[0.4rem] before:inline-block before:size-1.5 before:rounded-pill before:bg-accent before:align-middle before:content-['']",
+                        )}
+                      >
+                        {noticeTitle(t, row)}
+                      </strong>
+                      <small className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted">{noticeAge(t, row.createdAt)}</small>
+                      <small className="col-span-full truncate text-muted" data-testid="notice-detail">{noticeDetail(t, row)}</small>
                     </button>
                   ))}
-                  <span className="shell-rule" />
-                  <Link href="/notices" onClick={closeNotices}>
+                  <span className="mx-1 my-[0.35rem] block h-px bg-line" />
+                  <Link
+                    href="/notices"
+                    className="flex w-full items-center gap-[0.6rem] rounded-card px-[0.7rem] py-[0.55rem] text-start text-[0.9rem] font-medium hover:bg-surface-hover"
+                    onClick={closeNotices}
+                  >
                     {t.allNotices}
                   </Link>
                 </div>
@@ -570,9 +779,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </header>
         <main className="canvas">
           {me && impersonating && (
-            <div className="return-bar">
+            // Inside an entered account: its name and the way back, one line above the page.
+            <div className="flex items-center justify-between gap-3 bg-surface-2 px-4 py-2 text-md font-bold text-ink">
               <span>{shown}</span>
-              <button type="button" onClick={leaveAccount}>{t.returnAccount}</button>
+              <button
+                type="button"
+                className="h-7.5 cursor-pointer rounded-sm border-0 bg-accent-fill px-3 py-0 text-sm font-bold text-on-accent hover:bg-accent-fill-hover max-[721px]:min-h-11"
+                onClick={leaveAccount}
+              >
+                {t.returnAccount}
+              </button>
             </div>
           )}
           {ready && !reachable && <OutageBar />}
@@ -584,15 +800,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {fresh && (
-        <div className="notice-toast" role="status" aria-live="polite">
-          <button type="button" className="notice-toast-body" onClick={() => void openNotice(fresh)}>
+        // Live arrival: one card at the top corner, 4s, then it leaves. Click opens the record.
+        <div
+          className={cn(
+            'fixed end-4 top-18 z-shell-toast flex w-[min(22rem,calc(100vw_-_2rem))] items-stretch rounded-lg',
+            'border border-s-3 border-solid border-panel-line border-s-accent bg-surface shadow-pop',
+            'motion-safe:animate-[notice-toast-in_240ms_var(--rd-ease-out)]',
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.65rem] border-0 bg-transparent px-[0.85rem] py-[0.7rem] text-start"
+            onClick={() => void openNotice(fresh)}
+          >
             <Bell {...glyph} />
-            <span>
-              <strong>{noticeTitle(t, fresh)}</strong>
-              <small>{noticeDetail(t, fresh)}</small>
+            <span className="grid min-w-0 gap-0.5">
+              <strong className="text-[0.9rem]">{noticeTitle(t, fresh)}</strong>
+              <small className="truncate text-[0.78rem] text-muted">{noticeDetail(t, fresh)}</small>
             </span>
           </button>
-          <button type="button" className="notice-toast-close" aria-label={t.closeMenu} onClick={dismiss}>
+          <button type="button" className="w-11 flex-none cursor-pointer border-0 bg-transparent text-muted hover:text-ink" aria-label={t.closeMenu} onClick={dismiss}>
             <X {...glyph} />
           </button>
         </div>

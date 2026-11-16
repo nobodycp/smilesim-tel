@@ -1,11 +1,8 @@
-/* Shell and layout breakpoints, then the 44px touch-target block. */
+/* Layout breakpoints, then the 44px touch-target block. */
 @media (max-width: 767px) {
   .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-2); }
   .stat { min-height: 0; padding: var(--rd-space-3); }
   .stat-value { font-size: 1.2rem; }
-  .shell-search-field kbd { display: none; }
-  .topbar-brand { display: block; }
-  .user-copy, .user-btn > svg { display: none; }
   .pair { grid-template-columns: 1fr; }
   .field-row { flex-direction: column; align-items: stretch; }
   .field-row > label { max-width: none; }
@@ -14,19 +11,8 @@
 @media (min-width: 768px) {
   .canvas-inner { padding: 22px 28px 56px; }
 }
-/* Graphite: the sidebar becomes the drawer under 900px, so a tablet keeps the full width for the page. */
-@media (max-width: 899px) {
-  .sidebar { display: none; }
-  .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
-  /* The path takes its own full-width row under the icons, so it is not squeezed. */
-  .topbar { flex-wrap: wrap; row-gap: var(--rd-space-1-5); padding-block: var(--rd-space-2); }
-  .topbar-start { display: contents; }
-  .topbar-tools { margin-inline-start: auto; }
-  .shell-path { order: 10; flex: 1 0 100%; margin-inline: -4px; padding-block-start: var(--rd-space-1-5); border-block-start: 1px solid var(--rd-line-soft); }
-}
-@media (min-width: 900px) {
-  .drawer, .backdrop { display: none; }
-}
+/* The shell's breakpoints (the sidebar becomes the drawer under 900px) are utilities in components/app-shell.tsx since
+   Tailwind migration T3.1. */
 @media (min-width: 960px) {
   .settings-page > .settings-grid { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .settings-grid { grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); align-items: stretch; }

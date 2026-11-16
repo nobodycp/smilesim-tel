@@ -28,12 +28,15 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   (`.brand-logo-light` / `.brand-logo-dark`).
 - Sidebar (ported from `design/night-desk-family`): the canvas colour with a hairline at its edge; a brand row on top
   (the crimson cut-corner tile, name, door), sections with small muted titles, 40px items (icon 19px) — the current
-  page is ink with a 2px crimson bar and a crimson icon, hover is `--rd-surface-2`. A folding group (`.nav-group`, e.g.
+  page is ink with a 2px crimson bar and a crimson icon, hover is `--rd-surface-2`. A folding group (a `NavGroup`, e.g.
   «التقارير») slides its pages open under a hairline, each page marked by a small diamond that lights crimson when
-  current. The foot holds the account (`.side-user`: avatar, name, layer → `/settings`) and «تسجيل الخروج». The round
-  `.side-handle` shows on hover at the edge (and the `[` key) and folds the sidebar to a 76px rail: names fade, section
-  titles become hairlines, and hovering an icon shows its name in a `.side-flyout` — a group shows its pages as a small
-  menu there. The width glides (320ms). Under 900px the sidebar is the drawer (menu button in the topbar).
+  current. The foot holds the account (test id `side-user`: avatar, name, layer → `/settings`) and «تسجيل الخروج». The round
+  handle on its edge shows on hover (and the `[` key) and folds the sidebar to a 76px rail: names fade, section
+  titles become hairlines, and hovering an icon shows its name in a flyout (`data-slot="side-flyout"`) — a group shows
+  its pages as a small menu there. The width glides (320ms). Under 900px the sidebar is the drawer (menu button in the
+  topbar), a start `Sheet` (`components/ui/sheet.tsx`). The shell is utilities in `components/app-shell.tsx`,
+  `chrome.tsx` (`topbarIcon`: every topbar control's box), `crumbs.tsx` and `shell-search.tsx` since Tailwind
+  migration T3.1.
 - Topbar: the **path** (`ShellPath`, `components/crumbs.tsx`) at the reading start — `⌂ / section / list / item`;
   section titles plain, the levels above the page links, the page in ink; `Alt+↑` goes one level up. There is no back
   button. Then, at the end: «ابحث أو انتقل» (`ShellSearch`: pages by name, then accounts and numbers; `/`, Ctrl K or
@@ -43,8 +46,8 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   phone: 16px (`--rd-space-4`) under 768px, so its first and last controls line up with the page content; 28px from
   768px, where the canvas keeps `clamp(16px, 2vw, 28px)` until both share one gutter token (ADR 0021 D9). Under
   768px the search and the notices do not hang from their button: each opens as one sheet under the whole topbar,
-  `--rd-space-2` from each screen edge (the topbar is their containing block; `shell.css`, the 767px block after the
-  topbar container block); on a short or landscape screen each sheet stops `--rd-space-2` above the bottom edge: the
+  `--rd-space-2` from each screen edge (the topbar is their containing block: the search box and the notices' wrapper stop
+  being positioned under 768px; `components/shell-search.tsx`, `components/app-shell.tsx`); on a short or landscape screen each sheet stops `--rd-space-2` above the bottom edge: the
   notice list scrolls inside, and the search keeps its field and scrolls its results. From 768px the notices open
   under the bell, `min(22rem, 80vw)` wide, and the search results under the field — or, where the topbar is too
   narrow for the field (720px of content or less), the field opens under the search icon, 18rem wide.
@@ -165,7 +168,7 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Package page: the company's mark, «company · package» and whether it is for sale as the title; provider and live
   numbers the lede; the price chain as a row of cut-corner steps per group, the branch's cost first in crimson.
 - Copy: every Arabic string uses Latin digits (no ٠–٩).
-- Sidebar counts: `.nav-count`, a small crimson square at the end of the item (a corner mark on the folded rail) —
+- Sidebar counts: a small crimson square (`components/app-shell.tsx`) at the end of the item (a corner mark on the folded rail) —
   the open tasks beside «المهام», from `/office/home` `openTasks`.
 
 ## Stylesheets
@@ -175,15 +178,15 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 | Order | File | Holds |
 |---|---|---|
 | 1 | `tokens.css` | every `--rd-*` token, light and dark |
-| 2 | `base.css` | reset, element defaults, default SVG `stroke-width: 1.9`, language switch, brand mark, motion opt-in (the icon button is `components/ui/icon-button.tsx` since Tailwind migration T2.1) |
-| 3 | `doors.css` | door picker on the bare host |
+| 2 | `base.css` | reset, element defaults, default SVG `stroke-width: 1.9`, the logo's two copies for the identity page's preview, the motion keyframes (the icon button is `components/ui/icon-button.tsx` since Tailwind migration T2.1; the language switch, the brand tile and the shell's motion are utilities since T3.1) |
+| 3 | `doors.css` | empty: the door picker is `components/doors.tsx` since Tailwind migration T3.1 |
 | 4 | `auth.css` | sign-in frame |
 | 5 | `forms.css` | page type, fields (the error and success line is `components/alert.tsx` since Tailwind migration T2.7) |
-| 6 | `shell.css` | sidebar, drawer, topbar, shell panels, search, notices, wallet chip |
-| 7 | `desk/*.css` | inner pages, one file per owner, imported in this order: `frame` (canvas, desk layout and scroll model, page head, back link, `.stack`, `.sr-only`), `pane` (pane, `.seg`, field and switch rows, `.check`; the tabs are `components/ui/tabs.tsx` since Tailwind migration T2.6), `table` (what a table's cells hold: hints, money, account and kind cells, line numbers and times; the table, its sort header, row actions, pager row and phone cards are `components/ui/table.tsx` since Tailwind migration T2.9; the account reference is `components/account-name.tsx` and the pager `components/ui/pagination.tsx` since Tailwind migration T2.7), `filters` (the filter chips' fields and the user terms tab's hand-written bar; `FilterBar`'s own parts are `components/filter-bar.tsx` since Tailwind migration T2.9; the table search is `components/table-search.tsx` since Tailwind migration T2.2), `components` (the plain `.empty` line, Stat, operation cards, outage and return bars, the spin and shimmer keyframes; the switch is `components/ui/switch.tsx` since Tailwind migration T2.3; `EmptyState`, `LoadFailed`, the spinner and the skeletons are Tailwind since T2.7), then the pages: `numbers`, `tasks`, `users`, `packages`, `home`, `settings`, `branding`. Shared files come first, so a page file can refine them at equal specificity; a rule belongs in the file of the class its selector is about. |
+| 6 | `shell.css` | the bell's swing and the live notice's entrance keyframes; the sidebar, drawer, topbar, path, search, notices, wallet chip and return bar are utilities since Tailwind migration T3.1 (`components/app-shell.tsx`, `chrome.tsx`, `crumbs.tsx`, `shell-search.tsx`) |
+| 7 | `desk/*.css` | inner pages, one file per owner, imported in this order: `frame` (canvas, desk layout and scroll model, page head, back link, `.stack`, `.sr-only`), `pane` (pane, `.seg`, field and switch rows, `.check`; the tabs are `components/ui/tabs.tsx` since Tailwind migration T2.6), `table` (what a table's cells hold: hints, money, account and kind cells, line numbers and times; the table, its sort header, row actions, pager row and phone cards are `components/ui/table.tsx` since Tailwind migration T2.9; the account reference is `components/account-name.tsx` and the pager `components/ui/pagination.tsx` since Tailwind migration T2.7), `filters` (the filter chips' fields and the user terms tab's hand-written bar; `FilterBar`'s own parts are `components/filter-bar.tsx` since Tailwind migration T2.9; the table search is `components/table-search.tsx` since Tailwind migration T2.2), `components` (the plain `.empty` line, Stat, operation cards, the outage bar, the spin and shimmer keyframes (the return bar is `components/app-shell.tsx` since Tailwind migration T3.1); the switch is `components/ui/switch.tsx` since Tailwind migration T2.3; `EmptyState`, `LoadFailed`, the spinner and the skeletons are Tailwind since T2.7), then the pages: `numbers`, `tasks`, `users`, `packages`, `home`, `settings`, `branding`. Shared files come first, so a page file can refine them at equal specificity; a rule belongs in the file of the class its selector is about. |
 | 8 | `dialog.css` | the toast's entrance keyframes (the toast is `components/ui/toast.tsx` since Tailwind migration T2.6), the content of dialogs not yet ported (fields, labels, `.dialog-form`, `.dialog-who`, read through `[data-slot='dialog']` / `[data-slot='dialog-body']`), `.perm-grid`, `.op-blocks`, `.row-menus` (the dialog frame is `components/ui/dialog.tsx` since Tailwind migration T2.5; the row menu is `components/row-menu.tsx` on `components/ui/dropdown-menu.tsx` since T2.4) |
 | 9 | `controls.css` | the system's checkbox and radio (`appearance: none`, 18px, crimson when on) on the native inputs, last so it beats every `input` height rule; `Checkbox` / `RadioGroupItem` (`components/ui/`, Tailwind migration T2.3) carry the same look for the screens that move onto them |
-| 10 | `responsive.css` | shell and layout breakpoints, the 44px touch-target block |
+| 10 | `responsive.css` | layout breakpoints, the 44px touch-target block (the shell's breakpoints are utilities since Tailwind migration T3.1) |
 | 11 | `ui.css` | the `Button` placement rule (`form >` / `.pane-body >`; `Button` moved to Tailwind in migration T2.1, `Select` in T2.4, `Badge` and `Pagination` in T2.7) and the direction helper `.flip-ltr` |
 | 12 | `graphite.css` | Graphite on the shared parts of inner pages (G4): the placement of the tab strip (`[data-slot='tabs']`; its look is `components/ui/tabs.tsx` since Tailwind migration T2.6), raised secondary buttons, inset fields (`--rd-sunken`), cut-corner `Stat` and fact cards with the pointer light, number-card action tiles, the table cells' line numbers and sub-lines (the table itself is `components/ui/table.tsx` since Tailwind migration T2.9; the dialog's crimson thread and cut-corner mark are `components/ui/dialog.tsx` since Tailwind migration T2.5), filter bars that become a grid of labelled fields under 1280px, one-line table cells on a phone, rise-in and lift motion. It overrides the older sheets' look only. |
 
@@ -203,10 +206,12 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-surface` | `#ffffff` | `#18191b` | cards, inputs, menus |
 | `--rd-surface-2` | `#efefee` | `#1f2023` | headers, chips, hover rows, active nav |
 | `--rd-surface-3` | `#e6e6e4` | `#27282b` | skeletons, pressed or hovered icon buttons |
+| `--rd-surface-hover` | ink at 8% into the surface | the same | a line under the pointer in a topbar panel (the notices) and in the search results; one `:root` definition (`color-mix(in srgb, var(--rd-ink) 8%, var(--rd-surface))`) that follows the theme; `bg-surface-hover` (Tailwind migration T3.1) |
 | `--rd-sunken` | `#ebebea` | `#0c0d0e` | fields and search boxes, a step below the surface |
 | `--rd-line` | ink at 8% | white at 7% | hairline borders |
 | `--rd-line-soft` | ink at 5% | white at 4.5% | dividers inside a card |
 | `--rd-line-strong` | ink at 11% | ink at 11% | a stronger hairline; one `:root` definition (`color-mix(in srgb, var(--rd-ink) 11%, transparent)`) that follows the theme's ink. Today read by the `/roles` grant tiles (`.grant`); the literal `ink) 11%` mixes in the sheets move onto it in P1.8 / P2 |
+| `--rd-panel-line` | ink at 14% into `--rd-line` | the same | the border of a topbar panel (the notices) and of the live notice card; one `:root` definition (`color-mix(in srgb, var(--rd-ink) 14%, var(--rd-line))`); `border-panel-line` (Tailwind migration T3.1) |
 | `--rd-qr-tile` | `#ffffff` | `#ffffff` | the tile behind a QR picture; stays white in dark mode so the code scans |
 | `--rd-field` | `#8a8a8a` | `#6e6e72` | input borders (3:1 against the surface) |
 | `--rd-ink` | `#161616` | `#ececec` | text, links, active state, focus ring |
@@ -219,9 +224,9 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-accent-fill-hover` | fill 88% toward `#000` | fill 88% toward `#000` | the fill's hover: always darker, never toward ink (`#bf2a40`, 5.80:1 under white) |
 | `--rd-on-accent` | `#ffffff` | `#ffffff` | text and marks on `--rd-accent-fill` |
 | `--rd-on-mark` | `#ffffff` | `#ffffff` | text over a coloured company mark (an inline hue) |
-| `--rd-primary-bg` | `#161616` | `#ececec` | ink fill: the offer timer's fill, the branding preview's mark and tab icon, the default badge's text; not a button colour — every primary is crimson (ADR 0021 D2). Read by rules that a later rule overrides, so they do not render it: the base `.brand-mark` (`base.css`; its one use, the sidebar and drawer tile, is crimson in `shell.css`), the account mark's text and the `Select` focus border (crimson in `graphite.css`); P1.3 renames it `--rd-ink-fill` |
+| `--rd-primary-bg` | `#161616` | `#ececec` | ink fill: the offer timer's fill, the branding preview's mark and tab icon, the default badge's text; not a button colour — every primary is crimson (ADR 0021 D2). Also the account cell's mark text (`desk/table.css`). The sidebar and drawer tile does not read it: it is crimson (`bg-accent-fill` in `components/app-shell.tsx`, Tailwind migration T3.1); P1.3 renames it `--rd-ink-fill` |
 | `--rd-primary-hover` | `#2b2b2b` | `#ffffff` | not an ink fill's hover today: no rendered reader since P0.9 (the offer hero's `.offer-action:hover`, its last one, darkens to `--rd-accent-fill-hover`, ADR 0021 D1). Read by a rule that does not render it: `auth.css`'s `.login-room … .login-go:hover` (dead: no page uses `.login-room`; P2.1a deletes it) |
-| `--rd-primary-fg` | `#ffffff` | `#111213` | text on an ink fill: the branding preview's mark (`.bp-mark`). Read by rules that a later rule overrides, so they do not render it: the base `.brand-mark` and its icon stroke (`base.css`; the sidebar and drawer tile, its one use, strokes its icon with `--rd-on-accent` and has no text) |
+| `--rd-primary-fg` | `#ffffff` | `#111213` | text on an ink fill: the branding preview's mark (`.bp-mark`). Also the text colour of the sidebar and drawer tile (`text-primary-fg` in `components/app-shell.tsx`, Tailwind migration T3.1), which does not render it: the tile has no text and strokes its icon with `--rd-on-accent` |
 | `--rd-success` / `--rd-success-soft` | `#0f8a59` / 10% | `#3ddc97` / 12% | active, paid, profit |
 | `--rd-warning` / `--rd-warning-soft` | `#a9670a` / 12% (the tint is `color-mix` of `--rd-warning`, UI maintenance P1.2) | `#ffb547` / 12% | pending |
 | `--rd-danger` / `--rd-danger-soft` | `#c8291b` / 9% | `#ff6b5b` / 12% | failed, destructive |
@@ -249,7 +254,7 @@ Theme-independent, in `:root`. They name the values the stylesheets already used
 | `--rd-radius-panel` | 10px | | |
 | `--rd-radius-pill` | 999px | | |
 
-Which radius where: cards, panes, filter bars and the cards in a page grid (`.company-card`, `.pack-card`, `.stat`) take `--rd-radius-lg`; a surface that stands alone on the page or floats over it (`.auth-card`, `.door-card`, `.notice-pop`) takes `--rd-radius-panel`; menus, popovers and tile lists (`.menu`, `.wallet-pop`, `.command-list`, the data-table frame) take `--rd-radius-card`; the marks and skeleton tiles take `--rd-radius-tile`; controls take `sm`/`md`; small inner bits `2xs`/`xs`. There is no `border-radius` literal left in the sheets but `0` and `50%`.
+Which radius where: cards, panes, filter bars and the cards in a page grid (`.company-card`, `.pack-card`, `.stat`) take `--rd-radius-lg`; a surface that stands alone on the page or floats over it (`.auth-card`, the door picker's cards: `rounded-panel` in `components/doors.tsx` since Tailwind migration T3.1) takes `--rd-radius-panel`; menus, popovers and tile lists (`.menu`, `.wallet-pop`, `.command-list`, the data-table frame) take `--rd-radius-card`; the marks and skeleton tiles take `--rd-radius-tile`; controls take `sm`/`md`; small inner bits `2xs`/`xs`. There is no `border-radius` literal left in the sheets but `0` and `50%`.
 
 Spacing, layers and motion are tokens too (5.3d), named from the values the sheets already used:
 
@@ -337,7 +342,7 @@ One of each. A new page uses these, it does not invent a sibling.
 
 - Motion is transform and opacity only, 150–900ms, and all of it sits under `@media (prefers-reduced-motion: no-preference)`
   (keyframes `rd-rise`, `rd-fade`, `rd-draw`, `rd-grow` in `styles/base.css`): the sidebar's contents fade after a fold;
-  the drawer slides; the home's cards and tiles rise in with a 40ms stagger; figure and shortcut tiles lift 2px on hover;
+  the drawer slides in and out over 340ms (`rd-sheet-in` / `rd-sheet-out` in `app/tailwind.css`, the start `Sheet`); the home's cards and tiles rise in with a 40ms stagger; figure and shortcut tiles lift 2px on hover;
   the sparkline draws in and the meters grow; table rows fade in. Plus the bell, the spinner and the skeleton shimmer.
 - Targets at least 44px on touch widths.
 - Text contrast at least 4.5:1 in both themes. `--rd-faint` is the one token below that; it is never used for body text on the canvas.

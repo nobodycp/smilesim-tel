@@ -40,30 +40,34 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
   await expect(bell).toBeFocused();
 });
 
-// Closed, the mobile drawer stays in the page off screen; it must not take the keyboard or screen readers.
-test('the closed drawer is inert, and the open one is not', async ({ page }) => {
+// The mobile drawer is a Sheet (Tailwind migration T3.1): closed, it is not in the page, so it takes neither the
+// keyboard nor screen readers; open, it is a dialog, and Escape closes it.
+test('the closed drawer is out of the page, and the open one is a dialog', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
   const drawer = page.getByTestId('drawer');
-  await expect(drawer).toHaveAttribute('inert', '');
+  await expect(drawer).toHaveCount(0);
   await page.getByRole('button', { name: 'فتح القائمة' }).click();
-  await expect(drawer).toHaveClass(/open/);
-  await expect(drawer).not.toHaveAttribute('inert');
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toHaveAttribute('role', 'dialog');
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
 });
 
 // The collapsed sidebar is a browser preference (useSyncExternalStore over localStorage): it survives a reload.
 test('a collapsed sidebar stays collapsed after a reload', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
+  // The folded state is `data-collapsed` on the sidebar (Tailwind migration T3.1), not a class.
   const sidebar = page.getByTestId('sidebar');
-  await expect(sidebar).not.toHaveClass(/collapsed/);
+  await expect(sidebar).not.toHaveAttribute('data-collapsed');
   await sidebar.getByRole('button', { name: 'طي القائمة' }).click();
-  await expect(sidebar).toHaveClass(/collapsed/);
+  await expect(sidebar).toHaveAttribute('data-collapsed', '');
   await page.reload();
-  await expect(sidebar).toHaveClass(/collapsed/);
+  await expect(sidebar).toHaveAttribute('data-collapsed', '');
   await sidebar.getByRole('button', { name: 'توسيع القائمة' }).click();
-  await expect(sidebar).not.toHaveClass(/collapsed/);
+  await expect(sidebar).not.toHaveAttribute('data-collapsed');
 });
 
 // The step the sign-in left in sessionStorage decides the page: enrolling asks the API for a new secret, checking does not.

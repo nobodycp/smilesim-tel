@@ -1,31 +1,9 @@
-/* Shared pieces: the plain `.empty` line, Stat, operation cards, outage and return bars, and the spinner's and
+/* Shared pieces: the plain `.empty` line, Stat, operation cards, the outage bar, and the spinner's and
    skeleton's keyframes. LiveSwitch is components/ui/switch.tsx (Tailwind migration T2.3); EmptyState and LoadFailed
    (components/empty-state.tsx), the spinner and skeletons (components/loading.tsx, components/ui/skeleton.tsx) are
    on Tailwind since migration T2.7. */
-.return-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--rd-space-3);
-  padding: var(--rd-space-2) var(--rd-space-4);
-  background: var(--rd-surface-2);
-  color: var(--rd-ink);
-  font-size: var(--rd-text-md);
-  font-weight: 700;
-}
-.return-bar button {
-  height: 30px;
-  padding: 0 var(--rd-space-3);
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent-fill);
-  color: var(--rd-on-accent);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-  cursor: pointer;
-}
-.return-bar button:hover { background: var(--rd-accent-fill-hover); }
-/* The API stopped answering after the session loaded: one line above the page, same shape as .return-bar. */
+/* The API stopped answering after the session loaded: one line above the page, the same shape as the return bar
+   (components/app-shell.tsx, utilities since Tailwind migration T3.1). */
 .outage-bar {
   display: flex;
   flex: none;

@@ -1,4 +1,4 @@
-/* Reset, element defaults, language switch, brand mark, and the motion opt-in. */
+/* Reset, element defaults, the brand logo's two copies, and the motion keyframes. */
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
@@ -10,7 +10,7 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-h1, h2, h3, .brand-name {
+h1, h2, h3 {
   font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
 }
 .money, .line-number, .tabular {
@@ -20,78 +20,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.lang button:not(.shell-icon), .user-btn, .nav-link, .menu button, .menu a {
-  border: 0;
-  background: transparent;
-}
-/* The icon button is components/ui/icon-button.tsx (Tailwind migration T2.1). */
-.lang button:hover, .user-btn:hover { background: var(--rd-surface-3); }
-/* One focus ring for every control the keyboard reaches: solid ink, 2px, just outside the box. The shell buttons
-   (search, wallet, bell, theme, avatar) had none, and the rest had a 16% halo that was hard to see (DESIGN.md). */
-.lang button:focus-visible, .nav-link:focus-visible, .user-btn:focus-visible,
-.menu a:focus-visible, .menu button:focus-visible,
-.shell-icon:focus-visible, .avatar-btn:focus-visible, .wallet-btn:focus-visible, .shell-search-toggle:focus-visible {
-  outline: 2px solid var(--rd-ink);
-  outline-offset: 1px;
-}
-/* A control filled with the ring's own colour (the avatar is ink on light, paper on dark) needs a wider gap. */
-.avatar-btn:focus-visible { outline-offset: 3px; }
-.lang { position: relative; }
-/* The topbar's trigger is a topbar control (.shell-icon.shell-lang, shell.css) and keeps that box. */
-.lang > button:not(.shell-icon) {
-  min-width: 34px;
-  height: 34px;
-  padding: 0 var(--rd-space-2);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-sm);
-  font-weight: 800;
-}
-.lang > button:not(.shell-icon):hover { background: var(--rd-surface-3); }
-.lang .menu { min-width: 148px; }
-.brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--rd-radius-tile);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-  box-shadow: var(--rd-shadow-card);
-}
-.brand-mark svg { width: 22px; height: 22px; stroke: var(--rd-primary-fg); }
-.brand-name { margin: 0; font-size: var(--rd-text-base); font-weight: 700; color: var(--rd-ink); }
-.brand-sub { margin: var(--rd-space-0-5) 0 0; font-size: var(--rd-text-sm); color: var(--rd-muted); }
-.brand-rule { display: block; width: 40px; height: 2px; margin-top: var(--rd-space-2); border-radius: var(--rd-radius-pill); background: var(--rd-accent); }
-/* A saved logo comes as two copies; the theme picks one. `.on-ink` sits on an ink panel (the
-   sign-in banner) and so picks the other way round. */
+/* The language switch, the shell's controls and their focus ring are utilities since Tailwind migration T3.1
+   (components/chrome.tsx, components/app-shell.tsx). */
+/* A saved logo comes as two copies; the theme picks one. Read by the identity page's preview and drop zones
+   (components/branding-preview.tsx, branding-drop.tsx); BrandLogo draws the same in utilities since T3.1. */
 .brand-logo { display: block; max-width: 100%; object-fit: contain; }
 .brand-logo-dark,
-.dark .brand-logo-light,
-.on-ink .brand-logo-light,
-.dark .on-ink .brand-logo-dark { display: none; }
-.dark .brand-logo-dark,
-.on-ink .brand-logo-dark,
-.dark .on-ink .brand-logo-light { display: block; }
+.dark .brand-logo-light { display: none; }
+.dark .brand-logo-dark { display: block; }
 /* Graphite motion (spec 2026-11-09-graphite-identity), used under prefers-reduced-motion: no-preference only. */
 @keyframes rd-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes rd-draw { to { stroke-dashoffset: 0; } }
 @keyframes rd-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rd-grow { from { transform: scaleX(0); } to { transform: none; } }
+/* The sidebar's (components/app-shell.tsx, Tailwind migration T3.1) and the tooltip's (components/ui/tooltip.tsx):
+   a group's pages slide in, a flyout drifts in sideways. Motion is opt-in: the utilities that name them sit under
+   `motion-safe:`. */
 @keyframes side-open { from { opacity: 0; transform: translateY(-4px); } }
 @keyframes side-flyin { from { opacity: 0; translate: 6px 0; } }
 @keyframes side-flyin-rtl { from { opacity: 0; translate: -6px 0; } }
-/* Motion is opt-in: nothing moves unless the user allows it, so no forced reset is needed. */
-@media (prefers-reduced-motion: no-preference) {
-  /* Graphite sidebar: the width glides, names fade and slide, a group's pages slide in, flyouts drift in. */
-  .sidebar { transition: width 320ms cubic-bezier(0.32, 0.72, 0, 1); }
-  .sidebar .label, .sidebar .nav-group-chevron { transition: opacity 180ms ease, transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
-  .nav-group-body { animation: side-open 260ms cubic-bezier(0.32, 0.72, 0, 1); }
-  .side-flyout { animation: side-flyin 160ms cubic-bezier(0.32, 0.72, 0, 1); }
-  [dir='rtl'] .side-flyout { animation-name: side-flyin-rtl; }
-  .drawer { transition: transform 340ms cubic-bezier(0.32, 0.72, 0, 1); }
-  .notice-btn.is-active svg { animation: shell-bell 2.4s ease-in-out infinite; }
-}

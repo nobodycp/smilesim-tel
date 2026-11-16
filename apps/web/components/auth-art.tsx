@@ -15,7 +15,7 @@ export function AuthArt() {
     <aside className="gauth-art" aria-hidden="true">
       <div className="gauth-art-tag" />
       <div className="gauth-art-mark">
-        {branding.logo ? <BrandLogo className="gauth-logo" onInk /> : <span className="gauth-mark"><Wifi size={24} strokeWidth={1.9} /></span>}
+        {branding.logo ? <BrandLogo className="max-h-11 max-w-14" onInk /> : <span className="gauth-mark"><Wifi size={24} strokeWidth={1.9} /></span>}
       </div>
       <h2>{t.loginArtTitle}</h2>
       <p>{t.loginArtText}</p>
@@ -29,7 +29,7 @@ export function AuthBrand() {
   return (
     <div className="gauth-brand">
       {branding.logo ? (
-        <BrandLogo className="gauth-logo" />
+        <BrandLogo className="max-h-11 max-w-14" />
       ) : (
         <span className="gauth-mark" aria-hidden="true"><Wifi size={22} strokeWidth={1.9} /></span>
       )}

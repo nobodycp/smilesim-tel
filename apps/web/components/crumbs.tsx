@@ -4,6 +4,7 @@ import { Home } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { cn } from '../lib/cn';
 import { useCrumbNames } from '../lib/crumbs';
 import { usePageTitleValue } from '../lib/page-title';
 import { usePrefs } from '../lib/prefs';
@@ -69,14 +70,28 @@ export function ShellPath({ pathname, sections }: { pathname: string; sections: 
     return () => document.removeEventListener('keydown', onKey);
   }, [up, router]);
 
+  // The path sits in an inset box (Graphite; Tailwind migration T3.1, from shell.css and graphite.css): section titles
+  // muted, the levels above the page `--rd-ink-2` links, the page itself ink. Under 900px it takes its own row.
+  const level = 'overflow-hidden text-ellipsis rounded-xs px-1.5 py-0.75 text-md';
   return (
-    <nav className="shell-path" aria-label={t.breadcrumb}>
-      <ol>
-        <li className="shell-path-root">
+    <nav className="min-w-0 flex-[0_1_auto] max-lg:order-10 max-lg:flex-[1_0_100%]" aria-label={t.breadcrumb}>
+      <ol className="m-0 flex h-8.5 list-none items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-md bg-sunken py-0 ps-1 pe-2.5 inset-ring inset-ring-line">
+        <li className="inline-flex min-w-0 items-center gap-0.5">
           {pathname === '/' ? (
-            <span className="shell-path-home" aria-hidden="true"><Home size={16} strokeWidth={1.9} /></span>
+            <span className="grid size-7.5 place-items-center rounded-sm text-muted [&_svg]:size-4" aria-hidden="true"><Home size={16} strokeWidth={1.9} /></span>
           ) : (
-            <Link href="/" className="shell-path-home" aria-label={t.homeTitle} title={t.homeTitle}>
+            <Link
+              href="/"
+              className={cn(
+                // `.shell-path a` outranked `.shell-path-home` in the legacy cascade: the home link takes the level's
+                // padding, 4px corner and ink-2 at weight 500; only the span on «/» is muted with a 6px corner.
+                'grid size-7.5 place-items-center',
+                level,
+                'font-medium text-ink-2 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent [&_svg]:size-4',
+              )}
+              aria-label={t.homeTitle}
+              title={t.homeTitle}
+            >
               <Home size={16} strokeWidth={1.9} aria-hidden="true" />
             </Link>
           )}
@@ -84,14 +99,19 @@ export function ShellPath({ pathname, sections }: { pathname: string; sections: 
         {parts.map((part, index) => {
           const last = index === lastIndex;
           return (
-            <li key={`${index}-${part.label}`} className={last ? 'shell-path-part last' : 'shell-path-part'}>
-              <span className="shell-path-sep" aria-hidden="true">/</span>
+            <li key={`${index}-${part.label}`} className={cn('inline-flex min-w-0 items-center gap-0.5', last && 'flex-[0_1_auto] overflow-hidden')}>
+              <span className="px-0.75 font-light text-faint" aria-hidden="true">/</span>
               {last ? (
-                <span aria-current="page"><bdi>{part.label}</bdi></span>
+                <span className={cn(level, 'font-semibold text-ink')} aria-current="page"><bdi>{part.label}</bdi></span>
               ) : part.href ? (
-                <Link href={part.href}><bdi>{part.label}</bdi></Link>
+                <Link
+                  href={part.href}
+                  className={cn(level, 'font-medium text-ink-2 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent')}
+                >
+                  <bdi>{part.label}</bdi>
+                </Link>
               ) : (
-                <span className="shell-path-label"><bdi>{part.label}</bdi></span>
+                <span className={cn(level, 'text-muted')}><bdi>{part.label}</bdi></span>
               )}
             </li>
           );

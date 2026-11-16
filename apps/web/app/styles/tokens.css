@@ -5,6 +5,9 @@
   --rd-surface: #ffffff;
   --rd-surface-2: #efefee;
   --rd-surface-3: #e6e6e4;
+  /* A line under the pointer in a topbar panel or the search results: ink at 8% into the surface. One definition
+     for both themes, as --rd-line-strong. */
+  --rd-surface-hover: color-mix(in srgb, var(--rd-ink) 8%, var(--rd-surface));
   /* Inset fields and search boxes sit a step below the surface. */
   --rd-sunken: #ebebea;
   /* The four layers' tags (users list): one hue each, outlined. */
@@ -16,6 +19,8 @@
   --rd-line-soft: rgba(0, 0, 0, 0.05);
   /* A stronger hairline: ink at 11%, one definition that follows the theme's ink (.dark sits on the same <html>). */
   --rd-line-strong: color-mix(in srgb, var(--rd-ink) 11%, transparent);
+  /* The rule around a topbar panel (the notices) and the live notice card: ink at 14% into the hairline. */
+  --rd-panel-line: color-mix(in srgb, var(--rd-ink) 14%, var(--rd-line));
   --rd-qr-tile: #ffffff;
   --rd-field: #8a8a8a;
   --rd-ink: #161616;

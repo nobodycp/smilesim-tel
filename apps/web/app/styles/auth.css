@@ -24,7 +24,6 @@
   box-shadow: var(--rd-shadow-pop);
   text-align: center;
 }
-.auth-card .brand-mark { margin: 0 auto var(--rd-space-3); }
 .auth-card .auth-logo { max-width: 200px; max-height: 56px; margin: 0 auto var(--rd-space-3); }
 .auth-card .eyebrow, .auth-card h1, .auth-card .lede { text-align: start; }
 .auth-card form { text-align: start; }

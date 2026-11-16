@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { accountLabel } from './account-name';
+import { cn } from '../lib/cn';
 import { api } from '../lib/api';
 import { everyAccount } from '../lib/directory';
 import { usePrefs } from '../lib/prefs';
@@ -120,11 +121,20 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
   const groups = [...new Set(shown.map((hit) => hit.group))];
   const showResults = open && needle.length >= 1 && (pageHits.length > 0 || needle.length >= 2);
 
+  // The look (Tailwind migration T3.1, from shell.css, graphite.css and responsive.css): a fixed width beside the
+  // wallet chip (200px, 260px from 1200px wide) so it never jumps while the window is resized. Once the topbar is
+  // 720px wide or less, or the screen is under 768px, the field becomes the icon, which opens it in a panel under
+  // the box; under 768px that panel is a sheet under the whole topbar, 8px from each screen edge (the box stops being
+  // positioned, so the topbar holds it), ending 8px above the screen's bottom with its results scrolling inside.
   return (
-    <div className={open ? 'shell-search is-open' : 'shell-search'} data-testid="shell-search" ref={box}>
+    <div className="relative flex-none max-md:static max-md:w-auto md:w-50 min-[1200px]:w-65" data-testid="shell-search" ref={box}>
       <button
         type="button"
-        className="shell-search-toggle"
+        className={cn(
+          'hidden size-11 min-w-11 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-ink-2 hover:bg-surface-3',
+          'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink max-md:inline-flex md:size-9 md:min-w-9',
+          '@max-[721px]/topbar:inline-flex [&_svg]:size-4 [&_svg]:flex-none',
+        )}
         data-testid="search-toggle"
         aria-expanded={open}
         aria-label={t.searchPlaceholder}
@@ -132,12 +142,40 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
       >
         <SearchIcon />
       </button>
-      <form className="shell-search-desk" role="search" onSubmit={(event) => event.preventDefault()}>
-        <div className="shell-search-field" data-testid="search-field">
+      <form
+        className={cn(
+          'relative grid w-full gap-3.5',
+          !open && 'max-md:hidden @max-[721px]/topbar:hidden',
+          open && [
+            'md:@max-[721px]/topbar:absolute md:@max-[721px]/topbar:end-0 md:@max-[721px]/topbar:top-[calc(100%_+_6px)]',
+            'md:@max-[721px]/topbar:z-overlay md:@max-[721px]/topbar:block md:@max-[721px]/topbar:w-[min(18rem,72vw)]',
+            'md:@max-[721px]/topbar:rounded-md md:@max-[721px]/topbar:border md:@max-[721px]/topbar:border-solid',
+            'md:@max-[721px]/topbar:border-line md:@max-[721px]/topbar:bg-surface md:@max-[721px]/topbar:p-2',
+            'md:@max-[721px]/topbar:shadow-pop',
+            'max-md:absolute max-md:inset-x-2 max-md:top-[calc(100%_+_6px)] max-md:z-overlay max-md:flex max-md:w-auto',
+            'max-md:max-h-[calc(100dvh_-_100%_-_6px_-_var(--rd-space-2))] max-md:max-w-none max-md:flex-col max-md:gap-0',
+            'max-md:rounded-md max-md:border max-md:border-solid max-md:border-line max-md:bg-surface max-md:p-2 max-md:shadow-pop',
+          ],
+        )}
+        role="search"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <div
+          className={cn(
+            'flex h-10 min-w-0 items-center gap-2 overflow-hidden rounded-sm border-0 bg-sunken ps-3 pe-2 inset-ring inset-ring-line',
+            'hover:not-focus-within:inset-ring-ink/11 focus-within:inset-ring-accent max-md:flex-none md:h-9',
+            '[&_svg]:size-4 [&_svg]:flex-none [&_svg]:text-muted',
+          )}
+          data-testid="search-field"
+        >
           <SearchIcon />
           <input
             ref={field}
             type="search"
+            className={cn(
+              'h-5.5 w-0 min-w-0 flex-[1_1_0] rounded-none border-0 bg-transparent p-0 text-md text-ink shadow-none',
+              'placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap focus:outline-none',
+            )}
             value={query}
             placeholder={t.searchPlaceholder}
             aria-label={t.searchPlaceholder}
@@ -154,7 +192,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
           {query ? (
             <button
               type="button"
-              className="shell-search-clear"
+              className="inline-flex size-5 items-center justify-center rounded-pill border-0 bg-transparent p-0 text-faint hover:bg-surface-3 hover:text-ink"
               aria-label={t.clearFilters}
               onClick={() => {
                 setQuery('');
@@ -164,18 +202,39 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
               <ClearIcon />
             </button>
           ) : (
-            <kbd dir="ltr">Ctrl K</kbd>
+            // The keyboard hint shows on the wide search only (1200px and up).
+            <kbd
+              className="hidden min-w-[1.45rem] flex-none whitespace-nowrap rounded-xs border-0 bg-transparent px-[0.4rem] py-[0.12rem] text-xs font-bold leading-[1.2] text-muted [font-family:inherit] inset-ring inset-ring-ink/11 min-[1200px]:inline-block"
+              dir="ltr"
+            >
+              Ctrl K
+            </kbd>
           )}
         </div>
         {showResults && (
-          <div className="shell-search-results" id={resultsId}>
-            {shown.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
+          <div
+            className={cn(
+              'absolute end-0 top-[calc(100%_+_6px)] z-overlay grid max-h-[min(420px,60vh)] w-[max(100%,16rem)] gap-0.5 overflow-auto',
+              'rounded-md border border-solid border-line bg-surface p-[0.35rem] shadow-pop',
+              'max-md:static max-md:mt-1.5 max-md:min-h-0 max-md:w-full max-md:border-0 max-md:shadow-none',
+              '@max-[721px]/topbar:static @max-[721px]/topbar:mt-1.5 @max-[721px]/topbar:w-full @max-[721px]/topbar:border-0',
+              '@max-[721px]/topbar:shadow-none',
+            )}
+            id={resultsId}
+          >
+            {shown.length === 0 ? <p className="m-0 p-[0.8rem] text-center text-[0.85rem] text-muted">{t.searchEmpty}</p> : groups.map((group) => (
               <div key={group}>
-                <p className="shell-search-label">{group}</p>
+                <p className="m-0 px-2 pt-[0.35rem] pb-[0.15rem] text-[0.7rem] font-bold text-muted">{group}</p>
                 {shown.filter((hit) => hit.group === group).map((hit) => (
-                  <Link key={hit.key} href={hit.href} className="shell-search-item" data-testid="search-item" onClick={() => setOpen(false)}>
+                  <Link
+                    key={hit.key}
+                    href={hit.href}
+                    className="grid gap-px rounded-md px-2 py-[0.4rem] hover:bg-surface-hover"
+                    data-testid="search-item"
+                    onClick={() => setOpen(false)}
+                  >
                     <strong>{hit.label}</strong>
-                    {hit.sub && <small>{hit.sub}</small>}
+                    {hit.sub && <small className="text-muted">{hit.sub}</small>}
                   </Link>
                 ))}
               </div>

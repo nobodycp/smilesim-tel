@@ -41,6 +41,7 @@
   --color-surface: var(--rd-surface);
   --color-surface-2: var(--rd-surface-2);
   --color-surface-3: var(--rd-surface-3);
+  --color-surface-hover: var(--rd-surface-hover);
   --color-sunken: var(--rd-sunken);
   --color-layer-branch: var(--rd-layer-branch);
   --color-layer-main: var(--rd-layer-main);
@@ -49,6 +50,7 @@
   --color-line: var(--rd-line);
   --color-line-soft: var(--rd-line-soft);
   --color-line-strong: var(--rd-line-strong);
+  --color-panel-line: var(--rd-panel-line);
   --color-qr-tile: var(--rd-qr-tile);
   --color-field: var(--rd-field);
   --color-ink: var(--rd-ink);
@@ -163,3 +165,9 @@
 
 /* Dark is a class on <html>, set by the server from the cookie and by lib/prefs.tsx (tokens.css `.dark`). */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* The start sheet's slide (components/ui/sheet.tsx, the shell drawer; Tailwind migration T3.1): from and back to
+   `--sheet-off` (-105% in LTR, 105% in RTL) beyond the reading start. The legacy drawer stayed mounted and moved its
+   transform; the sheet is mounted only while open, so it enters and leaves with these. */
+@keyframes rd-sheet-in { from { translate: var(--sheet-off) 0; } }
+@keyframes rd-sheet-out { to { translate: var(--sheet-off) 0; } }

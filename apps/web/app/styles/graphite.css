@@ -245,7 +245,6 @@ input[readonly] { background-color: transparent; }
 .gauth-brand { display: flex; align-items: center; gap: 12px; }
 .gauth-brand b { display: block; color: var(--rd-ink); font-size: 20px; font-weight: 700; line-height: 1.3; }
 .gauth-brand small { display: block; color: var(--rd-muted); font-size: var(--rd-text-sm); }
-.gauth-logo { max-width: 56px; max-height: 44px; }
 .gauth-mark {
   display: grid;
   place-items: center;
@@ -373,57 +372,8 @@ input[readonly] { background-color: transparent; }
 .gauth-art-mark { position: absolute; top: 40px; inset-inline-start: 44px; }
 @media (max-width: 860px) { .gauth-art-mark { top: 24px; inset-inline-start: 24px; } }
 
-/* ── Topbar (Graphite, from design/night-desk-family): the path, then «ابحث أو انتقل» (Ctrl K), the wallet chip with
-   its crimson mark, notices and the theme as bare icons. The account and the language live in the sidebar. ── */
-.topbar { min-height: 64px; }
-.topbar .shell-icon { border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-ink-2); }
-.topbar .shell-icon:hover, .topbar .shell-icon[aria-expanded='true'] { background: var(--rd-surface-2); color: var(--rd-ink); }
-@media (min-width: 768px) {
-  /* The phone gutter (16px, shell.css's 767px block) under 768px, this one from 768px (ADR 0021 D9). */
-  .topbar { padding-inline: 28px; }
-  .topbar .shell-icon, .topbar .shell-search-toggle { width: 36px; min-width: 36px; height: 36px; }
-  .topbar .wallet-btn { height: 36px; }
-  /* The search keeps a steady size (owner 2026-11-09, spec 2026-11-09-admin-review 6.5): two widths, not one that
-     follows the window, so it never jumps while the window is resized. The keyboard hint shows on the wide one. */
-  .shell-search { width: 200px; }
-  .shell-search-field { height: 36px; }
-  .shell-search-field kbd { display: none; }
-}
-@media (min-width: 1200px) {
-  .shell-search { width: 260px; }
-  .shell-search-field kbd { display: inline-block; }
-}
-.topbar .shell-search-field input::placeholder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The field never spills over its neighbours, whatever the fonts: its contents stay inside it, and the input is the
-   part that gives way (a wider font on another machine made it cover the language and theme buttons). */
-.topbar .shell-search-field { min-width: 0; overflow: hidden; }
-.topbar .shell-search-field input:not([type='checkbox']):not([type='radio']):not([type='file']) { width: 0; min-width: 0; flex: 1 1 0; }
-.topbar .shell-search-field kbd { flex: none; }
-.topbar .wallet-btn {
-  gap: 8px;
-  padding-inline: 12px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  box-shadow: inset 0 0 0 1px var(--rd-line);
-}
-.topbar .wallet-btn:hover { background: var(--rd-surface-3); }
-.topbar .wallet-btn svg { width: 15px; height: 15px; color: var(--rd-accent); }
-.wallet-word { display: none; }
-.shell-search-field {
-  padding-inline: 12px 8px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-sunken);
-  box-shadow: inset 0 0 0 1px var(--rd-line);
-}
-.shell-search-field:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
-.shell-search-field:focus-within { box-shadow: inset 0 0 0 1px var(--rd-accent); }
-.shell-search-field svg { color: var(--rd-muted); }
-.shell-search-field kbd { border: 0; border-radius: var(--rd-radius-xs); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); color: var(--rd-muted); font-family: inherit; font-size: 11px; white-space: nowrap; }
-.shell-search-toggle { border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-ink-2); }
-.notice-count { border-radius: var(--rd-radius-xs); background: var(--rd-accent); color: var(--rd-on-accent); box-shadow: 0 0 0 2px var(--rd-bg); }
-/* The language at the sidebar's foot, beside the account. */
+/* ── Topbar (Graphite): the path, «ابحث أو انتقل», the wallet chip, the notices, the theme and the language are
+   utilities in components/app-shell.tsx, crumbs.tsx, shell-search.tsx and chrome.tsx since Tailwind migration T3.1. ── */
 
 /* ── Tables (Graphite): no band behind the head — small bold muted names over a stronger rule; 46px rows on
    zebra; the number in each row bold and spaced; a quiet pager under a hairline.
@@ -438,7 +388,6 @@ input[readonly] { background-color: transparent; }
 @media (max-width: 767px) { [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > .stack { justify-content: space-between; } }
 /* Chips are as wide as their value. */
 [data-slot='filter-panel'] > label input:not([type='date']):not([type='checkbox']) { width: 10rem; }
-/* The drawer's foot always holds theme and language: the topbar no longer has the language. */
 /* Period chips (operations, reports): one segmented control, the chosen period lit underneath. */
 
 /* ── Numbers table cells (Graphite): the number with its SIM mark, the package beside its company's cut-corner mark,
@@ -465,39 +414,8 @@ input[readonly] { background-color: transparent; }
 .days.soon { color: var(--rd-accent); font-weight: 700; }
 .days.out { color: var(--rd-danger); }
 .days.off { color: var(--rd-muted); }
-/* The count beside a sidebar page (open tasks): a small crimson square; on the folded rail, a corner mark. */
-.nav-count {
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  margin-inline-start: auto;
-  padding-inline: 6px;
-  border-radius: var(--rd-radius-xs);
-  background: var(--rd-accent-fill);
-  color: var(--rd-on-accent);
-  font-size: 11px;
-  font-weight: 700;
-}
-.sidebar.collapsed .nav-count { position: absolute; top: 5px; inset-inline-end: 8px; min-width: 16px; height: 16px; padding-inline: 4px; font-size: 10px; }
-
-/* ── Shell details, matched to the design side by side ── */
-/* The current page sits on a raised fill, with the crimson thread at its start. */
-.sidebar .nav-link.active:not(.nested), .drawer .nav-link.active:not(.nested) { background: var(--rd-surface-2); }
-/* The fold handle shows on hover of the sidebar or on keyboard focus, hidden otherwise, as in the Graphite design
-   (shell.css; owner 2026-11-09, spec 2026-11-09-admin-review 6.5). */
-/* A crimson hairline under the topbar. */
-.topbar { position: sticky; }
-.topbar::after { content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 1px; background: var(--rd-accent); opacity: 0.35; pointer-events: none; }
-/* The path sits in an inset box. */
-.shell-path { flex: 0 1 auto; }
-.shell-path ol { height: 34px; padding-inline: 4px 10px; border-radius: var(--rd-radius-md); background: var(--rd-sunken); box-shadow: inset 0 0 0 1px var(--rd-line); }
-@media (max-width: 899px) { .shell-path { flex: 1 0 100%; } }
-/* The balance in ink beside the crimson mark. */
-.topbar .wallet-btn .money { color: var(--rd-ink); }
-/* Unread notices: a glowing crimson dot on the bell. */
-.notice-count { top: 7px; inset-inline-end: 7px; min-width: 0; width: 8px; height: 8px; padding: 0; overflow: hidden; border-radius: 50%; font-size: 0; line-height: 0; box-shadow: 0 0 0 2px var(--rd-bg), 0 0 8px var(--rd-accent); }
-@media (max-width: 899px) { .shell-path { margin-inline: 0; padding-block-start: 0; border-block-start: 0; } }
+/* The sidebar, its counts, the fold handle, the topbar's crimson hairline, the path and the bell's dot are utilities in
+   components/app-shell.tsx and crumbs.tsx since Tailwind migration T3.1. */
 /* Users list: the layer as an outlined tag in its own hue; the account's square mark with a crimson letter. */
 .layer-tag { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: var(--rd-radius-xs); font-size: 11.5px; font-weight: 700; box-shadow: inset 0 0 0 1px currentColor; white-space: nowrap; }
 .layer-tag.l-branch { color: var(--rd-layer-branch); }
@@ -533,8 +451,6 @@ input[readonly] { background-color: transparent; }
 .task-note { max-width: 24rem; overflow: hidden; text-overflow: ellipsis; }
 .task-act { display: inline-flex; align-items: center; gap: 6px; }
 .task-card:hover .task-title b { color: var(--rd-accent); }
-/* The bell's count is an 8px dot (font-size 0): this colour paints nothing; the sidebar count takes --rd-on-accent above. */
-.notice-count { color: var(--rd-on-mark); }
 
 /* ── Number card (Graphite, as in the design): the number as the title with its status and what is left, one line on
    where it lives, four cut-corner facts, then the tabs; operations are cards with a crimson mark, a name, one line on
@@ -666,7 +582,6 @@ input[readonly] { background-color: transparent; }
 .co-mark.big { width: 46px; height: 46px; font-size: 18px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 [dir='rtl'] .co-mark.big { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
 .terms-group-head .co-mark { width: 32px; height: 32px; }
-.side-flyout { width: max-content; max-width: 280px; inset-inline-end: auto; }
 /* The ticket's actions in its head: system buttons (take and complete primary, reject and cancel danger, release secondary). */
 .page-head .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; }
 
