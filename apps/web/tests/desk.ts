@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 export async function asBranch(page: Page) {
   await page.route('**/v1/me', (route) =>
@@ -92,6 +92,12 @@ function asDirectory(reply: Reply): Reply {
 
 export async function serveApi(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
   const calls: string[] = [];
+  // React's "Received NaN for the `children` attribute" shows in CI's server log with no test name: name the test.
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('Received NaN')) {
+      console.log(`[NaN render] ${test.info().titlePath.join(' › ')} at ${page.url()}`);
+    }
+  });
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
