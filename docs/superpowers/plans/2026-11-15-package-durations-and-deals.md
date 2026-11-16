@@ -30,7 +30,7 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   `catalog/packages/packages.schemas.ts` `PackageDurationBody`, `packages.service.ts` `saveDuration`,
   `removeDuration`; the mirrored duration writes the renewal columns with it and is never turned off or removed.
   `testing/routes.ts`, `testing/permissions.http.spec.ts`, `package-durations.db.spec.ts`.
-- [ ] **D.3b The «المدد» tab (web).** On the package sheet (`features/catalog/screens/package-sheet-screen.tsx`):
+- [x] **D.3b The «المدد» tab (web)** (`3c25952`). On the package sheet (`features/catalog/screens/package-sheet-screen.tsx`):
   the durations with their ladders, add, edit, remove; copy in ar, en, he. Checked on port 3000 per
   `verify-before-reply.mdc`.
 - [ ] **D.3c Renewal picks a duration.** Price reads go through the duration rows (`pricing/rules/package-terms.ts`,
