@@ -1,5 +1,5 @@
 import { queryString, request, segment } from '../../lib/http';
-import type { NewPackage, PackageAddon, PackageRow, PackageSheet, ProviderCatalogCompany, ProviderCatalogProduct, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
+import type { NewPackage, PackageAddon, PackageDuration, PackageRow, PackageSheet, ProviderCatalogCompany, ProviderCatalogProduct, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
@@ -27,6 +27,10 @@ export const catalogApi = {
   savePackageAddon: (code: string, id: string, body: Partial<Pick<PackageAddon, 'name' | 'price' | 'active' | 'position'>>) =>
     request<{ addons: PackageAddon[] }>('PATCH', `/v1/packages/${segment(code)}/addons/${segment(id)}`, body),
   removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/v1/packages/${segment(code)}/addons/${segment(id)}`),
+  // A package's durations (package plan D.3): the same unit and count again replaces the prices.
+  savePackageDuration: (code: string, body: Pick<PackageDuration, 'unit' | 'count' | 'branchCost' | 'mainPrice' | 'agentPrice' | 'posPrice' | 'subscriberPrice'> & { enabled?: boolean }) =>
+    request<{ ok: true }>('PUT', `/v1/packages/${segment(code)}/durations`, body),
+  removePackageDuration: (code: string, id: string) => request<{ ok: true }>('DELETE', `/v1/packages/${segment(code)}/durations/${segment(id)}`),
   // Adding from the provider (spec 2026-11-09-admin-review, 3): query, then add.
   providerCatalogCompanies: (code: string) =>
     request<{ simulated: boolean; companies: ProviderCatalogCompany[] }>('GET', `/v1/providers/${segment(code)}/catalog/companies`),

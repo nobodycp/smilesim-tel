@@ -8,6 +8,7 @@ const sheet = {
   enabled: true, forSale: true, dataGb: 500, smsCount: null, minutes: -1, details: '', months: 1, suspendAfterDays: 90, esimAvailable: true,
   branchCost: 2000, mainPrice: 2300, agentPrice: 2500, posPrice: 2700, subscriberPrice: 3000,
   renewalBranchCost: 2000, renewalMainPrice: 2300, renewalAgentPrice: 2500, renewalPosPrice: 2700, renewalSubscriberPrice: 3000,
+  durations: [{ id: 'd1', unit: 'month', count: 1, days: 30, branchCost: 2000, mainPrice: 2300, agentPrice: 2500, posPrice: 2700, subscriberPrice: 3000, noDisconnect: false, forSale: true, enabled: true }],
   esimPrice: null, esimPriceEffective: 0, esimPriceSource: 'company', lines: 0, activeLines: 0, renewals: [], switches: [],
   modes: { activate: 'auto', charge: 'off', extend: 'manual', disconnect: 'manual', freeze: 'manual', switch: 'manual', rename: 'manual', sim: 'manual', companySwitch: 'manual' },
   inheritedModes: ['activate', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'],

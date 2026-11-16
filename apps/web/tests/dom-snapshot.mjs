@@ -169,6 +169,7 @@ const packageSheet = {
   enabled: true, forSale: true, dataGb: 400, suspendAfterDays: 90, esimAvailable: true, smsCount: null, minutes: -1, details: 'تفاصيل',
   months: 1, branchCost: 2000, mainPrice: 2200, agentPrice: 2400, posPrice: 2600, subscriberPrice: 3000,
   renewalBranchCost: 2000, renewalMainPrice: 2200, renewalAgentPrice: 2400, renewalPosPrice: 2600, renewalSubscriberPrice: 3000,
+  durations: [{ id: 'd1', unit: 'month', count: 1, days: 30, branchCost: 2000, mainPrice: 2200, agentPrice: 2400, posPrice: 2600, subscriberPrice: 3000, noDisconnect: false, forSale: true, enabled: true }],
   esimPrice: null, esimPriceEffective: 500, esimPriceSource: 'company', lines: 4, activeLines: 3, renewals: ['cell-1000'], switches: [],
   modes: { activate: 'auto', charge: 'manual', disconnect: 'off', freeze: 'auto', switch: 'manual' },
   inheritedModes: ['freeze'], providerModes: { activate: 'auto', charge: 'manual', disconnect: 'off', freeze: 'auto', switch: 'manual' },

@@ -31,6 +31,7 @@ import { ChainBoard, type PriceKey } from '../chain-board';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
+import { PackageDurations } from '../package-durations';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
 import { CompanyMark } from '../../../components/company-mark';
@@ -42,7 +43,7 @@ import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
-type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
+type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 const EMPTY_PRICES: Record<PriceKey, string> = {
   branchCost: '',
@@ -424,6 +425,7 @@ export function PackageSheetScreen() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t.overviewTab },
     { key: 'prices', label: t.priceChainTab },
+    { key: 'durations', label: t.durationsTab },
     { key: 'details', label: t.detailsTab },
     { key: 'addons', label: t.lineAddons },
     { key: 'run', label: t.packageActions },
@@ -505,6 +507,17 @@ export function PackageSheetScreen() {
               )}
               {tab === 'details' && (
                 <PackageDetailsForm key={sheet.code} sheet={sheet} run={run} busy={busy} onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }} />
+              )}
+              {tab === 'durations' && (
+                <PackageDurations
+                  code={sheet.code}
+                  months={sheet.months}
+                  durations={sheet.durations}
+                  canEdit={canEditAddons}
+                  busy={busy}
+                  run={run}
+                  onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }}
+                />
               )}
               {tab === 'addons' && (
                 <PackageAddons code={sheet.code} canEdit={canEditAddons} setError={setError} setNote={setNote} />

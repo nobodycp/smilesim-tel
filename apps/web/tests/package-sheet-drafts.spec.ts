@@ -6,6 +6,7 @@ const base = {
   enabled: true, forSale: true,
   branchCost: 2500, mainPrice: 2800, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3500,
   renewalBranchCost: 2000, renewalMainPrice: 2300, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3200,
+  durations: [{ id: 'd1', unit: 'month', count: 1, days: 30, branchCost: 2000, mainPrice: 2300, agentPrice: 2700, posPrice: 3200, subscriberPrice: 3200, noDisconnect: false, forSale: true, enabled: true }],
   esimPrice: null, esimPriceEffective: 0, esimPriceSource: 'company',
   lines: 0, activeLines: 0, renewals: [], switches: [],
   modes: { activate: 'auto', charge: 'auto', extend: 'auto', disconnect: 'auto', freeze: 'auto', switch: 'auto', rename: 'auto', sim: 'auto' },
