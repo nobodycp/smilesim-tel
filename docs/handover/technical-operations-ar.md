@@ -77,7 +77,7 @@ SmileSim مكتب جملة لشرائح الاتصال بأربع طبقات («
 - المستودع عام، فالربط بلا GitHub App. **الدفع إلى `main` لا ينشر تلقائياً**: لا يوجد webhook في GitHub. النشر يُطلَب يدوياً من Coolify. (مفتاح «Auto Deploy» في Coolify مفعَّل لكنه بلا أثر دون webhook؛ يُفضَّل إطفاؤه للوضوح. 🔐)
 - `README.md` يصف بديلاً بمورد Docker Compose واحد يقرأ `docker-compose.yml`. كلاهما يعمل؛ المنشور فعلاً هو الثلاثة تطبيقات.
 - **لكل تطبيق متغيراته الخاصة.** تطبيق الـWorker لا يرث متغيرات تطبيق الـAPI، وما في `docker-compose.yml` لا يصل إليه في هذا الإعداد. لذلك يُضبط `SECRETS_KEY` على `smilesim-worker` نفسه بالقيمة ذاتها التي على `smilesim-api` **قبل** نشر نسخة S.12b.0 أو ما بعدها؛ وإلا يرفض الـWorker الإقلاع (وهذا مقصود).
-- GitHub Actions (`.github/workflows/ci.yml`) يختبر ويبني فقط ولا ينشر: lint (ويشمل في الواجهة حارس CSS `apps/web/scripts/check-css.mjs`: يفشل إذا ارتفع أيّ عدد فوق خط الأساس `scripts/css-baseline.json`)، typecheck، اختبارات الـAPI، اختبارات PostgreSQL وRedis، البناء، واختبارات الواجهة.
+- GitHub Actions (`.github/workflows/ci.yml`) يختبر ويبني فقط ولا ينشر: lint، فحص النصوص `check:copy`، فحص الأنماط `check:styles` (`apps/web/scripts/check-styles.mjs`: يفشل على اتجاه فيزيائي أو لون خام في الواجهة أو ملف CSS جديد غير `app/tailwind.css`، ملف الأنماط الوحيد منذ أن حُذفت الملفات القديمة مع حارسها `check-css.mjs`)، typecheck، اختبارات الـAPI، اختبارات PostgreSQL وRedis، البناء، واختبارات الواجهة.
 
 ## 5. النطاقات وDNS وHTTPS — ✋ يدوي
 

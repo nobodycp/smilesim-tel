@@ -16,7 +16,7 @@ import { doorFromHost } from '../lib/doors';
 import { BALANCE_COOKIE, dirFor, LOCALE_KEY, NAME_COOKIE, PAGE_SIZE_KEY, parseLocale, parsePageSize, parseTheme, THEME_KEY } from '../lib/document-prefs';
 import { QueryProvider } from '../lib/query';
 import { DeskSession } from '../lib/desk-session';
-import './globals.css';
+import './tailwind.css';
 
 // Graphite (spec 2026-11-09-graphite-identity): Noto Kufi Arabic, angular like a stamp and clear at small sizes, for
 // Arabic and Latin; a variable face, so every weight the sheets use is real.

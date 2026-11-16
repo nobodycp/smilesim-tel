@@ -20,8 +20,8 @@
 //       `` `var(${tone})` ``) is data, not a literal, and passes;
 //   (d) a stylesheet (.css .scss .sass .less) anywhere under apps/web (dot folders, node_modules and the git-ignored
 //       outputs audit-output, test-results, playwright-report are not read) other than app/tailwind.css and the
-//       frozen legacy list below. A listed sheet that no longer exists is reported as a note: the slice that deletes
-//       it removes it from LEGACY_SHEETS.
+//       frozen legacy list below (empty since T5.1). A listed sheet that no longer exists is reported as a note: the
+//       slice that deletes it removes it from LEGACY_SHEETS.
 //
 // Run: node scripts/check-styles.mjs              (npm run check:styles, in apps/web and at the root)
 //      node scripts/check-styles.mjs --self-test  (proves every rule on fixtures; exit 1 if one is wrong)
@@ -41,32 +41,9 @@ const SKIP_DIRS = new Set(['node_modules', 'audit-output', 'test-results', 'play
 
 // The only stylesheet that stays (ADR 0022).
 const TAILWIND_SHEET = 'app/tailwind.css';
-// Frozen on 2026-11-15 (T1.2): the legacy sheets that T5 deletes. Never add to this list.
-const LEGACY_SHEETS = [
-  'app/globals.css',
-  'app/styles/base.css',
-  'app/styles/controls.css',
-  'app/styles/desk/branding.css',
-  'app/styles/desk/components.css',
-  'app/styles/desk/filters.css',
-  'app/styles/desk/frame.css',
-  'app/styles/desk/home.css',
-  'app/styles/desk/numbers.css',
-  'app/styles/desk/packages.css',
-  'app/styles/desk/pane.css',
-  'app/styles/desk/settings.css',
-  'app/styles/desk/table.css',
-  'app/styles/desk/tasks.css',
-  'app/styles/desk/users.css',
-  'app/styles/dialog.css',
-  'app/styles/doors.css',
-  'app/styles/forms.css',
-  'app/styles/graphite.css',
-  'app/styles/responsive.css',
-  'app/styles/shell.css',
-  'app/styles/tokens.css',
-  'app/styles/ui.css',
-];
+// Frozen on 2026-11-15 (T1.2): the legacy sheets that T5 deletes. Never add to this list. Empty since Tailwind
+// migration T5.1 deleted app/styles/ and app/globals.css: app/tailwind.css is the only stylesheet.
+const LEGACY_SHEETS = [];
 
 // ---------- (a) and (b): class tokens ----------
 
@@ -208,12 +185,12 @@ function checkSource(name, text) {
 
 // ---------- (d): stylesheets ----------
 
-function checkSheets(paths) {
-  const allowed = new Set([TAILWIND_SHEET, ...LEGACY_SHEETS]);
+function checkSheets(paths, legacy = LEGACY_SHEETS) {
+  const allowed = new Set([TAILWIND_SHEET, ...legacy]);
   const problems = paths.filter((path) => !allowed.has(path))
     .map((path) => `${path}:1:1 stylesheet: a new stylesheet → utilities in the markup, variants in components/ui (ADR 0022)`);
   const present = new Set(paths);
-  const notes = LEGACY_SHEETS.filter((path) => !present.has(path))
+  const notes = legacy.filter((path) => !present.has(path))
     .map((path) => `note: ${path} is gone; remove it from LEGACY_SHEETS in scripts/check-styles.mjs`);
   return { problems, notes };
 }
@@ -288,11 +265,15 @@ function selfTest() {
   expect('(c) non-colour property passes', tsx("<i style={{ inlineSize: '50%', colorScheme: 'dark', top: 4 }} />"), 0);
   expect('(c) a variable style passes', tsx('<i style={s} />'), 0);
 
-  // (d) a new stylesheet fails; the Tailwind sheet and the legacy list pass; a gone legacy sheet is a note.
-  const sheets = checkSheets([TAILWIND_SHEET, ...LEGACY_SHEETS.slice(1), 'components/x.module.css', 'app/new.scss']);
+  // (d) a new stylesheet fails; the Tailwind sheet and the legacy list pass; a gone legacy sheet is a note. The list is
+  // empty since T5.1, so the list cases run on a fixture list.
+  const FIXTURE_LEGACY = ['app/globals.css', 'app/styles/base.css'];
+  const sheets = checkSheets([TAILWIND_SHEET, ...FIXTURE_LEGACY.slice(1), 'components/x.module.css', 'app/new.scss'], FIXTURE_LEGACY);
   expect('(d) new stylesheets', sheets.problems, 2);
   expect('(d) a deleted legacy sheet is a note', sheets.notes, 1);
-  expect('(d) the frozen list passes', checkSheets([TAILWIND_SHEET, ...LEGACY_SHEETS]).problems, 0);
+  expect('(d) the frozen list passes', checkSheets([TAILWIND_SHEET, ...FIXTURE_LEGACY], FIXTURE_LEGACY).problems, 0);
+  expect('(d) the Tailwind sheet alone passes', checkSheets([TAILWIND_SHEET]).problems, 0);
+  expect('(d) a deleted sheet fails once it is off the list', checkSheets([TAILWIND_SHEET, 'app/styles/base.css']).problems, 1);
 
   if (failures.length > 0) {
     console.error(`check-styles self-test: ${failures.length} failure(s)\n  ${failures.join('\n  ')}`);

@@ -1,4 +1,0 @@
-/* The profile page (app/settings): its grid, identity row, sessions, method cards and session rules are utilities in
-   features/auth/screens/settings-screen.tsx, sign-in-methods.tsx and session-rules.tsx since Tailwind migration T3.2.
-   Left here: a badge in a pane head sits at the head's end (every pane, until T3.3 ports the pane). */
-.pane-head [data-slot='badge'] { margin-inline-start: auto; }

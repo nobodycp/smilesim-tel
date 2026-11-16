@@ -1,3 +1,0 @@
-/* Tasks (app/tasks, app/tasks/[id]): the ticket, its board, details, close forms, log and compose bar are utilities in
-   features/tasks/screens/task-ticket-screen.tsx since Tailwind migration T4.6 (the task facts are components/facts.tsx
-   `variant="list"` since T3.3). */

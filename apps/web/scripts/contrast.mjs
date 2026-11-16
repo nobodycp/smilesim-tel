@@ -1,7 +1,8 @@
 // Fails (exit 1) when content on a crimson fill is not legible in either theme (ADR 0021 D1, UI maintenance P0.9).
 //
-// It reads app/styles/tokens.css (`:root` is light, `.dark` is dark on top of it), then scans every sheet that
-// app/globals.css imports, in cascade order, for rules whose `background` / `background-color` paints a crimson fill
+// It reads the tokens in app/tailwind.css (`:root` is light, `.dark` is dark on top of it; the one stylesheet since
+// Tailwind migration T5.1, which deleted app/styles/ and app/globals.css), then scans that sheet's rules (the global
+// rules in its `@layer base`) for rules whose `background` / `background-color` paints a crimson fill
 // colour — the value's colour component, whatever else the shorthand holds (`var(--rd-accent) no-repeat` counts;
 // gradients and `url()` layers are set aside, so a crimson glow inside a gradient is not a fill):
 //   - `var(--rd-accent)`, `var(--rd-accent-fill)`, `var(--rd-accent-fill-hover)`;
@@ -33,7 +34,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
-const styles = join(web, 'app', 'styles');
+const SHEET = join(web, 'app', 'tailwind.css');
 
 // Glyph-only content drawn with `color` (the svg uses currentColor): ≥ 3:1 suffices. Empty since T3.2: the sign-in
 // mark it named (.gauth-mark) is a utility class list (markClass) in components/auth-art.tsx, which this sheet reader
@@ -187,10 +188,15 @@ function readRules(file, text) {
 }
 
 function tokens(text) {
+  const src = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '));
   const block = (sel) => {
-    const at = text.indexOf(`${sel} {`);
-    if (at === -1) throw new Error(`tokens.css has no "${sel} {" block`);
-    const body = text.slice(at, text.indexOf('\n}', at)).replace(/\/\*[\s\S]*?\*\//g, '');
+    const at = src.search(new RegExp(`(^|[\\s}])${sel.replace('.', '\\.')} \\{`, 'm'));
+    if (at === -1) throw new Error(`app/tailwind.css has no "${sel} {" token block`);
+    const open = src.indexOf('{', at);
+    let depth = 1;
+    let end = open + 1;
+    while (end < src.length && depth) { if (src[end] === '{') depth += 1; else if (src[end] === '}') depth -= 1; end += 1; }
+    const body = src.slice(open + 1, end - 1);
     return new Map([...body.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/gi)].map((m) => [m[1], m[2].trim()]));
   };
   const light = block(':root');
@@ -400,14 +406,10 @@ function check(sheets, themes, { requireOverlays = false, overlay = OVERLAY, gly
 }
 
 function sheetsInOrder() {
-  const globals = readFileSync(join(web, 'app', 'globals.css'), 'utf8');
-  return [...globals.matchAll(/@import\s+'\.\/styles\/([^']+)'/g)].map((m) => {
-    const path = join(styles, m[1]);
-    return { file: relative(web, path), text: readFileSync(path, 'utf8') };
-  });
+  return [{ file: relative(web, SHEET), text: readFileSync(SHEET, 'utf8') }];
 }
 
-const themes = tokens(readFileSync(join(styles, 'tokens.css'), 'utf8'));
+const themes = tokens(readFileSync(SHEET, 'utf8'));
 
 if (process.argv.includes('--self-test')) {
   // Each case: a sheet, and whether the check must fail on it.
