@@ -7,7 +7,7 @@ import { dirname, join, normalize } from 'node:path';
 //
 // Test-only (`*.fixture.ts`): the build leaves it out.
 
-export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'catalog', 'pricing', 'wallets', 'providers', 'tasks', 'sales', 'reporting'] as const;
+export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'catalog', 'pricing', 'wallets', 'providers', 'tasks', 'sales', 'reporting', 'monitoring'] as const;
 export type ModuleName = (typeof MODULES)[number];
 /** `app`: the composition roots (bootstrap, middleware, the worker's start). It may import any module; no module imports it. */
 export type Owner = ModuleName | 'app';
@@ -36,6 +36,9 @@ export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   tasks: ['providers', 'wallets', 'notifications', 'access', 'platform'],
   sales: ['tasks', 'providers', 'pricing', 'wallets', 'catalog', 'platform'],
   reporting: ['sales', 'tasks', 'providers', 'wallets', 'platform'],
+  // ADR 0020, amended for the system monitor (2026-11-17): above the others it reads (sessions, the actor, notices
+  // for its alerts, the providers' health); no module imports it.
+  monitoring: ['providers', 'notifications', 'access', 'identity', 'platform'],
 };
 
 /** First match wins. Paths are relative to `apps/api/src`. */
@@ -74,6 +77,8 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/tasks\//, 'tasks'],
   [/^modules\/sales\//, 'sales'],
   [/^modules\/reporting\//, 'reporting'],
+  // ── monitoring (the system monitor: the request log, status, alerts) ──────────────────────────────
+  [/^modules\/monitoring\//, 'monitoring'],
 ];
 
 export function ownerOf(file: string): Owner | null {

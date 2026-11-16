@@ -24,9 +24,10 @@ import { AccountTasksModule } from './tasks/account-tasks.module';
 import { AccountWalletsModule } from './wallets/account-wallets.module';
 import { featureModules } from './registry';
 import { PrismaModule } from './platform/prisma.service';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 describe('featureModules', () => {
   it('registers every feature module: no umbrella (slice R.9), the duplicate guard as the platform\'s module, one module per domain', () => {
-    expect(featureModules).toEqual([PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule]);
+    expect(featureModules).toEqual([PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, MonitoringModule]);
   });
 });

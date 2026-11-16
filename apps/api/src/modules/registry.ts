@@ -23,12 +23,14 @@ import { DuplicateGuardModule } from './platform/duplicate-guard.module';
 import { AccountTasksModule } from './tasks/account-tasks.module';
 import { AccountWalletsModule } from './wallets/account-wallets.module';
 import { PrismaModule } from './platform/prisma.service';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 // Slice R.9: no umbrella. The duplicate-write guard is the platform's module; then one module per domain, in the
 // order the umbrella imported them.
 // The two global writers first: the activity log and the notice writer, each the one implementation of a port of
 // the platform (ADR 0020, slice R.2).
 // Then the bindings of access's two ports (slice R.8), global like the writers.
+// The system monitor last (ADR 0020, amended 2026-11-17): it reads the others and none imports it.
 // The extension contract requires `any[]` here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule];
+export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, MonitoringModule];

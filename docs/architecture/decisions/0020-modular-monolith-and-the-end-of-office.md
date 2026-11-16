@@ -111,3 +111,19 @@ What a surface costs: a value import from it loads every file it re-exports. The
 (`module-layering`, `module-mutual` at 0), so a surface cannot make one; a file never imports its own module's
 surface.
 
+## Amended for the system monitor (2026-11-17): a thirteenth module, `monitoring`
+
+Spec `docs/superpowers/specs/2026-11-17-system-monitor.md` (D8, approved by the owner on 2026-11-17). The request
+log, the system status and the early warnings are one module, `monitoring` (`modules/monitoring/`), **above the
+others**: it may import `providers`, `notifications`, `access`, `identity` and `platform` (and what lies below
+them), and no module may import it (`architecture-boundaries.spec.ts`: `puts monitoring above everything it
+reads`). It reads what the others did; it changes none of their rules, no money, no status.
+
+- Every route of the module is the branch owner's alone (D1): its service asks `requireOwner` (access's policy)
+  before it reads or deletes anything. A grant for staff waits for the staff roles.
+- Its surface (`modules/monitoring/index.ts`) is empty: nothing imports monitoring. The composition roots wire it:
+  `modules/registry.ts` registers `MonitoringModule` last, and the request-log middleware (`src/`, owner `app`)
+  hands each request's row to the module's writer.
+- The activity log stays the business record; the request log is technical. Clearing the request log is itself
+  recorded in the activity log, which monitoring never deletes from.
+

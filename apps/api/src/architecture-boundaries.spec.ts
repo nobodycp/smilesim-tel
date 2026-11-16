@@ -79,9 +79,14 @@ describe('the target graph (ADR 0020)', () => {
     }
   });
 
-  it('names twelve modules, and every one may use the platform', () => {
-    expect(MODULES).toHaveLength(12);
+  it('names thirteen modules, and every one may use the platform', () => {
+    // Thirteen since the system monitor (2026-11-17): `monitoring`, above the others; none imports it.
+    expect(MODULES).toHaveLength(13);
     for (const module of MODULES) expect(allowedFor(module).has('platform')).toBe(true);
+  });
+
+  it('puts monitoring above everything it reads: no module may import it', () => {
+    expect(MODULES.filter((module) => module !== 'monitoring' && allowedFor(module).has('monitoring'))).toEqual([]);
   });
 });
 
@@ -135,6 +140,7 @@ describe('module boundaries, on the source as it is', () => {
       tasks: 'modules/tasks/index.ts',
       sales: 'modules/sales/index.ts',
       reporting: 'modules/reporting/index.ts',
+      monitoring: 'modules/monitoring/index.ts',
     };
     check('module-surface', surfaceViolations(edges, surfaces));
     for (const surface of Object.values(surfaces)) expect({ surface, exists: production.some(({ file }) => file === surface) }).toEqual({ surface, exists: true });
