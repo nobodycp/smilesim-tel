@@ -15,7 +15,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 |---|---|---|
 | T0 Decision docs | T0.1 | done — T0.1 4478666 |
 | T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314; T1.3c ebca557; T1.4 9f6efc8 |
-| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47 |
+| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47, T2.5 c8da893 |
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
 | T5 Delete legacy CSS | T5.1–T5.2 | not started |
@@ -148,7 +148,7 @@ caller in the same commit.
 - Files: `components/ui/select.tsx` (Radix Select), `components/ui/dropdown-menu.tsx` (new), `components/row-menu.tsx`,
   callers of both.
 
-### T2.5 Dialog and sheet
+### T2.5 Dialog and sheet — c8da893
 
 - Files: `components/ui/dialog.tsx` (new, Radix Dialog), `components/ui/sheet.tsx` (new, Radix Dialog as a side/bottom
   sheet), `components/dialog.tsx` (becomes a thin wrapper or is replaced at every caller), `components/disconnect-confirm.tsx`,
