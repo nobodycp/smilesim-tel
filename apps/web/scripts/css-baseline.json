@@ -1,7 +1,7 @@
 {
   "note": "Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down; the script refuses a rise.",
   "counts": {
-    "a-duplicate": 223,
+    "a-duplicate": 217,
     "b-undefined-token": 0,
     "c-fallback-on-defined-token": 0,
     "d-raw-colour": 1,
@@ -9,11 +9,11 @@
     "f-font-size-half-px-or-rem": 68,
     "g-font-weight-800-900": 20,
     "h-media-width": 33,
-    "i-physical-property": 69,
-    "j-literal-line-height": 41,
-    "k-literal-spacing-radius": 328,
+    "i-physical-property": 67,
+    "j-literal-line-height": 40,
+    "k-literal-spacing-radius": 327,
     "l-disabled-opacity": 12,
-    "m-legacy-declarations": 6187
+    "m-legacy-declarations": 6068
   },
   "declarations": {
     "auth.css": 307,
@@ -31,10 +31,10 @@
     "desk/table.css": 127,
     "desk/tasks.css": 180,
     "desk/users.css": 232,
-    "dialog.css": 198,
+    "dialog.css": 103,
     "doors.css": 29,
     "forms.css": 47,
-    "graphite.css": 2065,
+    "graphite.css": 2041,
     "responsive.css": 36,
     "shell.css": 782,
     "ui.css": 86
@@ -89,12 +89,6 @@
       "graphite.css |  | .desk .sheet | min-height | also in desk/pane.css",
       "graphite.css |  | .desk>.pane | flex | also in desk/pane.css",
       "graphite.css |  | .desk>.stack>.pane | flex | also in desk/pane.css",
-      "graphite.css |  | .dialog | border | also in dialog.css",
-      "graphite.css |  | .dialog | border-radius | also in dialog.css",
-      "graphite.css |  | .dialog | box-shadow | also in dialog.css",
-      "graphite.css |  | .dialog-mark | background | also in dialog.css",
-      "graphite.css |  | .dialog-mark | border-radius | also in dialog.css",
-      "graphite.css |  | .dialog-mark | color | also in dialog.css",
       "graphite.css |  | .filter-bar | background | also in desk/filters.css",
       "graphite.css |  | .filter-bar | border | also in desk/filters.css",
       "graphite.css |  | .filter-bar | border-radius | also in desk/filters.css",
@@ -272,8 +266,8 @@
     ],
     "e-outline-removed": [
       "graphite.css |  | .co-link:focus-visible | outline | none",
-      "graphite.css |  | .dialog .role-input input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),.pane .role-input input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]) | outline | 0",
-      "graphite.css |  | .line-op:focus-visible | outline | none"
+      "graphite.css |  | .line-op:focus-visible | outline | none",
+      "graphite.css |  | [data-slot=\"dialog\"] .role-input input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),.pane .role-input input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]) | outline | 0"
     ],
     "f-font-size-half-px-or-rem": [
       "desk/components.css |  | .empty .empty-title | font-size | 0.92rem",
@@ -447,8 +441,6 @@
       "desk/table.css |  | .table-pager | border-top | 1px solid var(--rd-line)",
       "desk/users.css |  | .terms-group+.terms-group | border-top | 1px solid var(--rd-line)",
       "desk/users.css |  | .terms-group.open .terms-group-head | border-bottom | 1px solid var(--rd-line-soft)",
-      "dialog.css |  | .dialog-foot | border-top | 1px solid var(--rd-line)",
-      "dialog.css |  | .dialog>header | border-bottom | 1px solid var(--rd-line)",
       "dialog.css |  | .op-block | border-bottom | 1px solid var(--rd-line)",
       "dialog.css |  | .op-block | padding-bottom | var(--rd-space-3-5)",
       "dialog.css |  | .op-block:last-child | border-bottom | 0",
@@ -494,7 +486,6 @@
       "desk/tasks.css |  | .task-tree-card p | line-height | 1.55",
       "desk/tasks.css |  | .task-tree-system-line | line-height | 1.5",
       "desk/users.css |  | .fact-card dd | line-height | 1.25",
-      "dialog.css |  | .dialog-lede | line-height | 1.45",
       "forms.css |  | h1 | line-height | 1.25",
       "graphite.css |  | .data .sub,.pack-cell .sub | line-height | 1.3",
       "graphite.css |  | .filter-panel>label,.filter-panel>label:has(input[type=\"date\"]) | line-height | 30px",
@@ -568,7 +559,6 @@
       "desk/users.css |  | .grant-list | column-gap | 28px",
       "desk/users.css |  | .grant-row .seg button | padding-inline | 8px",
       "desk/users.css |  | .role-chip | padding-inline | 14px",
-      "dialog.css |  | .choice-set legend | margin-inline-start | -6px",
       "dialog.css |  | .toast | padding-block | 11px",
       "dialog.css |  | .toast | padding-inline | 14px 8px",
       "doors.css |  | .door-card | padding | 18px var(--rd-space-4)",
@@ -854,7 +844,7 @@
       "controls.css |  | input[type=\"radio\"]:disabled | opacity | 0.45",
       "desk/components.css |  | .outage-bar button:disabled | opacity | 0.6",
       "desk/pane.css |  | .steps button:disabled | opacity | 0.4",
-      "dialog.css |  | .dialog button:disabled | opacity | 0.45",
+      "dialog.css |  | [data-slot=\"dialog\"] button:disabled | opacity | 0.45",
       "graphite.css |  | .gauth-go:disabled | opacity | 0.5",
       "graphite.css |  | .gauth-passkey:disabled | opacity | 0.5",
       "graphite.css |  | .line-op:disabled | opacity | 0.45",

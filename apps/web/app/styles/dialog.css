@@ -1,4 +1,4 @@
-/* Overlays: toast, Dialog, perm grid, op blocks, RowMenu. */
+/* Overlays: toast, the content of dialogs, perm grid, op blocks, the row menus' row. */
 .toast-host {
   /* Toasts (owner 2026-11-11): stacked in the reading-end bottom corner, over the page — nothing under them moves. */
   position: fixed;
@@ -50,82 +50,17 @@
   .toast-host { inset-inline: 12px; inset-block-end: 12px; justify-items: stretch; }
   .toast { max-inline-size: none; }
 }
-.dialog-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--rd-z-dialog);
-  display: grid;
-  place-items: center;
-  padding: var(--rd-space-4);
-  background: var(--rd-scrim);
-  backdrop-filter: blur(8px);
-}
-.dialog {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: min(560px, 100%);
-  max-height: min(720px, calc(100vh - 48px));
-  overflow: hidden;
-  padding: 0;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-md);
-  background: var(--rd-surface);
-  box-shadow: var(--rd-shadow-pop);
-}
-.dialog[data-size='confirm'] { width: min(460px, 100%); }
+/* The dialog's frame (scrim, panel, head, mark, body, foot) is components/ui/dialog.tsx since Tailwind migration T2.5.
+   The rules below style the content of dialogs whose screens are not ported yet; they reach it through the panel's
+   and the body's handles (`[data-slot='dialog']`, `[data-slot='dialog-body']`, same specificity as the old classes). */
 /* The account a dialog acts on. `AccountName` keeps the login and the full name in parentheses on one line; a block
    `bdi` here split them across four lines. */
 .dialog-who { margin: 0; font-size: var(--rd-text-base); font-weight: 700; }
-.dialog[data-size='wide'] { width: min(760px, 100%); }
-.dialog > header {
-  display: flex;
-  flex: none;
-  align-items: flex-start;
-  gap: var(--rd-space-3);
-  margin: 0;
-  padding: var(--rd-space-4) var(--rd-space-4) var(--rd-space-3-5);
-  border-bottom: 1px solid var(--rd-line);
-}
-.dialog-heading { flex: 1; min-width: 0; }
-.dialog-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface-2);
-  color: var(--rd-ink);
-}
-.dialog-mark.danger { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.dialog-mark.success { background: var(--rd-success-soft); color: var(--rd-success); }
-/* The activation result: a hand-off the customer reads, so its check mark is larger. */
-.dialog-result .dialog-mark { width: 56px; height: 56px; }
-.dialog-result .dialog-mark svg { width: 28px; height: 28px; }
-.dialog-mark svg { width: 18px; height: 18px; }
-.dialog-lede { margin: var(--rd-space-1) 0 0; color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 500; line-height: 1.45; }
-/* A confirmation has the same head and foot as every other dialog (spec 2026-11-11-ui-consistency-pass, D5): the mark
-   beside the title, the buttons at the end of the foot. It is only narrower. */
-.dialog h2 { margin: 0; font-size: var(--rd-text-xl); font-weight: 700; text-align: start; }
-.dialog > .error { flex: none; margin: var(--rd-space-3) var(--rd-space-4) 0; }
-.dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--rd-space-4); }
-.dialog-foot {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--rd-space-2);
-  padding: var(--rd-space-3) var(--rd-space-4);
-  border-top: 1px solid var(--rd-line);
-  background: var(--rd-surface-2);
-}
-.dialog-foot .danger { margin-inline-end: auto; }
-.dialog input:not([type='checkbox']):not([type='radio']):not([type='file']),
-.dialog select,
-.dialog textarea {
+[data-slot='dialog'] h2 { margin: 0; font-size: var(--rd-text-xl); font-weight: 700; text-align: start; }
+[data-slot='dialog'] > .error { flex: none; margin: var(--rd-space-3) var(--rd-space-4) 0; }
+[data-slot='dialog'] input:not([type='checkbox']):not([type='radio']):not([type='file']),
+[data-slot='dialog'] select,
+[data-slot='dialog'] textarea {
   height: 34px;
 }
 .perm-grid {
@@ -160,43 +95,17 @@
   .perm-grid, .op-fields { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .dialog input:not([type='checkbox']):not([type='radio']):not([type='file']),
-  .dialog select,
-  .dialog textarea { height: 44px; }
+  [data-slot='dialog'] input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  [data-slot='dialog'] select,
+  [data-slot='dialog'] textarea { height: 44px; }
 }
 .dialog-form { display: grid; gap: var(--rd-space-3); }
-.dialog-body label:not(.check),
+[data-slot='dialog-body'] label:not(.check),
 .dialog-form label:not(.check) { display: grid; gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; text-align: start; }
-.dialog-body label .hint { font-size: var(--rd-text-sm); font-weight: 500; }
-.dialog button:disabled { opacity: 0.45; cursor: not-allowed; }
-/* Choices with no default (the transfer dialog, the number card). A group is a fieldset of rows; a row is its name
-   and its radios, each radio a 44px `label.check`. The name and the radios stay together on one line while the
-   group is wide enough, then the radios wrap under the name. */
-.choice-set {
-  min-inline-size: 0;
-  margin: 0;
-  padding-block: var(--rd-space-0-5) var(--rd-space-1-5);
-  padding-inline: var(--rd-space-3-5);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-sm);
-}
-.choice-set legend {
-  margin-inline-start: -6px;
-  padding-inline: var(--rd-space-1-5);
-  color: var(--rd-ink);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-}
-.choice-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--rd-space-4); }
-.choice-name { flex: 0 0 9.5rem; color: var(--rd-ink-2); font-size: var(--rd-text-sm); font-weight: 600; }
-.choice-options { display: flex; flex-wrap: wrap; column-gap: var(--rd-space-4); }
-.choice-set .check { min-height: 44px; }
-/* The two groups of terms share a row once each has room for its rows, and stack when it does not. */
-.transfer-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: var(--rd-space-3); }
-/* A wide screen gives the transfer dialog the room for those two groups side by side. */
-@media (min-width: 1100px) {
-  .dialog.dialog-transfer { width: min(760px, 100%); }
-}
+[data-slot='dialog-body'] label .hint { font-size: var(--rd-text-sm); font-weight: 500; }
+[data-slot='dialog'] button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* The choices with no default (the transfer dialog, the number card) are components/transfer-dialog.tsx since
+   Tailwind migration T2.5. */
 /* The row menu (RowMenu, its trigger and its panel) is components/row-menu.tsx and components/ui/dropdown-menu.tsx since
    Tailwind migration T2.4. */
 

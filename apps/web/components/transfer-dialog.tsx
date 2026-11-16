@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import {
   api,
   type TransferAccountBody,
@@ -18,6 +18,8 @@ import { TableSkeleton } from './loading';
 import { Button } from './ui/button';
 import { NameField } from './name-field';
 import { Badge } from './ui/badge';
+import { Label } from './ui/label';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Fact, Facts } from './facts';
 
 type Props = {
@@ -61,23 +63,29 @@ function requestOf(kind: Kind, parentLoginName: string, choice: Choices): Transf
 
 type Option<T extends string> = { value: T; label: string };
 
-/** The radios of one question, each a `label.check`. They share a `name`, so the arrow keys stay inside the question. */
-function Radios<T extends string>({
-  name,
-  value,
-  options,
-  onPick,
-}: {
-  name: string;
-  value: '' | T;
-  options: Option<T>[];
-  onPick: (value: T) => void;
-}) {
+/*
+ * Choices with no default (this dialog and the number card), ported from the legacy dialog.css rules (`.choice-*`,
+ * `.check` in pane.css, responsive.css): a group is a fieldset of rows (14px at the sides, 2px above and 6px below,
+ * a 1px `--rd-line` border with 6px corners; its legend 12px bold ink, 6px at its sides, pulled 6px towards the
+ * reading start); a row is a Radix RadioGroup (`role="radiogroup"`, the arrow keys move inside it) holding its name
+ * (a 9.5rem column in 12px semibold `--rd-ink-2`) and its radios, 16px apart, on one line while the group is wide
+ * enough, then the radios wrap under the name. Each radio sits in its 44px label (13px semibold ink, 8px from the
+ * box), which names it and takes its clicks.
+ */
+const rowClass = 'flex flex-wrap items-center gap-x-4';
+const nameClass = 'shrink-0 basis-38 text-sm font-semibold text-ink-2';
+
+/** The radios of one question, each in its label. */
+function Radios<T extends string>({ options }: { options: Option<T>[] }) {
   return (
-    <div className="choice-options">
+    <div className="flex flex-wrap gap-x-4">
       {options.map((option) => (
-        <label key={option.value} className="check" data-testid="radio-row">
-          <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onPick(option.value)} />
+        <label
+          key={option.value}
+          className="m-0 flex min-h-11 cursor-pointer items-center gap-2 text-start text-md font-semibold text-ink"
+          data-testid="radio-row"
+        >
+          <RadioGroupItem value={option.value} />
           {option.label}
         </label>
       ))}
@@ -99,10 +107,20 @@ function ChoiceRow<T extends string>({
 }) {
   const id = useId();
   return (
-    <div className="choice-row" role="radiogroup" aria-labelledby={`${id}-name`}>
-      <span id={`${id}-name`} className="choice-name">{label}</span>
-      <Radios name={id} value={value} options={options} onPick={onPick} />
-    </div>
+    <RadioGroup className={rowClass} value={value} onValueChange={(next) => onPick(next as T)} aria-labelledby={`${id}-name`}>
+      <span id={`${id}-name`} className={nameClass}>{label}</span>
+      <Radios options={options} />
+    </RadioGroup>
+  );
+}
+
+/** A group of questions: the fieldset and its legend. */
+function ChoiceSet({ legend, legendId, children }: { legend: string; legendId?: string; children: ReactNode }) {
+  return (
+    <fieldset className="m-0 min-w-0 rounded-sm border border-line px-3.5 pt-0.5 pb-1.5">
+      <legend id={legendId} className="-ms-1.5 px-1.5 text-sm font-bold text-ink">{legend}</legend>
+      {children}
+    </fieldset>
   );
 }
 
@@ -126,11 +144,10 @@ function TermsGroup({
     { value: 'reset', label: t.transferFollow },
   ];
   return (
-    <fieldset className="choice-set">
-      <legend>{legend}</legend>
+    <ChoiceSet legend={legend}>
       <ChoiceRow label={t.transferPricesRow} value={prices} options={options} onPick={onPrices} />
       <ChoiceRow label={t.transferStopsRow} value={stops} options={options} onPick={onStops} />
-    </fieldset>
+    </ChoiceSet>
   );
 }
 
@@ -154,13 +171,13 @@ export function LineChoice({
     { value: 'recapture', label: t.transferRecapture },
   ];
   return (
-    <fieldset className="choice-set">
-      <legend>{t.transferLinesRow}</legend>
-      <div className="choice-row">
-        {count === undefined ? null : <span className="choice-name">{t.transferLinesCount.replace('{n}', String(count))}</span>}
-        <Radios name={id} value={value} options={options} onPick={onChange} />
-      </div>
-    </fieldset>
+    <ChoiceSet legend={t.transferLinesRow} legendId={`${id}-legend`}>
+      {/* The one question of the group: its radios are named by the legend. */}
+      <RadioGroup className={rowClass} value={value} onValueChange={(next) => onChange(next as TransferLinePrices)} aria-labelledby={`${id}-legend`}>
+        {count === undefined ? null : <span className={nameClass}>{t.transferLinesCount.replace('{n}', String(count))}</span>}
+        <Radios options={options} />
+      </RadioGroup>
+    </ChoiceSet>
   );
 }
 
@@ -231,7 +248,8 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
     <Dialog
       open
       size="form"
-      className="dialog-transfer"
+      // A wide screen gives the move the room for the two groups of terms side by side.
+      className="xl:w-[min(760px,100%)]"
       mark="transfer"
       title={t.transfer}
       closeLabel={t.closeMenu}
@@ -244,9 +262,9 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
         </>
       )}
     >
-      <div className="dialog-form">
-        <p className="dialog-who"><AccountName login={row.loginName} name={row.nickname} /></p>
-        <label>
+      <div className="grid gap-3">
+        <p className="m-0 text-base font-bold"><AccountName login={row.loginName} name={row.nickname} /></p>
+        <Label tone="dialog">
           {kind === 'pos' ? t.transferDestinationAgent : t.transferDestinationMain}
           <NameField
             value={parent}
@@ -254,7 +272,7 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
             onChange={choose}
             options={destinations.map((item) => ({ value: item.loginName, label: accountLabel(item.loginName, item.nickname), keys: [item.loginName] }))}
           />
-        </label>
+        </Label>
         {loading ? (
           <div role="status" aria-label={t.loading}>
             <TableSkeleton rows={3} columns={2} />
@@ -262,7 +280,8 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
         ) : null}
         {preview ? (
           <>
-            <div className="transfer-terms">
+            {/* The two groups of terms share a row once each has room for its rows, and stack when it does not. */}
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,19rem),1fr))] gap-3">
               <TermsGroup
                 legend={t.transferOwnTerms}
                 prices={choice.ownPrices}

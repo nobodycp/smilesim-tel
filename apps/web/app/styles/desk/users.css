@@ -142,7 +142,7 @@
 .terms-price { display: inline-flex; flex-direction: column; gap: var(--rd-space-0-5); }
 .terms-price > span { color: var(--rd-muted); font-size: var(--rd-text-2xs); font-weight: 600; }
 /* On the canvas, and in a dialog body (the line prices table): a dialog is portaled out of `.desk`. */
-:is(.desk .pane, .dialog-body) .terms-price input {
+:is(.desk .pane, [data-slot='dialog-body']) .terms-price input {
   width: 6.5rem;
   min-width: 0;
   height: 32px;
@@ -157,9 +157,9 @@
   text-align: start;
   direction: ltr;
 }
-:is(.desk .pane, .dialog-body) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
-:is(.desk .pane, .dialog-body) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
-:is(.desk .pane, .dialog-body) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
+:is(.desk .pane, [data-slot='dialog-body']) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
+:is(.desk .pane, [data-slot='dialog-body']) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
+:is(.desk .pane, [data-slot='dialog-body']) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
 .terms-summary { white-space: nowrap; }
 .terms-filter .filter-panel { flex-wrap: wrap; overflow: visible; }
 .terms-filter .filter-panel label { flex: 1 1 9rem; }

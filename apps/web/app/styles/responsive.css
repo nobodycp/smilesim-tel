@@ -39,11 +39,11 @@
   .canvas input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .canvas select { height: 44px; }
   .canvas button,
-  .dialog [data-slot='button'],
+  [data-slot='dialog'] [data-slot='button'],
   .canvas .check,
   .canvas .shortcut,
-  .dialog .check,
-  .dialog .seg button,
+  [data-slot='dialog'] .check,
+  [data-slot='dialog'] .seg button,
   .toast button { min-height: 44px; }
   .toast button { min-width: 44px; }
 }

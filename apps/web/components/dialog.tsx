@@ -2,11 +2,23 @@
 
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, ArrowRightLeft, Check, KeyRound, LogIn, Plus, Shield, Snowflake, Trash2, Wallet, X } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { useConnection } from '../lib/connection';
 import { usePrefs } from '../lib/prefs';
 import { Alert } from './alert';
 import { useToasts } from './toast';
+import {
+  Dialog as DialogRoot,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeading,
+  DialogMark as DialogMarkTile,
+  DialogTitle,
+  type DialogMarkSize,
+  type DialogSize,
+} from './ui/dialog';
 import { IconButton } from './ui/icon-button';
 
 export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert' | 'check';
@@ -43,6 +55,18 @@ export function PageAlert({
   );
 }
 
+/**
+ * The dialog every screen uses (DESIGN.md → Controls and primitives, "Overlays"), composed from components/ui/dialog.tsx on Radix Dialog
+ * (Tailwind migration T2.5). It is shown while `open` and gone (its content unmounted) while not.
+ *
+ * Radix gives the portal, the `role="dialog"` named by the title and described by the lede, Tab and Shift+Tab
+ * wrapping inside the panel, and the order of the layers (an open list or menu inside takes Escape and outside
+ * presses first). It runs non-modal (`modal={false}`) on purpose: the NameField list and the date field's calendar
+ * are drawn in their own portals on `<body>`, outside the panel, and Radix's modal mode would turn the pointer off
+ * there, stop their scrolling and pull the focus back out of them. So the rest stays as it was: the panel says
+ * `aria-modal="true"`, the page under it does not scroll, a click on the scrim (and only there) or Escape calls
+ * `onClose`, the first field takes the focus on opening and the focus goes back to where it was on closing.
+ */
 export function Dialog({
   open,
   title,
@@ -55,6 +79,7 @@ export function Dialog({
   lede = '',
   mark,
   tone = 'neutral',
+  markSize = 'md',
   className = '',
   testId,
 }: {
@@ -65,23 +90,30 @@ export function Dialog({
   error?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: 'confirm' | 'form' | 'wide';
+  size?: DialogSize;
   lede?: string;
   mark?: DialogMark;
   tone?: DialogTone;
-  /** Extra class on the panel for a dialog family that needs its own spacing, such as the activation result. */
+  /** `lg`: the larger mark of a hand-off the customer reads (the activation result). */
+  markSize?: DialogMarkSize;
+  /** Extra class on the panel for a dialog family that needs its own spacing, such as the eSIM picture. */
   className?: string;
   /** `data-testid` on the panel, for an e2e spec that needs one dialog family (the activation result). */
   testId?: string;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const holdAlert = useContext(DialogAlert);
-  // Callers often pass an inline `onClose`. Reading it through a ref keeps the focus/keyboard effect tied to
-  // `open` only, so a parent re-render (each keystroke in a field) does not move the focus back to the first field.
+  // Callers often pass an inline `onClose`. Reading it through a ref keeps the keyboard effect tied to `open` only,
+  // so a parent re-render (each keystroke in a field) changes nothing.
   const closeRef = useRef(onClose);
   useLayoutEffect(() => {
     closeRef.current = onClose;
   });
+  // The Escape that reached the dialog while it was the top layer (Radix calls `onEscapeKeyDown` only then, in the
+  // capture phase, and marks the key handled, so `defaultPrevented` can no longer tell). It closes the dialog once it
+  // has bubbled up to the window: a field that keeps Escape for itself (the NameField list) stops it on the way, at
+  // the React root at the latest, and the dialog stays.
+  const escape = useRef<KeyboardEvent | null>(null);
 
   useEffect(() => {
     if (!open || !error) return;
@@ -92,58 +124,59 @@ export function Dialog({
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    const root = panel.current;
-    const nodes = () => [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].filter((node) => !node.hasAttribute('disabled'));
-    // A Select's field is its trigger button (components/ui/select.tsx); its hidden native select is not a field.
-    const field = root?.querySelector<HTMLElement>('.dialog-body input:not([type="checkbox"]):not([type="radio"]), .dialog-body [data-slot="select-trigger"], .dialog-body textarea');
-    (field ?? nodes()[0])?.focus();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // An open list or menu inside the dialog (Radix) closes first and marks the key handled; the dialog stays.
-        if (!event.defaultPrevented) closeRef.current();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const list = nodes();
-      if (list.length === 0) return;
-      const first = list[0];
-      const last = list[list.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key === 'Escape' && event === escape.current) closeRef.current();
     };
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    document.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
       previous?.focus();
     };
   }, [open]);
 
-  if (!open || typeof document === 'undefined') return null;
-  return createPortal(
-    <div className="dialog-scrim" onClick={onClose}>
-      <div ref={panel} className={className ? `dialog ${className}` : 'dialog'} data-size={size} data-testid={testId} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
-        <header>
-          {mark ? <span className={tone === 'neutral' ? 'dialog-mark' : `dialog-mark ${tone}`}><DialogGlyph name={mark} /></span> : null}
-          <div className="dialog-heading">
-            <h2>{title}</h2>
-            {lede ? <p className="dialog-lede">{lede}</p> : null}
-          </div>
+  return (
+    <DialogRoot open={open} modal={false}>
+      <DialogContent
+        ref={panel}
+        size={size}
+        className={className}
+        data-testid={testId}
+        aria-modal="true"
+        onScrimClick={onClose}
+        onOpenAutoFocus={(event) => {
+          // The first field of the body (a Select's field is its trigger button; its hidden native select is not a
+          // field), else the first control of the panel.
+          event.preventDefault();
+          const root = panel.current;
+          const field = root?.querySelector<HTMLElement>('[data-slot="dialog-body"] input:not([type="checkbox"]):not([type="radio"]), [data-slot="dialog-body"] [data-slot="select-trigger"], [data-slot="dialog-body"] textarea');
+          const first = [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].find((node) => !node.hasAttribute('disabled'));
+          (field ?? first)?.focus();
+        }}
+        // The focus goes back in the effect above, at once, as before.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => {
+          event.preventDefault();
+          escape.current = event;
+        }}
+        // Only the scrim closes it; a press in a list drawn outside the panel (NameField, the calendar) does not.
+        onInteractOutside={(event) => event.preventDefault()}
+      >
+        <DialogHeader>
+          {mark ? <DialogMarkTile tone={tone} size={markSize}><DialogGlyph name={mark} /></DialogMarkTile> : null}
+          <DialogHeading>
+            <DialogTitle>{title}</DialogTitle>
+            {lede ? <DialogDescription>{lede}</DialogDescription> : null}
+          </DialogHeading>
           <IconButton size="lg" tone="faint" className="flex-none" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></IconButton>
-        </header>
+        </DialogHeader>
         <Alert>{error}</Alert>
-        <div className="dialog-body" data-testid="dialog-body">{children}</div>
-        {footer ? <footer className="dialog-foot">{footer}</footer> : null}
-      </div>
-    </div>,
-    document.body,
+        <DialogBody data-testid="dialog-body">{children}</DialogBody>
+        {footer ? <DialogFooter>{footer}</DialogFooter> : null}
+      </DialogContent>
+    </DialogRoot>
   );
 }
 

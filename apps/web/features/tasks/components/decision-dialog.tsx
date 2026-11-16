@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { Dialog } from '../../../components/dialog';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Select, SelectItem } from '../../../components/ui/select';
+import { Textarea } from '../../../components/ui/textarea';
 import type { DecisionView, ProviderDecision, ProviderDecisionAnswer, ProviderDecisionBody } from '../../../lib/api-types';
 import type { Fetched } from '../../../lib/fetched';
 import { usePrefs } from '../../../lib/prefs';
@@ -79,6 +82,12 @@ export function DecisionDialog({
     setError(apiText(result));
   };
 
+  // The look of the form is the legacy `.dialog-form` and graphite.css `.decision-*` rules: a grid 12px apart; a field's
+  // caption is the dialog label (11px bold `--rd-muted`, 4px above the field) and its hint 12px medium (dialog.css
+  // `.dialog-body label .hint`); the number and serial share a row while each has 13rem; the note is at least 5.5rem
+  // tall with no padding above or below (forms.css `padding: 0 12px`); the counter spreads its words and its figure,
+  // the figure in `--rd-success` once the note is long enough. Fields are 34px (44px at 720px and under).
+  const hint = 'text-sm font-medium';
   return (
     <Dialog
       open
@@ -101,52 +110,52 @@ export function DecisionDialog({
     >
       <form
         id="decision-form"
-        className="dialog-form decision-form"
+        className="grid content-start gap-3"
         autoComplete="off"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
         }}
       >
-        <label>
+        <Label tone="dialog">
           {t.decEvidence}
           <Select place="dialog" value={kind} required onValueChange={setKind}>
             <SelectItem value="">{t.decChoose}</SelectItem>
             {EVIDENCE_KINDS.map((value) => <SelectItem key={value} value={value}>{evidenceName(t, value)}</SelectItem>)}
           </Select>
-        </label>
-        <label>
-          <span>{t.decRef} <small className="hint">({referenceNeeded ? t.decRequired : t.decOptional})</small></span>
-          <input value={reference} dir="ltr" maxLength={120} required={referenceNeeded} onChange={(event) => setReference(event.target.value)} />
-        </label>
+        </Label>
+        <Label tone="dialog">
+          <span>{t.decRef} <small className={hint}>({referenceNeeded ? t.decRequired : t.decOptional})</small></span>
+          <Input value={reference} dir="ltr" maxLength={120} required={referenceNeeded} onChange={(event) => setReference(event.target.value)} />
+        </Label>
         {line ? (
-          <div className="decision-pair">
-            <label>
-              <span>{t.decNumber} <small className="hint">({needs.number ? t.decRequired : t.decOptional})</small></span>
-              <input value={number} dir="ltr" inputMode="numeric" maxLength={10} required={needs.number} aria-invalid={number.trim() !== '' && !numberOk} onChange={(event) => setNumber(event.target.value)} />
-            </label>
-            <label>
-              <span>{t.decSerial} <small className="hint">({t.decOptional})</small></span>
-              <input value={serial} dir="ltr" inputMode="numeric" maxLength={22} aria-invalid={!serialOk} onChange={(event) => setSerial(event.target.value)} />
-            </label>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-3">
+            <Label tone="dialog">
+              <span>{t.decNumber} <small className={hint}>({needs.number ? t.decRequired : t.decOptional})</small></span>
+              <Input value={number} dir="ltr" inputMode="numeric" maxLength={10} required={needs.number} aria-invalid={number.trim() !== '' && !numberOk} onChange={(event) => setNumber(event.target.value)} />
+            </Label>
+            <Label tone="dialog">
+              <span>{t.decSerial} <small className={hint}>({t.decOptional})</small></span>
+              <Input value={serial} dir="ltr" inputMode="numeric" maxLength={22} aria-invalid={!serialOk} onChange={(event) => setSerial(event.target.value)} />
+            </Label>
           </div>
         ) : null}
         {line && needs.esimCode ? (
-          <label>
+          <Label tone="dialog">
             {t.decCode}
             {/* Never autofilled, never remembered by the browser, and gone when the dialog closes. */}
-            <input value={code} dir="ltr" required autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} maxLength={512} aria-invalid={code !== '' && !codeOk} aria-describedby="decision-code-hint" onChange={(event) => setCode(event.target.value)} />
-            <span className="hint" id="decision-code-hint">{t.decCodeHint}</span>
-          </label>
+            <Input value={code} dir="ltr" required autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} maxLength={512} aria-invalid={code !== '' && !codeOk} aria-describedby="decision-code-hint" onChange={(event) => setCode(event.target.value)} />
+            <span className={hint} id="decision-code-hint">{t.decCodeHint}</span>
+          </Label>
         ) : null}
-        <label>
+        <Label tone="dialog">
           {t.decNote}
-          <textarea value={note} rows={3} required maxLength={2000} aria-describedby="decision-note-hint" onChange={(event) => setNote(event.target.value)} />
-          <span className="hint decision-count" data-testid="decision-count" id="decision-note-hint">
+          <Textarea className="min-h-22 py-0" value={note} rows={3} required maxLength={2000} aria-describedby="decision-note-hint" onChange={(event) => setNote(event.target.value)} />
+          <span className={`${hint} flex justify-between gap-2`} data-testid="decision-count" id="decision-note-hint">
             <span>{t.decNoteHint}</span>
-            <bdi dir="ltr" className={noteLength >= MIN_DECISION_NOTE ? 'ok' : ''}>{noteLength}/{MIN_DECISION_NOTE}</bdi>
+            <bdi dir="ltr" className={noteLength >= MIN_DECISION_NOTE ? 'text-success' : undefined}>{noteLength}/{MIN_DECISION_NOTE}</bdi>
           </span>
-        </label>
+        </Label>
       </form>
     </Dialog>
   );

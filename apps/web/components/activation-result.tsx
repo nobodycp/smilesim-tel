@@ -31,7 +31,7 @@ export function ActivationResult({ result, onClose }: { result: ApplyResult | nu
       size="confirm"
       mark={applied ? 'check' : 'plus'}
       tone={applied ? 'success' : 'neutral'}
-      className="dialog-result"
+      markSize="lg"
       testId="activation-result"
       footer={<Button type="button" onClick={leave}>{t.ok}</Button>}
     >

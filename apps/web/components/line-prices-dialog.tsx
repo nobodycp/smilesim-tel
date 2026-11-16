@@ -137,7 +137,9 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
       ) : groups.length === 0 ? (
         <EmptyState icon="numbers">{t.linePricesEmpty}</EmptyState>
       ) : (
-        <div className="dialog-form">
+        // The legacy `.dialog-form`: a grid 12px apart. The table keeps its legacy pane, sheet and table classes
+        // until the table moves onto components/ui (T2.9).
+        <div className="grid gap-3">
           <div>
             <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={follow}>
               {current === null ? t.linePricesFollowChain : t.linePricesFollow.replace('{price}', formatShekel(current))}

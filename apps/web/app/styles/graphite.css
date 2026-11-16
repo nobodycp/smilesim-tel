@@ -76,9 +76,7 @@ input[readonly] { background-color: transparent; }
 .stat:hover::after, .fact-grid > div:hover::after, .op-card:hover::after, .company-card:hover::after, .pack-card:hover::after { opacity: 1; }
 .op-card, .company-card, .pack-card { position: relative; isolation: isolate; }
 
-/* ── Dialog: the crimson thread on top ── */
-.dialog { border: 0; border-radius: var(--rd-radius-sm); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent), var(--rd-shadow-pop); }
-.dialog::before { content: ''; display: block; flex: none; height: 2px; background: var(--rd-accent); }
+/* ── Dialog: the crimson thread on top — components/ui/dialog.tsx since Tailwind migration T2.5 ── */
 
 /* ── Tables: a quiet dense head ── */
 .data th { height: 38px; color: var(--rd-muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
@@ -98,8 +96,8 @@ input[readonly] { background-color: transparent; }
   .stat-row > :nth-child(n + 5), .fact-grid > :nth-child(n + 5), .op-grid > :nth-child(n + 5) { animation-delay: 160ms; }
   .stat, .fact-grid > div, .op-card, .company-card, .pack-card { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
   .stat:hover, .fact-grid > div:hover, .op-card:hover, .company-card:hover, .pack-card:hover { transform: translateY(-2px); }
-  .dialog { animation: rd-drop 200ms var(--rd-ease-out); }
 }
+/* The dialog's drop-in (components/ui/dialog.tsx). */
 @keyframes rd-drop { from { opacity: 0; translate: 0 -8px; } }
 
 /* ── Number card: action tiles stack icon over word; tabs sit inside the card's padding ── */
@@ -277,9 +275,7 @@ input[readonly] { background-color: transparent; }
   .field-row > label :is(input, select) { width: 100%; }
 }
 
-/* The dialog's mark: a crimson tile with the tag's cut corner. */
-.dialog-mark { border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%); }
-[dir='rtl'] .dialog-mark { clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
+/* The dialog's mark (a crimson tile with the tag's cut corner) is components/ui/dialog.tsx since Tailwind migration T2.5. */
 
 /* ── Sign-in, password and two-step pages (Graphite, from design/night-desk-family): the form on the reading side,
    a dark art panel with the crimson tag beside it; stacked under 860px with the art below. ── */
@@ -724,12 +720,7 @@ input[readonly] { background-color: transparent; }
 .po-history ol { display: grid; gap: var(--rd-space-2); margin: var(--rd-space-2) 0 0; padding: 0; list-style: none; }
 .po-history li { display: grid; gap: 2px; padding-inline-start: var(--rd-space-2-5); border-inline-start: 2px solid var(--rd-line); }
 .po-step > span { font-weight: 600; }
-/* The decision form: the two line fields side by side while there is room, the note's count at the reading end. */
-.decision-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--rd-space-3); }
-.decision-form textarea { min-block-size: 5.5rem; resize: vertical; }
-.decision-count { display: flex; justify-content: space-between; gap: var(--rd-space-2); }
-.decision-count .ok { color: var(--rd-success); }
-.decision-form [aria-invalid='true'] { box-shadow: inset 0 0 0 1px var(--rd-danger); }
+/* The decision form is features/tasks/components/decision-dialog.tsx since Tailwind migration T2.5. */
 /* The queue: one row of the paged table per waiting operation, the row a block of its own. */
 .po-queue table.data thead { display: none; }
 .po-queue td.po-cell { padding: 0; white-space: normal; }
@@ -1241,8 +1232,8 @@ input[readonly] { background-color: transparent; }
 .filter-panel > label .date-field { gap: 0; }
 .desk .filter-panel > label .date-field > input, .filter-panel > label .date-field > input { inline-size: 7.5rem; }
 .filter-panel > label .date-field-open { inline-size: 30px; height: 30px; border: 0; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); border-radius: 0; background: var(--rd-surface); }
-.dialog .date-field > input { flex: 1; }
-.dialog .date-field-open { height: 34px; }
+[data-slot='dialog'] .date-field > input { flex: 1; }
+[data-slot='dialog'] .date-field-open { height: 34px; }
 .date-pop {
   position: fixed;
   z-index: calc(var(--rd-z-dialog) + 3);
@@ -1272,7 +1263,7 @@ input[readonly] { background-color: transparent; }
 }
 /* A field's range hint turns red while its value is out of it. */
 .hint.field-error { color: var(--rd-danger); }
-input[aria-invalid='true'], .dialog input[aria-invalid='true'], .pane input[aria-invalid='true'] { border-color: var(--rd-danger); box-shadow: inset 0 0 0 1px var(--rd-danger); }
+input[aria-invalid='true'], [data-slot='dialog'] input[aria-invalid='true'], .pane input[aria-invalid='true'] { border-color: var(--rd-danger); box-shadow: inset 0 0 0 1px var(--rd-danger); }
 /* Number fields without the browser's spin arrows: the value is typed (owner 2026-11-11). */
 input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
 input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -1301,7 +1292,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 .role-field .role-field-name { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
 .role-input { display: flex; align-items: center; gap: 8px; height: 34px; padding-inline: 12px; border: 1px solid color-mix(in srgb, var(--rd-field) 70%, transparent); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
 .role-input:focus-within { border-color: var(--rd-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-accent) 18%, transparent); }
-.dialog .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']),
+[data-slot='dialog'] .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']),
 .pane .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']) { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: 0; color: var(--rd-ink); font-size: 13px; font-weight: 600; text-align: start; font-variant-numeric: tabular-nums; }
 .role-input input::placeholder { color: var(--rd-muted); font-weight: 600; opacity: 1; }
 .role-range { flex: none; color: var(--rd-faint); font-size: var(--rd-text-sm); font-weight: 600; }

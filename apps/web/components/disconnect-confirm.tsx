@@ -82,14 +82,16 @@ export function DisconnectConfirm({
       )}
     >
       {line ? (
-        <div className="stack">
+        // The legacy `.stack`: a grid 12px apart, its items allowed to shrink. The task line is a plain paragraph,
+        // as the legacy `.hint` gave it no rule outside a label, a pane or a table.
+        <div className="grid content-start gap-3 *:min-w-0">
           <Facts>
             <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
             <Fact label={quote && quote.amount < 0 ? t.disconnectTakes : t.disconnectReturns}>
               {quote ? <Money value={Math.abs(quote.amount)} /> : t.loading}
             </Fact>
           </Facts>
-          {quote && (failing || !quote.runsNow) ? <p className="hint">{t.disconnectAsTask}</p> : null}
+          {quote && (failing || !quote.runsNow) ? <p>{t.disconnectAsTask}</p> : null}
         </div>
       ) : null}
     </Dialog>
