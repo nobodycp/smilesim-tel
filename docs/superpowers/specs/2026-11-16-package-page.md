@@ -76,6 +76,22 @@ So: `Package.portMode` and `convertMode` (`off`, `manual`, `auto`), `off` for ev
 `kind`; a kind is refused while its mode is off, and opens a branch activation task marked with
 `Task.activationKind`, whichever mode is set. The task's completion is the ordinary activation's.
 
+### P.6 The point of sale's flow: one question at a time
+
+Owner, 2026-11-16, after five interactive shapes (`docs/prototypes/2026-11-16-activation-variants.html`): the
+«سؤال واحد» shape, with the package cards of the «تذكرة» shape (the data as a ring), fit for a phone, with the
+motion of the prototype.
+
+- One screen, three questions in turn: «أي شركة؟», «أي رزمة؟», «لمن الاشتراك؟». Picking an answer closes the
+  question and opens the next; the answers given sit above as lines, each with «تغيير» that goes back to it.
+- A bar fills by thirds. The question in hand rises in (no motion when the system asks for none).
+- A package card: a ring that draws the package's data against the company's largest package, the name and the
+  duration beside it, minutes and messages with their icons, the price in the accent colour.
+- A digit key picks the company or the package that carries that digit (not on a touch screen, not while typing).
+- A pay bar under the question: what is being bought, the wallet now and after, and the activate button with the
+  price on it.
+- The request, its fields and its rules do not change.
+
 ## Non-goals
 
 - No change to prices, to the line-prices dialog's rules, or to what an eSIM costs.

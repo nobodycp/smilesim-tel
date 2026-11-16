@@ -139,7 +139,11 @@ test('the point of sale sees the details on the package card and the subscribe s
   await page.goto('/packages');
   await page.getByRole('button', { name: /ويكوم/ }).click();
   const card = page.getByTestId('pack-card');
-  await expect(card).toContainText('500 جيجا · 1000 دقيقة · رسائل غير محدودة · 3 أشهر');
+  // The card draws the data as a ring and names the rest (spec 2026-11-16-package-page, P.6).
+  await expect(card.locator('[data-slot="gb-ring"]')).toHaveText('500');
+  await expect(card).toContainText('1000 دقيقة');
+  await expect(card).toContainText('رسائل غير محدودة');
+  await expect(card).toContainText('3 أشهر');
   await expect(card).not.toContainText('تجوال');
   await card.click();
   await expect(page.getByTestId('package-facts-details')).toHaveText('تجوال في الأردن');

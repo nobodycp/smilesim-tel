@@ -102,11 +102,13 @@ test('the point of sale’s own activation form does the same', async ({ page })
   await page.getByTestId('company-card').first().click();
   await page.getByTestId('pack-card').first().click();
   const join = page.getByTestId('subscribe-form');
+  // The button sits in the pay bar under the form and carries the price (spec 2026-11-16-package-page, P.6).
+  const pay = page.getByTestId('pos-pay').getByRole('button', { name: /^تفعيل/ });
   const serial = join.getByLabel('رقم الشريحة');
   await serial.fill('8997202000000000011');
-  await join.getByRole('button', { name: 'تفعيل', exact: true }).click();
+  await pay.click();
   await expect.poll(() => sent.length).toBe(1);
-  await join.getByRole('button', { name: 'تفعيل', exact: true }).click();
+  await pay.click();
   await expect.poll(() => sent.length).toBe(2);
   expect(sent[0].key).toMatch(/^[A-Za-z0-9._:-]{8,120}$/);
   expect(sent[1].key).toBe(sent[0].key);
@@ -117,7 +119,7 @@ test('the point of sale’s own activation form does the same', async ({ page })
   await page.getByTestId('company-card').first().click();
   await page.getByTestId('pack-card').first().click();
   await serial.fill('8997202000000000011');
-  await join.getByRole('button', { name: 'تفعيل', exact: true }).click();
+  await pay.click();
   await expect.poll(() => sent.length).toBe(3);
   expect(sent[2].key).toBeTruthy();
   expect(sent[2].key).not.toBe(sent[0].key);

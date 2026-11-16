@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تفعيل اشتراك: خمسة أشكال</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one sale screen, three panels (company, package, subscriber) that open and close in five different ways. Graphite tokens of Smile Sim. */
+:root{
+  --bg:#f5f5f4; --surface:#ffffff; --surface-2:#efefee; --surface-3:#e6e6e4;
+  --ink:#161616; --ink-2:#474747; --muted:#6a6a6a;
+  --line:rgba(0,0,0,.08); --line-strong:rgba(22,22,22,.14);
+  --accent:#d93049; --accent-soft:rgba(217,48,73,.09); --accent-fill:#d93049; --on-accent:#fff;
+  --success:#0f8a59; --success-soft:rgba(15,138,89,.1); --warning:#a9670a; --warning-soft:rgba(169,103,10,.12);
+  --r-sm:6px; --r-card:8px; --r-panel:10px;
+  --font:"Noto Kufi Arabic", Tahoma, sans-serif;
+  --ease:cubic-bezier(.2,.7,.2,1); --dur:.36s;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#111213; --surface:#18191b; --surface-2:#1f2023; --surface-3:#27282b;
+  --ink:#ececec; --ink-2:#b9b9b9; --muted:#8e8e91;
+  --line:rgba(255,255,255,.07); --line-strong:rgba(236,236,236,.16);
+  --accent:#ff4d63; --accent-soft:rgba(255,77,99,.12); --accent-fill:#d93049;
+  --success:#3ddc97; --success-soft:rgba(61,220,151,.12); --warning:#ffb547; --warning-soft:rgba(255,181,71,.12);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#111213; --surface:#18191b; --surface-2:#1f2023; --surface-3:#27282b;
+  --ink:#ececec; --ink-2:#b9b9b9; --muted:#8e8e91;
+  --line:rgba(255,255,255,.07); --line-strong:rgba(236,236,236,.16);
+  --accent:#ff4d63; --accent-soft:rgba(255,77,99,.12); --accent-fill:#d93049;
+  --success:#3ddc97; --success-soft:rgba(61,220,151,.12); --warning:#ffb547; --warning-soft:rgba(255,181,71,.12);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.6}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.wrap{max-width:1020px;margin:0 auto;padding:18px 16px 40px;display:grid;gap:14px}
+.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end;justify-content:space-between}
+.top h1{margin:0;font-size:20px;font-weight:700}
+.top p{margin:2px 0 0;color:var(--muted);max-width:60ch}
+.switch{display:flex;flex-wrap:wrap;border-radius:var(--r-sm);box-shadow:inset 0 0 0 1px var(--line-strong);overflow:hidden;background:var(--surface)}
+.switch button{border:0;background:none;padding:8px 12px;font-weight:600;font-size:12px;color:var(--muted);border-inline-start:1px solid var(--line-strong)}
+.switch button:first-child{border-inline-start:0}
+.switch button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.note{color:var(--muted);font-size:12px;margin:0}
+.stage{background:var(--surface);border-radius:var(--r-panel);box-shadow:inset 0 0 0 1px var(--line);padding:16px;display:grid;gap:14px;min-height:420px;align-content:start}
+.btn{border:0;border-radius:var(--r-sm);padding:9px 16px;font-weight:700;background:var(--accent-fill);color:var(--on-accent)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.link{border:0;background:none;color:var(--accent);font-weight:600;padding:2px 4px}
+.mark{display:grid;place-items:center;width:34px;height:34px;border-radius:var(--r-card);background:var(--surface-3);font-weight:700;flex:none}
+.tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;background:var(--warning-soft);color:var(--warning)}
+.muted{color:var(--muted)}
+.price{font-weight:700;color:var(--accent);font-size:17px}
+.then{font-size:11px;color:var(--muted)}
+
+/* companies */
+.cos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.co{display:flex;align-items:center;gap:10px;text-align:start;border:0;background:var(--surface-2);border-radius:var(--r-card);padding:10px 12px;font-weight:600;transition:background .15s, box-shadow .15s}
+.co:hover{background:var(--surface-3)}
+.co[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--accent)}
+.co small{display:block;font-weight:400;color:var(--muted)}
+
+/* packages: rows with a shared ruler */
+.rows{display:grid}
+.row{display:grid;grid-template-columns:minmax(120px,1.1fr) minmax(0,2fr) auto;gap:14px;align-items:center;text-align:start;border:0;background:none;padding:11px 8px;border-bottom:1px solid var(--line);border-radius:var(--r-sm);transition:background .15s}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--surface-2)}
+.row[aria-pressed="true"]{background:var(--accent-soft)}
+.row b{font-weight:700}
+.gb{display:flex;align-items:center;gap:10px}
+.gb strong{font-size:20px;min-width:46px}
+.bar{flex:1;height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink-2);border-radius:4px;transform-origin:right;animation:grow .5s var(--ease) both}
+.row[aria-pressed="true"] .bar i{background:var(--accent)}
+@keyframes grow{from{transform:scaleX(0)}}
+.facts{display:flex;flex-wrap:wrap;gap:2px 12px;color:var(--ink-2);font-size:12px}
+.facts svg{width:13px;height:13px;vertical-align:-2px;margin-inline-end:3px}
+.end{text-align:end}
+/* packages: cards with a big figure */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.card{display:grid;gap:6px;text-align:start;border:0;background:var(--surface-2);border-radius:var(--r-card);padding:12px;transition:transform .15s var(--ease), box-shadow .15s}
+.card:hover{transform:translateY(-2px)}
+.card[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--accent)}
+.card .big{font-size:32px;font-weight:700;line-height:1}
+.card .big small{font-size:12px;font-weight:500;color:var(--muted);margin-inline-start:4px}
+.card .foot{display:flex;justify-content:space-between;align-items:end;border-top:1px solid var(--line);padding-top:8px}
+/* packages: ring dial */
+.ring{--p:50;width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--ink-2) calc(var(--p)*1%), var(--surface-3) 0);display:grid;place-items:center;flex:none}
+.card[aria-pressed="true"] .ring{background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--surface-3) 0)}
+.ring span{width:48px;height:48px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-weight:700;font-size:15px}
+.dial{display:flex;gap:10px;align-items:center}
+
+/* details form */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end}
+.field{display:grid;gap:4px;font-weight:600;font-size:12px;color:var(--ink-2)}
+.field input[type=text]{height:36px;border-radius:var(--r-sm);border:0;box-shadow:inset 0 0 0 1px var(--line-strong);background:var(--surface);padding:0 10px;font-weight:500}
+.seg{display:flex;border-radius:var(--r-sm);box-shadow:inset 0 0 0 1px var(--line-strong);overflow:hidden;height:36px}
+.seg button{flex:1;border:0;background:none;font-weight:600;font-size:12px;color:var(--muted);border-inline-start:1px solid var(--line-strong)}
+.seg button:first-child{border-inline-start:0}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.check{display:flex;align-items:center;gap:8px;height:36px;font-weight:600;font-size:12px;color:var(--ink-2)}
+.err{color:var(--accent);font-size:12px;min-height:18px;margin:0}
+
+/* the pay bar */
+.pay{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--surface-2);border-radius:var(--r-card);padding:10px 14px}
+.pay b{display:block}
+.pay .bal{color:var(--muted);font-size:12px}
+.pay .bal em{font-style:normal;color:var(--ink);font-weight:700}
+
+/* folding helper */
+.fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur) var(--ease)}
+.fold>div{overflow:hidden;min-height:0}
+[data-state="active"]>.fold{grid-template-rows:1fr}
+.done-screen{display:none;place-items:center;text-align:center;gap:8px;padding:40px 10px}
+.stage[data-step="3"] .done-screen{display:grid;animation:pop .4s var(--ease)}
+.stage[data-step="3"] .flow{display:none}
+.done-screen .ok{width:56px;height:56px;border-radius:50%;background:var(--success-soft);color:var(--success);display:grid;place-items:center;font-size:26px;font-weight:700}
+@keyframes pop{from{transform:scale(.92);opacity:0}}
+
+/* 1 — accordion */
+.v1 .sec{border-radius:var(--r-card);box-shadow:inset 0 0 0 1px var(--line);transition:background var(--dur)}
+.v1 .sec+.sec{margin-top:8px}
+.v1 .head{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.v1 .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--surface-3);transition:background var(--dur),color var(--dur)}
+.v1 [data-state="active"] .n{background:var(--accent-fill);color:var(--on-accent)}
+.v1 [data-state="done"] .n{background:var(--success-soft);color:var(--success)}
+.v1 .head h2{margin:0;font-size:14px;font-weight:700}
+.v1 .sum{margin-inline-start:auto;display:flex;align-items:center;gap:6px;opacity:0;transform:translateX(-8px);transition:opacity var(--dur),transform var(--dur) var(--ease)}
+.v1 [data-state="done"] .sum{opacity:1;transform:none}
+.v1 [data-state="todo"]{opacity:.55}
+.v1 .body{padding:0 12px 12px}
+
+/* 2 — tabs that shrink into chips */
+.v2 .tabs{display:flex;gap:8px;align-items:stretch}
+.v2 .tab{display:flex;align-items:center;gap:8px;border:0;border-radius:var(--r-card);background:var(--surface-2);padding:8px 12px;min-width:0;flex:0 1 auto;transition:flex-grow var(--dur) var(--ease),background var(--dur),box-shadow var(--dur);text-align:start}
+.v2 .tab[data-state="active"]{flex:1 1 0;background:var(--surface);box-shadow:inset 0 0 0 2px var(--accent)}
+.v2 .tab[data-state="todo"]{opacity:.55}
+.v2 .tab .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--surface-3);flex:none}
+.v2 .tab[data-state="done"] .n{background:var(--success-soft);color:var(--success)}
+.v2 .tab .t{font-weight:700;white-space:nowrap}
+.v2 .tab .s{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v2 .deck{display:grid}
+.v2 .pane{grid-area:1/1;transition:opacity var(--dur),transform var(--dur) var(--ease),visibility 0s linear var(--dur);opacity:0;visibility:hidden}
+.v2 .pane[data-state="done"]{transform:translateX(48px)}
+.v2 .pane[data-state="todo"]{transform:translateX(-48px)}
+.v2 .pane[data-state="active"]{opacity:1;transform:none;visibility:visible;transition-delay:0s}
+
+/* 3 — side rail that collects the choices */
+.v3 .cols{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
+.v3 .rail{display:grid;gap:8px;background:var(--surface-2);border-radius:var(--r-card);padding:12px}
+.v3 .slot{border-radius:var(--r-sm);background:var(--surface);padding:0 10px;max-height:0;opacity:0;overflow:hidden;transform:translateY(-8px);transition:max-height var(--dur) var(--ease),opacity var(--dur),transform var(--dur) var(--ease),padding var(--dur)}
+.v3 .slot[data-filled="1"]{max-height:90px;opacity:1;transform:none;padding:8px 10px}
+.v3 .slot small{display:block;color:var(--muted)}
+.v3 .slot div{display:flex;justify-content:space-between;align-items:center;gap:6px;font-weight:700}
+.v3 .hint{color:var(--muted);font-size:12px;margin:0}
+.v3 .main h2{margin:0 0 8px;font-size:15px}
+.v3 .deck{display:grid}
+.v3 .pane{grid-area:1/1;opacity:0;visibility:hidden;transform:translateY(14px);transition:opacity var(--dur),transform var(--dur) var(--ease),visibility 0s linear var(--dur)}
+.v3 .pane[data-state="active"]{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.v3 .total{display:grid;gap:4px;border-top:1px solid var(--line);padding-top:8px}
+.v3 .total .line{display:flex;justify-content:space-between}
+
+/* 4 — a ticket that fills in */
+.v4 .ticket{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 190px;border-radius:var(--r-card);background:var(--surface-2);overflow:hidden}
+.v4 .cell{padding:10px 12px;border-inline-end:1px dashed var(--line-strong);min-height:66px;display:grid;align-content:center;gap:2px;border:0;border-inline-end:1px dashed var(--line-strong);background:none;text-align:start}
+.v4 .cell small{color:var(--muted);font-weight:600}
+.v4 .cell b{font-size:14px;opacity:.35;transition:opacity .2s}
+.v4 .cell[data-state="active"]{background:var(--surface);box-shadow:inset 0 -3px 0 var(--accent)}
+.v4 .cell[data-filled="1"] b{opacity:1;animation:pop .35s var(--ease)}
+.v4 .stub{padding:10px 12px;display:grid;gap:6px;align-content:center;background:var(--surface-3)}
+.v4 .stub .price{font-size:20px}
+.v4 .deck{display:grid}
+.v4 .pane{grid-area:1/1;opacity:0;visibility:hidden;transform:scale(.98);transition:opacity var(--dur),transform var(--dur) var(--ease),visibility 0s linear var(--dur)}
+.v4 .pane[data-state="active"]{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+
+/* 5 — one question at a time */
+.v5 .answers{display:grid;gap:4px}
+.v5 .ans{display:flex;justify-content:space-between;align-items:center;gap:8px;border-radius:var(--r-sm);background:var(--surface-2);padding:0 12px;max-height:0;opacity:0;overflow:hidden;transition:max-height var(--dur) var(--ease),opacity var(--dur),padding var(--dur)}
+.v5 .ans[data-filled="1"]{max-height:48px;opacity:1;padding:7px 12px}
+.v5 .prog{height:3px;border-radius:2px;background:var(--surface-3);overflow:hidden}
+.v5 .prog i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:right;transform:scaleX(.33);transition:transform var(--dur) var(--ease)}
+.v5[data-step="1"] .prog i{transform:scaleX(.66)} .v5[data-step="2"] .prog i{transform:scaleX(1)}
+.v5 .deck{display:grid;max-width:720px;margin:0 auto;width:100%}
+.v5 .pane{grid-area:1/1;opacity:0;visibility:hidden;transform:translateY(28px);transition:opacity var(--dur),transform var(--dur) var(--ease),visibility 0s linear var(--dur)}
+.v5 .pane[data-state="done"]{transform:translateY(-28px)}
+.v5 .pane[data-state="active"]{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+.v5 .q{font-size:22px;font-weight:700;margin:6px 0 12px;text-align:center}
+.v5 .row{padding:14px 10px}
+.v5 .keys{color:var(--muted);font-size:12px;text-align:center;margin:8px 0 0}
+
+@media (max-width:720px){
+  .row{grid-template-columns:1fr auto}
+  .row .gbcol{grid-column:1/-1;order:3}
+  .v3 .cols{grid-template-columns:1fr}
+  .v4 .ticket{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .v4 .stub{grid-column:1/-1}
+  .v2 .tab .s{display:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition-duration:.01s!important;animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1>تفعيل اشتراك جديد</h1>
+      <p>خمسة أشكال للشاشة نفسها: الشركة، ثم الرزمة، ثم تفاصيل الاشتراك والمشترك. جرّب كل شكل بالضغط.</p>
+    </div>
+    <div class="switch" id="switch" role="group" aria-label="الشكل"></div>
+  </div>
+  <p class="note" id="about"></p>
+  <div class="stage" id="stage"></div>
+  <p class="note">بيانات تجريبية. علامتا «عرض» و«لا تُفصل» تظهران هنا كما ستظهران بعد بناء العروض والقفل.</p>
+</div>
+<script>
+const BAL = 96499;
+const COS = [
+  { id:'wecom', name:'ويكوم', pk:[
+    { id:'w150', name:'ويكوم 150', gb:150, min:'3000 دقيقة', sms:'3000 رسالة', dur:'شهر', price:3900 },
+    { id:'w300', name:'ويكوم 300', gb:300, min:'غير محدود', sms:'3000 رسالة', dur:'شهر', price:4900 },
+    { id:'w200', name:'ويكوم 200', gb:200, min:'3000 دقيقة', sms:'3000 رسالة', dur:'شهر', price:2500, then:3500, offer:true, lock:'لا تُفصل أول شهر' },
+    { id:'w500', name:'ويكوم 500', gb:500, min:'3000 دقيقة', sms:'غير محدود', dur:'3 أشهر', price:8000, per:'26.67 ₪ للشهر', lock:'لا تُفصل 3 أشهر' },
+  ]},
+  { id:'cell', name:'سلكوم', pk:[
+    { id:'c100', name:'سلكوم 100', gb:100, min:'2000 دقيقة', sms:'2000 رسالة', dur:'شهر', price:3000 },
+    { id:'c400', name:'سلكوم 400', gb:400, min:'غير محدود', sms:'غير محدود', dur:'شهر', price:5000 },
+    { id:'c15', name:'سلكوم 15 يوم', gb:60, min:'1000 دقيقة', sms:'500 رسالة', dur:'15 يوم', price:1900 },
+  ]},
+  { id:'hot', name:'هوت', pk:[
+    { id:'h150', name:'هوت 150', gb:150, min:'3000 دقيقة', sms:'3000 رسالة', dur:'شهر', price:3300 },
+    { id:'h300', name:'هوت 300', gb:300, min:'3000 دقيقة', sms:'3000 رسالة', dur:'شهر', price:4500 },
+  ]},
+  { id:'partner', name:'بارتنر', pk:[
+    { id:'p300', name:'بارتنر 300', gb:300, min:'3500 دقيقة', sms:'3500 رسالة', dur:'شهر', price:3300 },
+    { id:'p500', name:'بارتنر 500', gb:500, min:'3000 دقيقة', sms:'3000 رسالة', dur:'شهر', price:3900, then:4500, offer:true, lock:'لا تُفصل أول شهر' },
+  ]},
+];
+const VARIANTS = [
+  { key:'v1', name:'طيّ', about:'الأقسام الثلاثة فوق بعض. ما تختاره ينطوي إلى سطر واحد مع «تغيير»، والقسم التالي ينفتح تحته.' },
+  { key:'v2', name:'تبويبات', about:'ثلاثة تبويبات في سطر. التبويب المنجز ينكمش ويحمل اختيارك، والمحتوى ينزلق جانبياً.' },
+  { key:'v3', name:'سكة جانبية', about:'اختياراتك تتجمع في عمود جانبي واحدة بعد الأخرى مع السعر وزر التفعيل، والخطوة الحالية في الوسط.' },
+  { key:'v4', name:'تذكرة', about:'تذكرة في الأعلى فيها ثلاث خانات تمتلئ مع كل اختيار، وطرفها يحمل السعر وزر التفعيل. الرزم بعدّاد دائري.' },
+  { key:'v5', name:'سؤال واحد', about:'سؤال واحد كبير في كل مرة، وإجاباتك تصعد إلى الأعلى كأسطر. يعمل بأرقام لوحة المفاتيح.' },
+];
+const S = { v:0, step:0, co:null, pk:null, kind:'new', esim:false };
+const $ = (q, el=document) => el.querySelector(q);
+const $$ = (q, el=document) => [...el.querySelectorAll(q)];
+const money = (a) => `<span class="num">${(a/100).toFixed(2)}</span> ₪`;
+const co = () => COS.find((c) => c.id === S.co);
+const pk = () => co()?.pk.find((p) => p.id === S.pk);
+const ICON = {
+  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  sms:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+};
+const facts = (p) => `<span class="facts"><span>${ICON.phone}${p.min}</span><span>${ICON.sms}${p.sms}</span></span>`;
+const extra = (p) => `${p.offer ? '<span class="tag">عرض</span> ' : ''}${p.lock ? `<span class="muted" style="font-size:11px">${ICON.lock.replace('<svg','<svg style="width:12px;height:12px;vertical-align:-2px"')} ${p.lock}</span>` : ''}`;
+const priceBox = (p) => `<span class="end"><span class="price">${money(p.price)}</span>${p.then ? `<br><span class="then">ثم ${money(p.then)}</span>` : p.per ? `<br><span class="then">${p.per}</span>` : ''}</span>`;
+
+const companies = () => `<div class="cos">${COS.map((c, i) => `<button class="co" data-co="${c.id}" aria-pressed="${S.co === c.id}"><span class="mark">${c.name[0]}</span><span>${c.name}<small>${c.pk.length} رزم</small></span>${S.v === 4 ? `<span class="muted num" style="margin-inline-start:auto">${i + 1}</span>` : ''}</button>`).join('')}</div>`;
+function packages(mode) {
+  const list = co()?.pk ?? [];
+  const max = Math.max(1, ...list.map((p) => p.gb));
+  if (!list.length) return '<p class="muted">اختر الشركة أولاً.</p>';
+  if (mode === 'cards') return `<div class="cards">${list.map((p) => `<button class="card" data-pk="${p.id}" aria-pressed="${S.pk === p.id}"><span><b>${p.name}</b> ${p.offer ? '<span class="tag">عرض</span>' : ''}</span><span class="big num">${p.gb}<small>جيجا</small></span>${facts(p)}<span class="muted" style="font-size:11px;min-height:17px">${p.lock ? ICON.lock.replace('<svg','<svg style="width:12px;height:12px;vertical-align:-2px"') + ' ' + p.lock : ''}</span><span class="foot">${priceBox(p)}<span class="muted">${p.dur}</span></span></button>`).join('')}</div>`;
+  if (mode === 'rings') return `<div class="cards">${list.map((p) => `<button class="card" data-pk="${p.id}" aria-pressed="${S.pk === p.id}"><span class="dial"><span class="ring" style="--p:${Math.round((p.gb / max) * 100)}"><span class="num">${p.gb}</span></span><span><b>${p.name}</b><br><span class="muted">${p.dur} · جيجا</span></span></span>${facts(p)}<span style="min-height:19px">${extra(p)}</span><span class="foot">${priceBox(p)}</span></button>`).join('')}</div>`;
+  return `<div class="rows">${list.map((p, i) => `<button class="row" data-pk="${p.id}" aria-pressed="${S.pk === p.id}"><span><b>${p.name}</b> ${S.v === 4 ? `<span class="muted num">${i + 1}</span>` : ''}<br><span class="muted">${p.dur}</span> ${extra(p)}</span><span class="gbcol"><span class="gb"><strong class="num">${p.gb}</strong><span class="bar"><i style="width:${Math.round((p.gb / max) * 100)}%"></i></span></span>${facts(p)}</span>${priceBox(p)}</button>`).join('')}</div>`;
+}
+const details = () => `<div class="form">
+  <div class="field"><span id="kindLabel">نوع التفعيل</span><div class="seg" role="group" aria-labelledby="kindLabel"><button type="button" data-kind="new" aria-pressed="${S.kind === 'new'}">رقم جديد</button><button type="button" data-kind="port" aria-pressed="${S.kind === 'port'}">نيود</button></div></div>
+  <label class="field" for="msisdn" id="msisdnField" ${S.kind === 'port' ? '' : 'hidden'}>الرقم<input type="text" id="msisdn" inputmode="numeric" dir="ltr" placeholder="05xxxxxxxx"></label>
+  <label class="field" for="iccid" id="iccidField" ${S.esim ? 'hidden' : ''}>رقم الشريحة<input type="text" id="iccid" inputmode="numeric" dir="ltr" placeholder="8997…"></label>
+  <label class="check" for="esim" id="esimField" ${S.kind === 'port' ? 'hidden' : ''}><input type="checkbox" id="esim" ${S.esim ? 'checked' : ''}>eSIM</label>
+  <label class="field" for="customer">اسم الزبون<input type="text" id="customer" placeholder="اختياري"></label>
+</div><p class="err" id="err" role="alert"></p>`;
+const payBar = () => `<div class="pay"><div><b data-sum="line">اختر الشركة والرزمة</b><span class="bal">الرصيد ${money(BAL)} ← بعد التفعيل <em data-sum="after">${money(BAL)}</em></span></div><button class="btn" data-activate disabled>تفعيل</button></div>`;
+const doneScreen = () => `<div class="done-screen"><div class="ok">✓</div><b style="font-size:16px">أُرسل التفعيل</b><span class="muted" data-sum="line"></span><button class="btn ghost" data-reset>تفعيل رقم آخر</button></div>`;
+
+const SHAPES = {
+  v1: () => `<div class="flow">
+    ${[['الشركة','co',companies()],['الرزمة','pk',`<div data-pkgs="rows"></div>`],['الاشتراك والمشترك','who',details()]].map(([t, k, body], i) => `<section class="sec" data-panel="${i}"><div class="head"><span class="n">${i + 1}</span><h2>${t}</h2><span class="sum"><b data-sum="${k}"></b><button class="link" data-goto="${i}">تغيير</button></span></div><div class="fold"><div><div class="body">${body}</div></div></div></section>`).join('')}
+    <div style="margin-top:12px">${payBar()}</div></div>${doneScreen()}`,
+  v2: () => `<div class="flow" style="display:grid;gap:12px">
+    <div class="tabs">${[['الشركة','co'],['الرزمة','pk'],['الاشتراك والمشترك','who']].map(([t, k], i) => `<button class="tab" data-panel="${i}" data-goto="${i}"><span class="n">${i + 1}</span><span class="t">${t}</span><span class="s" data-sum="${k}"></span></button>`).join('')}</div>
+    <div class="deck"><div class="pane" data-panel="0">${companies()}</div><div class="pane" data-panel="1"><div data-pkgs="cards"></div></div><div class="pane" data-panel="2">${details()}</div></div>
+    ${payBar()}</div>${doneScreen()}`,
+  v3: () => `<div class="flow cols">
+    <aside class="rail"><b>طلبك</b><p class="hint" data-hint>ابدأ باختيار الشركة.</p>
+      ${[['الشركة','co',0],['الرزمة','pk',1]].map(([t, k, i]) => `<div class="slot" data-slot="${k}"><small>${t}</small><div><span data-sum="${k}"></span><button class="link" data-goto="${i}">تغيير</button></div></div>`).join('')}
+      <div class="total"><div class="line"><span class="muted">السعر</span><b data-sum="price">—</b></div><div class="line"><span class="muted">الرصيد بعد التفعيل</span><b data-sum="after">${money(BAL)}</b></div></div>
+      <button class="btn" data-activate disabled>تفعيل</button></aside>
+    <div class="main"><h2 data-title>اختر الشركة</h2><div class="deck"><div class="pane" data-panel="0">${companies()}</div><div class="pane" data-panel="1"><div data-pkgs="rows"></div></div><div class="pane" data-panel="2">${details()}</div></div></div></div>${doneScreen()}`,
+  v4: () => `<div class="flow" style="display:grid;gap:14px">
+    <div class="ticket">${[['الشركة','co'],['الرزمة','pk'],['المشترك','who']].map(([t, k], i) => `<button class="cell" data-panel="${i}" data-goto="${i}" data-cell="${k}"><small>${t}</small><b data-sum="${k}">—</b></button>`).join('')}
+      <div class="stub"><span class="price" data-sum="price">—</span><span class="bal muted" style="font-size:11px">بعد التفعيل <b data-sum="after">${money(BAL)}</b></span><button class="btn" data-activate disabled>تفعيل</button></div></div>
+    <div class="deck"><div class="pane" data-panel="0">${companies()}</div><div class="pane" data-panel="1"><div data-pkgs="rings"></div></div><div class="pane" data-panel="2">${details()}</div></div></div>${doneScreen()}`,
+  v5: () => `<div class="flow" style="display:grid;gap:12px">
+    <div class="prog"><i></i></div>
+    <div class="answers">${[['الشركة','co',0],['الرزمة','pk',1]].map(([t, k, i]) => `<div class="ans" data-slot="${k}"><span><span class="muted">${t}</span> · <b data-sum="${k}"></b></span><button class="link" data-goto="${i}">تغيير</button></div>`).join('')}</div>
+    <div class="deck"><div class="pane" data-panel="0"><p class="q">أي شركة؟</p>${companies()}<p class="keys">اضغط رقماً من 1 إلى ${COS.length}</p></div><div class="pane" data-panel="1"><p class="q">أي رزمة؟</p><div data-pkgs="rows"></div><p class="keys">اضغط رقم الرزمة</p></div><div class="pane" data-panel="2"><p class="q">لمن الاشتراك؟</p>${details()}</div></div>
+    ${payBar()}</div>${doneScreen()}`,
+};
+
+const stage = $('#stage');
+function mount() {
+  const v = VARIANTS[S.v];
+  stage.className = `stage ${v.key}`;
+  stage.innerHTML = SHAPES[v.key]();
+  $('#about').textContent = v.about;
+  $$('#switch button').forEach((b, i) => b.setAttribute('aria-pressed', String(i === S.v)));
+  fillPackages();
+  sync();
+}
+function fillPackages() { $$('[data-pkgs]', stage).forEach((el) => { el.innerHTML = packages(el.dataset.pkgs); }); }
+function sync() {
+  stage.dataset.step = S.step;
+  $$('[data-panel]', stage).forEach((el) => { const i = Number(el.dataset.panel); el.dataset.state = i < S.step ? 'done' : i === S.step ? 'active' : 'todo'; });
+  $$('[data-co]', stage).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.co === S.co)));
+  $$('[data-pk]', stage).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.pk === S.pk)));
+  const c = co(), p = pk();
+  const who = S.step >= 2 ? (S.kind === 'port' ? 'نيود' : S.esim ? 'رقم جديد · eSIM' : 'رقم جديد') : '';
+  const text = { co: c?.name ?? '', pk: p ? `${p.name} · ${p.dur}` : '', who };
+  $$('[data-sum]', stage).forEach((el) => {
+    const k = el.dataset.sum;
+    if (k === 'price') el.innerHTML = p ? money(p.price) : '—';
+    else if (k === 'after') el.innerHTML = money(BAL - (p?.price ?? 0));
+    else if (k === 'line') el.textContent = p ? `${p.name} · ${p.dur}${who ? ' · ' + who : ''}` : c ? `${c.name}: اختر الرزمة` : 'اختر الشركة والرزمة';
+    else el.textContent = text[k] || (el.closest('.cell') ? '—' : '');
+  });
+  $$('[data-slot]', stage).forEach((el) => { el.dataset.filled = text[el.dataset.slot] && S.step > (el.dataset.slot === 'co' ? 0 : 1) ? '1' : '0'; });
+  $$('[data-cell]', stage).forEach((el) => { el.dataset.filled = text[el.dataset.cell] ? '1' : '0'; });
+  $$('[data-activate]', stage).forEach((b) => { b.disabled = S.step < 2 || !p; b.innerHTML = p && S.step >= 2 ? `تفعيل · ${money(p.price)}` : 'تفعيل'; });
+  const title = $('[data-title]', stage); if (title) title.textContent = ['اختر الشركة', 'اختر الرزمة', 'تفاصيل الاشتراك والمشترك'][Math.min(S.step, 2)];
+  const hint = $('[data-hint]', stage); if (hint) hint.hidden = S.step > 0;
+}
+function chooseCo(id) { if (S.co !== id) { S.co = id; S.pk = null; fillPackages(); } S.step = 1; sync(); }
+function choosePk(id) { S.pk = id; S.step = 2; sync(); setTimeout(() => $('#iccid', stage)?.focus({ preventScroll: true }), 380); }
+stage.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-co],[data-pk],[data-goto],[data-kind],[data-activate],[data-reset]');
+  if (!t) return;
+  if (t.dataset.co) chooseCo(t.dataset.co);
+  else if (t.dataset.pk) choosePk(t.dataset.pk);
+  else if (t.dataset.kind) { S.kind = t.dataset.kind; if (S.kind === 'port') S.esim = false; refreshForm(); sync(); }
+  else if (t.dataset.goto !== undefined) { const i = Number(t.dataset.goto); if (i === 0 || (i === 1 && S.co) || (i === 2 && S.pk)) { S.step = i; sync(); } }
+  else if (t.hasAttribute('data-activate')) activate();
+  else if (t.hasAttribute('data-reset')) { Object.assign(S, { step:0, co:null, pk:null, kind:'new', esim:false }); mount(); }
+});
+stage.addEventListener('change', (e) => { if (e.target.id === 'esim') { S.esim = e.target.checked; refreshForm(); sync(); } });
+stage.addEventListener('input', () => { const err = $('#err', stage); if (err) err.textContent = ''; });
+function refreshForm() {
+  $$('[data-kind]', stage).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === S.kind)));
+  $('#msisdnField', stage).hidden = S.kind !== 'port';
+  $('#esimField', stage).hidden = S.kind === 'port';
+  $('#iccidField', stage).hidden = S.esim;
+  const box = $('#esim', stage); if (box) box.checked = S.esim;
+}
+function activate() {
+  const err = $('#err', stage);
+  const serial = $('#iccid', stage)?.value.trim() ?? '';
+  const number = $('#msisdn', stage)?.value.trim() ?? '';
+  if (S.kind === 'port' && !/^05\d{8}$/.test(number)) { err.textContent = 'اكتب الرقم المراد نقله: عشر خانات تبدأ بـ 05.'; return; }
+  if (!S.esim && serial.length < 8) { err.textContent = 'اكتب رقم الشريحة، أو اختر eSIM.'; return; }
+  S.step = 3; sync();
+}
+document.addEventListener('keydown', (e) => {
+  if (VARIANTS[S.v].key !== 'v5' || e.target.matches('input') || !/^[1-9]$/.test(e.key)) return;
+  const i = Number(e.key) - 1;
+  if (S.step === 0 && COS[i]) chooseCo(COS[i].id);
+  else if (S.step === 1 && co()?.pk[i]) choosePk(co().pk[i].id);
+});
+$('#switch').innerHTML = VARIANTS.map((v, i) => `<button type="button" data-v="${i}" aria-pressed="false">${i + 1} · ${v.name}</button>`).join('');
+$('#switch').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; Object.assign(S, { v:Number(b.dataset.v), step:0, co:null, pk:null, kind:'new', esim:false }); mount(); });
+mount();
+</script>
+</body>
+</html>

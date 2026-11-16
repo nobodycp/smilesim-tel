@@ -1,5 +1,6 @@
 'use client';
 
+import { MessageSquare, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -26,8 +27,7 @@ import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { pointerGlowClass } from '../../../components/stat';
-import { Tabs } from '../../../components/tabs';
-import { PackageFactTiles, PackageFacts } from '../../../components/package-facts';
+import { PackageFactTiles } from '../../../components/package-facts';
 import { priceFieldClass } from '../../../components/price-field';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
@@ -57,7 +57,7 @@ import { paneHintClass } from '../sim-fields';
  *   on a phone's card the cell takes the card's whole row and its parts wrap from the start.
  */
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
-const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,180px)] justify-start gap-3 motion-safe:*:animate-rise';
+const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3 max-sm:grid-cols-2 max-sm:gap-2';
 const CARD = cn(
   'relative isolate grid min-h-37 gap-2.5 rounded-card border border-line bg-surface p-4 text-ink hover:border-ink',
   pointerGlowClass,
@@ -65,6 +65,15 @@ const CARD = cn(
 const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
 const PRICE = 'm-0 text-4xl font-bold';
 const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
+/*
+ * The point of sale's flow, one question at a time (spec 2026-11-16-package-page, P.6): the question rises in when
+ * motion is allowed; its heading is centred, 22px bold; the cards fill the row from 170px; a card's digit is the key
+ * that picks it; the note under the cards names the keys and is hidden on a touch screen.
+ */
+const QUESTION = 'grid gap-3 motion-safe:animate-rise';
+const ASK = 'm-0 text-center text-3xl font-bold text-balance';
+const KEY_HINT = 'text-xs font-bold text-muted tabular-nums max-touch:hidden';
+const KEYS_NOTE = 'm-0 text-center text-sm text-muted max-touch:hidden';
 const EYEBROW = 'm-0 text-xs font-bold tracking-head text-muted';
 /** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
@@ -98,6 +107,7 @@ function PosCatalog({
   const [result, setResult] = useState<ApplyResult | null>(null);
   const { run } = useAction({ setError, setNote });
   const requestKey = useRequestKey();
+  const { me } = useDesk();
   const names = [...new Set(rows.map((row) => row.companyName).filter(Boolean))];
   const imageOf = new Map(marks.map((mark) => [mark.name, mark.image]));
   const packs = rows.filter((row) => row.companyName === company);
@@ -151,83 +161,172 @@ function PosCatalog({
   }
 
   const canActivate = loginName.trim().length > 0 && simReady;
+  const stepIndex = step === 'companies' ? 0 : step === 'packages' ? 1 : 2;
+  // The ring of a package is its data against the largest of the company's packages.
+  const maxGb = Math.max(1, ...packs.map((row) => row.dataGb ?? 0));
+  const durationOf = (months: number) => (months === 1 ? t.monthOne : months === 2 ? t.monthTwo : `${months} ${t.months}`);
+  const factOf = (value: number | null | undefined, unlimited: string, counted: string) => (value === null || value === undefined ? '' : value === -1 ? unlimited : counted.replace('{n}', String(value)));
+  const due = picked && stepIndex === 2 ? picked.price + (withEsim ? picked.esimPrice : 0) : 0;
+  const balance = typeof me?.balance === 'number' ? me.balance : null;
+
+  // A digit picks the company or the package it numbers, unless the seller is typing in a field.
+  useEffect(() => {
+    if (step === 'details') return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!/^[1-9]$/.test(event.key) || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, [contenteditable], [role=dialog]')) return;
+      const index = Number(event.key) - 1;
+      if (step === 'companies' && names[index]) openCompany(names[index]);
+      else if (step === 'packages' && packs[index]) openPackage(packs[index]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   return (
     <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
-      <div className={COLUMN}>
-        <Tabs
-          items={[
-            { key: 'companies', label: t.tabCompanies },
-            { key: 'packages', label: t.tabPackages, disabled: !company },
-            { key: 'details', label: t.tabSubscribe, disabled: !picked },
-          ]}
-          value={step}
-          onChange={setStep}
-        />
+      <div className={COLUMN} data-testid="pos-flow">
+        {/* One question at a time (spec 2026-11-16-package-page, P.6): the bar fills by thirds, the answers given so far
+            sit above as lines with «تغيير», and the question in hand rises in under them. */}
+        <div className="h-0.75 overflow-hidden rounded-xs bg-surface-3" aria-hidden="true">
+          <i className={cn('block h-full origin-right bg-accent transition-transform duration-300 ease-out rtl:origin-right ltr:origin-left motion-reduce:transition-none', stepIndex === 0 ? 'scale-x-[0.33]' : stepIndex === 1 ? 'scale-x-[0.66]' : 'scale-x-100')} />
+        </div>
+        {stepIndex > 0 ? (
+          <div className="grid gap-1" data-testid="pos-answers">
+            <Answer label={t.company} value={company} change={t.posChange} onChange={() => setStep('companies')} />
+            {stepIndex > 1 && picked ? <Answer label={t.packageName} value={picked.name} change={t.posChange} onChange={() => setStep('packages')} /> : null}
+          </div>
+        ) : null}
         {step === 'companies' && (
-          <div className={CARD_GRID}>
-            {names.map((name) => {
-              const image = imageOf.get(name) ?? '';
-              return (
-                <button className={cn(CARD, 'cursor-pointer justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                  {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
-                  <strong>{name}</strong>
-                </button>
-              );
-            })}
+          <div className={QUESTION} key="companies">
+            <h2 className={ASK}>{t.posAskCompany}</h2>
+            <div className={CARD_GRID}>
+              {names.map((name, index) => {
+                const image = imageOf.get(name) ?? '';
+                return (
+                  <button className={cn(CARD, 'cursor-pointer justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
+                    {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
+                    <strong>{name}</strong>
+                    {index < 9 ? <span className={KEY_HINT} aria-hidden="true">{index + 1}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+            <p className={KEYS_NOTE}>{t.posPressKey}</p>
           </div>
         )}
         {step === 'packages' && (
-          <div className={CARD_GRID}>
-            {packs.map((row) => (
-              <button className={cn(CARD, 'justify-items-stretch text-start')} data-slot="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
-                <strong>{row.name}</strong>
-                <PackageFacts facts={row} withDetails={false} />
-                <p className={PRICE} data-testid="pack-price"><Money value={row.price} /></p>
-              </button>
-            ))}
+          <div className={QUESTION} key="packages">
+            <h2 className={ASK}>{t.posAskPackage}</h2>
+            <div className={CARD_GRID}>
+              {packs.map((row, index) => (
+                <button className={cn(CARD, 'justify-items-stretch text-start')} data-slot="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
+                  <span className="flex items-center gap-2.5">
+                    <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} />
+                    <span className="grid min-w-0">
+                      <strong>{row.name}</strong>
+                      <span className="text-sm text-muted">{durationOf(row.months)}</span>
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm font-semibold text-ink-2">
+                    {factOf(row.minutes, t.factMinutesUnlimited, t.factMinutes) ? <span className="inline-flex items-center gap-1"><Phone size={13} aria-hidden="true" />{factOf(row.minutes, t.factMinutesUnlimited, t.factMinutes)}</span> : null}
+                    {factOf(row.smsCount, t.factSmsUnlimited, t.factSms) ? <span className="inline-flex items-center gap-1"><MessageSquare size={13} aria-hidden="true" />{factOf(row.smsCount, t.factSmsUnlimited, t.factSms)}</span> : null}
+                  </span>
+                  <span className="flex items-end justify-between border-t border-line pt-2">
+                    <span className={cn(PRICE, 'text-accent')} data-testid="pack-price"><Money value={row.price} /></span>
+                    {index < 9 ? <span className={KEY_HINT} aria-hidden="true">{index + 1}</span> : null}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className={KEYS_NOTE}>{t.posPressKey}</p>
           </div>
         )}
         {step === 'details' && picked && (
-          <Pane>
-            <form className="pane-body block" data-testid="subscribe-form" onSubmit={join}>
-              <h2>{picked.companyName} · {picked.name}</h2>
-              <PackageFactTiles facts={picked} />
-              <p className={PRICE} data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
-              {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
-              {picked.canActivate ? <ActivationKindChoice value={kind} onChange={setKind} pkg={picked} /> : null}
-              {picked.canActivate && offersEsim && (
-                <Label tone="pane" className={CHECK_ROW}>
-                  <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />
-                  <span>{t.esim}</span>
-                </Label>
-              )}
-              {picked.canActivate && activation === 'details' && (
-                <Label tone="pane">
-                  {t.currentNumberDetails}
-                  <Input surface="surface" className="text-md" value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
-                </Label>
-              )}
-              {picked.canActivate && activation === 'number' && (
-                <Label tone="pane">
-                  {t.number}
-                  <Input surface="surface" className="text-md" value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
-                </Label>
-              )}
-              {picked.canActivate && !withEsim && (
-                <Label tone="pane">
-                  {t.iccid}
-                  <Input surface="surface" className="text-md" value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
-                  {hasSimRules(rules) && <span className={paneHintClass}>{simHint(t, rules)}</span>}
-                </Label>
-              )}
-              {picked.canActivate && <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>}
-            </form>
-          </Pane>
+          <div className={QUESTION} key="details">
+            <h2 className={ASK}>{t.posAskWho}</h2>
+            <Pane>
+              <form className="pane-body block" id="subscribe-form" data-testid="subscribe-form" onSubmit={join}>
+                <PackageFactTiles facts={picked} />
+                {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
+                {picked.canActivate ? <ActivationKindChoice value={kind} onChange={setKind} pkg={picked} /> : null}
+                {picked.canActivate && offersEsim && (
+                  <Label tone="pane" className={CHECK_ROW}>
+                    <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />
+                    <span>{t.esim}</span>
+                  </Label>
+                )}
+                {picked.canActivate && activation === 'details' && (
+                  <Label tone="pane">
+                    {t.currentNumberDetails}
+                    <Input surface="surface" className="text-md" value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
+                  </Label>
+                )}
+                {picked.canActivate && activation === 'number' && (
+                  <Label tone="pane">
+                    {t.number}
+                    <Input surface="surface" className="text-md" value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
+                  </Label>
+                )}
+                {picked.canActivate && !withEsim && (
+                  <Label tone="pane">
+                    {t.iccid}
+                    <Input surface="surface" className="text-md" value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
+                    {hasSimRules(rules) && <span className={paneHintClass}>{simHint(t, rules)}</span>}
+                  </Label>
+                )}
+              </form>
+            </Pane>
+          </div>
         )}
+        {/* What is being bought and what the wallet holds after it; the button carries the price. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-card bg-surface-2 px-3.5 py-2.5" data-testid="pos-pay">
+          <div className="grid min-w-0">
+            <strong>{picked && stepIndex === 2 ? `${picked.name} · ${durationOf(picked.months)}` : stepIndex === 1 ? `${company}: ${t.posAskPackage}` : t.posAskCompany}</strong>
+            {balance !== null ? (
+              <span className="text-sm text-muted">
+                {t.balance} <Money value={balance} /> ← {t.posAfter} <b className="text-ink"><Money value={balance - due} /></b>
+              </span>
+            ) : null}
+          </div>
+          {picked && stepIndex === 2 && picked.canActivate ? (
+            <Button type="submit" form="subscribe-form" disabled={!canActivate} className="max-sm:w-full">
+              {t.actActivate} · <Money value={due} />
+            </Button>
+          ) : null}
+        </div>
       </div>
       <ActivationResult result={result} onClose={() => setResult(null)} />
     </Desk>
+  );
+}
+
+/** An answer already given, as a line: what was asked, what was picked, and «تغيير» to go back to it. */
+function Answer({ label, value, change, onChange }: { label: string; value: string; change: string; onChange: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-sm bg-surface-2 px-3 py-1.5 motion-safe:animate-rise" data-testid="pos-answer">
+      <span className="min-w-0 truncate"><span className="text-muted">{label}</span> · <b>{value}</b></span>
+      <button type="button" className="shrink-0 cursor-pointer border-0 bg-transparent px-1 font-semibold text-accent" onClick={onChange}>{change}</button>
+    </div>
+  );
+}
+
+/**
+ * A package's data as a ring: the share of the company's largest package drawn around the figure. Unlimited is a
+ * full ring; a package that states no data has an empty one.
+ */
+function GbRing({ gb, max, unlimited }: { gb: number | null; max: number; unlimited: string }) {
+  const share = gb === null ? 0 : gb === -1 ? 100 : Math.round((gb / max) * 100);
+  return (
+    <span
+      className="grid size-16 shrink-0 place-items-center rounded-pill bg-[conic-gradient(var(--rd-ink-2)_calc(var(--share)*1%),var(--rd-surface-3)_0)]"
+      style={{ '--share': share } as React.CSSProperties}
+      data-slot="gb-ring"
+    >
+      <span className="grid size-12 place-items-center rounded-pill bg-surface text-center text-base leading-none font-bold tabular-nums">
+        {gb === null ? '—' : gb === -1 ? <span className="text-xs">{unlimited}</span> : gb}
+      </span>
+    </span>
   );
 }
 

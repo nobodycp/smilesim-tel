@@ -103,7 +103,8 @@ test('the point of sale sees its effective price and a stopped activation', asyn
   await page.getByRole('button', { name: 'ويكوم' }).click();
   await expect(page.getByTestId('pack-card').getByTestId('money')).toHaveText('37.00 ₪');
   await page.getByTestId('pack-card').click();
-  await expect(page.getByTestId('subscribe-form').getByTestId('pack-price').getByTestId('money')).toHaveText('37.00 ₪');
+  // The package picked is an answer above the form; the price is on the pay bar's button, which a stopped account has not.
+  await expect(page.getByTestId('pos-answer').last()).toContainText('الرزمة');
   await expect(page.getByText('التفعيل موقوف على هذا الحساب.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'تفعيل', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('pos-pay').getByRole('button')).toHaveCount(0);
 });
