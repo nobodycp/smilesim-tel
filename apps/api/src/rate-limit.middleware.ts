@@ -6,7 +6,7 @@ import IORedis from 'ioredis';
 import { readCookie } from './modules/platform/cookies';
 import { errorBody } from './errors';
 import { logger } from './modules/platform/log';
-import { resourcePaths } from './modules/platform/route-prefixes';
+import { resourcePaths, routePath } from './modules/platform/route-prefixes';
 
 // Requests per signed-in session in a one-minute window, shared by every API process through Redis.
 // A page load asks for about ten reads; a busy desk stays far under these. Writes have their own, lower ceiling.
@@ -91,7 +91,7 @@ export class RateLimitMiddleware implements NestMiddleware, OnModuleDestroy {
 
   async use(req: Request, res: Response, next: NextFunction) {
     const sessionId = readCookie(req, 'sid');
-    const path = req.originalUrl.split('?')[0] ?? '';
+    const path = routePath(req.originalUrl);
     if (req.method === 'POST' && SIGN_IN.some((pattern) => pattern.test(path)) && (await this.signInOver(req, res))) return;
     if (!sessionId || EXEMPT.some((pattern) => pattern.test(path))) return next();
     // The key holds a hash, never the session id itself.

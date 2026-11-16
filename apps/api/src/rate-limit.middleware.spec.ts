@@ -52,6 +52,14 @@ describe('RateLimitMiddleware', () => {
     expect((await call(middleware, 'POST', '/v1/handoff')).status).toBe(429);
   });
 
+  it('counts a sign-in whatever the spelling of its path: a trailing slash, upper case or a query reach the same route', async () => {
+    // The router answers `/auth/login/` and `/AUTH/LOGIN` as `/auth/login`. Before this the cap read the path as
+    // it was sent, so those spellings were never counted.
+    const spellings = ['/auth/login', '/auth/login/', '/AUTH/LOGIN', '/Auth/Login/?x=1', '/auth/passkey-login/', '/V1/handoff/'];
+    for (let index = 0; index < RATE_LIMIT_SIGN_IN; index += 1) expect((await call(middleware, 'POST', spellings[index % spellings.length])).passed).toBe(true);
+    for (const url of spellings) expect({ url, status: (await call(middleware, 'POST', url)).status }).toEqual({ url, status: 429 });
+  });
+
   it('keeps the sign-in cap in production: the limit is never switched off by a missing TRUST_PROXY', async () => {
     const before = { env: process.env.NODE_ENV, proxy: process.env.TRUST_PROXY };
     process.env.NODE_ENV = 'production';

@@ -11,3 +11,15 @@ export const RESOURCE_CONTROLLER_PREFIXES: string[] = [...RESOURCE_PREFIXES];
 export function resourcePaths(path: string): string[] {
   return RESOURCE_PREFIXES.map((prefix) => `/${prefix}/${path}`);
 }
+
+/**
+ * A request's path as the router matches it, for the rules that name one route (the sign-in limit, the stream's
+ * exemption, the routes that start a session): without the query, in lower case and with no trailing slash. The
+ * router takes `/auth/login/` and `/AUTH/LOGIN` for `/auth/login`; a rule that compared the path as it was sent
+ * missed them.
+ */
+export function routePath(url: string | undefined): string {
+  const path = String(url ?? '').split('?')[0].toLowerCase().replace(/\/+$/, '');
+  return path || '/';
+}
+

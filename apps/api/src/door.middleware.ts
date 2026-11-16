@@ -4,7 +4,7 @@ import { expectedLayer } from './doors';
 import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
 import { readCookie } from './modules/platform/cookies';
-import { resourcePaths } from './modules/platform/route-prefixes';
+import { resourcePaths, routePath } from './modules/platform/route-prefixes';
 
 /**
  * The routes that start a session on this door. The `sid` cookie is shared by every door of the site
@@ -15,8 +15,7 @@ import { resourcePaths } from './modules/platform/route-prefixes';
 const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', ...resourcePaths('handoff')]);
 
 function startsSession(req: Request): boolean {
-  const path = String(req.originalUrl ?? req.url ?? '').split('?')[0].replace(/\/+$/, '');
-  return req.method === 'POST' && STARTS_SESSION.has(path);
+  return req.method === 'POST' && STARTS_SESSION.has(routePath(req.originalUrl ?? req.url));
 }
 
 @Injectable()
