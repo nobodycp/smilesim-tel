@@ -15,7 +15,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 |---|---|---|
 | T0 Decision docs | T0.1 | done — T0.1 4478666 |
 | T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314; T1.3c ebca557; T1.4 9f6efc8 |
-| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47, T2.5 c8da893, T2.6 50bab52 |
+| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47, T2.5 c8da893, T2.6 50bab52, T2.7 46dd706 |
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
 | T5 Delete legacy CSS | T5.1–T5.2 | not started |
@@ -160,7 +160,7 @@ caller in the same commit.
 - Files: `components/ui/popover.tsx`, `components/ui/tooltip.tsx`, `components/ui/tabs.tsx` (new, Radix Tabs),
   `components/tabs.tsx`, `components/ui/toast.tsx` (new, Radix Toast), `components/toast.tsx`, callers.
 
-### T2.7 Badge, pagination, feedback and marks
+### T2.7 Badge, pagination, feedback and marks — 46dd706
 
 - Files: `components/ui/badge.tsx`, `components/ui/pagination.tsx`, `components/ui/skeleton.tsx` (new),
   `components/ui/avatar.tsx` (new), `components/alert.tsx`, `components/empty-state.tsx`, `components/load-failed.tsx`,
