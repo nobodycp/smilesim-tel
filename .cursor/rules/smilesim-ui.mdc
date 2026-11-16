@@ -5,7 +5,9 @@ alwaysApply: true
 
 # Smile Sim UI
 
-Source of truth: `DESIGN.md`. One identity for the whole office. Do not invent a second look.
+Source of truth: `DESIGN.md`. Graphite, the current look, is the system's one identity (owner, 2026-11-15): one identity for the whole office, no second look, no new identity, no redesign. Port it faithfully, fold a one-off into a token or a variant, and fill a gap in the same style; a change that alters the look needs its own spec and the owner's choice.
+
+Read `DESIGN.md` before a UI change: Foundations (tokens, scales, breakpoints, shadows, type, motion, access), Controls and primitives (every `components/ui` component with its variants and states, in its Catalogue), Components (the shared ones in `components/`, Primary button), Page templates, Screens, and Known gaps (what is still open). If the code and `DESIGN.md` disagree, fix the file in the same change.
 
 - `apps/web/app/tailwind.css` is the only stylesheet and holds every token (ADR 0022). Styling is Tailwind utilities in the markup and `cva` variants in `apps/web/components/ui/*`, joined with `cn()` (`apps/web/lib/cn.ts`). Do not add a `.css` / `.scss` file (`npm run check:styles` fails on one) and do not add a rule to `tailwind.css` for one component or screen.
 - Colours are `--rd-*` tokens (both themes: `:root` and `.dark` in `tailwind.css`), used through their Tailwind names (`bg-surface`, `text-ink-2`, `border-line`, `bg-accent-fill`). No raw hex or `rgba()` in the markup: no `bg-[#…]` / `text-[rgb(…)]` and no literal colour in `style={{}}` (`check:styles` fails on both). A new colour is a new token in both themes in `tailwind.css`, mapped in its `@theme` block, and listed in `DESIGN.md`.
@@ -13,6 +15,6 @@ Source of truth: `DESIGN.md`. One identity for the whole office. Do not invent a
 - Status is a badge with a label: paid / pending / danger / neutral. Do not signal status by colour alone.
 - Type: Noto Kufi Arabic for Arabic and Latin text, IBM Plex Sans Hebrew for Hebrew, both loaded in `layout.tsx` with `next/font`. Numbers, money, and dates are Latin digits in the same font with tabular figures (`tabular-nums`). No new font, no Google Font link.
 - Reuse the components in `DESIGN.md` (`components/ui/*` and the shared ones in `components/`: `Desk`, `Pane`, `FilterBar`, `Tabs`, `DataTable`, `Dialog`, `RowMenu`, `Badge`, `Stat`, `EmptyState`). Do not add a new card, button, or table style for one page; a look two screens need is a variant in `components/ui`. Radix primitives are imported only inside `components/ui/*`.
-- RTL first: logical utilities only (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `text-end`, `border-s`, `border-e`, `rounded-s`, `rounded-e`); the physical ones fail `check:styles`. Touch targets at least 44px. Motion 150–450ms, transform and opacity only, under `motion-safe:`.
+- RTL first: logical utilities only (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `text-end`, `border-s`, `border-e`, `rounded-s`, `rounded-e`); the physical ones fail `check:styles`. Touch targets at least 44px (`max-touch:`). Motion is transform and opacity only, under `motion-safe:`, timed by the `--rd-dur-*` / `--rd-ease-*` / `--rd-animate-*` tokens (`DESIGN.md` → Motion).
 - The old `--bg` / `--accent` / `--ink-*` names are removed (Phase 5.3a). Use `--rd-*` only and do not add another blue. Radius, font size, spacing, layers and shadows use the scale tokens through their utilities (`rounded-card`, `text-sm`, `gap-3`, `z-dialog`, `shadow-pop`), not literals or arbitrary values.
 - Tests find elements by role, label, text or `data-testid`, never by a styling class.

@@ -1,7 +1,9 @@
 # Current identity — gap inventory (Tailwind migration T6.1)
 
-Status: **open** (T6.1, 2026-11-16). T6.2 fills the component and state gaps, T6.3 folds the one-offs, T6.4 closes
-this file. Plan: `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md` § T6. Owner, 2026-11-15: the
+Status: **closed** (Tailwind migration T6.4, 2026-11-16). Written in T6.1; T6.2 (502a42a) filled the component and
+state gaps, T6.3 (8e7cfba) folded the one-offs, T6.4 wrote `DESIGN.md` as the one identity and closed this file. What
+each item came to is in §8; what is still open lives in `DESIGN.md` → Known gaps, not here. Sections 1–7 are the
+T6.1 record, unchanged. Plan: `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md` § T6. Owner, 2026-11-15: the
 current identity (`DESIGN.md`, the `--rd-*` tokens, ADR 0021 D1–D28) is the target; nothing is redesigned.
 
 Paths are relative to `apps/web/` unless they start with `docs/`. Counts are from the tree at `dee0e77` (after T5.2).
@@ -339,3 +341,82 @@ owner decision already (ADR 0021, named); they are still not built.
 - **T6.3** folds §4's "already a token" list and §5 into tokens, variants and existing components.
 - **T6.4** writes DESIGN.md as the one identity (every `components/ui` component with its variants and states),
   corrects its shadow table and the Sparkline line, and closes this file.
+
+## 8. Closure (T6.4)
+
+Outcome of every item above. **T6.2** / **T6.3** = done in that slice; **T6.4** = done in `DESIGN.md` in this slice;
+**open** = carried to `DESIGN.md` → Known gaps (the reason is there); **out** = §6 "Open, outside T6", unchanged.
+
+### 8.1 Elements (§2)
+
+| Element | Outcome |
+|---|---|
+| Button | T6.2: busy (`loading` → `aria-busy`), pressed (`aria-pressed` holds the hover look), one disabled strength, 44px touch incl. `asChild`. The ticket's variant swap (3.5-05) is out |
+| Icon button | T6.2: disabled, pressed, `danger` tone, 44 × 44 at every size |
+| Topbar icon | T6.3: `IconButton` size and tone `topbar`; `topbarIcon` is that variant |
+| Text field, Textarea | T6.2: read-only and disabled looks, `--rd-field-line` |
+| Number / price | open: no saving / saved feedback on `PriceField` |
+| Search | open: three shapes stay (`TableSearch`, `label.filter-search`, the packages box) |
+| Select | T6.2: invalid, disabled, `SelectEmpty` |
+| Combobox (name picker) | open: disabled, invalid, no match, 44px «×» |
+| Date picker | open: disabled field and days, invalid, button size at 641–720px |
+| Checkbox, Radio | T6.2: `--rd-field` border, indeterminate, invalid; the native base rules match |
+| Radio card | T6.2 primitive (`RadioCardGroup` / `RadioCard`), T6.3 callers (offers ×2, two-step methods) |
+| Switch | T6.2: `pending` |
+| Segmented | T6.2: hover, focus, disabled |
+| Period switch | T6.2 `SegmentedToggle`, T6.3 callers (reports, wallet) |
+| Tabs | T6.2: focus, disabled 45%, 44px phone. Open: the bold selected tab widens (3.7-20) |
+| Pagination | T6.2: page-number focus, 44 × 44 |
+| Table | T6.2: selected row, focus-within. Open: loading-row height (3.4-19), an error state inside the table |
+| Filters | open: disabled chip; the drawer is not `Sheet` (3.6-06) |
+| Badge | T6.2: `info` and `violet` coloured |
+| Stat tile | T6.3: one pointer glow (`pointerGlowClass`). Open: lead variant, loading |
+| Card / pane | open: clickable card states per screen (3.6-09) |
+| Donut | open: empty ring |
+| Alert | open: warning and info tones |
+| Toast | T6.2: warning and info tones, close in `--rd-muted`. Open: the close's name «×» (3.10-20) |
+| Dialog | T6.2: `dvh`. Open: busy submit look |
+| Sheet | T6.2: `bottom` side (no caller) |
+| Menu | T6.2: disabled item, 44px lines. Open: the ⋯ trigger 28px on touch (3.2-09), its hand-drawn icon |
+| Tooltip | open: no caller (the rail flyout draws its own) |
+| Loading skeleton | T6.2: motion-safe shimmer, mirrored in RTL |
+| Avatar / marks | open: company marks by hand ×3, soft-tile mark recipes |
+| File drop / chooser | open: drag-over, error, offers-picker focus, three shapes |
+| QR | open: loading |
+| Auth screens | T6.3: no empty lede |
+| Return bar / outage bar | open: their own warning look (no `Alert` tone) |
+| Sparkline | T6.4: `DESIGN.md` says it has no caller (it said the lead tile drew it). Open: a caller or its removal |
+| Sidebar, Topbar, Crumbs, Empty, Popover, Offer hero | nothing was missing; the spacing one-offs went in T6.3 |
+
+### 8.2 Cross-cutting (§3) and tokens (§4)
+
+- Disabled, focus, read-only, pressed: T6.2 (one strength, one focus mark per family, both written in `DESIGN.md` →
+  Access). Loading / busy, invalid, empty: T6.2 inside `components/ui`; the components outside it are open. Touch:
+  T6.2 for `components/ui`; the ⋯ trigger, the name picker's «×» and the date button are open.
+- Every §4 token: T6.2 (info / violet, disabled opacity, `touch`, display and half-pixel type, line heights,
+  tracking, thread and glow shadows, field line, dialog layers); the "already a token" list: T6.3.
+
+### 8.3 One-offs (§5)
+
+- §5.1, §5.2, §5.3, §5.5: T6.3 (tokens, variants, nearest steps; the one-screen layout values kept and named in
+  `DESIGN.md` → Scales and Breakpoints), except: the legacy `.pane` / `.hint` markup and the three 44px base blocks
+  (open), the `--rd-primary-*` rename (open), and the shadow table (T6.4: `DESIGN.md` → Shadows now carries the token
+  values, 3.1-21).
+- §5.4: period switch and radio cards T6.3, figure glow T6.3; open: search ×3, company marks ×3, hand-drawn icons,
+  hand-written `<dl>` ×2, the filter drawer and the rail flyout.
+
+### 8.4 Audit findings inside T6 (§6)
+
+- Done: 3.1-04, 3.3-33, 3.7-02, 3.1-05, 3.7-03, 3.1-08, 3.7-08, 3.1-09, 3.7-09, 3.1-10, 3.7-16, 3.1-11, 3.4-07,
+  3.1-12, 3.4-16, 3.1-13 (the ink 11% literals; the two zebra recipes stay), 3.1-16, 3.1-17, 3.1-18, 3.1-19, 3.1-22,
+  3.2-15, 3.3-30, 3.4-02, 3.4-05, 3.4-11, 3.4-13, 3.4-17, 3.4-21, 3.5-16, 3.6-02 (one glow; the lead variant open),
+  3.6-33, 3.7-14, 3.7-23, 3.7-19, 3.3-34 (T6.3); 3.1-24, 3.10-08, 3.5-18, 3.6-24, 3.6-05, 3.6-10, 3.10-31, 3.8-09,
+  3.10-05, 3.10-11, 3.10-14, 3.10-10, 3.2-10 (T6.2); 3.1-21 and the `DESIGN.md` half of 3.6-26 (T6.4).
+- Open (in `DESIGN.md` → Known gaps): 3.1-06, 3.6-04, 3.1-29 (icons and the `svg` rule), 3.1-14 (name), 3.2-09,
+  3.2-23, 3.6-03, 3.6-08, 3.3-13 (marks), 3.6-06, 3.6-09, 3.6-11, 3.6-17, 3.6-26 (caller), 3.7-13, 3.7-20, 3.10-04,
+  3.10-06, 3.10-07, 3.10-16, 3.10-20, 3.2-08, 3.10-15, 3.10-12 and 3.10-13 (the calendar days and the date button stay
+  34–40px), 3.5-27, 3.5-20, 3.6-31, 3.6-16, 3.6-27, 3.9-09, 3.9-13, 3.9-28 (the lead variant).
+- Not re-checked in any T6 slice, still open as written in §6: 3.1-25, 3.7-05 … 3.7-22 (the per-screen type sets),
+  3.4-03 … 3.4-23 (the spacing rhythms), 3.10-09, 3.10-23, 3.10-19 … 3.10-33 (names and live regions), 3.10-17,
+  3.10-18, 3.10-29, 3.10-30, 3.10-21, 3.10-22.
+- Outside T6: unchanged (§6 "Open, outside T6").
