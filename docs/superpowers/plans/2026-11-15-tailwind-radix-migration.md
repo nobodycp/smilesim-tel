@@ -19,7 +19,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | T3 Shell and frames | T3.1–T3.3 | in progress — T3.1 8cfb31b, T3.2 2c40547, T3.3 f4dc3ff |
 | T4 Screens | T4.1–T4.10 | in progress — T4.10 c1d34f7, T4.9 202ad2f, T4.8 10478e1, T4.7 8421d51, T4.4 9f34510, T4.6 eb26248, T4.5 dfbcf6f, T4.3 57adebc, T4.2 7f0b82d, T4.1 7b541ca |
 | T5 Delete legacy CSS | T5.1–T5.2 | in progress — T5.1 3a8b34b, T5.2 c08f920 |
-| T6 Complete and clean the current identity | T6.1–T6.4 | in progress — T6.1 9686880, T6.2 502a42a |
+| T6 Complete and clean the current identity | T6.1–T6.4 | in progress — T6.1 9686880, T6.2 502a42a, T6.3 8e7cfba |
 | T7 Docs final | T7.1 | not started |
 
 ## Protocol (binding)
@@ -258,7 +258,7 @@ are filled in the same style, and one-offs are folded into the system.
   (same radii, heights, borders, focus ring, motion, density); no new colour unless a state has none, then one token in
   both themes with its contrast pair. Text on fills keeps 4.5:1.
 
-### T6.3 Fold the one-offs into the system
+### T6.3 Fold the one-offs into the system — 8e7cfba
 
 - Files: the screens and components the inventory lists, `components/ui/*`.
 - Steps: every one-off value becomes the nearest token or an existing variant; a value used by two or more screens
