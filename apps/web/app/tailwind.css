@@ -977,6 +977,8 @@
 @keyframes offer-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes offer-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes users-fill { from { inline-size: 0; } }
+/* A toast's life bar (components/ui/toast.tsx `ToastLife`): it runs out over the toast's own time. */
+@keyframes toast-life { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes rd-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes rd-drop { from { opacity: 0; translate: 0 -8px; } }
 @keyframes filter-slide { from { opacity: 0; transform: translateX(-24px); } }
