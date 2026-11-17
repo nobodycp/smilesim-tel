@@ -322,7 +322,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. P.2's command is deleted with it. | done |
 | P.4b | **The backfill at HEAD** (`cli/provider-ledger-backfill.ts`, ADR 0025 amendment): the server deploys `main` once, so the command must exist in the release it runs on. It gives every operation entry its line's package's provider (moving the ones P.2's name matching gave to another provider), fills a missing cost by today's writer rule, and validates the CHECK. The overview's top providers read the stored provider. | done |
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
-| P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | building |
+| P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | done |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
 (the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
@@ -503,7 +503,9 @@ One `WalletEntry` per operation, as every operation is written, with one new col
   `providerId` the task's package's provider, **`providerCost` the package's cost at the provider now** —
   `Package.branchCost`, plus the eSIM fee for an eSIM task (`packageActivationCost`, `pricing/rules/prices.ts`: the
   figure an activation of that package stores; the task keeps no record of the cost of the day it opened).
-  Written by `WalletLedger.recordOp` in the approval's transaction, **after** `rejectByDecision`'s `release`, so under
+  Written by `WalletLedger.recordOp` (through `TaskCompletion.recordGivenBack`, so the decisions keep the
+  settlement's five collaborators, `worker-wiring.spec.ts`) in the approval's transaction, **after**
+  `rejectByDecision`'s `release`, so under
   the wallet lock that release takes (when the task held money; a task priced 0 held nothing and `recordOp` reads the
   wallet without a lock, as every `recordOp` does — it writes no balance). The package is read **before** the
   transaction. The lock order (task → operation → wallet) is unchanged; nothing is added to the sale path.

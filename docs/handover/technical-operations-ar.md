@@ -363,6 +363,28 @@ SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_provider_createdA
 
 ⏳ لم يُنشر ولم يُشغَّل على أي خادم. جُرِّب على قاعدة التطوير المحلية (46 قيداً، 4 نُقلت، القيد فُعِّل، التشغيل الثاني لم يكتب شيئاً). 🔐
 
+**علامة «خسارة الفرع» (المواصفة DB.5 P.7، 2026-11-17).** عملية دفع الفرع ثمنها للمزوّد ولم تدفع نقطة البيع شيئاً: تُحفظ كشراء (مزوّدها وكلفتها) بمبلغ صفر على محفظة نقطة البيع، وفي العمود الجديد `WalletEntry.providerLoss` سببها: `given_back` (وافق حسابان على «إرجاع بعد نجاح المزوّد») أو `priced_zero` (تفعيل أو تجديد بسعر صفر لنقطة البيع)، و`branchMargin` = سالب الكلفة. ما يلزم في التحديث:
+
+1. مع النشر تُطبَّق `20261117240000_provider_loss`: العمود، وقيد `WalletEntry_provider_loss` (يُفعَّل في الـmigration نفسها: كل الصفوف القديمة فارغة)، وفهرس جزئي `WalletEntry_provider_loss`. لا تحذير متوقَّع.
+2. أمر `provider-ledger-backfill` نفسه (الخطوة 2 أعلاه) صار يعلّم القيود القديمة أيضاً، في المعاملة نفسها، ويطبع:
+   - `P.7: marked priced_zero N; given back written N; sold at 0 left unmarked N`
+   - `priced_zero: entry <id> (<kind>, <مزوّد>) cost <قبل> -> <بعد> (<المصدر>)`: عملية بسعر صفر حُفظت كلفتها صفراً تأخذ كلفة الباقة.
+   - `given_back: entry <id> for task <id> (<مزوّد>) cost <كلفة> at <وقت>`: موافقة إرجاع قديمة لم يُكتب لها قيد، يُكتب الآن بتاريخ الموافقة وبكلفة الباقة **اليوم** (لا يُحفظ سعر أقدم).
+   - `sold at 0, left unmarked: ...`: عملية بسعر صفر لم تُعرف كلفتها؛ تبقى بلا علامة، وتُرسل المخرجات للمطوّر.
+3. الفحص (الجواب المتوقَّع `true` ثم `1`):
+```sql
+SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_provider_loss';
+SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_provider_loss';
+```
+   ثم العدد لكل مزوّد كما تعرضه شاشة «حسابات المزوّدين» في عمود «عمليات بخسارة»:
+```sql
+SELECT "providerId", count(*) FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL GROUP BY 1;
+```
+
+ما يعنيه للمكتب ومتى يتصرف: «دليل تسليم العميل» §12. الوكلاء ونقاط البيع لا يرون العلامة ولا الكلفة (الـAPI يرسلها للفرع فقط، ويرفض فلتر `loss` من غيره بـ403).
+
+⏳ لم يُنشر ولم يُشغَّل على أي خادم. على قاعدة التطوير المحلية لا توجد حالة (لا قرار إرجاع، ولا عملية بسعر صفر): الأمر طبع `P.7: marked priced_zero 0; given back written 0; sold at 0 left unmarked 0`، والتشغيل الثاني لم يكتب شيئاً. 🔐
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال

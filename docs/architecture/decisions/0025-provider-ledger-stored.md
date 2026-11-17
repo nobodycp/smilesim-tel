@@ -329,3 +329,36 @@ stores a provider cost of 0 today, while the provider takes the package's price.
 package's real cost at the provider**; the operation then shows as a loss of the branch. Built with P.7 (the
 operation done at the provider and given back to the customer), which is the same case: the provider was paid and
 the point of sale was not charged.
+
+### As built (P.7)
+
+The spec section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" holds the whole rule; in short:
+
+- **The mark** is a column, `WalletEntry.providerLoss` (`given_back` | `priced_zero`, null otherwise), not a new entry
+  kind: the row stays the operation it is, so the books, the kind filters and the CHECK `WalletEntry_operation_priced`
+  read it unchanged. CHECK `WalletEntry_provider_loss` (a mark only on a row that moves 0 and names its provider and
+  cost) and the partial index `WalletEntry_provider_loss`, migration `20261117240000_provider_loss`.
+- **Answer 4, given back:** `ProviderDecisions.answer` (effect `release-after-success`) now records the activation
+  the provider ran: `WalletLedger.recordOp` (through `TaskCompletion.recordGivenBack`) on the point of sale's wallet after `rejectByDecision`'s release, under
+  the wallet lock that release takes, amount 0, the task's package's provider, the package's cost at the provider
+  now (`packageActivationCost`: branch cost, plus the eSIM fee for an eSIM; the task keeps no cost of its day),
+  `given_back`. Recommendation 4 above (no entry, a settlement by hand) is superseded. Option A was not needed: the
+  entry is the purchase (rule 3 holds: one row, one truth).
+- **Priced zero:** `operationColumns` marks an `activate` / `charge` / `extend` / `reactivate` that moves 0 at a cost
+  above 0, in the entry's own INSERT. An activation task priced 0 now stores the cost a charged one stores
+  (`TaskCompletion.applyClaimed` hands `recordOp` the sale with `postedCost`); before, it stored 0. An immediate
+  activation and the renewals priced 0 already stored the real cost and now carry the mark. A switch with a
+  difference of 0 is not a sale priced 0 and is not marked.
+- **Margins:** a marked row stores `branchMargin` = − `providerCost` and no other margin or chain id (ADR 0026's
+  invariant, `marginBreaks`, gains that case). It moves 0, so it is no sale in any count, volume or profit that reads
+  the sales (`saleOrRefundWhere`); the providers report's branch profit includes it.
+- **Reads, the branch only:** `losses` on every provider summary, `loss` on the ledger rows, on
+  `GET provider-operations` (with `?loss=` and `stats.losses`) and on `GET finance` (null for any other viewer; the
+  filter refused 403 to another layer).
+- **Old rows:** the P.7 pass of `cli/provider-ledger-backfill.ts`: approved `release-after-success` events without
+  their entry get one, dated at the approval; activations that moved 0 and stored cost 0 are re-priced; every sale at
+  0 with a cost is marked. Local dev database (2026-11-17): no decision event and no entry that moved 0 exist —
+  `P.7: marked priced_zero 0; given back written 0; sold at 0 left unmarked 0`, purchases unchanged (alloha 25500,
+  aren 5000, sky 49288), the CHECK still validated; a second run wrote nothing.
+- **Open for the owner:** whether the home's and the profit report's branch profit should also subtract these
+  losses (today they are sales figures and do not).

@@ -318,3 +318,8 @@ providers, most active), the finance summary for 7, 30 and 90 days, the profit r
 and its CSV, every page of the finance list (each row's margin and the branch's shares), and the providers report
 (all, a month, a day) and its CSV — 64 figures. All equal to the agora; the only differences were the trend axis's
 newest hour (the clock moved an hour between the two reads; the added points are zero).
+
+**Later (2026-11-17, DB.5 P.7).** An operation the provider was paid for while the point of sale was charged nothing
+(`WalletEntry.providerLoss`, ADR 0025 "As built (P.7)") has no ladder and stores only `branchMargin` = − its provider
+cost: what `marginOf` gives on a ladder with every price below the branch at 0. Rule 6's invariant (`marginBreaks`)
+accepts that case and no other margin on a row without a ladder.

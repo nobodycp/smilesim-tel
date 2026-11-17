@@ -25,7 +25,7 @@ Then, each with the owner's values or word:
 
 Last, money, each with its ADR:
 
-- [ ] **DB.5 Provider ledger stored** [MONEY][LOCK]. ADR 0025; the slices in the spec's section "Provider ledger stored (DB.5)".
+- [ ] **DB.5 Provider ledger stored** [MONEY][LOCK]. ADR 0025; the slices in the spec's section "Provider ledger stored (DB.5)". Everything is built; open only for P.5, which waits for a measurement on a database at the audit's sizes.
   - [x] **Provider ledger P.1 columns and writers**: `WalletEntry.providerId` and the CHECK `NOT VALID`; every writer of an operation stores its provider and cost in the same INSERT. (9c695ada)
   - [x] **Provider ledger P.2 backfill command** with its proof (`provider-ledger-backfill`); run on the local dev database: 46 entries filled, five providers equal to the agora. (dc13d39a)
   - [x] **Provider ledger P.3 index and VALIDATE** (release 2, after the backfill ran on the deployment): `WalletEntry_provider_createdAt_id`; the CHECK validated when no row breaks it, else a WARNING. (a24980c3)
@@ -33,7 +33,7 @@ Last, money, each with its ADR:
   - [x] **Provider ledger P.4b backfill at HEAD**: the server deploys main once, so the command lives at HEAD and runs after the deploy; every operation entry takes its line's package's provider (P.2's name matching replaced, ADR 0025 amendment); missing costs by today's writer rule; the CHECK validated; the overview's top providers read the stored provider. Local dev: 4 entries moved from lian to alloha and aren. (6e18950a)
   - [ ] **Provider ledger P.5 closed monthly totals**: only if the grouped sum measures over budget; waits for a measurement on a database at the audit's sizes (none exists now).
   - [x] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee): the entry stores used + fee − the open periods' cost; the stored disconnects corrected by the P.4b command (local dev: 4, sky 63288 → 49288). (a94de7a9)
-  - [ ] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark.
+  - [x] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark; with it, an activation or renewal sold at 0 (`WalletEntry.providerLoss` `given_back` / `priced_zero`, `branchMargin` = − cost; badge, filter and counts for the branch only; the backfill's P.7 pass — local dev: none to mark). (6625e3e6 spec, a0417b1a, f7cb1ed7, 51aa0e0e, bbbc6bbb)
 - [ ] **DB.12 Stored margin an entry** [MONEY]. ADR 0026 and its amendment; the slices in the spec's section "Stored margin an entry (DB.12)".
   - [x] **Stored margin M.1 columns and writer**: the chain by layer and four margins on each sale and refund entry, written by `post()` in its INSERT from the ladder; a refund copies its sale's ids; the CHECK `NOT VALID`; lock counts unchanged. (32b59071)
   - [x] **Stored margin M.2 backfill command** at HEAD (`stored-margins-backfill`, run before `provider-ledger-backfill`): kept ladders projected, old sales built once on the path of their time, old refunds from their sale, the invariant in Node, the CHECK validated. Local dev: 27 entries (9 kept, 18 built), none left without. (78038686)
