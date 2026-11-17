@@ -46,7 +46,7 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   new kind in `platform/notices.ts`, its text in the three languages). `GET /v1/system/alerts`, `POST
   /v1/system/alerts/:id/seen`, `DELETE /v1/system/alerts`; the open count in `GET /v1/me` for the owner.
   Specs: each rule opens at its threshold and not under it, closes after 30 quiet minutes, one notice an alert.
-- [ ] **M.7 Web: alerts.** `app/system/alerts/page.tsx`: open and past alerts, each with its link to the request
+- [x] **M.7 Web: alerts.** (`6f02cf71`, `a13f1ace`, `4be8a28d`, `44ae729a`, `618f19ec`; map `354c0e00`) `app/system/alerts/page.tsx`: open and past alerts, each with its link to the request
   rows; the count on the sidebar section; the notice opens the alert.
 - [ ] **M.8 Retention and handover.** The worker's daily purge deletes request rows and errors older than 14
   days and closed alerts older than 90. `docs/handover/` (Arabic): what the section shows, what is stored and for
