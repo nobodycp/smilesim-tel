@@ -173,6 +173,8 @@ model WalletEntry {
   @@index([kind, createdAt])
   // The foreign key of who made the entry: deleting an account checks it.
   @@index([actorId], map: "WalletEntry_actorId_idx")
+  // The finance search, a part of the number (DB.6): trigram, `pg_trgm`.
+  @@index([msisdn(ops: raw("gin_trgm_ops"))], type: Gin, map: "WalletEntry_msisdn_trgm_idx")
 }
 
 model Provider {
@@ -570,6 +572,10 @@ model Line {
   @@index([status])
   @@index([packageId])
   @@index([iccid])
+  // Search (plan 2026-11-17-database-scale, DB.6): a part of the number or of the serial, `contains` (LIKE '%…%'),
+  // served by trigram indexes. `pg_trgm` is created by migration `20261117170000_search_trigram`.
+  @@index([msisdn(ops: raw("gin_trgm_ops"))], type: Gin, map: "Line_msisdn_trgm_idx")
+  @@index([iccid(ops: raw("gin_trgm_ops"))], type: Gin, map: "Line_iccid_trgm_idx")
 }
 
 /// A branch task. The table was `OfficeTask` until migration `20261116100000_task_table_names`.
@@ -623,6 +629,8 @@ model Task {
   @@index([assigneeId, status])
   // A line's tasks (the line card, the open task of every line operation) and the line's foreign key.
   @@index([lineId], map: "Task_lineId_idx")
+  // The inbox's search, a part of the number (DB.6): trigram, `pg_trgm`.
+  @@index([msisdn(ops: raw("gin_trgm_ops"))], type: Gin, map: "Task_msisdn_trgm_idx")
 }
 
 /// A note on a task.

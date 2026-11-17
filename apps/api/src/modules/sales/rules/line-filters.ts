@@ -1,4 +1,5 @@
 import type { Prisma } from '../../../generated/prisma/client';
+import { searchTerms } from '../../platform';
 
 // The filters of the numbers list and the line windows the reports count (expiring, suspended). Everything here is
 // pure: the service hands the result to Prisma, so filters run in the database and never over loaded rows. Slice
@@ -43,29 +44,36 @@ export function suspendedWhere(periods: number[], now: Date = new Date()): Prism
 export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string };
 
 /**
- * The where clause of the numbers list. `q` searches the number and the serial (spaces removed,
- * so "055 024" finds 055024 and "899 720" finds that serial), plus the package name and the
- * company name. Provider, company, and package narrow the same row together. `sim` keeps the SIM (`sim`) or the
+ * The search of the numbers list and the top bar (spec 2026-11-17-scale-speed-cleanup, "Search (DB.6)"): the number
+ * and the serial contain what was typed as a number (`searchTerms`: Arabic-Indic digits as ASCII, no spaces or
+ * dashes, no leading `+`), or the line is on one of `namedPackageIds`, the packages whose name or company's name
+ * contains the text (`LinesRepository.packageIdsNamed`, read from the catalog first). The big table is filtered by
+ * trigram indexes and an id list, never joined to the catalog on `ILIKE`.
+ */
+export function lineSearch(q: string | undefined, namedPackageIds: string[]): Prisma.LineWhereInput {
+  const terms = searchTerms(q);
+  if (!terms) return {};
+  return {
+    OR: [
+      { msisdn: { contains: terms.number } },
+      { iccid: { contains: terms.number } },
+      ...(namedPackageIds.length ? [{ packageId: { in: namedPackageIds } }] : []),
+    ],
+  };
+}
+
+/**
+ * The where clause of the numbers list. `q` searches the number and the serial, plus the package name and the
+ * company name (`lineSearch`, with the ids the caller read for those names). Provider, company, and package narrow
+ * the same row together. `sim` keeps the SIM (`sim`) or the
  * eSIM (`esim`) lines (spec 2026-11-11-ui-consistency-pass, D1). `posIds` null is every point of sale (the branch's
  * own view): no id list is sent (database plan DB.10), as `taskWhereFor` and `financeWhere` already do.
  */
-export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = []): Prisma.LineWhereInput {
+export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = [], namedPackageIds: string[] = []): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const packageCode = (filter.packageCode ?? '').trim();
   const provider = (filter.provider ?? '').trim();
   const company = (filter.company ?? '').trim();
-  const text = (filter.q ?? '').trim();
-  const digits = text.replace(/\s/g, '');
-  const search: Prisma.LineWhereInput = !text
-    ? {}
-    : {
-        OR: [
-          { msisdn: { contains: digits } },
-          { iccid: { contains: digits } },
-          { package: { name: { contains: text, mode: 'insensitive' } } },
-          { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
-        ],
-      };
   const pack: Prisma.PackageWhereInput = {
     ...(packageCode ? { code: packageCode } : {}),
     ...(provider ? { provider: { name: provider } } : {}),
@@ -77,6 +85,6 @@ export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendP
     ...(filter.status === 'expiring' ? expiringWhere() : filter.status === 'suspended' ? suspendedWhere(suspendPeriods) : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),
     ...(filter.sim === 'esim' ? { esim: true } : filter.sim === 'sim' ? { esim: false } : {}),
-    ...search,
+    ...lineSearch(filter.q, namedPackageIds),
   };
 }

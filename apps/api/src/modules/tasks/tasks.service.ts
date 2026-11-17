@@ -2,7 +2,7 @@ import { TasksQuery, TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksRepository } from './tasks.repository';
 import { WalletLedger } from '../wallets';
 import { ActorResolver, AccountTree, assertBranch } from '../access';
-import { UnitOfWork, esimCodeOrFail, parseInput, fail, after, cursorPosition, page, TASKS_PAGE, HANDLER_FROZEN_NOTE } from '../platform';
+import { UnitOfWork, esimCodeOrFail, parseInput, fail, after, cursorPosition, page, searchTerms, TASKS_PAGE, HANDLER_FROZEN_NOTE } from '../platform';
 import { taskEvents } from './task-events';
 import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from './task-operation.rules';
 import { Injectable } from '@nestjs/common';
@@ -47,7 +47,8 @@ export class TasksService {
     const packageCode = typeof query.packageCode === 'string' ? query.packageCode.trim() : '';
     const company = typeof query.company === 'string' ? query.company.trim() : '';
     const provider = typeof query.provider === 'string' ? query.provider.trim() : '';
-    const digits = (typeof query.q === 'string' ? query.q : '').replace(/\s/g, '');
+    // A part of the number as typed (search, plan DB.6): Arabic-Indic digits as ASCII, no spaces, dashes or leading `+`.
+    const digits = searchTerms(typeof query.q === 'string' ? query.q : '')?.number ?? '';
     const matchedPackages = await this.packagesMatching({ packageCode, company, provider });
     if (matchedPackages && matchedPackages.length === 0) {
       return { items: [], nextCursor: null, total: 0 };

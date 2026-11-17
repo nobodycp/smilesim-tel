@@ -43,6 +43,19 @@ export class WalletsRepository {
     });
   }
 
+  /**
+   * Whether a package, and whether a company, in the catalog has a name containing one of these texts, case aside:
+   * the finance search reads the entries' stored names only when one does (search, plan DB.6).
+   */
+  async catalogNamed(texts: string[]): Promise<{ packageNamed: boolean; companyNamed: boolean }> {
+    const named = (text: string) => ({ name: { contains: text, mode: 'insensitive' as const } });
+    const [pkg, company] = await Promise.all([
+      this.uow.prisma.package.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
+      this.uow.prisma.company.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
+    ]);
+    return { packageNamed: pkg !== null, companyNamed: company !== null };
+  }
+
   /** Every package with its provider and its company. */
   packagesWithProvider() {
     return this.uow.prisma.package.findMany({ include: { provider: true, company: true } });

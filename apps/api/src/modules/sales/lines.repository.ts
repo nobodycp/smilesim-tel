@@ -18,6 +18,24 @@ export class LinesRepository {
     return this.uow.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
   }
 
+  /**
+   * The ids of the packages whose name, or whose company's name, contains one of these texts, case aside: the
+   * catalog is read first so the numbers list filters the lines by an id list (search, plan DB.6).
+   */
+  async packageIdsNamed(texts: string[]): Promise<string[]> {
+    if (texts.length === 0) return [];
+    const rows = await this.uow.prisma.package.findMany({
+      where: {
+        OR: texts.flatMap((text) => [
+          { name: { contains: text, mode: 'insensitive' as const } },
+          { company: { name: { contains: text, mode: 'insensitive' as const } } },
+        ]),
+      },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   /** One page of numbers (and one row more), newest first, each with its package, company and point of sale. */
   linesPage(where: Prisma.LineWhereInput, take: number) {
     return this.uow.prisma.line.findMany({

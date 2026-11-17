@@ -36,6 +36,32 @@ Status: **the decisions below were approved by the owner on 2026-11-17 as recomm
 | 20 | Routes with no caller | Removed: `GET /v1/wallets`, `POST /auth/users/:login/password`, `POST /auth/users/:login/disable`, `PATCH /auth/exemptions/:login`. Kept: reactivate, company switch, bulk packages, the reports screen and its routes, `GET /auth/passkeys` (not decided, so it stays) |
 | 21 | The certain dead code, `cookie-parser`, the comments that name deleted files | Removed |
 
+## Search (DB.6)
+
+What a person types into a list's search box is read once (`platform/search.ts`, `searchTerms`):
+
+- **A number query** is one that, after Arabic-Indic (٠-٩) and Eastern Arabic-Indic (۰-۹) digits are written as
+  ASCII and spaces, dashes and one leading `+` are dropped, is digits only. Any other query is a **text query**.
+  There is no minimum length (none existed); one or two digits cannot use a trigram index and read the list in its
+  order, as before.
+- **Numbers list and top bar** (`linesWhere`): the number and the serial contain the number as typed (the digits of
+  a number query, else the text with no spaces), **or** the line is on a package whose name, or whose company's
+  name, contains the text. Those packages are read from the catalog first, so the lines are filtered by an id list.
+  A number query therefore still finds the package that holds its digits: «100» finds «100 جيجا».
+- **Inbox** (`tasks.service` `list`): the number contains the number as typed, as before.
+- **Finance** (`financeSearch`): a number query matches the entry's number, the accounts whose login holds those
+  digits, and the stored package or company name only when a package or company in today's catalog has a name
+  holding them. It does not read the free note. A text query matches the number as typed, the note, the stored
+  package and company names and the logins, as before (the logins from the accounts the service already holds).
+- The name side matches the text as typed and, when it holds Arabic-Indic digits, the same text with ASCII digits.
+
+The answers are the same as before for every digit input and every name input, with these differences, pinned by
+`sales/search.db.spec.ts`: a number typed with Arabic-Indic digits, dashes or a leading `+` is now found; in finance,
+a number query no longer finds an entry only because its note holds the digits, or because its stored package name
+holds them while no package in the catalog does. Indexes: trigram GIN (`pg_trgm`) on `Line.msisdn`, `Line.iccid`,
+`Task.msisdn`, `WalletEntry.msisdn`. No `text_pattern_ops` index: every number match stays `contains`, which a
+btree cannot serve, and the trigram index serves a full number too.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

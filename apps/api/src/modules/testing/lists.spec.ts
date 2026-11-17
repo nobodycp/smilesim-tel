@@ -81,6 +81,7 @@ function table(rows: Row[], calls: FindArgs[] = []) {
       return args.take === undefined ? list : list.slice(0, args.take);
     },
     count: async (args: { where?: Where } = {}) => rows.filter((row) => matches(row, args.where ?? {})).length,
+    findFirst: async (args: { where?: Where } = {}) => rows.find((row) => matches(row, args.where ?? {})) ?? null,
   };
 }
 
@@ -113,6 +114,9 @@ async function serviceWith(tables: Record<string, unknown>) {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
       findMany: async () => accounts,
     },
+    // An empty catalog unless the spec hands one: the searches read names from it first (plan DB.6).
+    package: table([]),
+    company: table([]),
     ...tables,
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = prisma;
@@ -139,7 +143,8 @@ describe('numbers list paging', () => {
 
   async function walk(query: Parameters<ApiFacade['lines']>[1]) {
     const calls: FindArgs[] = [];
-    const { service, gate } = await serviceWith({ line: table(lines, calls) });
+    // The catalog the search reads names from first (search, plan DB.6).
+    const { service, gate } = await serviceWith({ line: table(lines, calls), package: table([pkgA, pkgB]) });
     const pages: string[][] = [];
     let cursor: string | undefined;
     do {
@@ -205,18 +210,18 @@ describe('numbers list paging', () => {
     expect(pages.flat().sort()).toEqual(Array.from({ length: 10 }, (_, i) => `ln-${pad(60 + i)}`));
   });
 
-  it('searches the number, the package name and the company name together', () => {
-    const search = (text: string) => ({
-      OR: [
-        { msisdn: { contains: text.replace(/\s/g, '') } },
-        { iccid: { contains: text.replace(/\s/g, '') } },
-        { package: { name: { contains: text, mode: 'insensitive' } } },
-        { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
-      ],
+  it('searches the number and the serial as typed, and the packages its names matched, together', () => {
+    // Since DB.6 the names are matched against the catalog first and the lines filtered by those package ids; the
+    // number is the typed text with no spaces (`searchTerms`).
+    const search = (number: string, ids: string[]) => ({
+      OR: [{ msisdn: { contains: number } }, { iccid: { contains: number } }, ...(ids.length ? [{ packageId: { in: ids } }] : [])],
     });
-    expect(linesWhere(['p'], { q: '055 024' })).toEqual({ posId: { in: ['p'] }, ...search('055 024') });
-    expect(linesWhere(['p'], { q: '400' })).toEqual({ posId: { in: ['p'] }, ...search('400') });
-    expect(linesWhere(['p'], { q: 'سلكوم' })).toEqual({ posId: { in: ['p'] }, ...search('سلكوم') });
+    expect(linesWhere(['p'], { q: '055 024' })).toEqual({ posId: { in: ['p'] }, ...search('055024', []) });
+    expect(linesWhere(['p'], { q: '400' }, [], ['pa'])).toEqual({ posId: { in: ['p'] }, ...search('400', ['pa']) });
+    expect(linesWhere(['p'], { q: 'سلكوم' }, [], ['pa', 'pb'])).toEqual({ posId: { in: ['p'] }, ...search('سلكوم', ['pa', 'pb']) });
+    // A number typed on an Arabic keyboard, with dashes or a leading plus, is the same number.
+    expect(linesWhere(['p'], { q: '٠٥٥-٠٢٤' })).toEqual({ posId: { in: ['p'] }, ...search('055024', []) });
+    expect(linesWhere(['p'], { q: '+۰۵۵ ۰۲۴' })).toEqual({ posId: { in: ['p'] }, ...search('055024', []) });
     expect(linesWhere(['p'], { q: '   ', status: 'bogus', packageCode: ' ' })).toEqual({ posId: { in: ['p'] } });
     expect(linesWhere(['p'], { provider: 'سكاي', company: 'سلكوم', packageCode: 'pk-a' })).toEqual({
       posId: { in: ['p'] },
@@ -280,7 +285,7 @@ describe('numbers list paging', () => {
       { ...lines[1], id: 'by-number', msisdn: '0540012345', package: pkgB, packageId: 'pb' },
       { ...lines[2], id: 'neither', msisdn: '0550000003', package: pkgB, packageId: 'pb' },
     ];
-    const { service, gate } = await serviceWith({ line: table(mixed) });
+    const { service, gate } = await serviceWith({ line: table(mixed), package: table([pkgA, pkgB]) });
     const found = await service.lines(gate, { q: '400' });
     expect(found.items.map((line) => line.id).sort()).toEqual(['by-number', 'by-package']);
     const spaced = await service.lines(gate, { q: '054 0012' });

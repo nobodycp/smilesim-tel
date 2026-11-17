@@ -2,7 +2,8 @@ import { WalletsRepository } from './wallets.repository';
 import { PriceLadder, REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
-import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, page, FEED_PAGE } from '../platform';
+import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
+import { financeSearch, loginIdsContaining } from './finance-search';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
@@ -172,8 +173,10 @@ export class WalletsService {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    const needle = (query.q ?? '').trim();
-    const digits = needle.replace(/\s/g, '');
+    // The search (plan DB.6, `financeSearch`): the logins from the accounts already read, the catalog's names first.
+    const terms = searchTerms(query.q);
+    const named = terms?.digits ? await this.repo.catalogNamed(terms.names) : { packageNamed: true, companyNamed: true };
+    const search = financeSearch(terms, { loginIds: terms ? loginIdsContaining(accounts, terms.names) : [], ...named });
     return {
       ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
       // Every entry of the viewer and the accounts below it (owner 2026-11-09: «شامله كل العمليات للاب والابناء»),
@@ -185,17 +188,7 @@ export class WalletsService {
       ...(query.kind ? { kind: query.kind } : {}),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
-      ...(needle
-        ? {
-            OR: [
-              ...(digits ? [{ msisdn: { contains: digits } }] : []),
-              { note: { contains: needle, mode: 'insensitive' as const } },
-              { packageName: { contains: needle, mode: 'insensitive' as const } },
-              { companyName: { contains: needle, mode: 'insensitive' as const } },
-              { user: { loginName: { contains: needle, mode: 'insensitive' as const } } },
-            ],
-          }
-        : {}),
+      ...search,
     };
   }
 
