@@ -84,6 +84,6 @@ warnings. M.8 the upkeep. Each stops at a usable state; the owner may reorder M.
   the API side, the daily check in the worker (npm registry, endoflife.date; `VERSION_CHECK`; a time limit a
   call; a failed call keeps the last answer), the notice `system.update`, `GET /v1/system/versions`,
   `POST /v1/system/versions/check`. Handover: the new variable, the two hosts the server calls.
-- [ ] **M.12 Versions (web) and the Hebrew pass.** `app/system/versions`, the web's own versions read by the web
+- [x] **M.12 Versions (web) and the Hebrew pass.** (web `52ed3240`, `3c2b7728`, `ad72a778`, `3566b21a`; sidebar `d6db1ac6`; Hebrew `e3cf4a80`; map `a4ae5e9d`) `app/system/versions`, the web's own versions read by the web
   server, the sidebar item; the section's Hebrew texts read through and corrected.
 
