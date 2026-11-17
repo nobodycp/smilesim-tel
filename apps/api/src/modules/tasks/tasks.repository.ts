@@ -34,6 +34,12 @@ export class TasksRepository {
     return this.uow.prisma.task.count({ where });
   }
 
+  /** How many tasks under `where` hold each status: one grouped count, a row per status that has any. */
+  async countByStatus(where: Prisma.TaskWhereInput): Promise<{ status: string; count: number }[]> {
+    const groups = await this.uow.prisma.task.groupBy({ by: ['status'], where, _count: { _all: true } });
+    return groups.map((group) => ({ status: group.status, count: group._count._all }));
+  }
+
   /** Every package with its company and its provider. */
   packagesWithCompany() {
     return this.uow.prisma.package.findMany({ include: { company: true, provider: true } });

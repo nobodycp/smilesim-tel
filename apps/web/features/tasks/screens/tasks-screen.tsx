@@ -85,7 +85,13 @@ export function TasksScreen() {
         pageRows,
       ),
   );
-  const { run } = useAction({ setError, setNote, onDone: list.reload });
+  // The status tabs (Graphite): all, in progress, done, closed — with the counts of the whole picture, from the
+  // tasks module (speed plan PF.5; before it, the all-time overview). An action on a row asks for both again.
+  const counts = useApiQuery(sharedKeys.taskCounts, () => api.taskCounts());
+  const reloadCounts = counts.reload;
+  const reloadList = list.reload;
+  const reload = useCallback(() => Promise.all([reloadList(), reloadCounts()]), [reloadList, reloadCounts]);
+  const { run } = useAction({ setError, setNote, onDone: reload });
   // Who is shown the way to the provider decisions: the owner or a branch account holding `accounting`, in a
   // session of its own. The API decides who reads them; this only spares the others a link that would refuse.
   const { me } = useDesk();
@@ -109,13 +115,12 @@ export function TasksScreen() {
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [packages, company, provider]);
 
-  // The status tabs (Graphite): all, in progress, done, closed — with the counts of the whole picture.
-  const counts = useApiQuery(sharedKeys.overview('all'), () => api.overview('all')).data?.tasks;
+  const tally = counts.data;
   const tabs: { key: string; label: string; count?: number }[] = [
     { key: '', label: t.tasksAllTab },
-    { key: 'working', label: taskStatus(t, 'working'), count: counts ? counts.working : undefined },
-    { key: 'done', label: taskStatus(t, 'done'), count: counts?.done },
-    { key: 'cancelled', label: taskStatus(t, 'cancelled'), count: counts ? counts.rejected + counts.cancelled : undefined },
+    { key: 'working', label: taskStatus(t, 'working'), count: tally?.working },
+    { key: 'done', label: taskStatus(t, 'done'), count: tally?.done },
+    { key: 'cancelled', label: taskStatus(t, 'cancelled'), count: tally ? tally.rejected + tally.cancelled : undefined },
   ];
 
   // Each task is one card row, as in the approved design: the operation's mark, its name and status, the number with

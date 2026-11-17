@@ -1,5 +1,5 @@
 import { request, segment, queryString } from '../../lib/http';
-import type { CompleteTaskBody, DecisionView, ProviderDecisionAnswer, ProviderDecisionApprovalAnswer, ProviderDecisionBody, TaskDetail, TaskEvent, TaskRow, Page, WaitingDecision } from '../../lib/api-types';
+import type { CompleteTaskBody, DecisionView, ProviderDecisionAnswer, ProviderDecisionApprovalAnswer, ProviderDecisionBody, TaskCounts, TaskDetail, TaskEvent, TaskRow, Page, WaitingDecision } from '../../lib/api-types';
 
 /** The tasks calls of the office API. Composed into `api` by lib/api.ts. */
 export const tasksApi = {
@@ -12,6 +12,8 @@ export const tasksApi = {
     provider?: string;
     cursor?: string | null;
   }) => request<Page<TaskRow>>('GET', `/v1/tasks${queryString(query)}`),
+  // The status tabs' numbers over the whole list, with the list's visibility (speed plan PF.5).
+  taskCounts: () => request<TaskCounts>('GET', '/v1/tasks/counts'),
   task: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/v1/tasks/${segment(id)}`),
   addTaskNote: (id: string, text: string, internal = false) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/notes`, { text, ...(internal ? { internal: true } : {}) }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/take`),

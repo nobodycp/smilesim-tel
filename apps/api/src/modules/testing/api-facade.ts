@@ -363,6 +363,10 @@ export class ApiFacade {
     return this.tasksDomain.list(await this.actor(gate), query);
   }
 
+  async taskCounts(gate: Gate) {
+    return this.tasksDomain.counts(await this.actor(gate));
+  }
+
   async task(gate: Gate, id: string) {
     return this.tasksDomain.detail(await this.actor(gate), id);
   }

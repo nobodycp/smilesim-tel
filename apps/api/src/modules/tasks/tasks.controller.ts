@@ -25,6 +25,14 @@ export class TasksController {
     return this.taskDesk.list(actor, query);
   }
 
+  // Before `tasks/:id`, which would otherwise take `counts` for an id.
+  @Get('tasks/counts')
+  @ApiOperation({ summary: 'How many tasks the caller may read hold each status (the tasks screen\'s tabs)' })
+  @ApiErrorResponse(401, 403)
+  counts(@Actor() actor: ActorShape) {
+    return this.taskDesk.counts(actor);
+  }
+
   @Get('tasks/:id')
   @ApiOperation({ summary: 'Task ticket detail with timeline' })
   @ApiParam({ name: 'id' })

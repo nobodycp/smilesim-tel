@@ -120,6 +120,7 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/v1/system/versions', null],
   ['POST', '/v1/system/versions/check', null],
   ['GET', '/v1/tasks', null],
+  ['GET', '/v1/tasks/counts', null],
   ['GET', '/v1/tasks/ID1', null],
   ['POST', '/v1/tasks/ID1/cancel', ['task_cancel', 'task', 'ID1']],
   ['POST', '/v1/tasks/ID1/complete', ['task_complete', 'task', 'ID1']],

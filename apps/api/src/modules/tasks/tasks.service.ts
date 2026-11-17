@@ -11,7 +11,7 @@ import type { Actor } from '../access';
 import type { Action } from '../catalog';
 import type { WrittenNotice } from '../notifications';
 import { excerpt, type TaskNoticePayload } from '../notifications';
-import { taskStatusOf } from './task-status';
+import { taskCountsOf, taskStatusOf, type TaskCounts } from './task-status';
 import { simRulesOf } from '../catalog';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
@@ -104,6 +104,15 @@ export class TasksService {
       nextCursor,
       total,
     };
+  }
+
+  /**
+   * The tasks screen's status tabs: how many tasks the actor may read hold each status, over the whole list with no
+   * filter. The same visibility as `list` (`taskWhereFor`), so each number is that status's list total.
+   */
+  async counts(actor: Actor): Promise<TaskCounts> {
+    const accounts = await this.tree.accounts();
+    return taskCountsOf(await this.repo.countByStatus(taskWhereFor(actor, accounts)));
   }
 
   /** The packages a list filter names, or null when it names none. */

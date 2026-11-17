@@ -58,6 +58,7 @@ export const sharedKeys = {
   users: ['api', 'users'] as const,
   companies: ['api', 'companies'] as const,
   providers: ['api', 'providers'] as const,
+  taskCounts: ['api', 'tasks', 'counts'] as const,
   task: (id: string) => ['api', 'task', id] as const,
   taskDecision: (id: string) => ['api', 'task', id, 'decision'] as const,
   providerDecisions: ['api', 'provider-decisions'] as const,

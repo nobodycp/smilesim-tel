@@ -633,6 +633,14 @@ export type ActivationKindMode = 'off' | 'manual' | 'auto';
 /** An activation that is a porting or a card-to-bill conversion. */
 export type ActivationKind = 'port' | 'convert';
 
+/** GET /v1/tasks/counts: how many tasks the caller may read hold each stored status (the tasks screen's tabs). */
+export type TaskCounts = {
+  working: number;
+  done: number;
+  rejected: number;
+  cancelled: number;
+};
+
 export type TaskRow = {
   id: string;
   action: string;

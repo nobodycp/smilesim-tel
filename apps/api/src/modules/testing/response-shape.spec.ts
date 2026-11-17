@@ -31,6 +31,8 @@ const ME_OWNER_KEYS = ['openAlerts'];
 // The announcements board left the home (spec 2026-11-09-admin-review, 6.2): no `canPost`, no `announcements`.
 const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'operations'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
+// Speed plan PF.5: the tasks screen's tabs, one number per stored status (tasks/task-status.ts).
+const TASK_COUNTS_KEYS = ['working', 'done', 'rejected', 'cancelled'];
 const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
 // No `esimQr`: a list row never carries the eSIM code (ADR 0019, D17; plan slice S.5c). The detail does (below).
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
@@ -201,6 +203,15 @@ describe('office response shapes', () => {
     const home = await service.home(gate);
     expect(keysOf(home)).toEqual(sorted(HOME_KEYS));
     expect(keysOf(home.operations[0])).toEqual(sorted(HOME_OPERATION_KEYS));
+  });
+
+  it('answers /v1/tasks/counts with the keys of TaskCounts, 0 for a status with no task', async () => {
+    const { service, gate } = await serviceWith({
+      task: { groupBy: async () => [{ status: 'working', _count: { _all: 4 } }, { status: 'done', _count: { _all: 2 } }] },
+    });
+    const counts = await service.taskCounts(gate);
+    expect(keysOf(counts)).toEqual(sorted(TASK_COUNTS_KEYS));
+    expect(counts).toEqual({ working: 4, done: 2, rejected: 0, cancelled: 0 });
   });
 
   it('answers /v1/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
@@ -617,6 +628,10 @@ describeWeb('web types match the pinned shapes', () => {
     const body = typeBody(source, 'HomePayload');
     expect(declared(body)).toEqual({ required: sorted(HOME_KEYS), optional: [] });
     expect(inlineKeys(body, 'operations')).toEqual(sorted(HOME_OPERATION_KEYS));
+  });
+
+  it('TaskCounts', () => {
+    expect(declared(typeBody(source, 'TaskCounts'))).toEqual({ required: sorted(TASK_COUNTS_KEYS), optional: [] });
   });
 
   it('LineRow, PosChoice and the lines envelope', () => {

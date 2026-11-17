@@ -135,6 +135,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /v1/system/versions', 'ynnnnn'], // system monitor M.11: the branch owner alone (D1)
   ['POST /v1/system/versions/check', 'ynnnnn'],
   ['GET /v1/tasks', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /v1/tasks/counts', 'yyyyyy'], // the list's own visibility (speed PF.5): who may list may count
   ['GET /v1/tasks/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /v1/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /v1/tasks/ID1/complete', 'ynynnn'],
