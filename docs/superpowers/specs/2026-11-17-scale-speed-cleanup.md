@@ -308,6 +308,50 @@ Proof: `platform/database-settings.db.spec.ts` (the limits each client's connect
 inside `withExportLimit`, the pool's size by distinct backends, a raw and a model statement cut and answered
 `TOO_SLOW` and kept as `57014`, the storage parameters and the validated checks), `production-config.spec.ts`.
 
+## Provider ledger stored (DB.5)
+
+Decision and invariant: ADR 0025 (accepted; the owner's answers of 2026-11-17 at its end). An operation's wallet
+entry carries the provider of its package and its provider cost, written in the entry's own INSERT and never
+updated; the books become SQL sums of them. Built in slices, each one commit:
+
+| # | Slice | State |
+|---|---|---|
+| P.1 | `WalletEntry.providerId` (no foreign key) and the CHECK `WalletEntry_operation_priced`, `NOT VALID` (migration `20261117210000_provider_ledger_stored`); `Sale.providerId`; every writer of an operation kind passes the provider and the cost (below). Reads unchanged. | done |
+| P.2 | The backfill command `provider-ledger-backfill` (`cli/`) with its built-in proof. | done |
+| P.3 | The partial index (`CONCURRENTLY`, a migration of its own) and `VALIDATE CONSTRAINT`, in the release after the backfill ran. | next |
+| P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. | next |
+| P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. Example: a 30 ₪ period, the number worked 10 days: the disconnect stores −19.5 ₪, so the line's net cost is 10.5 ₪. Today (kept by P.1 and the backfill, so the proof is equal) the disconnect stores *used share + fee* as a further purchase, 40.5 ₪ in all. Its own spec section first; the stored history is corrected by a settlement entry or a migration the owner chooses. | after P.4 |
+| P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Its own spec first. | after P.4 |
+
+P.5 (closed monthly totals) only if P.4 measures over budget.
+
+**What each writer stores (P.1).** The provider is the one of the package the entry names (`Package.providerId` of
+the row the caller already read: no read is added); the cost is the one of that moment.
+
+| Writer | Kind | Provider | Cost |
+|---|---|---|---|
+| immediate sale (`LinesService.activate`) | `activate` | the package's | eSIM: branch cost + fee (as before); plain: the subscription's branch cost on the terms just stamped |
+| task completion and the provider's settlement (`TaskCompletion.applyClaimed`) | `activate` | the package's | the same; a task that charges nothing records 0, as it always has |
+| renewal now and by task | `extend`, `charge`, `reactivate` | the renewal target's, else the line's | the renewal branch cost on the new terms (as before) |
+| switch now and by task, debit, credit or even | `switch` | the new package's | the quoted difference (as before; may be negative) |
+| disconnect now and by task | `disconnect` | the line's | used share + 0.5 ₪ fee (as before; P.6) |
+| eSIM issue (task) | `esim` | the line's | the fee (as before) |
+| freeze, unfreeze, refresh, rename, SIM, transfer (now and by task) | those | the line's | 0 |
+
+`WalletLedger.post` and `recordOp` write both columns (`operationColumns`, `wallets/provider-cost.ts`): an operation
+kind without a provider, or a priced kind that moves money without its cost, throws before the INSERT; the CHECK
+refuses it in the database. No statement, lock or foreign key is added under the wallet lock:
+`sale-lock-tree.db.spec.ts` still counts 11 statements for an activation and 12 for an extension.
+
+**The backfill (P.2).** One transaction on the `tool` client, with `WalletEntry` locked against writes. It reads
+today's books through the services the screens use (`WalletsService.pricedOperations`,
+`ProviderAccountsService.summaries` and `detail`), writes `providerId` and `providerCost` on every operation entry
+that has no provider, then compares, inside the same transaction: each entry's stored provider and cost with what
+the books give it; each provider's purchases, balance and available with the same figures from the stored columns
+(an SQL sum); each provider's ledger row by row (id, amount, balance after). Equal to the agora, it commits;
+otherwise it rolls back and prints the differences. An entry the books give to no provider is listed and the run
+stops before writing. `--dry-run` proves and rolls back.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

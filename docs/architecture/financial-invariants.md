@@ -18,6 +18,7 @@ Each rule names where it lives and what proves it. "Guard" is a rule of `archite
 | Money is integer agorot. A balance is never written from a value read earlier: every method locks the wallet row first, then reads, then writes. | `hold`, `release`, `capture`, `move` each start with `SELECT … FOR UPDATE` on the wallet | ADR 0004; `wallet-*.db.spec.ts` |
 | `hold` takes money out of what may be spent without moving it; `capture` turns a hold into its charge with no second ceiling check and is refused when the wallet holds less than the task's hold; `release` gives a hold back. | `wallet-ledger.ts` | ADR 0019 D10; `wallet-capture.db.spec.ts` |
 | A hold is taken by the task that opens (`tasks.service.ts`) and captured by its completion (`task-completion.ts`), nowhere else. | — | guard `hold-path` |
+| An operation's entry (a kind of `PROVIDER_OPERATION_KINDS`) carries its provider (`providerId`, the provider of the package the entry names) and its provider cost (`providerCost`, signed agorot), fixed at the write, in the entry's own INSERT, never updated. The provider books (purchases, balance, available, the ledger) are to be sums of them (ADR 0025; the reads switch in slice P.4, until then they still work the figures out per row and must give the same). | `WalletLedger.post` / `recordOp` (`operationColumns`, `wallets/provider-cost.ts`); the CHECK `WalletEntry_operation_priced` (`NOT VALID` until P.3); the rows written before release 1 by `cli/provider-ledger-backfill.ts`, which commits only when the stored figures equal today's books to the agora | `wallets/provider-priced-entries.db.spec.ts` (every writer), `cli/provider-ledger-backfill.db.spec.ts` |
 
 ## 2. Transactions
 
@@ -51,6 +52,9 @@ Apart from that chain:
   takes it `FOR SHARE`). Those transactions touch the
   provider and the operation only: no task, line or wallet.
 - **The outbox** is claimed with `FOR UPDATE SKIP LOCKED` and a lease (`outbox.repository.ts`): it never waits.
+- **The provider books add no lock under the wallet lock** (ADR 0025): an operation's provider and cost go into the
+  INSERT of its entry; `WalletEntry.providerId` has no foreign key, whose `FOR KEY SHARE` on the provider's row would
+  wait on the send gate's `FOR UPDATE`. Proof: `sales/sale-lock-tree.db.spec.ts` (statement counts unchanged).
 - **No account row is locked, and the tree is not read, under a wallet lock** (DB.9, ADR 0023): a sale is priced on
   the seller's path read before its transaction; under the lock `AccountTree.confirmedPath` reads only the path's
   rows by id and refuses with `409 DUPLICATE_REQUEST` when an account on it moved. Proof:

@@ -17,12 +17,14 @@ const log = logger('UnitOfWork');
 export const TRANSACTION_LIMITS = { maxWait: 10_000, timeout: 15_000 } as const;
 
 /**
- * A transaction on a client of the caller's own, with the stated limits: for the two callers that have a client and
- * no unit of work (the boot seeder of the trial accounts, the command-line sealing script). Everything else goes
- * through `UnitOfWork.runTx`, which also publishes the notices a transaction wrote.
+ * A transaction on a client of the caller's own, with the stated limits: for the callers that have a client and no
+ * unit of work (the boot seeder of the trial accounts, the command-line sealing script, the provider ledger's
+ * backfill). Everything else goes through `UnitOfWork.runTx`, which also publishes the notices a transaction wrote.
+ * `limits` is for an operator's command alone: a one-off pass over a whole table, run with writes stopped, may need
+ * longer than a request's 15 s.
  */
-export function transaction<T>(prisma: PrismaClient, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  return prisma.$transaction(fn, TRANSACTION_LIMITS);
+export function transaction<T>(prisma: PrismaClient, fn: (tx: Prisma.TransactionClient) => Promise<T>, limits: { maxWait: number; timeout: number } = TRANSACTION_LIMITS): Promise<T> {
+  return prisma.$transaction(fn, limits);
 }
 
 /** A client to read or write with: the process's own, or the one a transaction handed out (rule 1.3). */
