@@ -8,8 +8,6 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
 import { taskWhereFor } from '../../tasks/task-access';
 import { ServiceGraph } from '../../testing/service-graph';
-import { WalletsRepository } from '../../wallets/wallets.repository';
-import { WalletsService } from '../../wallets/wallets.service';
 import { DeskRepository } from './desk.repository';
 import { OverviewService } from './overview.service';
 
@@ -44,8 +42,7 @@ suite('the overview\'s grouped counts (PostgreSQL)', () => {
     prisma = createPrismaClient();
     graph = new ServiceGraph(new MemoryAuthStore());
     graph.prismaClient = prisma;
-    const wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, graph.ladder, new WalletsRepository(graph.uow));
-    overview = new OverviewService(graph.tree, wallets, {} as never, {} as never, {} as never, new DeskRepository(graph.uow));
+    overview = new OverviewService(graph.tree, {} as never, {} as never, {} as never, new DeskRepository(graph.uow));
 
     const user = (id: string, layer: string, parentId: string | null, disabledAt: Date | null = null) => ({
       id, loginName: `oc-${tag}-${layer}-${id.slice(0, 4)}`, nickname: layer, passwordHash: 'x', layer, parentId, isBranchOwner: id === ids.owner, disabledAt,

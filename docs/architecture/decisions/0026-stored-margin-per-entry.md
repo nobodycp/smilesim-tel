@@ -273,3 +273,48 @@ entry's own `providerId` instead of the line's current package.
 2. **Old sales: recorded at their time, never changed by a later price.** The owner called repricing the old record
    "a big mistake". The backfill fixes their margin once and nothing moves it after.
 3. **All-time figures: always exact,** within a one-second budget; past it the daily summary is built.
+
+## Amendment (2026-11-17): one deploy, the backfill at HEAD, old sales on the path of their time
+
+Built as slices M.1–M.4 (plan DB.12). Where this differs from the sections above, this wins.
+
+1. **One deploy, the backfill at HEAD** (the lesson of ADR 0025's amendment). The office pushes `main` once and the
+   server deploys HEAD: there is no release 1 with the old reads. `cli/stored-margins-backfill.ts` lives at HEAD and
+   runs once after the deploy, writes stopped, on the final schema and the final reads (until it runs, an old entry
+   counts no profit). The validate migration (`20261117230200_stored_margins_validate`) validates the CHECK only when no
+   stored row breaks it, else a `WARNING`; the command validates it at its end. The comparison of old and new answers
+   was made in development on the local dev database (below), not by the command: HEAD has no old reads to compare.
+2. **Run it before `provider-ledger-backfill`.** PostgreSQL checks every CHECK on each row an `UPDATE` writes, `NOT VALID`
+   or not. On a server where neither command has run, an old sale row has a ladder without margins (refused by
+   `WalletEntry_sale_margins`) and no provider (refused by `WalletEntry_operation_priced`): whichever runs first would
+   be refused. So this command runs first, and when an old operation row without its provider is among the rows it
+   writes, it drops `WalletEntry_operation_priced` and adds it again `NOT VALID` around its writes in its own
+   transaction (it is not valid while such rows exist, so nothing is lost) and says so; the provider command then runs.
+3. **Old sales without a kept ladder: the path at the time of the sale** (the owner's answer 1), not today's. The
+   read-time rebuild (`laddersOf`) used today's path, which gives an old sale of a moved point of sale to its new agent.
+   The command puts each moved account back under the parent it had at the sale, read from the `transfer.out` notices
+   every move writes (kind `pos` or `agent`, the parent it left, the time), and prints each entry whose path at the
+   time differs from today's. Prices are today's (no older price is kept), fixed once and never again (answer 2).
+   Notices are purged after 180 days (read) or 365; on the trial data none is that old. Locally no account was ever
+   moved, so every built ladder equals the read-time one.
+4. **Every money figure follows the chain at the time**, not only the profit: a non-branch viewer's sales count, volume,
+   refunds, trend, rankings and most active accounts are read from the same rows as its profit (`"chain…Id" = viewer`),
+   so the figures of one card agree. The branch reads every sale and refund. The finance list stays the entries of the
+   accounts under the viewer now (it is a statement of those wallets), each row with the viewer's stored margin, null
+   when the viewer was not in its chain.
+5. **Indexes:** one partial index a layer below the branch on (chain id, `createdAt` DESC, `id` DESC) INCLUDE (that
+   layer's margin, `amount`, `kind`), a plain `CREATE INDEX` by the plan's rule; the branch keeps
+   `WalletEntry_sale_or_refund_createdAt_id`. Whether "all time" for the branch needs more, or C (M.5), waits for a
+   measurement on a database at the audit's sizes.
+6. **A refund of a sale that kept its ladder but not its ids** (only before the backfill ran) reads the layers of that
+   ladder's accounts by id (one statement, only in that case) instead of copying ids.
+7. Before launch, on trial data, the command rewrites old rows' ladders and margins (the owner's standing rule: nothing
+   kept in an old form). After launch stored margins are never updated, and the command is not run again.
+
+**The comparison on the local dev database (2026-11-17).** Every money figure of every account (branch, main, main2,
+agent, pos) was read by the old code before the backfill and by the new code after it: the overview for day, month
+and all time (sales, refunds, net, profit, the trend, pulse current and previous, top packages, companies and
+providers, most active), the finance summary for 7, 30 and 90 days, the profit report (all, a month, a day, a search)
+and its CSV, every page of the finance list (each row's margin and the branch's shares), and the providers report
+(all, a month, a day) and its CSV — 64 figures. All equal to the agora; the only differences were the trend axis's
+newest hour (the clock moved an hour between the two reads; the added points are zero).

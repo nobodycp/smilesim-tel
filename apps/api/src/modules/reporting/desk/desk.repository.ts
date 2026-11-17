@@ -1,6 +1,33 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, NEWEST_FIRST } from '../../platform';
+import { Prisma } from '../../../generated/prisma/client';
+import { UnitOfWork } from '../../platform';
+import { REFUND_KINDS, SALE_KINDS } from '../../pricing';
+import type { MarginView } from '../../wallets';
+
+/** One viewer's sales and refunds over a period: whose margins (ADR 0026) and the instants, `to` inclusive. */
+export type SalesScope = { view: MarginView; from: Date | null; to: Date | null };
+
+/** A bucket of the trend: `to_char` of the entry's UTC time. */
+export type BucketFormat = 'YYYY-MM-DD"T"HH24' | 'YYYY-MM-DD' | 'YYYY-MM';
+
+/** What the period's cards add up, per bucket: sales (count, volume, activations), refunds, and the viewer's profit on both. */
+export type SalesBucket = { at: string; count: number; amount: number; activations: number; refunds: number; refundAmount: number; profit: number };
+
+/** One ranked group of the period's sales: how many, their volume, the viewer's profit on them, and the newest. */
+export type SalesGroup = { key: string | null; count: number; amount: number; profit: number; newest: Date };
+
+/** The chain columns by layer, and each layer's margin (ADR 0026): the "most active" cards group by them. */
+const CHAIN_OF = {
+  main_agent: { chain: 'chainMainAgentId', margin: 'mainAgentMargin' },
+  agent: { chain: 'chainAgentId', margin: 'agentMargin' },
+  pos: { chain: 'chainPosId', margin: 'posMargin' },
+} as const;
+
+const column = (name: string) => Prisma.raw(`"${name}"`);
+const kinds = (list: string[]) => Prisma.raw(list.map((kind) => `'${kind.replace(/[^a-z_]/g, '')}'`).join(', '));
+// Written out, not bound, so the planner matches the partial index `WalletEntry_sale_or_refund_createdAt_id`.
+const SALE_OR_REFUND = Prisma.sql`(("kind" IN (${kinds(Object.keys(SALE_KINDS))}) AND "amount" < 0) OR ("kind" IN (${kinds([...REFUND_KINDS])}) AND "amount" > 0))`;
+const asNumber = (value: bigint | number | null) => Number(value ?? 0);
 
 /**
  * The database as this domain reads and writes it: the counters and sums the home page shows. One method per query, named for what it
@@ -71,23 +98,67 @@ export class DeskRepository {
     return this.uow.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
   }
 
-  /** Ledger entries with what the overview's cards and rankings read, newest first. */
-  periodEntries(where: Prisma.WalletEntryWhereInput, take: number) {
-    return this.uow.prisma.walletEntry.findMany({
-      where,
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true, providerId: true, providerCost: true },
-      orderBy: [...NEWEST_FIRST],
-      take,
-    });
+  /**
+   * The viewer's sales and refunds in the scope: those whose chain held it at the time of the sale, every one for the
+   * branch (ADR 0026, the owner's answer 1). The branch's read uses the partial sales index, every other layer its
+   * chain column's (migration 20261117230100_stored_margins_indexes).
+   */
+  private salesWhere(scope: SalesScope, extra: Prisma.Sql = Prisma.empty) {
+    const { view, from, to } = scope;
+    return Prisma.sql`WHERE ${SALE_OR_REFUND}
+      ${view.chain ? Prisma.sql`AND ${column(view.chain)} = ${view.viewerId}` : Prisma.empty}
+      ${from ? Prisma.sql`AND "createdAt" >= ${from}` : Prisma.empty}
+      ${to ? Prisma.sql`AND "createdAt" <= ${to}` : Prisma.empty}
+      ${extra}`;
   }
 
-  /** Ledger entries with only what a period's totals need, in no set order. */
-  entriesForTotals(where: Prisma.WalletEntryWhereInput, take: number) {
-    return this.uow.prisma.walletEntry.findMany({
-      where,
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
-      take,
-    });
+  /** When the viewer's oldest sale or refund in the scope was made (all time: where its trend starts), or null. */
+  async firstSale(scope: SalesScope): Promise<Date | null> {
+    const [row] = await this.uow.prisma.$queryRaw<{ first: Date | null }[]>`SELECT min("createdAt") AS first FROM "WalletEntry" ${this.salesWhere(scope)}`;
+    return row?.first ?? null;
+  }
+
+  /** The scope's sales and refunds added up per bucket of their time, in SQL: no row is loaded. */
+  async salesByBucket(scope: SalesScope, format: BucketFormat): Promise<SalesBucket[]> {
+    const margin = column(scope.view.margin);
+    const rows = await this.uow.prisma.$queryRaw<Record<keyof SalesBucket, string | bigint | number | null>[]>`
+      SELECT to_char("createdAt", ${format}) AS at,
+        count(*) FILTER (WHERE "amount" < 0) AS count,
+        sum(-"amount") FILTER (WHERE "amount" < 0) AS amount,
+        count(*) FILTER (WHERE "amount" < 0 AND "kind" = 'activate') AS activations,
+        count(*) FILTER (WHERE "amount" > 0) AS refunds,
+        sum("amount") FILTER (WHERE "amount" > 0) AS "refundAmount",
+        sum(${margin}) AS profit
+      FROM "WalletEntry" ${this.salesWhere(scope)}
+      GROUP BY 1`;
+    return rows.map((row) => ({
+      at: String(row.at),
+      count: asNumber(row.count as bigint),
+      amount: asNumber(row.amount as bigint),
+      activations: asNumber(row.activations as bigint),
+      refunds: asNumber(row.refunds as bigint),
+      refundAmount: asNumber(row.refundAmount as bigint),
+      profit: asNumber(row.profit as bigint),
+    }));
+  }
+
+  /** The scope's sales (not refunds) grouped by what they sold: the package's name, the company's, or the provider. */
+  async salesBy(scope: SalesScope, key: 'packageName' | 'companyName' | 'providerId'): Promise<SalesGroup[]> {
+    const rows = await this.uow.prisma.$queryRaw<{ key: string | null; count: bigint; amount: bigint; profit: bigint | null; newest: Date }[]>`
+      SELECT ${column(key)} AS key, count(*) AS count, sum(-"amount") AS amount, sum(${column(scope.view.margin)}) AS profit, max("createdAt") AS newest
+      FROM "WalletEntry" ${this.salesWhere(scope, Prisma.sql`AND "amount" < 0`)}
+      GROUP BY 1`;
+    return rows.map((row) => ({ key: row.key, count: asNumber(row.count), amount: asNumber(row.amount), profit: asNumber(row.profit), newest: row.newest }));
+  }
+
+  /** The scope's sales grouped by the account of one layer in their chain, with that account's own margin on them. */
+  async salesByAccount(scope: SalesScope, layer: keyof typeof CHAIN_OF): Promise<SalesGroup[]> {
+    const { chain, margin } = CHAIN_OF[layer];
+    const rows = await this.uow.prisma.$queryRaw<{ key: string; count: bigint; amount: bigint; profit: bigint | null; newest: Date }[]>`
+      SELECT ${column(chain)} AS key, count(*) AS count, sum(-"amount") AS amount, sum(${column(margin)}) AS profit, max("createdAt") AS newest
+      FROM "WalletEntry" ${this.salesWhere(scope, Prisma.sql`AND "amount" < 0 AND ${column(chain)} IS NOT NULL`)}
+      GROUP BY 1`;
+    return rows.map((row) => ({ key: row.key, count: asNumber(row.count), amount: asNumber(row.amount), profit: asNumber(row.profit), newest: row.newest }));
   }
 
   /** Every provider's code and name, by id: an entry stores its provider's id (ADR 0025). */

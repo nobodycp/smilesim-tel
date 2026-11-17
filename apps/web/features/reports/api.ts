@@ -13,7 +13,7 @@ export const reportsApi = {
     return read.ok ? { ...read, data: { rows: read.data.rows, totals: read.data.first.totals } } : read;
   },
   reportSupply: (query: { from?: string; to?: string }) =>
-    request<{ rows: SupplyReportRow[]; totals: { operations: number; cost: number; profit: number }; capped: boolean }>('GET', `/v1/reports/supply${queryString(query)}`),
+    request<{ rows: SupplyReportRow[]; totals: { operations: number; cost: number; profit: number } }>('GET', `/v1/reports/supply${queryString(query)}`),
   /** The branch's reports by URL: every package by provider (one page, capped), and the provider operations ledger. */
   reportProviders: () => request<Page<ProviderReportRow>>('GET', '/v1/reports/providers'),
   reportOperations: (cursor?: string | null) => request<Page<ReportRow>>('GET', `/v1/reports/operations${queryString({ cursor })}`),

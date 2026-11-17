@@ -1,4 +1,4 @@
-import { addEntry, axis, bucketOf, emptyTotals, previousWindow } from './pulse';
+import { axis, bucketOf, previousWindow } from './pulse';
 
 describe('home pulse', () => {
   const now = new Date('2026-11-09T15:30:00.000Z');
@@ -23,13 +23,5 @@ describe('home pulse', () => {
     expect(axis('all', now, new Date('2026-07-15T00:00:00.000Z'))).toEqual(['2026-07', '2026-08', '2026-09', '2026-10', '2026-11']);
     expect(axis('all', now, new Date('2020-01-01T00:00:00.000Z'))).toHaveLength(24);
     expect(bucketOf('hour', now)).toBe('2026-11-09T15');
-  });
-
-  it('counts sales and their volume, activations among them, and profit from every entry', () => {
-    const totals = emptyTotals();
-    addEntry(totals, { kind: 'activate', amount: -4500 }, 700);
-    addEntry(totals, { kind: 'charge', amount: -3000 }, 300);
-    addEntry(totals, { kind: 'disconnect', amount: 1500 }, -200);
-    expect(totals).toEqual({ count: 2, amount: 7500, activations: 1, profit: 800 });
   });
 });

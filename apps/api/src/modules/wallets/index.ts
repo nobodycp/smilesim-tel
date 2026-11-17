@@ -5,6 +5,8 @@
 export { PROVIDER_OPERATION_KINDS } from './provider-cost';
 export { csvOf } from './report-csv';
 export { saleOf } from './sale';
+export { marginViewOf, saleOrRefundWhere } from './stored-margins';
+export type { MarginView } from './stored-margins';
 export type { Sale } from './sale';
 export { WalletLedger } from './wallet-ledger';
 export { WalletsModule } from './wallets.module';

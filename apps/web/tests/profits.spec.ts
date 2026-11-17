@@ -11,7 +11,6 @@ test('profits show the totals and each package, follow the dates, and export the
           { packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 0, profit: 600 },
         ],
         totals: { sales: 5, refunds: 1, profit: 1650 },
-        capped: false,
       },
     }),
   });

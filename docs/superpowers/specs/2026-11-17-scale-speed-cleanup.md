@@ -450,6 +450,37 @@ cheaper package already stores a negative difference; the ledger page and `provi
 a cost ≠ 0; the providers report and the overview add it. The providers report's share bar clamps a provider's share
 to 0–100 % (a window holding only a disconnect gives that provider a negative cost).
 
+## Stored margin an entry (DB.12)
+
+Decision and invariant: ADR 0026 (accepted; the owner's answers of 2026-11-17 and the amendment at its end). Each sale's
+and refund's wallet entry stores its chain by layer and each layer's margin; every profit figure is a SQL sum of them.
+
+| # | Slice | State |
+|---|---|---|
+| M.1 | `WalletEntry` `chainPosId`, `chainAgentId`, `chainMainAgentId`, `posMargin`, `agentMargin`, `mainAgentMargin`, `branchMargin` (no foreign keys) and the CHECK `WalletEntry_sale_margins` `NOT VALID` (migration `20261117230000_stored_margins`). `WalletLedger.post` writes them in the entry's INSERT from the ladder it builds (`marginOf`), the layers from the path `confirmedPath` returned (`chainIdsOf`; two accounts of one layer: 409); a refund copies its sale's ids. No statement under the wallet lock is added: `sale-lock-tree.db.spec.ts` counts 11 and 12. | done |
+| M.2 | `cli/stored-margins-backfill.ts` (`--dry-run`, `--check`): every sale and refund entry gets its columns from its kept ladder; an old sale without one gets a ladder built once at today's prices on the path at the time of the sale (moved accounts put back from the `transfer.out` notices: answer 1), stored with it (answer 2); an old refund scales its line's earlier sale; the invariant in Node; the CHECK validated. Runs after the deploy, writes stopped, before `provider-ledger-backfill`. | done |
+| M.3 | Partial indexes `WalletEntry_chainMainAgent_createdAt`, `…_chainAgent_…`, `…_chainPos_…` (chain id, `createdAt` DESC, `id` DESC) INCLUDE (margin, `amount`, `kind`) (migration `20261117230100_stored_margins_indexes`, plain `CREATE INDEX`); `20261117230200_stored_margins_validate` validates the CHECK when no row breaks it. | done |
+| M.4 | Reads switched: the overview (counts, volume, refunds, net, profit, trend, pulse and the period before, rankings, most active — `DeskRepository` SQL), the profit report and CSV and the finance summary (`groupBy` of the viewer's column), the providers report (`groupBy` by stored provider with `branchMargin`), the finance list's `margin` and `shares` (the row's columns). The caps (20,000 / 50,000 / 5,000) and `capped` removed from the three answers and from the web types; `laddersOf`, `laddersFor`, `marginsFor`, `addEntry` and the repository reads only they used deleted. | done |
+| M.5 | The worker's closed-day summary (ADR 0026 option C): only if "all time" measures over the owner's one-second budget. | waits for a measurement |
+
+**Whose figures.** A viewer below the branch reads its own layer's column over the sales and refunds whose chain held
+it at the time of the sale (`"chainAgentId" = viewer`, …), wherever its points of sale are now: a point of sale moved
+to another agent leaves its old sales — profit, count and volume alike — with the old agent. The branch (owner and
+staff) reads `branchMargin` of every sale. The finance list stays the entries of the accounts under the viewer now,
+each row with the viewer's stored margin (null when the viewer was not in that chain).
+
+**Response change.** `GET /v1/overview` `sales.capped`, `GET /v1/finance/profits` `capped` and `GET /v1/reports/supply`
+`capped` are gone (none was pinned by `response-shape.spec.ts`; no screen drew them; the web types and the Playwright
+stand-ins follow). Every figure is exact over any period.
+
+**Proof on the local dev database (2026-11-17).** The backfill: 23 sale and 4 refund entries; 9 kept ladders given
+their margins, 15 sales and 3 refunds built (none moved, none left without a ladder), 27 rows written, the invariant
+holds, the CHECK validated; a second run wrote nothing. Old and new answers, 64 figures over five accounts (each layer)
+and every period the screens offer: equal to the agora (ADR 0026 amendment). On 27 rows the planner reads the branch's
+sums by a sequential scan (with sequential scans off, the partial sales index), an agent's from its chain index alone
+(an index-only scan): that proves the indexes can serve the sums, not their speed; M.5 waits for a database at the
+audit's sizes.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

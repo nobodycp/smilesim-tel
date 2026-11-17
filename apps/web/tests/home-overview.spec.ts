@@ -11,7 +11,7 @@ const overview = (period: string, withProviders: boolean) => ({
   lines: { active: 6, expiring: 2, frozen: 1, disconnected: 3, suspended: 1 },
   lineChange: { active: 3, expiring: 0, frozen: -2, disconnected: 0, suspended: 0 },
   sales: {
-    count: 12, amount: 54000, profit: 3600, refunds: 1, refundAmount: 2250, net: 51750, capped: false,
+    count: 12, amount: 54000, profit: 3600, refunds: 1, refundAmount: 2250, net: 51750,
     trend: [{ day: '2026-11-07', amount: 18000, profit: 1200, count: 4 }, { day: '2026-11-08', amount: 36000, profit: 2400, count: 8 }],
   },
   // The period cards (owner 2026-11-09): this period, the same span before (null over all time), the trend.

@@ -1,12 +1,12 @@
 import { DeskRepository } from './desk.repository';
-import { WalletsRepository } from '../../wallets/wallets.repository';
 import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
-import { WalletsService } from '../../wallets/wallets.service';
 import { OverviewService, periodStart } from './overview.service';
 
 // The home overview (spec 2026-11-08-overview-and-reports-nav, F): one viewer's lines, sales, rankings, users, tasks.
+// The money cards are SQL sums of the stored margins (ADR 0026): they run on PostgreSQL in overview-money.db.spec.ts;
+// here the database answers no sale.
 const accounts = [
   { id: 'branch', loginName: 'branch', nickname: 'b', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null },
   { id: 'main', loginName: 'main', nickname: 'm', layer: 'main_agent', parentId: 'branch', deniedOps: '', disabledAt: null },
@@ -14,15 +14,6 @@ const accounts = [
   { id: 'pos', loginName: 'pos', nickname: 'p', layer: 'pos', parentId: 'agent', deniedOps: '', disabledAt: null },
   { id: 'pos2', loginName: 'pos2', nickname: 'p2', layer: 'pos', parentId: 'agent', deniedOps: '', disabledAt: new Date() },
 ];
-const ladder = (pos: string) => ({ kind: 'subscription', chain: [pos, 'agent', 'main', 'branch'], costs: { [pos]: 3800, agent: 3500, main: 3000, branch: 2500 }, posSell: 4500 });
-const at = new Date('2026-11-09T08:00:00.000Z');
-const entries = [
-  { id: 's1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 2500 },
-  { id: 's2', userId: 'pos', kind: 'charge', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 2500 },
-  { id: 's3', userId: 'pos2', kind: 'activate', lineId: 'l2', packagePrice: 3800, amount: -3800, ladder: ladder('pos2'), createdAt: at, packageName: '100 جيجا', companyName: 'وي', providerId: 'p-lian', providerCost: 2500 },
-  { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: { ...ladder('pos'), share: -0.5 }, createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 0 },
-];
-
 function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = [], providers: { accounts: unknown; insights: unknown; health: unknown } = { accounts: {}, insights: {}, health: {} }) {
   const kernel = new ServiceGraph(new MemoryAuthStore());
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
@@ -35,7 +26,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     },
     // The overview ranks providers by the provider each entry stored (ADR 0025), named from here.
     provider: { findMany: async () => [{ id: 'p-sky', code: 'sky', name: 'سكاي' }, { id: 'p-lian', code: 'lian', name: 'ليان' }] },
-    walletEntry: { findMany: async () => entries },
+    $queryRaw: async () => [],
     lineCountSnapshot: {
       upsert: async ({ create }: { create: (typeof snapshots)[number] }) => {
         const index = snapshots.findIndex((row) => row.userId === create.userId && row.day === create.day);
@@ -52,8 +43,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
   } as unknown as ServiceGraph['prismaClient'];
-  const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
-  return new OverviewService(kernel.tree, wallets, providers.insights as never, providers.accounts as never, providers.health as never, new DeskRepository(kernel.uow));
+  return new OverviewService(kernel.tree, providers.insights as never, providers.accounts as never, providers.health as never, new DeskRepository(kernel.uow));
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: false, grants: [], operatorId: id, impersonating: false });
@@ -90,36 +80,11 @@ describe('OverviewService', () => {
     expect((await service().overview(actor('agent', 'agent'), { period: 'month' })).lineChange).toBeNull();
   });
 
-  it('sums the sales with the viewer\'s profit, takes refunds back, and ranks packages and companies', async () => {
-    const result = await service().overview(actor('agent', 'agent'), {});
-    expect(result.period).toBe('month');
-    expect(result.sales).toMatchObject({ count: 3, amount: 11400, refunds: 1, refundAmount: 1900, net: 9500, profit: 3 * 300 - 150 });
-    expect(result.sales.trend).toEqual([{ day: '2026-11-09', amount: 11400, profit: 750, count: 3 }]);
-    expect(result.top.packages.map((row) => [row.label, row.count])).toEqual([['400 جيجا', 2], ['100 جيجا', 1]]);
-    expect(result.top.providers).toEqual([]);
-  });
-
-  it('ranks the most active accounts per layer below the viewer only', async () => {
-    const agent = await service().overview(actor('agent', 'agent'), {});
-    expect(agent.active.main_agent).toEqual([]);
-    expect(agent.active.agent).toEqual([]);
-    expect(agent.active.pos.map((row) => [row.label, row.count])).toEqual([['pos', 2], ['pos2', 1]]);
-    const main = await service().overview(actor('main', 'main_agent'), {});
-    expect(main.active.agent.map((row) => [row.label, row.count, row.profit])).toEqual([['agent', 3, 900]]);
-  });
-
   it('counts the accounts below, what they owe, the ceilings, and the tasks', async () => {
     const result = await service().overview(actor('main', 'main_agent'), {});
     expect(result.users).toEqual({ counts: { main_agent: 0, agent: 1, pos: 2 }, frozen: 1, debtors: 2, debt: 2500, ceilings: 6300, used: 2300 });
     expect(result.tasks).toMatchObject({ working: 4, done: 1, oldestOpenMinutes: 90 });
     expect(result.providers).toBeNull();
-  });
-
-  it('gives the period cards: sales and volume, activations, profit, a daily trend while the history is short, and nothing to compare over all time', async () => {
-    const result = await service().overview(actor('agent', 'agent'), { period: 'all' });
-    expect(result.pulse.current).toMatchObject({ count: 3, amount: 11400, activations: 2 });
-    expect(result.pulse.previous).toBeNull();
-    expect(result.pulse.trend.find((point) => point.at.startsWith('2026-11') && point.count > 0)).toMatchObject({ count: 3, activations: 2 });
   });
 
   it('reads the provider books once: the health is worked out from the summaries the balances show (database plan DB.4)', async () => {
@@ -140,13 +105,6 @@ describe('OverviewService', () => {
     expect(calls.list).toBe(1);
     expect(calls.health).toEqual([rows]);
     expect(result.providers).toEqual([{ code: 'sky', name: 'سكاي', operations: 2, cost: 5000, profit: 700, balance: -100, creditLimit: 0, available: -100, status: 'problem', problem: 'balance', failures: 0, alertFloor: 0 }]);
-  });
-
-  it('ranks the branch\'s providers by the provider each sale stored, not by the line\'s package now (ADR 0025)', async () => {
-    const branch = { ...actor('branch', 'branch'), isBranchOwner: true, grants: ['reports'] };
-    const providers = { accounts: { list: async () => ({ rows: [] }) }, insights: { supply: async () => ({ rows: [] }) }, health: { current: async () => [] } };
-    const result = await service([], providers).overview(branch, {});
-    expect(result.top.providers.map((row) => [row.key, row.label, row.count])).toEqual([['sky', 'سكاي', 2], ['lian', 'ليان', 1]]);
   });
 
   it('compares today with the same span of yesterday', async () => {

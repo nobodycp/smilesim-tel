@@ -100,7 +100,7 @@ export type OverviewPayload = {
   lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
   /** Each slice's change over the period (spec 2026-11-09-admin-review, 6.4); null before the first earlier snapshot. */
   lineChange?: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number } | null;
-  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
+  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[] };
   top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
   users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
@@ -804,9 +804,9 @@ export type FinanceSummary = {
   series: { day: string; balance: number }[];
 };
 
-/** The signed-in account's profit by package over a period (`GET /v1/finance/profits`). */
+/** The signed-in account's profit by package over a period (`GET /v1/finance/profits`): exact sums of the margins each sale stored (ADR 0026). */
 export type ProfitRow = { packageName: string; companyName: string; sales: number; refunds: number; profit: number };
-export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number }; capped: boolean };
+export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number } };
 
 /** Rows of the «التقارير» page (`GET /v1/reports/{sales,orders,balances,supply}`). */
 export type BalanceReportRow = {

@@ -47,7 +47,7 @@ suite('the provider books (PostgreSQL)', () => {
     const graph = new ServiceGraph(new MemoryAuthStore());
     graph.prismaClient = prisma;
     const repo = new ProvidersRepository(graph.uow);
-    wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, graph.ladder, new WalletsRepository(graph.uow));
+    wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, new WalletsRepository(graph.uow));
     accounts = new ProviderAccountsService(graph.uow, wallets, repo);
     const unwindowed = {
       providerOperations: async (filter: { providerId?: string; kind?: string; msisdn?: string } = {}) =>
@@ -55,7 +55,7 @@ suite('the provider books (PostgreSQL)', () => {
     };
     oracle = new ProviderAccountsService(graph.uow, unwindowed as unknown as WalletsService, repo);
     health = new ProviderHealthService(graph.uow, accounts, repo);
-    insights = new InsightsService(graph.tree, wallets, new ReportsRepository(graph.uow));
+    insights = new InsightsService(graph.tree, new ReportsRepository(graph.uow));
 
     const user = (id: string, layer: string, parentId: string | null) => ({ id, loginName: `bk-${tag}-${layer}`, nickname: layer, passwordHash: 'x', layer, parentId, isBranchOwner: layer === 'branch' });
     await prisma.user.create({ data: user(ids.owner, 'branch', null) });

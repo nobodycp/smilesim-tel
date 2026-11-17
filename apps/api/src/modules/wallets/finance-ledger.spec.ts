@@ -6,7 +6,7 @@ import { WalletsService } from './wallets.service';
 
 // «المالية» (owner 2026-11-09: «شامله كل العمليات للاب والابناء الي تحته»): every entry of the viewer and the
 // accounts below it, operations that move no money included unless `scope=money`; the branch also reads what every
-// account in a sale's chain earned on it.
+// account in a sale's chain earned on it, as stored on the entry (ADR 0026).
 const accounts = [
   { id: 'branch', loginName: 'branch', nickname: 'b', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null },
   { id: 'main', loginName: 'main', nickname: 'm', layer: 'main_agent', parentId: 'branch', deniedOps: '', disabledAt: null },
@@ -15,11 +15,14 @@ const accounts = [
 ];
 const ladder = { kind: 'subscription', chain: ['pos', 'agent', 'main', 'branch'], costs: { pos: 3800, agent: 3500, main: 3000, branch: 2500 }, posSell: 4500 };
 const at = new Date('2026-11-02T00:00:00.000Z');
+// What `post` stores beside the ladder: marginOf it for each layer's account.
+const margins = { chainPosId: 'pos', chainAgentId: 'agent', chainMainAgentId: 'main', posMargin: 700, agentMargin: 300, mainAgentMargin: 500, branchMargin: 500 };
+const none = { chainPosId: null, chainAgentId: null, chainMainAgentId: null, posMargin: null, agentMargin: null, mainAgentMargin: null, branchMargin: null };
 const base = { balanceAfter: 0, reason: null, held: null, msisdn: '0500', companyName: 'c', packageName: 'p', packagePrice: 3800, esimPrice: null, note: null, createdAt: at };
 const entries = [
-  { ...base, id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', amount: -3800, ladder },
-  { ...base, id: 'e2', userId: 'pos', kind: 'rename', lineId: 'l1', amount: 0, ladder: null },
-  { ...base, id: 'e3', userId: 'agent', kind: 'fund', lineId: null, amount: 10000, ladder: null },
+  { ...base, id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', amount: -3800, ladder, ...margins },
+  { ...base, id: 'e2', userId: 'pos', kind: 'rename', lineId: 'l1', amount: 0, ladder: null, ...none },
+  { ...base, id: 'e3', userId: 'agent', kind: 'fund', lineId: null, amount: 10000, ladder: null, ...none },
 ];
 
 function service(seen: { where?: Record<string, unknown> }) {
@@ -35,7 +38,7 @@ function service(seen: { where?: Record<string, unknown> }) {
       count: async () => entries.length,
     },
   } as unknown as ServiceGraph['prismaClient'];
-  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
+  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, new WalletsRepository(kernel.uow));
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: id === 'branch', grants: [], operatorId: id, impersonating: false });

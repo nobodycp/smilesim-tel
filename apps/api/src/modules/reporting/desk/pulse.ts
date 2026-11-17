@@ -1,6 +1,6 @@
 // The home's period cards (owner 2026-11-09): sales (every sale operation and its volume), new subscriptions
 // (activations) and profit, each against the same span of the period before, with a trend over the period.
-// Pure: the overview loads the rows.
+// Pure: the overview adds the figures up in SQL (desk.repository.ts `salesByBucket`, ADR 0026).
 
 import type { OverviewPeriod } from './overview.service';
 
@@ -71,14 +71,4 @@ export function axis(period: OverviewPeriod, now: Date, first: Date | null): str
   const begin = Math.max(end - 23, first ? first.getUTCFullYear() * 12 + first.getUTCMonth() : end);
   for (let month = begin; month <= end; month += 1) steps.push(bucketOf('month', new Date(Date.UTC(Math.floor(month / 12), month % 12, 1))));
   return steps;
-}
-
-/** Adds one wallet entry: a sale (negative amount) counts and adds its volume; every entry adds its profit. */
-export function addEntry(totals: PulseTotals, entry: { kind: string; amount: number }, profit: number) {
-  if (entry.amount < 0) {
-    totals.count += 1;
-    totals.amount += -entry.amount;
-    if (entry.kind === 'activate') totals.activations += 1;
-  }
-  totals.profit += profit;
 }

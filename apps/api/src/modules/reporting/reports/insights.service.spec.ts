@@ -2,7 +2,6 @@ import { ReportsRepository } from './reports.repository';
 import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
-import type { WalletsService } from '../../wallets/wallets.service';
 import { InsightsService } from './insights.service';
 import { csvOf } from '../../wallets/report-csv';
 
@@ -17,11 +16,7 @@ const actor: Actor = { id: 'agent', loginName: 'agent', nickname: 'وكيل', la
 function insights(tables: Record<string, unknown>) {
   const kernel = new ServiceGraph(new MemoryAuthStore());
   kernel.prismaClient = { user: { findMany: async () => accounts }, ...tables } as unknown as ServiceGraph['prismaClient'];
-  const wallets = {
-    financeWhere: async () => ({}),
-    marginsFor: async (_actor: Actor, rows: { id: string }[]) => new Map(rows.map((row) => [row.id, 300])),
-  } as unknown as WalletsService;
-  return new InsightsService(kernel.tree, wallets, new ReportsRepository(kernel.uow));
+  return new InsightsService(kernel.tree, new ReportsRepository(kernel.uow));
 }
 
 describe('InsightsService', () => {

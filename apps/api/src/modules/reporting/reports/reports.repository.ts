@@ -45,13 +45,17 @@ export class ReportsRepository {
     return this.uow.prisma.walletEntry.groupBy({ by: ['userId'], where: { userId: { in: userIds } }, _max: { createdAt: true } });
   }
 
-  /** The provider operations of these kinds over the dates, newest first, with what their cost and profit need. */
-  providerOperations(kinds: string[], createdAt: Prisma.DateTimeFilter | undefined, take: number) {
-    return this.uow.prisma.walletEntry.findMany({
-      where: { kind: { in: kinds }, ...(createdAt ? { createdAt } : {}) },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, providerId: true, providerCost: true },
-      orderBy: [...NEWEST_FIRST],
-      take,
+  /**
+   * The provider operations of these kinds over the dates, by the provider each stored: how many, the cost they
+   * stored (ADR 0025), the branch's margin the sales and refunds among them stored (ADR 0026), and the newest.
+   */
+  providerFigures(kinds: string[], createdAt: Prisma.DateTimeFilter | undefined) {
+    return this.uow.prisma.walletEntry.groupBy({
+      by: ['providerId'],
+      where: { kind: { in: kinds }, providerId: { not: null }, ...(createdAt ? { createdAt } : {}) },
+      _count: { _all: true },
+      _sum: { providerCost: true, branchMargin: true },
+      _max: { createdAt: true },
     });
   }
 

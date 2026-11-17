@@ -1,23 +1,21 @@
 import { OverviewQuery } from './desk.schemas';
 import { parseInput } from '../../platform';
-import { DeskRepository } from './desk.repository';
+import { DeskRepository, type BucketFormat, type SalesBucket, type SalesGroup, type SalesScope } from './desk.repository';
 import { AccountTree, holdsAny, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
 import { expiringWhere, suspendedWhere } from '../../sales';
-import { REFUND_KINDS, SALE_KINDS, marginOf } from '../../pricing';
 import { ProviderAccountsService, ProviderHealthService } from '../../providers';
 import { InsightsService } from '../reports/insights.service';
 import { taskWhereFor } from '../../tasks';
-import { WalletsService } from '../../wallets';
-import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals } from './pulse';
+import { marginViewOf } from '../../wallets';
+import { axis, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals, type Step } from './pulse';
 
 // The home page's full picture (spec 2026-11-08-overview-and-reports-nav, F): every card of one viewer in one read,
-// scoped to its chain and its grants, over a period (today, this month, all time). Line counts are "now".
+// scoped to its chain and its grants, over a period (today, this month, all time). Line counts are "now". The money
+// figures are SQL sums of the margins each sale stored (ADR 0026): exact over any period, no row loaded.
 export type OverviewPeriod = 'day' | 'month' | 'all';
-/** The most sale entries one overview reads; `capped` says when there were more. */
-const OVERVIEW_LIMIT = 20_000;
 const TOP = 5;
 const TASK_STATUSES = ['working', 'done', 'rejected', 'cancelled'] as const;
 
@@ -31,23 +29,37 @@ export function periodStart(period: OverviewPeriod, now: Date = new Date()): Dat
 type LineCounts = { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
 type Ranked = { key: string; label: string; count: number; amount: number; profit: number };
 
-function rank(map: Map<string, Ranked>, by: 'count' | 'profit') {
-  return [...map.values()].sort((a, b) => b[by] - a[by] || b.amount - a.amount).slice(0, TOP);
+/** The first five by `by`, then by volume, then the one sold most recently. */
+function rank(rows: (Ranked & { newest: number })[], by: 'count' | 'profit'): Ranked[] {
+  return [...rows].sort((a, b) => b[by] - a[by] || b.amount - a.amount || b.newest - a.newest).slice(0, TOP).map(({ key, label, count, amount, profit }) => ({ key, label, count, amount, profit }));
 }
 
-function bump(map: Map<string, Ranked>, key: string, label: string, amount: number, profit: number) {
-  const row = map.get(key) ?? { key, label, count: 0, amount: 0, profit: 0 };
-  row.count += 1;
-  row.amount += amount;
-  row.profit += profit;
-  map.set(key, row);
+/** Groups under one key added together (a package stored with no name and one with an empty name rank as one). */
+function merged(groups: SalesGroup[], keyOf: (group: SalesGroup) => { key: string; label: string } | null) {
+  const rows = new Map<string, Ranked & { newest: number }>();
+  for (const group of [...groups].sort((a, b) => b.newest.getTime() - a.newest.getTime())) {
+    const named = keyOf(group);
+    if (!named) continue;
+    const row = rows.get(named.key) ?? { ...named, count: 0, amount: 0, profit: 0, newest: group.newest.getTime() };
+    row.count += group.count;
+    row.amount += group.amount;
+    row.profit += group.profit;
+    rows.set(named.key, row);
+  }
+  return [...rows.values()];
+}
+
+const FORMAT: Record<Step, BucketFormat> = { hour: 'YYYY-MM-DD"T"HH24', day: 'YYYY-MM-DD', month: 'YYYY-MM' };
+
+/** The buckets' figures added up: the period's cards. */
+function totalsOf(buckets: SalesBucket[]): PulseTotals {
+  return buckets.reduce((sum, row) => ({ count: sum.count + row.count, amount: sum.amount + row.amount, activations: sum.activations + row.activations, profit: sum.profit + row.profit }), emptyTotals());
 }
 
 @Injectable()
 export class OverviewService {
   constructor(
     private readonly tree: AccountTree,
-    private readonly wallets: WalletsService,
     private readonly insights: InsightsService,
     private readonly providerAccounts: ProviderAccountsService,
     private readonly health: ProviderHealthService,
@@ -117,123 +129,72 @@ export class OverviewService {
     return { active: Math.max(0, active - expiring - suspended), expiring, frozen, disconnected, suspended };
   }
 
-  /** The sales and refunds of the period that the viewer may see, newest first, up to the overview's limit. */
-  private async periodEntries(actor: Actor, from: Date | null) {
-    const where = await this.wallets.financeWhere(actor, from ? { from: from.toISOString() } : {});
-    return this.repo.periodEntries(
-      {
-        AND: [
-          where,
-          { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
-        ],
-      },
-      OVERVIEW_LIMIT,
-    );
-  }
-
-  /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
+  /**
+   * Sales, refunds, a daily trend, the rankings and the most active accounts, over the period: the sales and refunds
+   * whose chain held the viewer at the time (every one for the branch), each with the margin it stored (ADR 0026).
+   */
   private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<AccountTree['accounts']>>, period: OverviewPeriod, now: Date) {
-    const rows = await this.periodEntries(actor, from);
-    const ladders = await this.wallets.laddersFor(rows);
-    const viewerOf = (chain: string[]) => (actor.layer === 'branch' ? chain[chain.length - 1] : actor.id);
-    const byId = new Map(accounts.map((account) => [account.id, account]));
-    const providerOf = actor.layer === 'branch' ? await this.providerNames(rows) : new Map<string, { code: string; name: string }>();
-
-    const sales = { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0 };
-    const daily = new Map<string, { day: string; amount: number; profit: number; count: number }>();
-    const packages = new Map<string, Ranked>();
-    const companies = new Map<string, Ranked>();
-    const providers = new Map<string, Ranked>();
-    const active = new Map<string, Ranked>();
-    const current = emptyTotals();
-    const steps = new Map<string, PulseTotals>();
-    const first = rows.length ? rows[rows.length - 1].createdAt : null;
+    const scope: SalesScope = { view: marginViewOf(actor), from, to: null };
+    const isBranch = actor.layer === 'branch';
+    const first = period === 'all' ? await this.repo.firstSale(scope) : null;
     const step = stepOf(period, now, first);
-
-    for (const row of rows) {
-      const ladder = ladders.get(row.id);
-      const profit = ladder ? marginOf(ladder, viewerOf(ladder.chain)) ?? 0 : 0;
-      addEntry(current, row, profit);
-      const bucket = bucketOf(step, row.createdAt);
-      const stepTotals = steps.get(bucket) ?? emptyTotals();
-      addEntry(stepTotals, row, profit);
-      steps.set(bucket, stepTotals);
-      const day = row.createdAt.toISOString().slice(0, 10);
-      const point = daily.get(day) ?? { day, amount: 0, profit: 0, count: 0 };
-      if (row.amount < 0) {
-        const paid = -row.amount;
-        sales.count += 1;
-        sales.amount += paid;
-        sales.profit += profit;
-        point.amount += paid;
-        point.count += 1;
-        bump(packages, row.packageName ?? '', row.packageName ?? '—', paid, profit);
-        bump(companies, row.companyName ?? '', row.companyName ?? '—', paid, profit);
-        const provider = row.providerId ? providerOf.get(row.providerId) : undefined;
-        if (provider) bump(providers, provider.code, provider.name, paid, profit);
-        // Every account of the sale's chain under the viewer did this sale: the most active accounts per layer.
-        for (const id of ladder?.chain ?? [row.userId]) {
-          const account = byId.get(id);
-          if (!account || account.layer === 'branch' || id === actor.id) continue;
-          bump(active, id, account.loginName, paid, ladder ? marginOf(ladder, id) ?? 0 : 0);
-        }
-      } else {
-        sales.refunds += 1;
-        sales.refundAmount += row.amount;
-        sales.profit += profit;
-      }
-      point.profit += profit;
-      daily.set(day, point);
-    }
-    sales.net = sales.amount - sales.refundAmount;
-    const trend: PulsePoint[] = axis(period, now, first).map((at) => ({ at, ...(steps.get(at) ?? emptyTotals()) }));
     const window = previousWindow(period, now);
-    const previous = window ? await this.totalsBetween(actor, window.from, window.to) : null;
-    const activeByLayer = (layer: string) => rank(new Map([...active].filter(([id]) => byId.get(id)?.layer === layer)), 'count')
-      .map((row) => ({ ...row, nickname: byId.get(row.key)?.nickname ?? '' }));
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    // Every account of the sale's chain under the viewer did this sale: the most active accounts per layer.
+    const activeOf = async (layer: 'main_agent' | 'agent' | 'pos') =>
+      rank(
+        merged(await this.repo.salesByAccount(scope, layer), (group) => {
+          const account = group.key ? byId.get(group.key) : undefined;
+          return account && account.id !== actor.id && account.layer === layer ? { key: account.id, label: account.loginName } : null;
+        }),
+        'count',
+      ).map((row) => ({ ...row, nickname: byId.get(row.key)?.nickname ?? '' }));
+    const [steps, days, packages, companies, providers, previous, mainAgents, agents, poses] = await Promise.all([
+      this.repo.salesByBucket(scope, FORMAT[step]),
+      step === 'day' ? null : this.repo.salesByBucket(scope, FORMAT.day),
+      this.repo.salesBy(scope, 'packageName'),
+      this.repo.salesBy(scope, 'companyName'),
+      isBranch ? this.repo.salesBy(scope, 'providerId') : [],
+      window ? this.repo.salesByBucket({ ...scope, from: window.from, to: window.to }, FORMAT.month).then(totalsOf) : null,
+      isBranch ? activeOf('main_agent') : [],
+      isBranch || actor.layer === 'main_agent' ? activeOf('agent') : [],
+      actor.layer === 'pos' ? [] : activeOf('pos'),
+    ]);
+    // The providers each sale stored (ADR 0025), named only when there is one to name.
+    const providerOf = providers.some((group) => group.key) ? new Map((await this.repo.providerNames()).map((row) => [row.id, row])) : new Map<string, { code: string; name: string }>();
+    const daily = days ?? steps;
+    const current = totalsOf(steps);
+    const refunds = daily.reduce((sum, row) => ({ refunds: sum.refunds + row.refunds, refundAmount: sum.refundAmount + row.refundAmount }), { refunds: 0, refundAmount: 0 });
+    const byStep = new Map(steps.map((row) => [row.at, row]));
+    const trend: PulsePoint[] = axis(period, now, first).map((at) => {
+      const row = byStep.get(at);
+      return { at, ...(row ? { count: row.count, amount: row.amount, activations: row.activations, profit: row.profit } : emptyTotals()) };
+    });
+    const named = (group: SalesGroup) => ({ key: group.key ?? '', label: group.key ?? '—' });
     return {
-      sales: { ...sales, activations: current.activations, trend: [...daily.values()].sort((a, b) => (a.day < b.day ? -1 : 1)), capped: rows.length === OVERVIEW_LIMIT },
+      sales: {
+        count: current.count,
+        amount: current.amount,
+        profit: current.profit,
+        ...refunds,
+        net: current.amount - refunds.refundAmount,
+        activations: current.activations,
+        trend: daily.map((row) => ({ day: row.at, amount: row.amount, profit: row.profit, count: row.count })).sort((a, b) => (a.day < b.day ? -1 : 1)),
+      },
       // The home's period cards: this period, the same span before it (null over all time), and the trend.
       pulse: { current, previous, trend },
       top: {
-        packages: rank(packages, 'count'),
-        companies: rank(companies, 'profit'),
-        providers: actor.layer === 'branch' ? rank(providers, 'profit') : [],
+        packages: rank(merged(packages, named), 'count'),
+        companies: rank(merged(companies, named), 'profit'),
+        providers: isBranch
+          ? rank(merged(providers, (group) => {
+              const provider = group.key ? providerOf.get(group.key) : undefined;
+              return provider ? { key: provider.code, label: provider.name } : null;
+            }), 'profit')
+          : [],
       },
-      active: {
-        main_agent: actor.layer === 'branch' ? activeByLayer('main_agent') : [],
-        agent: actor.layer === 'branch' || actor.layer === 'main_agent' ? activeByLayer('agent') : [],
-        pos: actor.layer === 'pos' ? [] : activeByLayer('pos'),
-      },
+      active: { main_agent: mainAgents, agent: agents, pos: poses },
     };
-  }
-
-  /** Sales, their volume, activations and the viewer's profit between two instants: the period before, to compare. */
-  private async totalsBetween(actor: Actor, from: Date, to: Date): Promise<PulseTotals> {
-    const where = await this.wallets.financeWhere(actor, { from: from.toISOString(), to: to.toISOString() });
-    const rows = await this.repo.entriesForTotals(
-      {
-        AND: [
-          where,
-          { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
-        ],
-      },
-      OVERVIEW_LIMIT,
-    );
-    const ladders = await this.wallets.laddersFor(rows);
-    const totals = emptyTotals();
-    for (const row of rows) {
-      const ladder = ladders.get(row.id);
-      const viewer = actor.layer === 'branch' && ladder ? ladder.chain[ladder.chain.length - 1] : actor.id;
-      addEntry(totals, row, ladder ? marginOf(ladder, viewer) ?? 0 : 0);
-    }
-    return totals;
-  }
-
-  /** The providers the entries stored (ADR 0025: the provider of the operation's package at the time), by id. */
-  private async providerNames(rows: { providerId: string | null }[]) {
-    if (!rows.some((row) => row.providerId)) return new Map<string, { code: string; name: string }>();
-    return new Map((await this.repo.providerNames()).map((row) => [row.id, { code: row.code, name: row.name }]));
   }
 
   /** The accounts below the viewer: how many per layer, what they owe, and their ceilings. */

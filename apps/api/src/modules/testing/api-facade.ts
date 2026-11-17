@@ -95,7 +95,7 @@ export class ApiFacade {
   private walletDeskInstance: WalletsService | null = null;
 
   private get walletDesk(): WalletsService {
-    this.walletDeskInstance ??= new WalletsService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, new WalletsRepository(this.graph.uow));
+    this.walletDeskInstance ??= new WalletsService(this.graph.uow, this.graph.tree, this.graph.ledger, new WalletsRepository(this.graph.uow));
     return this.walletDeskInstance;
   }
 

@@ -8,8 +8,6 @@ import { LineReads } from '../../sales/line-reads';
 import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
 import { LinesRepository } from '../../sales/lines.repository';
 import { ServiceGraph } from '../../testing/service-graph';
-import { WalletsRepository } from '../../wallets/wallets.repository';
-import { WalletsService } from '../../wallets/wallets.service';
 import { DeskRepository } from './desk.repository';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
@@ -42,10 +40,9 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
     const graph = new ServiceGraph(new MemoryAuthStore());
     graph.prismaClient = prisma;
     const repo = new DeskRepository(graph.uow);
-    const wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, graph.ladder, new WalletsRepository(graph.uow));
     lines = new LineReads(graph.tree, new LinesRepository(graph.uow));
     desk = new DeskService(graph.tree, repo);
-    overview = new OverviewService(graph.tree, wallets, {} as never, {} as never, {} as never, repo);
+    overview = new OverviewService(graph.tree, {} as never, {} as never, {} as never, repo);
 
     const user = (id: string, layer: string, parentId: string | null, disabledAt: Date | null = null) => ({
       id, loginName: `bs-${tag}-${layer}-${id.slice(0, 4)}`, nickname: layer, passwordHash: 'x', layer, parentId, isBranchOwner: id === ids.owner, disabledAt,

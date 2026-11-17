@@ -5,13 +5,11 @@ import { AccountTree, requireGrant, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import type { Actor } from '../../access';
-import { REFUND_KINDS, SALE_KINDS } from '../../pricing';
-import { PROVIDER_OPERATION_KINDS, WalletsService, csvOf } from '../../wallets';
+import { PROVIDER_OPERATION_KINDS, csvOf } from '../../wallets';
 
 // The «التقارير» page (spec 2026-11-08-reports, roadmap N5): balances and providers, each scoped to the signed-in
 // account's chain like the ledger, with totals and a CSV of the same filters. Sales and orders left by spec
 // 2026-11-09-admin-review, 1 (their rows are read from «المالية» and «المهام»).
-export const REPORT_LIMIT = 5_000;
 
 type Period = { from?: string; to?: string; q?: string };
 
@@ -28,7 +26,6 @@ function dateRange(query: Period): Prisma.DateTimeFilter | undefined {
 export class InsightsService {
   constructor(
     private readonly tree: AccountTree,
-    private readonly wallets: WalletsService,
     private readonly repo: ReportsRepository,
   ) {}
 
@@ -86,32 +83,29 @@ export class InsightsService {
   /**
    * Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's
    * profit. The provider and the cost are the ones each operation stored when it was written, as in the provider
-   * books (ADR 0025 rule 5: one definition of cost).
+   * books (ADR 0025 rule 5: one definition of cost); the profit is the branch's margin each sale and refund stored
+   * (ADR 0026). One grouped sum, exact over any dates.
    */
   async supply(actor: Actor, input: PeriodQuery = {}) {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const query = parseInput(PeriodQuery, input);
-    const createdAt = dateRange(query);
-    const [rows, providers] = await Promise.all([this.repo.providerOperations(PROVIDER_OPERATION_KINDS, createdAt, REPORT_LIMIT), this.repo.providerNames()]);
+    const [groups, providers] = await Promise.all([this.repo.providerFigures(PROVIDER_OPERATION_KINDS, dateRange(query)), this.repo.providerNames()]);
     const providerOf = new Map(providers.map((provider) => [provider.id, provider]));
-    const margins = await this.wallets.marginsFor(actor, rows.filter((row) => SALE_KINDS[row.kind] || REFUND_KINDS.has(row.kind)));
-    const groups = new Map<string, { providerCode: string; providerName: string; operations: number; cost: number; profit: number }>();
-    for (const row of rows) {
-      const provider = row.providerId ? providerOf.get(row.providerId) : undefined;
-      if (!provider) continue;
-      const group = groups.get(provider.code) ?? { providerCode: provider.code, providerName: provider.name, operations: 0, cost: 0, profit: 0 };
-      group.operations += 1;
-      // Never null on an operation entry (the CHECK `WalletEntry_operation_priced`).
-      group.cost += row.providerCost ?? 0;
-      group.profit += margins.get(row.id) ?? 0;
-      groups.set(provider.code, group);
-    }
-    const list = [...groups.values()].sort((a, b) => b.operations - a.operations);
+    const list = groups
+      .flatMap((row) => {
+        const provider = row.providerId ? providerOf.get(row.providerId) : undefined;
+        // Never null on an operation entry (the CHECK `WalletEntry_operation_priced`).
+        return provider
+          ? [{ providerCode: provider.code, providerName: provider.name, operations: row._count._all, cost: row._sum.providerCost ?? 0, profit: row._sum.branchMargin ?? 0, newest: row._max.createdAt?.getTime() ?? 0 }]
+          : [];
+      })
+      // The busiest first; between equals, the one with the newest operation.
+      .sort((a, b) => b.operations - a.operations || b.newest - a.newest)
+      .map(({ providerCode, providerName, operations, cost, profit }) => ({ providerCode, providerName, operations, cost, profit }));
     return {
       rows: list,
       totals: list.reduce((sum, row) => ({ operations: sum.operations + row.operations, cost: sum.cost + row.cost, profit: sum.profit + row.profit }), { operations: 0, cost: 0, profit: 0 }),
-      capped: rows.length === REPORT_LIMIT,
     };
   }
 

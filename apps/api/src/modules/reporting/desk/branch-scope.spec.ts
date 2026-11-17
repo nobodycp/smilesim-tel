@@ -3,8 +3,6 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { LineReads } from '../../sales/line-reads';
 import { LinesRepository } from '../../sales/lines.repository';
 import { ServiceGraph } from '../../testing/service-graph';
-import { WalletsRepository } from '../../wallets/wallets.repository';
-import { WalletsService } from '../../wallets/wallets.service';
 import { DeskRepository } from './desk.repository';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
@@ -44,13 +42,12 @@ function setup() {
     // The company marks the numbers list reads by URL (speed plan PF.7): none.
     $queryRaw: async () => [],
   } as unknown as ServiceGraph['prismaClient'];
-  const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
   const repo = new DeskRepository(kernel.uow);
   return {
     seen,
     lines: new LineReads(kernel.tree, new LinesRepository(kernel.uow)),
     desk: new DeskService(kernel.tree, repo),
-    overview: new OverviewService(kernel.tree, wallets, {} as never, {} as never, {} as never, repo),
+    overview: new OverviewService(kernel.tree, {} as never, {} as never, {} as never, repo),
   };
 }
 

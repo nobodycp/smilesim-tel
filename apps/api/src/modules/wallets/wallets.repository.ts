@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, NEWEST_FIRST } from '../platform';
+import type { MarginView } from './stored-margins';
 
 /**
  * The database as this domain reads and writes it: wallets and wallet entries as the finance pages read them. One method per query, named for what it
@@ -68,33 +69,23 @@ export class WalletsRepository {
     return { packageNamed: pkg !== null, companyNamed: company !== null };
   }
 
-  /** The terms these numbers carry (the package code a sale without a kept ladder is priced from). */
-  lineTerms(ids: string[]) {
-    return this.uow.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, terms: true } });
-  }
-
-  /** What the subscriber pays for the packages with these codes. */
-  subscriberPrices(codes: string[]) {
-    return this.uow.prisma.package.findMany({ where: { code: { in: codes } }, select: { code: true, subscriberPrice: true, renewalSubscriberPrice: true } });
-  }
-
-  /** The sales made on these numbers, newest first: the sale a refund without a kept ladder takes its share from. */
-  salesOfLines(lineIds: string[], kinds: string[]) {
-    return this.uow.prisma.walletEntry.findMany({
-      where: { lineId: { in: lineIds }, kind: { in: kinds }, amount: { lt: 0 } },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, ladder: true, createdAt: true },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    });
-  }
-
-  /** The sales and refunds the profit report groups by package, newest first, at most `take`. */
-  profitEntries(where: Prisma.WalletEntryWhereInput, take: number) {
-    return this.uow.prisma.walletEntry.findMany({
+  /**
+   * The sales and refunds the filter keeps, grouped by company, package and kind: how many, the viewer's stored margin
+   * (`margin`, its layer's column, ADR 0026) and the newest. The profit report adds them up.
+   */
+  profitGroups(where: Prisma.WalletEntryWhereInput, margin: MarginView['margin']) {
+    return this.uow.prisma.walletEntry.groupBy({
+      by: ['companyName', 'packageName', 'kind'],
       where,
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true },
-      orderBy: [...NEWEST_FIRST],
-      take,
+      _count: { _all: true },
+      _sum: { [margin]: true } as Prisma.WalletEntrySumAggregateInputType,
+      _max: { createdAt: true },
     });
+  }
+
+  /** The sales and refunds the filter keeps, by kind: how many and the viewer's stored margin (`margin`). */
+  marginsByKind(where: Prisma.WalletEntryWhereInput, margin: MarginView['margin']) {
+    return this.uow.prisma.walletEntry.groupBy({ by: ['kind'], where, _count: { _all: true }, _sum: { [margin]: true } as Prisma.WalletEntrySumAggregateInputType });
   }
 
   /** One account's money movements since a moment, oldest first: the finance page's chart. */
@@ -103,14 +94,6 @@ export class WalletsRepository {
       where: { userId, amount: { not: 0 }, createdAt: { gte: since } },
       select: { createdAt: true, amount: true, balanceAfter: true, kind: true },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    });
-  }
-
-  /** The sales and refunds the filter keeps, with what a margin is computed from. */
-  soldEntries(where: Prisma.WalletEntryWhereInput) {
-    return this.uow.prisma.walletEntry.findMany({
-      where,
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
     });
   }
 }

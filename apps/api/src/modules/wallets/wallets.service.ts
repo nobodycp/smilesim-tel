@@ -1,5 +1,5 @@
 import { WalletsRepository } from './wallets.repository';
-import { PriceLadder, REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing';
+import { SALE_KINDS, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
 import { UnitOfWork, dayRange, fail, parseInput, after, countUpTo, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
@@ -10,14 +10,14 @@ import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
+import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
 
 const FINANCE_CSV_LIMIT = 10_000;
-const PROFIT_REPORT_LIMIT = 50_000;
 
 /** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
 export class WalletsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, private readonly repo: WalletsRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly repo: WalletsRepository) {}
 
   async fund(actor: Actor, loginName: string, body: unknown) {
     const { amount, note, reason } = parseInput(FundBody, body);
@@ -174,6 +174,14 @@ export class WalletsService {
   async financeWhere(actor: Actor, query: FinanceFilter): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.tree.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
+    return {
+      ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
+      ...(await this.entryFilter(query, accounts)),
+    };
+  }
+
+  /** The query's own narrowing of the entries (scope, kind, layer, dates, search), whoever's they are. */
+  private async entryFilter(query: FinanceFilter, accounts: Account[]): Promise<Prisma.WalletEntryWhereInput> {
     const { from, to } = dayRange(query.from, query.to);
     const createdAt = {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
@@ -184,7 +192,6 @@ export class WalletsService {
     const named = terms?.digits ? await this.repo.catalogNamed(terms.names) : { packageNamed: true, companyNamed: true };
     const search = financeSearch(terms, { loginIds: terms ? loginIdsContaining(accounts, terms.names) : [], ...named });
     return {
-      ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
       // Every entry of the viewer and the accounts below it (owner 2026-11-09: «شامله كل العمليات للاب والابناء»),
       // operations that move no money included. `scope=money` keeps the money movements, and the holds and releases
       // of open tasks, which move no money but change what is spendable.
@@ -198,78 +205,13 @@ export class WalletsService {
     };
   }
 
-  /** Each sale entry's ladder: the one it kept, else today's prices with what the point of sale paid. */
-  private async laddersOf(rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; ladder: unknown }[]) {
-    const ladders = new Map<string, Ladder>();
-    const missing = rows.filter((row) => !row.ladder);
-    for (const row of rows) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
-    if (!missing.length) return ladders;
-    const accounts = await this.tree.accounts();
-    const lines = await this.repo.lineTerms([...new Set(missing.map((row) => row.lineId as string))]);
-    const codeOf = new Map(lines.map((line) => [line.id, (line.terms as { packageCode?: string } | null)?.packageCode ?? '']));
-    const paths = new Map(missing.map((row) => [row.userId, this.tree.pathOf(row.userId, accounts)]));
-    const codes = [...new Set([...codeOf.values()].filter(Boolean))];
-    const ids = [...new Set([...paths.values()].flat().map((node) => node.id))];
-    const [ladderRows, subscribers] = await Promise.all([
-      this.ladder.ladderRows(codes, ids, this.uow.prisma),
-      this.repo.subscriberPrices(codes),
-    ]);
-    for (const row of missing) {
-      const pkg = ladderRows.packages.find((item) => item.code === codeOf.get(row.lineId as string));
-      const subscriber = subscribers.find((item) => item.code === pkg?.code);
-      const path = paths.get(row.userId) ?? [];
-      if (!pkg || !subscriber || path.length === 0 || !SALE_KINDS[row.kind]) continue;
-      ladders.set(row.id, ladderOf(
-        path,
-        ladderRows.termRows.filter((term) => term.packageId === pkg.id),
-        ladderRows.sellRows.filter((sell) => sell.packageId === pkg.id),
-        { ...pkg, ...subscriber },
-        SALE_KINDS[row.kind],
-        row.packagePrice,
-      ));
-    }
-    return ladders;
-  }
-
   /**
-   * What the signed-in account earned on each sale entry, and gave back on each refund (profit-ladder.ts). A sale uses
-   * the chain it kept, or, recorded before chains were kept, today's prices with what the point of sale paid. A refund
-   * takes back its share of the line's last sale before it. A branch account (the owner or staff) sees the branch's
-   * margin. Entries that are neither, or not in its chain, get none.
+   * The sales and refunds a viewer's profit is read from (ADR 0026, the owner's answer 1): those whose chain held it
+   * at the time of the sale, each with its margin stored on the entry; every one for the branch. Narrowed by the
+   * query's dates and search.
    */
-  /** Each sale's and refund's ladder (the chain and what each paid), keyed by entry id; other entries are left out. */
-  async laddersFor(
-    rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; amount: number; ladder: unknown; createdAt?: Date }[],
-  ) {
-    const sales = rows.filter((row) => SALE_KINDS[row.kind] && row.lineId && row.amount < 0);
-    const refunds = rows.filter((row) => REFUND_KINDS.has(row.kind) && row.lineId && row.amount > 0);
-    const ladders = await this.laddersOf(sales);
-    const oldRefunds = refunds.filter((row) => !row.ladder);
-    for (const row of refunds) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
-    if (oldRefunds.length) {
-      const earlier = await this.repo.salesOfLines([...new Set(oldRefunds.map((row) => row.lineId as string))], Object.keys(SALE_KINDS));
-      const bases = await this.laddersOf(earlier);
-      for (const row of oldRefunds) {
-        const sale = earlier.find((item) => item.lineId === row.lineId && (!row.createdAt || item.createdAt <= row.createdAt));
-        const base = sale ? bases.get(sale.id) : undefined;
-        const ladder = base ? refundLadder(base, row.amount, row.packagePrice || sale?.packagePrice || 0) : null;
-        if (ladder) ladders.set(row.id, ladder);
-      }
-    }
-    return ladders;
-  }
-
-  async marginsFor(
-    actor: Actor,
-    rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; amount: number; ladder: unknown; createdAt?: Date }[],
-  ) {
-    const ladders = await this.laddersFor(rows);
-    const margins = new Map<string, number | null>();
-    for (const [id, ladder] of ladders) {
-      const viewer = actor.layer === 'branch' ? ladder.chain[ladder.chain.length - 1] : actor.id;
-      margins.set(id, marginOf(ladder, viewer));
-    }
-    return margins;
+  private async marginEntries(view: MarginView, query: FinanceFilter): Promise<Prisma.WalletEntryWhereInput> {
+    return { AND: [marginWhere(view), saleOrRefundWhere(), await this.entryFilter(query, await this.tree.accounts())] };
   }
 
   /**
@@ -278,27 +220,23 @@ export class WalletsService {
    */
   async profitReport(actor: Actor, input: ProfitsQuery = {}) {
     const query = parseInput(ProfitsQuery, input);
-    const rows = await this.repo.profitEntries({
-      AND: [
-        await this.financeWhere(actor, query),
-        { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
-      ],
-    }, PROFIT_REPORT_LIMIT);
-    const margins = await this.marginsFor(actor, rows);
-    const groups = new Map<string, { packageName: string; companyName: string; sales: number; refunds: number; profit: number }>();
-    for (const row of rows) {
-      const margin = margins.get(row.id);
-      if (margin == null) continue;
+    const view = marginViewOf(actor);
+    // Exact over any period (ADR 0026, the owner's answer 3): one grouped sum of the stored margins, no rows loaded.
+    const groups = await this.repo.profitGroups({ AND: [await this.marginEntries(view, query), { [view.margin]: { not: null } }] }, view.margin);
+    const packages = new Map<string, { packageName: string; companyName: string; sales: number; refunds: number; profit: number; newest: number }>();
+    for (const row of groups) {
       const key = `${row.companyName ?? ''}\n${row.packageName ?? ''}`;
-      const group = groups.get(key) ?? { packageName: row.packageName ?? '', companyName: row.companyName ?? '', sales: 0, refunds: 0, profit: 0 };
-      if (row.amount < 0) group.sales += 1;
-      else group.refunds += 1;
-      group.profit += margin;
-      groups.set(key, group);
+      const group = packages.get(key) ?? { packageName: row.packageName ?? '', companyName: row.companyName ?? '', sales: 0, refunds: 0, profit: 0, newest: 0 };
+      if (SALE_KINDS[row.kind]) group.sales += row._count._all;
+      else group.refunds += row._count._all;
+      group.profit += (row._sum as Record<string, number | null>)[view.margin] ?? 0;
+      group.newest = Math.max(group.newest, row._max.createdAt?.getTime() ?? 0);
+      packages.set(key, group);
     }
-    const packages = [...groups.values()];
-    const totals = packages.reduce((sum, row) => ({ sales: sum.sales + row.sales, refunds: sum.refunds + row.refunds, profit: sum.profit + row.profit }), { sales: 0, refunds: 0, profit: 0 });
-    return { packages, totals, capped: rows.length === PROFIT_REPORT_LIMIT };
+    // The package sold or given back most recently first.
+    const list = [...packages.values()].sort((a, b) => b.newest - a.newest).map(({ packageName, companyName, sales, refunds, profit }) => ({ packageName, companyName, sales, refunds, profit }));
+    const totals = list.reduce((sum, row) => ({ sales: sum.sales + row.sales, refunds: sum.refunds + row.refunds, profit: sum.profit + row.profit }), { sales: 0, refunds: 0, profit: 0 });
+    return { packages: list, totals };
   }
 
   /** The profit report as a CSV (BOM, shekels). */
@@ -316,15 +254,11 @@ export class WalletsService {
       this.repo.movementsSince(actor.id, windowStart(now, days)),
     ]);
     const balance = wallet?.balance ?? 0;
-    // What this account earned on the sales under it (or its own) over the same window.
-    const sold = await this.repo.soldEntries({
-      ...(await this.financeWhere(actor, {})),
-      OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }],
-      createdAt: { gte: windowStart(now, days) },
-    });
-    const margins = await this.marginsFor(actor, sold);
-    const profit = [...margins.values()].reduce((sum: number, value) => sum + (value ?? 0), 0);
-    const sales = sold.filter((row) => row.amount < 0).length;
+    // What this account earned over the same window on the sales of the chains it was in (ADR 0026), and how many.
+    const view = marginViewOf(actor);
+    const byKind = await this.repo.marginsByKind({ AND: [marginWhere(view), saleOrRefundWhere(), { createdAt: { gte: windowStart(now, days) } }] }, view.margin);
+    const profit = byKind.reduce((sum, row) => sum + ((row._sum as Record<string, number | null>)[view.margin] ?? 0), 0);
+    const sales = byKind.filter((row) => SALE_KINDS[row.kind]).reduce((sum, row) => sum + row._count._all, 0);
     return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now, days) };
   }
 
@@ -358,8 +292,7 @@ export class WalletsService {
       countUpTo((take) => this.repo.countEntries(where, take)),
     ]);
     const { items, nextCursor } = page(rows, FEED_PAGE);
-    const ladders = await this.laddersFor(items);
-    const margins = await this.marginsFor(actor, items);
+    const view = marginViewOf(actor);
     const accounts = actor.layer === 'branch' ? await this.tree.accounts() : [];
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
@@ -369,9 +302,9 @@ export class WalletsService {
          * For the branch: what every account in the sale's chain earned on it, branch first. Null for other viewers
          * and for entries that are not a sale or a refund.
          */
-        shares: actor.layer === 'branch' && ladders.has(row.id) ? sharesOf(ladders.get(row.id) as Ladder, byId) : null,
-        /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
-        margin: margins.get(row.id) ?? null,
+        shares: actor.layer === 'branch' && row.ladder && typeof row.branchMargin === 'number' ? sharesOf(row, byId) : null,
+        /** What the signed-in account earned on this sale, as stored on it (ADR 0026); null when it is not a sale in its chain. */
+        margin: storedMarginOf(view, row),
         id: row.id,
         at: row.createdAt.toISOString(),
         loginName: row.user.loginName,
@@ -396,11 +329,25 @@ export class WalletsService {
   }
 }
 
-/** Each account of a ladder, from the branch down, with its layer and what it earned on that entry. */
-function sharesOf(ladder: Ladder, byId: Map<string, Account>) {
-  return [...ladder.chain].reverse().map((id) => ({
-    loginName: byId.get(id)?.loginName ?? id,
-    layer: byId.get(id)?.layer ?? '',
-    margin: marginOf(ladder, id) ?? 0,
-  }));
+type SharedEntry = {
+  ladder: unknown;
+  chainPosId: string | null;
+  chainAgentId: string | null;
+  chainMainAgentId: string | null;
+  posMargin: number | null;
+  agentMargin: number | null;
+  mainAgentMargin: number | null;
+  branchMargin: number | null;
+};
+
+/** Each account of a sale's chain, from the branch down, with its layer and what it earned on that entry, as stored. */
+function sharesOf(row: SharedEntry, byId: Map<string, Account>) {
+  const chain = (row.ladder as Ladder).chain;
+  const share = (id: string | null, margin: number | null) => (id === null ? [] : [{ loginName: byId.get(id)?.loginName ?? id, layer: byId.get(id)?.layer ?? '', margin: margin ?? 0 }]);
+  return [
+    ...share(chain[chain.length - 1], row.branchMargin),
+    ...share(row.chainMainAgentId, row.mainAgentMargin),
+    ...share(row.chainAgentId, row.agentMargin),
+    ...share(row.chainPosId, row.posMargin),
+  ];
 }

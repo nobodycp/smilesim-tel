@@ -1,5 +1,6 @@
+import type { Prisma } from '../../generated/prisma/client';
 import { fail } from '../platform';
-import { marginOf, type Ladder } from '../pricing';
+import { REFUND_KINDS, SALE_KINDS, marginOf, type Ladder } from '../pricing';
 
 // Each sale's and refund's margins, stored on its wallet entry (ADR 0026). The entry's `ladder` is the source; these
 // columns are its projection by `marginOf`, written in the entry's own INSERT and never updated. A chain holds one
@@ -100,4 +101,47 @@ export function marginBreaks(rows: StoredRow[], layerOf: (id: string) => string)
     if (wrong.length) breaks.push({ id: row.id, reason: wrong.map((key) => `${key} ${row[key] ?? 'none'} (expected ${expected[key] ?? 'none'})`).join(', ') });
   }
   return breaks;
+}
+
+/** The sales (a negative amount) and the refunds (a positive one): the entries that carry a margin. */
+export function saleOrRefundWhere(): Prisma.WalletEntryWhereInput {
+  return { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] };
+}
+
+/**
+ * Whose margins a viewer reads (ADR 0026, the owner's answer 1): its own layer's column, over the sales and refunds
+ * whose chain held it **at the time of the sale**, wherever its points of sale are now. The branch (the owner and its
+ * staff) reads the branch's margin of every sale. `chain` is the column of the viewer's account, null for the branch.
+ */
+export type MarginView = {
+  viewerId: string;
+  layer: 'pos' | 'agent' | 'main_agent' | 'branch';
+  chain: 'chainPosId' | 'chainAgentId' | 'chainMainAgentId' | null;
+  margin: 'posMargin' | 'agentMargin' | 'mainAgentMargin' | 'branchMargin';
+};
+
+const VIEWS: Record<MarginView['layer'], Pick<MarginView, 'chain' | 'margin'>> = {
+  pos: { chain: 'chainPosId', margin: 'posMargin' },
+  agent: { chain: 'chainAgentId', margin: 'agentMargin' },
+  main_agent: { chain: 'chainMainAgentId', margin: 'mainAgentMargin' },
+  branch: { chain: null, margin: 'branchMargin' },
+};
+
+export function marginViewOf(actor: { id: string; layer: string }): MarginView {
+  const layer = actor.layer as MarginView['layer'];
+  if (!VIEWS[layer]) fail(403, 'FORBIDDEN');
+  return { viewerId: actor.id, layer, ...VIEWS[layer] };
+}
+
+/** The entries whose chain held the viewer at the time (every entry for the branch). */
+export function marginWhere(view: MarginView): Prisma.WalletEntryWhereInput {
+  return view.chain ? { [view.chain]: view.viewerId } : {};
+}
+
+type MarginRow = Pick<StoredRow, 'chainPosId' | 'chainAgentId' | 'chainMainAgentId' | 'posMargin' | 'agentMargin' | 'mainAgentMargin' | 'branchMargin'>;
+
+/** What the viewer earned on one entry, as stored; null when the entry is not a sale or refund in its chain. */
+export function storedMarginOf(view: MarginView, row: MarginRow): number | null {
+  if (!view.chain) return row.branchMargin ?? null;
+  return row[view.chain] === view.viewerId ? (row[view.margin] ?? null) : null;
 }

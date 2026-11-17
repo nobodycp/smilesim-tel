@@ -107,7 +107,7 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: ServiceGraph }).graph;
-    books = new WalletsService(graph.uow, graph.tree, graph.ledger, graph.ladder, new WalletsRepository(graph.uow));
+    books = new WalletsService(graph.uow, graph.tree, graph.ledger, new WalletsRepository(graph.uow));
     dispatch = buildProviderDispatch(prisma, {} as IORedis, openGate(new ScriptedGateway()), `pp-${tag}`, notice);
   });
 

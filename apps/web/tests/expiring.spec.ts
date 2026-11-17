@@ -9,7 +9,7 @@ const line = (id: string, msisdn: string, inDays: number, status = 'active') => 
 
 const overview = {
   period: 'month', from: null, lines: { active: 1, expiring: 1, frozen: 0, disconnected: 1, suspended: 0 },
-  sales: { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0, trend: [], capped: false },
+  sales: { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0, trend: [] },
   top: { packages: [], companies: [], providers: [] }, active: { main_agent: [], agent: [], pos: [] },
   users: { counts: { main_agent: 0, agent: 0, pos: 0 }, frozen: 0, debtors: 0, debt: 0, ceilings: 0, used: 0 },
   tasks: { working: 1, done: 0, rejected: 0, cancelled: 0, oldestOpenMinutes: 5 }, providers: null,
