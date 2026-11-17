@@ -130,6 +130,18 @@ suite('the alerts in PostgreSQL: the pass, its notices, and the owner\'s routes'
     expect(await noticesOf(mainId)).toEqual([]);
   });
 
+  it('a 429 opens the rate-limit alert, but not the version check\'s own: «فحص الآن» pressed again is no limit being hit', async () => {
+    const refused = (route: string, ip: string) => prisma.requestLog.create({
+      data: { at: at(1), durationMs: 2, method: 'POST', route, path: route, status: 429, code: 'RATE_LIMITED', ip, requestId: `${tag}-429-${ip}`, bytesIn: 0, bytesOut: 0 },
+    });
+    await refused('/v1/system/versions/check', `${probeIp.replace(/\.\d+$/, '')}.1`);
+    await pass.round(at(2));
+    expect((await ours()).filter((alert) => alert.kind === 'rate_limit')).toEqual([]);
+    await refused('/v1/lines/:id/extend', `${probeIp.replace(/\.\d+$/, '')}.2`);
+    await pass.round(at(2));
+    expect((await ours()).filter((alert) => alert.kind === 'rate_limit').map((alert) => alert.path)).toEqual(['/v1/lines/:id/extend']);
+  });
+
   it('raises an open alert by what came after it, with no second notice, and closes it after 30 quiet minutes', async () => {
     await notFound(PROBING_ANSWERS, 0);
     await pass.round(at(1));

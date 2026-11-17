@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, after } from '../platform';
+import { VERSION_CHECK_ROUTE } from './thresholds';
 import type {
   ActivityRow, AlertFinding, AlertState, DoorRefusals, OpenAlert, PermissionRefusals, ProbeAnswers, RateLimited, RequestFailures, RequestSpeed, RouteCrashes,
 } from './alert-rules';
@@ -44,13 +45,13 @@ export class AlertRepository {
     return this.uow.prisma.activityEvent.findMany({ where, select: { at: true, actorId: true, actorLoginName: true, reason: true, ip: true }, orderBy: [{ at: 'desc' }, { id: 'desc' }], take: ACTIVITY_ROWS_MAX });
   }
 
-  /** `429` answers since `since`, by method, path, account and address. */
+  /** `429` answers since `since`, by method, path, account and address; not the version check's own (`VERSION_CHECK_ROUTE`). */
   async rateLimited(since: Date): Promise<RateLimited[]> {
     return times(await this.uow.prisma.$queryRaw<(RateLimited & Times)[]>`
       SELECT "method", "path", "actorLoginName" AS "loginName", "actorId" AS "accountId", "ip", count(*)::int AS "hits",
              min("at") AS "firstAt", max("at") AS "lastAt", (array_agg("at" ORDER BY "at" DESC))${RECENT} AS "recent"
       FROM "RequestLog"
-      WHERE "status" = 429 AND "at" > ${since}
+      WHERE "status" = 429 AND "at" > ${since} AND "route" <> ${VERSION_CHECK_ROUTE}
       GROUP BY "method", "path", "actorLoginName", "actorId", "ip"`);
   }
 

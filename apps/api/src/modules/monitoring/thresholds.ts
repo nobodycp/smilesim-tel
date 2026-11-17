@@ -116,3 +116,10 @@ export const VERSION_CHECK_TICK_MS = 60 * 60 * 1000;
 export const VERSION_CHECK_FIRST_AFTER_MS = 30_000;
 /** The owner's «فحص الآن» is refused (`429 RATE_LIMITED`) within this of the last check. */
 export const VERSION_CHECK_AGAIN_AFTER_MS = 60_000;
+
+/**
+ * A `429` on this route is not a limit being hit: it is the owner's own «فحص الآن» pressed again within a minute
+ * (`VersionsService.check`), told by the page in its own words. The rate-limit alert leaves it out.
+ */
+export const VERSION_CHECK_ROUTE = '/v1/system/versions/check';
+
