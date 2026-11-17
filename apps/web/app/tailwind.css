@@ -948,12 +948,11 @@
 @keyframes trend-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 18px var(--rd-accent); } }
 
 /* The motion the utilities name (`animate-[name_…]`), moved from the legacy sheets with T5.1: page heads, figure rows,
-   cards and the auth art rise in; a sparkline draws and fades in; a bar grows; the sidebar's groups open and its
+   cards and the auth art rise in; a table body fades in; a bar grows; the sidebar's groups open and its
    flyouts drift in from the reading start; a live notice drops in and the bell swings; the spinner turns and the
    skeleton shimmers; the offer timer fills and the offer fades in; the users meter fills; a toast rises in; a dialog
    drops in; the filter drawer slides in; a listbox pops in. */
 @keyframes rd-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes rd-draw { to { stroke-dashoffset: 0; } }
 @keyframes rd-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rd-grow { from { transform: scaleX(0); } to { transform: none; } }
 @keyframes side-open { from { opacity: 0; transform: translateY(-4px); } }

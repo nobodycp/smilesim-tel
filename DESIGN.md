@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-17 (clean-up CL.2: the unread `--rd-space-6` removed; before it, the sidebar foot: signing out as an icon beside the account; before it, system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
+Last verified: 2026-11-17 (clean-up CL.3: `Sparkline`, `Tooltip`, `Field`, the unused Radix re-exports and the `end` and `bottom` sheets removed; CL.2: the unread `--rd-space-6` removed; before it, the sidebar foot: signing out as an icon beside the account; before it, system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
@@ -151,7 +151,7 @@ Which radius where (as the code draws it, checked in Tailwind migration T6.4): c
 
 Off-scale and display sizes, named at today's value (ADR 0021 D6 a; Tailwind migration T6.2), mapped as `text-<name>`:
 `--rd-text-caption` 11.5px (a table head, a card value's name, the badge pill, small hints), `--rd-text-chip` 12.5px
-(a filter chip's value, a period or page button, the badge mark, the tooltip), `--rd-text-block` 13.5px (a settings
+(a filter chip's value, a period or page button, the badge mark), `--rd-text-block` 13.5px (a settings
 block's title, a fact's value, a sidebar item), `--rd-text-item` 14.5px (an operation or mode card's name, a drawer
 item); display steps `--rd-text-3xl` 20px, `-4xl` 22px, `-5xl` 24px, `-6xl` 26px, `-7xl` 28px (the door picker's title), `-8xl` 30px (the sign-in art's headline; both Tailwind migration T6.3); `--rd-text-page` 1.25rem (the page
 title of `Desk` and the home); the figure values `--rd-text-figure` 1.45rem (`-figure-sm` 1.2rem on a phone) and a lead
@@ -232,8 +232,8 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
   folds' chevrons; Tailwind migration T6.3). The browser's `ease` is gone: what was `ease-[ease]` or `… ease` is
   `ease-standard`; the 140ms and 160ms hovers are `duration-fast`, 180ms `duration-base` (T6.3).
 - Entrances more than one component plays are tokens (`--rd-animate-*`, T6.3): `animate-rise` (`rd-rise` 420ms out,
-  both: a row of cards, the page head), `animate-flyin` (the sidebar's flyout and the tooltip, 160ms on the sheet's
-  curve; RTL swaps the keyframe), `animate-drawer` (`filter-slide` 220ms: the end `Sheet` and the filter drawer),
+  both: a row of cards, the page head), `animate-flyin` (the sidebar's flyout, 160ms on the sheet's
+  curve; RTL swaps the keyframe), `animate-drawer` (`filter-slide` 220ms: the filter drawer),
   `animate-pop-in` (`filter-pop-in` 140ms: the `Select` list, the name picker). One-component timings (the sign-in
   choreography and its 70 / 140 / 210ms steps, the bell, the spinner, the shimmer, the donut, the trend line, the
   toast, the dialog drop, the 40ms row stagger) stay where they are used.
@@ -278,19 +278,17 @@ draw a control of its own. A look two screens need is a variant here.
 | `Input` (`input.tsx`) | `Input`, `inputVariants` | `size` md 34 (default) · lg 42; `surface` sunken (default) · surface | focus, invalid, read-only, disabled, touch 44px |
 | `Textarea` (`textarea.tsx`) | `Textarea`, `textareaVariants` | — | focus, invalid, read-only, disabled |
 | `Label` (`label.tsx`) | `Label`, `labelVariants` | `tone` page (default) · pane · dialog | — |
-| `Field` (`field.tsx`) | `Field` | `tone` page · pane · dialog | help, error (`aria-invalid`, `aria-describedby`) |
 | `Switch` (`switch.tsx`) | `Switch` | — | on, off, focus-visible, disabled, `pending` (busy), touch 44px |
 | `Checkbox` (`checkbox.tsx`) | `Checkbox`, `choiceBoxClass`, `choiceMarkClass` | — | unchecked, checked, indeterminate, hover, focus-visible, invalid, disabled |
 | `RadioGroup` (`radio-group.tsx`) | `RadioGroup`, `RadioGroupItem` | — | unchosen, chosen, hover, focus-visible, invalid, disabled |
 | `RadioCardGroup` (`radio-card.tsx`) | `RadioCardGroup`, `RadioCard` | — | hover, chosen (tick), focus-visible, disabled, invalid (group) |
 | `Segmented` (`segmented.tsx`) | `Segmented`, `SegmentedItem`, `SegmentedToggle`, `SegmentedToggleItem` | `fill` (equal segments over the full width) | chosen / pressed, hover, focus-visible, disabled, touch 44px |
 | `Select` (`select.tsx`) | `Select`, `SelectItem`, `SelectEmpty`, `SelectChipContext` | `place` field (default) · desk · dialog · pane · pager; the chip look inside a `FilterBar` (from `SelectChipContext`, with its `drawer` width on a phone) | focus, open, chosen row, row hover, row keyboard focus, invalid, disabled, empty list, touch 44px |
-| `Dialog` (`dialog.tsx`) | `Dialog`, `DialogTrigger`, `DialogClose`, `DialogContent`, `DialogHeader`, `DialogHeading`, `DialogTitle`, `DialogDescription`, `DialogMark`, `DialogBody`, `DialogFooter` | content `size` confirm 460 · form 560 (default) · wide 760; mark `tone` neutral · danger · success, mark `size` md 40 · lg 56 | open (drops in), focus held inside |
-| `Sheet` (`sheet.tsx`) | `Sheet`, `SheetTrigger`, `SheetClose`, `SheetTitle`, `SheetDescription`, `SheetContent` | `side` start (default) · end · bottom | open (slides or rises in), closed |
+| `Dialog` (`dialog.tsx`) | `Dialog`, `DialogContent`, `DialogHeader`, `DialogHeading`, `DialogTitle`, `DialogDescription`, `DialogMark`, `DialogBody`, `DialogFooter` | content `size` confirm 460 · form 560 (default) · wide 760; mark `tone` neutral · danger · success, mark `size` md 40 · lg 56 | open (drops in), focus held inside |
+| `Sheet` (`sheet.tsx`) | `Sheet`, `SheetTitle`, `SheetContent` | `side` start (the one side, the default) | open (slides in), closed |
 | `Tabs` (`tabs.tsx`) | `Tabs`, `TabsList`, `TabsTrigger`, `TabsCount` | — | selected, hover, focus-visible, disabled, phone grid, touch 44px |
 | `DropdownMenu` (`dropdown-menu.tsx`) | `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator` | item `danger` | item hover, keyboard focus, disabled, touch 44px |
-| `Popover` (`popover.tsx`) | `Popover`, `PopoverTrigger`, `PopoverAnchor`, `PopoverClose`, `PopoverContent` | — | open |
-| `Tooltip` (`tooltip.tsx`) | `TooltipProvider`, `Tooltip`, `TooltipTrigger`, `TooltipContent` | — | open (no delay) |
+| `Popover` (`popover.tsx`) | `Popover`, `PopoverTrigger`, `PopoverAnchor`, `PopoverContent` | — | open |
 | `Toast` (`toast.tsx`) | `ToastProvider`, `ToastViewport`, `Toast`, `ToastIcon`, `ToastText`, `ToastClose`, `ToastLife` | `tone` success (default) · error · warning · info: the tone's icon, a 3px start edge and the tone's soft wash on the surface | a compact row as wide as its words (32px high with one line, at most 340px; the close button is 24px with a 44px press area on touch), under the top bar at the reading end, centred on a phone (owner 2026-11-17); open (drops in from above), close hover, touch 44px close; a 2px life bar along its foot runs out with its time; a page's own error is held there while the page reports it (no bar); a message shows only on the page it was raised on |
 | `Badge` (`badge.tsx`) | `Badge` | `variant` default · success · warning · danger · muted · info · violet; `dot` | — (static) |
 | `Pagination` (`pagination.tsx`) | `Pagination`, `shouldShowPagination`, `PAGE_SIZE_OPTIONS` | — | current page, hover, focus-visible, disabled arrows, touch 44 × 44 |
@@ -298,9 +296,6 @@ draw a control of its own. A look two screens need is a variant here.
 | `Skeleton` (`skeleton.tsx`) | `Skeleton` | — | shimmer (motion-safe, mirrored in RTL) |
 | `Avatar` (`avatar.tsx`) | `Avatar` | — | — |
 | `DirectionProvider` (`direction.tsx`) | `DirectionProvider` | — | the document's `dir` for every Radix part (T1.1) |
-
-Callers today: `Tooltip`, `Sheet end` and `Sheet bottom` are built and have no caller (the rail flyout and the filter
-drawer still draw their own; see [Known gaps](#known-gaps)).
 
 ### Component API
 
@@ -312,8 +307,7 @@ the code):
   and spreads the rest onto that element. Radix behaviour props pass through unchanged (`open` / `onOpenChange`,
   `checked` / `onCheckedChange`, `defaultValue`, `side`, `align`). The exceptions are written out: `Select` and
   `Segmented` take a controlled `value: string` and `onValueChange(value)` and nothing uncontrolled;
-  `SegmentedToggleItem` takes `pressed` (it sets `aria-pressed`); `Field` takes `label`, `hint`, `error`, `tone`, `id`
-  and exactly one control as its child; `Pagination` takes `page`, `pageSize`, `count`, `onPageChange` and, for the
+  `SegmentedToggleItem` takes `pressed` (it sets `aria-pressed`); `Pagination` takes `page`, `pageSize`, `count`, `onPageChange` and, for the
   size choice, `onPageSizeChange` / `pageSizeOptions`.
 - **Variants:** the props named in the [Catalogue](#catalogue) (`variant`, `size`, `tone`, `surface`, `place`, `side`,
   `fill`, `danger`, `dot`, the table's `cards` / `striped` / `num` / `actions` / `fit` / `kind`), each from a `cva`
@@ -321,26 +315,26 @@ the code):
   `buttonVariants` / `buttonClass` (a prop that takes a class name), `iconButtonVariants` (the shell's `topbarIcon`),
   `inputVariants`, `textareaVariants`, `labelVariants`, `choiceBoxClass` / `choiceMarkClass`. The variant types are
   exported for callers that pass them on: `ButtonVariant`, `ButtonSize`, `BadgeVariant`, `LabelTone`, `DialogSize`,
-  `DialogMarkTone`, `DialogMarkSize`, `SheetSide`, `ToastTone`, `CellKind`, `SelectChip`.
+  `DialogMarkSize`, `CellKind`, `SelectChip`.
 - **`className`:** joined last through `cn()`, so a caller's utility wins over the part's own for the same property.
   A caller passes layout (width, grid place, outer margin) this way, never a second look; a look two screens need is a
   variant here. `Select`'s `className` lands on the trigger; `SheetContent` also takes `overlayClassName` for its
   overlay, and `DialogContent` takes `onScrimClick` (a click on the scrim, outside the panel).
 - **Refs:** the controls and every Radix part forward their ref (`React.forwardRef`). These are plain functions and
-  take no ref: `Field`, `Badge`, `Avatar`, `Skeleton`, `Pagination`, the `Table` parts (`SortButton` included),
+  take no ref: `Badge`, `Avatar`, `Skeleton`, `Pagination`, the `Table` parts (`SortButton` included),
   `DialogHeader` / `DialogHeading` / `DialogMark` / `DialogBody` / `DialogFooter`, `TabsCount`, `SelectEmpty`,
-  `ToastText`, `SegmentedToggle`, `Tooltip` / `TooltipProvider` and `DirectionProvider`.
+  `ToastText`, `SegmentedToggle` and `DirectionProvider`.
 - **`asChild`:** `Button asChild` draws its one child (a `Link`, an `<a>`, a file `<label>`) as the button through
   Radix `Slot`, without `disabled` / `loading`; `Tabs` draws its Root onto `TabsList`'s strip, and `DropdownMenuItem`
   renders a `<button>`, both through `asChild` inside the part.
 - **States:** read from ARIA and Radix data attributes, never from a class: `aria-invalid`, `aria-pressed`,
   `aria-expanded`, `aria-selected`, `aria-busy` (`Button loading`, `Switch pending`), `disabled`, and Radix's
   `data-state` / `data-disabled` / `data-side`; the utilities name them (`aria-invalid:`, `data-[state=checked]:`).
-- **Handles:** each part sets `data-slot="<part>"` (`button`, `icon-button`, `input`, `textarea`, `label`, `field`,
+- **Handles:** each part sets `data-slot="<part>"` (`button`, `icon-button`, `input`, `textarea`, `label`,
   `switch`, `checkbox`, `radio-group`, `radio`, `radio-cards`, `radio-card`, `segmented`, `segmented-item`,
   `segmented-toggle`, `segmented-toggle-item`, `select-trigger`, `select-item`, `select-empty`, `dialog-scrim`,
   `dialog`, `dialog-mark`, `dialog-body`, `sheet`, `sheet-overlay`, `tabs`, `tab`, `dropdown-menu`,
-  `dropdown-menu-item`, `popover`, `tooltip`, `toast`, `badge`, `table-sheet`, `table`, `table-head`, `table-body`,
+  `dropdown-menu-item`, `popover`, `toast`, `badge`, `table-sheet`, `table`, `table-head`, `table-body`,
   `table-row`, `table-head-cell`, `table-cell`, `table-sort`, `skeleton`, `avatar`); `Badge` also sets
   `data-testid="badge"` (a caller's own wins). The base rules of `app/tailwind.css` and the e2e specs read these
   handles; a styling class is never a handle.
@@ -395,7 +389,7 @@ and 36px from 768px, no padding, an 18px icon, `--rd-ink-2`, the raised fill and
 panel is open (`aria-expanded`) — the menu button, the notices, the theme and the language (`topbarIcon` in
 `components/chrome.tsx` is `iconButtonVariants({ size: 'topbar', tone: 'topbar' })`).
 
-### Fields: Input, Textarea, Label, Field
+### Fields: Input, Textarea, Label
 
 - `Input` (Tailwind migration T2.2) is the one-line text field — full width, a 1px `--rd-field-line` border, 6px
   corners, 12px sides, ink text, the crimson thread on focus (an `--rd-accent` border and the 3px `--rd-focus` ring),
@@ -408,9 +402,6 @@ panel is open (`aria-expanded`) — the menu button, the notices, the theme and 
   read-only and disabled looks, resized in height only).
 - `Label` tones: `page` (6px gap, 13px semibold `--rd-ink-2`), `pane` (4px, 11px semibold `--rd-muted`), `dialog`
   (4px, 11px bold `--rd-muted`).
-- `Field` names its one control by `htmlFor` and wires the id, `aria-describedby` (help, then error) and
-  `aria-invalid` through Radix `Slot`; the help is the 12px `--rd-muted` hint line, the error the same line in
-  `--rd-danger`.
 - A count or a duration is typed, not picked from a list: a number field without the browser's spin arrows, its
   range under it (red with the field's edge while out of range), the inherited value as its placeholder — the session
   rules (sessions allowed, idle hours) on a role and on an account (owner 2026-11-11).
@@ -497,14 +488,10 @@ On Radix Dialog since Tailwind migration T2.5.
   over a hairline, cancel then the action (ADR 0021 D8). It names itself by its title and is described by its lede;
   Tab wraps inside it; only the scrim or Escape closes it. Every size has the same head and foot; `confirm` is only
   narrower than `form` and `wide` (spec 2026-11-11-ui-consistency-pass, D5).
-- `Sheet` (modal) is a full-height side panel: `start` the shell drawer's look (min(300px, 86vw), the page colour, a
-  hairline at its inline end, over `--rd-scrim-strong` with a 2px blur, sliding over 340ms), `end` the filter
-  drawer's (`w-drawer`, min(380px, 92vw), the surface, over `--rd-scrim`, `animate-drawer`); `bottom` (Tailwind
-  migration T6.2, from the end sheet's parts) the full width at the window's bottom, at most 85% of the dynamic
-  viewport high, the surface, a hairline on top and the 10px `--rd-radius-panel` corners on its two top corners, 16px
-  sides and 18px at the bottom, scrolling, rising in over 220ms (`rd-rise`) when motion is allowed, over `--rd-scrim`.
+- `Sheet` (modal) is a full-height side panel with one side, `start`: the shell drawer's look (min(300px, 86vw), the
+  page colour, a hairline at its inline end, over `--rd-scrim-strong` with a 2px blur, sliding over 340ms).
 
-### Floating parts: Tabs, DropdownMenu, Popover, Tooltip, Toast
+### Floating parts: Tabs, DropdownMenu, Popover, Toast
 
 On Radix since Tailwind migration T2.6 (the menu since T2.4). Every popup next to a button opens and closes the same
 way: a press outside or Escape closes it and Escape returns the focus to the button; a `role="menu"` opens on its
@@ -527,9 +514,6 @@ get it from Radix; the date field's month from Radix Popover; the notices and th
   (Tailwind migration T6.2); 44px lines at 720px and under.
 - `Popover` is the calendar panel's look: the surface, 10px padding, 6px corners, an inset 1px `--rd-line` under
   `--rd-shadow-pop`, 6px from its anchor at its reading start, above a dialog (`z-dialog-popover`).
-- `Tooltip` is the rail flyout's look: `--rd-surface-2`, 7px / 12px padding, 6px corners, ink 12.5px semibold on one
-  line up to 280px, an inset 1px `--rd-line` under `--rd-shadow-pop`, 10px from its trigger, at once
-  (`delayDuration` 0), drifting in (`animate-flyin`). It has no caller yet.
 - `Toast` is a row on the surface with 6px corners, an inset 1px `--rd-line` under `--rd-shadow-pop` and a 3px start
   edge (`success` `--rd-success`, `error` `--rd-danger`; `warning` and `info` in `--rd-warning` and `--rd-info` since
   Tailwind migration T6.2), its 13px semibold message (`ToastText`) and a 28px `--rd-muted` × (`ToastClose`, 44px at
@@ -753,9 +737,6 @@ not write hand-made filter markup on a new page.
   balance over time) adds faint guide lines. Time runs left to right in every language. It draws in by a
   left-to-right reveal (`clip-path`), its area is a fill only. In a home period card it lies under the figures along
   the card's lower 55% instead of a band of its own.
-- `Sparkline` (`components/sparkline.tsx`: SVG line plus a soft area, time left to right, draws in once) is built and
-  has **no caller**: no lead tile draws it (the home lead shows the ceiling's ticks, the period cards a `TrendLine`).
-  This file said the figure band's lead tile drew it until Tailwind migration T6.4 (audit 3.6-26).
 - Donut (`components/donut.tsx`): slices with square ends and a thin gap between them, its middle words unstroked (the
   global `svg` icon rule is overridden); a legend whose row reads dot, label, change, count — the count closes the
   line, the change (green ↑ / red ↓ with the number; `data-testid` `donut-change-up` / `donut-change-down`) just
@@ -1027,8 +1008,8 @@ the owner's choice).
   (3.6-09); the file chooser has three shapes (3.5-27).
 - Names and targets: the toast close is named «×» (`components/toast.tsx`, 3.10-20); the ⋯ trigger of `RowMenu` stays
   28px on touch and its icon is `--rd-faint` (3.2-09).
-- Callers: `Tooltip`, `Sheet end` and `Sheet bottom` have none — the rail flyout and the filter drawer draw their own
-  (moving the drawer onto `Sheet` changes its focus and scroll behaviour, 3.6-06); `Sparkline` has none (3.6-26).
+- The rail flyout and the filter drawer draw their own looks; moving the drawer onto `Sheet` would change its focus
+  and scroll behaviour (3.6-06).
 - Copies: hand-written `<dl>` ×2 beside `Facts` (`features/lines/line-details.tsx`,
   `features/tasks/components/provider-operation-panel.tsx`; 3.6-11); company marks by hand ×3 beside `CompanyMark`
   (3.6-08); hand-drawn `<svg>` icons beside lucide and the global `svg` base rule (3.1-06, 3.1-29, 3.6-04); legacy

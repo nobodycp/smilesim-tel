@@ -70,8 +70,6 @@ const toastVariants = cva(
   },
 );
 
-export type ToastTone = NonNullable<VariantProps<typeof toastVariants>['tone']>;
-
 export interface ToastProps
   extends React.ComponentPropsWithoutRef<typeof ToastPrimitive.Root>,
     VariantProps<typeof toastVariants> {}

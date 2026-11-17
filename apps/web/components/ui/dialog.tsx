@@ -36,8 +36,6 @@ import { cn } from '../../lib/cn';
  */
 
 export const Dialog = DialogPrimitive.Root;
-export const DialogTrigger = DialogPrimitive.Trigger;
-export const DialogClose = DialogPrimitive.Close;
 
 const panelVariants = cva(
   [
@@ -148,7 +146,6 @@ const markVariants = cva(
   },
 );
 
-export type DialogMarkTone = NonNullable<VariantProps<typeof markVariants>['tone']>;
 export type DialogMarkSize = NonNullable<VariantProps<typeof markVariants>['size']>;
 
 /** The tile beside the title that holds the dialog's glyph (an svg child). */
