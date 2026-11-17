@@ -4,7 +4,7 @@
 
 export { AccessModule } from './access.module';
 export { AccountTasks, AccountWallets } from './account-ports';
-export { AccountTree, nodeOf } from './account-tree';
+export { AccountTree, accountsById, nodeOf } from './account-tree';
 export { visibleAccountIds } from './account-visibility';
 export type { AccountNode } from './account-visibility';
 export { ActorResolver } from './actor-resolver';

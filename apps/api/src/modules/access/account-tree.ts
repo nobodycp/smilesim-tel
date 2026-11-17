@@ -8,6 +8,11 @@ export function nodeOf(account: Account): PathNode {
   return { id: account.id, loginName: account.loginName, layer: account.layer, deniedOps: account.deniedOps ?? '' };
 }
 
+/** Every account by its id. */
+export function accountsById<T extends { id: string }>(accounts: T[]): Map<string, T> {
+  return new Map(accounts.map((account) => [account.id, account]));
+}
+
 /** The accounts as a tree: who is above whom, and what an account may see. */
 @Injectable()
 export class AccountTree {
@@ -48,8 +53,11 @@ export class AccountTree {
   }
 
   /** The accounts from `userId` up to the root. Empty when the user is unknown. */
-  pathOf(userId: string, accounts: Account[]): PathNode[] {
-    const byId = new Map(accounts.map((account) => [account.id, account]));
+  /**
+   * A caller that walks many paths in one request builds `byId` once (`accountsById`) and hands it in, instead of a
+   * map of every account per path (plan 2026-11-17-speed, PF.2).
+   */
+  pathOf(userId: string, accounts: Account[], byId: ReadonlyMap<string, Account> = accountsById(accounts)): PathNode[] {
     const path: PathNode[] = [];
     let current = byId.get(userId);
     while (current && path.length <= accounts.length) {

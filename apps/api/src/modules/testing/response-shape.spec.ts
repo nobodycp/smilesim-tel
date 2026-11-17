@@ -5,6 +5,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { companies } from '../catalog/shipped/shipped-catalog';
 import { ApiFacade } from './api-facade';
+import { encodeCursor } from '../platform/paging';
 import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settlement.rules';
 import { RequestLogRepository } from '../monitoring/request-log.repository';
 import { RequestLogService } from '../monitoring/request-log.service';
@@ -33,7 +34,9 @@ const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 // Speed plan PF.5: the tasks screen's tabs, one number per stored status (tasks/task-status.ts).
 const TASK_COUNTS_KEYS = ['working', 'done', 'rejected', 'cancelled'];
+// `poses` comes with the first page only (plan 2026-11-17-speed, PF.2): a page read on from a cursor has none.
 const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
+const LINES_LATER_KEYS = ['items', 'nextCursor', 'total'];
 // No `esimQr`: a list row never carries the eSIM code (ADR 0019, D17; plan slice S.5c). The detail does (below).
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
 const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
@@ -232,8 +235,12 @@ describe('office response shapes', () => {
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
     expect(keysOf(listed.items[0])).toEqual(sorted(LINE_KEYS));
     expect('esimQr' in listed.items[0]).toBe(false);
-    expect(listed.poses.length).toBeGreaterThan(0);
-    expect(keysOf(listed.poses[0])).toEqual(sorted(POS_CHOICE_KEYS));
+    expect(listed.poses?.length).toBeGreaterThan(0);
+    expect(keysOf(listed.poses?.[0] ?? {})).toEqual(sorted(POS_CHOICE_KEYS));
+    // A later page (any cursor this list issues) carries no `poses`.
+    const later = await service.lines(gate, { cursor: encodeCursor(at, 'ln-0') });
+    expect(keysOf(later)).toEqual(sorted(LINES_LATER_KEYS));
+    expect(keysOf(later.items[0])).toEqual(sorted(LINE_KEYS));
   });
 
   it('answers /v1/companies with the fixed company shelf and package counts', async () => {
@@ -644,8 +651,10 @@ describeWeb('web types match the pinned shapes', () => {
     // The envelope is the shared `Page<Row>` plus the list's own keys (platform/paging.ts on this side).
     const page = /export type Page<Row> = \{([^}]*)\}/.exec(source);
     const own = /\n {2}lines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
-    const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+):/g)].map((match) => match[1]));
+    const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+)\??:/g)].map((match) => match[1]));
     expect(sorted(keys)).toEqual(sorted(LINES_KEYS));
+    // `poses` is declared optional: the first page has it, a later page does not.
+    expect(own?.[1]).toMatch(/\bposes\?: PosChoice\[\]/);
   });
 
   it('PackageRow', () => {

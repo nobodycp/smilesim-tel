@@ -27,9 +27,12 @@ export function opKeyOf(action: string): OpKey | null {
   return isOpKey(action) ? action : null;
 }
 
-/** Who may activate for a point of sale: anyone above it in the viewer's tree, and the point of sale itself. */
-export function canActivateFor(actor: Actor, pos: Account, accounts: Account[]): boolean {
-  if (!visibleAccountIds(actor.id, actor.layer, accounts).has(pos.id)) return false;
+/**
+ * Who may activate for a point of sale: anyone above it in the viewer's tree, and the point of sale itself. A caller
+ * that asks for many points of sale hands in the viewer's `visible` set, walked once (plan 2026-11-17-speed, PF.2).
+ */
+export function canActivateFor(actor: Actor, pos: Account, accounts: Account[], visible: ReadonlySet<string> = visibleAccountIds(actor.id, actor.layer, accounts)): boolean {
+  if (!visible.has(pos.id)) return false;
   if (actor.layer === 'pos') return actor.id === pos.id;
   return true;
 }

@@ -2,7 +2,7 @@ import { parseInput, esimCodeOrFail, fail, after, cursorPosition, page, searchTe
 import { esimCodeReaders } from '../tasks';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
-import { AccountTree, visibleAccountIds } from '../access';
+import { AccountTree, accountsById, visibleAccountIds } from '../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor, PathNode } from '../access';
 import { isSuspended, linesWhere } from './rules/line-filters';
@@ -47,6 +47,9 @@ export class LineReads {
       this.repo.countLines(where),
     ]);
     const { items, nextCursor } = page(rows, LINES_PAGE);
+    // One map of the accounts and one visible set for the whole request (plan 2026-11-17-speed, PF.2): each row's
+    // path and the points of sale reuse them instead of walking the tree again.
+    const byId = accountsById(accounts);
     return {
       total,
       items: items.map((row) => ({
@@ -65,12 +68,18 @@ export class LineReads {
         posPrice: row.package.posPrice,
         createdAt: row.createdAt.toISOString(),
         endsAt: row.endsAt.toISOString(),
-        operations: this.operationsFor({ ...row, denied: deniedOpsFor(this.tree.pathOf(row.posId, accounts)) }),
+        operations: this.operationsFor({ ...row, denied: deniedOpsFor(this.tree.pathOf(row.posId, accounts, byId)) }),
       })),
       nextCursor,
-      poses: accounts
-        .filter((account) => account.layer === 'pos' && visible.has(account.id) && canActivateFor(actor, account, accounts))
-        .map((account) => ({ loginName: account.loginName, nickname: account.nickname })),
+      // The points of sale the viewer may activate for, with the first page only: a page read on from a cursor has
+      // none, and the screen keeps the first page's (lib/use-paged.ts, `extra`).
+      ...(query.cursor
+        ? {}
+        : {
+            poses: accounts
+              .filter((account) => account.layer === 'pos' && canActivateFor(actor, account, accounts, visible))
+              .map((account) => ({ loginName: account.loginName, nickname: account.nickname })),
+          }),
     };
   }
 
