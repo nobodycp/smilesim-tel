@@ -11,8 +11,15 @@ const UNITS = [
   { unit: 'second', seconds: 1 },
 ] as const;
 
+/**
+ * `Intl` writes the Arabic dual as a subject («ثانيتان»). Every place a span is shown, it follows «قبل», «منذ» or a
+ * verb («استمر»), where the dual is written «ثانيتين».
+ */
+const ARABIC_DUAL: Record<string, string> = { ثانيتان: 'ثانيتين', دقيقتان: 'دقيقتين', ساعتان: 'ساعتين', يومان: 'يومين' };
+
 function unit(locale: Locale, name: (typeof UNITS)[number]['unit'], value: number) {
-  return new Intl.NumberFormat(`${locale}-u-nu-latn`, { style: 'unit', unit: name, unitDisplay: 'long' }).format(value);
+  const text = new Intl.NumberFormat(`${locale}-u-nu-latn`, { style: 'unit', unit: name, unitDisplay: 'long' }).format(value);
+  return locale === 'ar' ? (ARABIC_DUAL[text] ?? text) : text;
 }
 
 /** A span of seconds in its two largest units: «45 ثانية», «12 دقيقة», «3 ساعات و12 دقيقة», "2 days, 4 hours". */
