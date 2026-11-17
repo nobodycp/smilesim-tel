@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Logger, Post, Query } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { API_PROVIDERS } from './api-providers';
@@ -28,6 +28,12 @@ class ProbeController {
   @Get('gone')
   gone() {
     throw Object.assign(new Error('Record not found'), { code: 'P2025' });
+  }
+
+  @Post('crash')
+  crash(@Body() body: Record<string, unknown>, @Query() query: Record<string, unknown>) {
+    // A bug whose words quote the request: what the log must never print in production.
+    throw new Error(`could not save ${JSON.stringify(body)} for token ${String(query.token)}`);
   }
 
   @Post('echo')
@@ -133,5 +139,68 @@ describe('ApiExceptionFilter keeps a server error through the platform\'s port (
     };
     const answer = await request(app.getHttpServer()).get('/probe/bug');
     expect([answer.status, answer.body.code]).toEqual([500, 'SERVER_ERROR']);
+  });
+});
+
+describe('ApiExceptionFilter logs a 5xx as errorReport keeps it, with its request id, method and route (system monitor M.10)', () => {
+  const SECRET = 'hunter2-s3cr3t-9f1c';
+  let app: INestApplication;
+  let logged: string[] = [];
+  const previousEnv = process.env.NODE_ENV;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ controllers: [ProbeController], providers: API_PROVIDERS }).compile();
+    app = moduleRef.createNestApplication({ logger: false });
+    app.use((_req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+      res.setHeader('X-Request-Id', 'req-42');
+      next();
+    });
+    await app.init();
+  });
+
+  beforeEach(() => {
+    logged = [];
+    for (const level of ['error', 'warn', 'log', 'debug', 'verbose', 'fatal'] as const) {
+      jest.spyOn(Logger.prototype, level).mockImplementation((...args: unknown[]) => void logged.push(args.map(String).join(' ')));
+    }
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    process.env.NODE_ENV = previousEnv;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  const crash = () => request(app.getHttpServer()).post(`/probe/crash?token=${SECRET}`).set('content-type', 'application/json').send({ password: SECRET, note: SECRET }).expect(500);
+
+  it('in production: one entry, the status, method, route, request id, class, a code and frames, and none of the secret', async () => {
+    process.env.NODE_ENV = 'production';
+    await crash();
+    expect(logged).toHaveLength(1);
+    const [entry] = logged;
+    expect(entry.split('\n')[0]).toBe('500 POST /probe/crash request req-42: Error unclassified');
+    expect(entry.split('\n').slice(1).length).toBeGreaterThan(0);
+    for (const line of entry.split('\n').slice(1)) expect(line).toMatch(/^ {4}at \S/);
+    expect(logged.join('\n')).not.toContain(SECRET);
+    expect(logged.join('\n')).not.toContain('token');
+  });
+
+  it('under the specs (NODE_ENV=test) the same, and nothing raw', async () => {
+    process.env.NODE_ENV = 'test';
+    await crash();
+    expect(logged).toHaveLength(1);
+    expect(logged.join('\n')).not.toContain(SECRET);
+  });
+
+  it('in a developer\'s own run (NODE_ENV neither production nor test) the raw stack follows, marked, after the same entry', async () => {
+    process.env.NODE_ENV = 'development';
+    await crash();
+    expect(logged).toHaveLength(2);
+    expect(logged[0]).not.toContain(SECRET);
+    expect(logged[1]).toMatch(/^request req-42, raw \(never logged in production\): Error: could not save/);
+    expect(logged[1]).toContain(SECRET);
   });
 });

@@ -50,11 +50,13 @@ started, piece by piece, before that; each part gets its own spec then.
   account, nobody is told, and the owner cannot see or lift it. Wanted: a timed lock of the account when a
   cracking attempt is under way, by its own design (how long, what the account's owner and the branch see, who may
   unlock, what a locked account's open sessions do).
-- [ ] **The server log prints a crash as it is.** `platform/api-exception.filter.ts` writes a 5xx's raw message and
-  stack to the process log (`logger.error(error.stack ?? error.message)`). An error's message can carry a value of
-  the request (seen in the M.4 crash spec of the system monitor, 2026-11-17: a secret sent in a body appeared in
-  the test's log output). The stored `RequestError` row is filtered (`errorReport`); the process log is not. To
-  decide in this pass: filter that line the same way, at the cost of less to read when debugging.
+- [x] **The server log prints a crash as it is.** Done 2026-11-17 (system monitor M.10):
+  `platform/api-exception.filter.ts` logs a 5xx as one entry, `<status> <method> <route pattern> request <id>:
+  <class> <code>` and then the code-location frames one a line, all of it what `errorReport` keeps for the
+  `RequestError` row; never the error's message, the path as sent, the query or the body. A developer's own run
+  (`NODE_ENV` neither `production` nor `test`) also logs the raw stack in a second, marked entry; the image sets
+  `NODE_ENV=production`, so no deployment does. `api-exception.filter.spec.ts`: a crash whose message, body and
+  query carry a secret leaves none in the captured log in production mode.
 - [ ] **The full check of the system** after the client's features: security, limits, and whatever the business
   logic left open.
 
