@@ -39,7 +39,7 @@ or replaced by a later design. They stay in git history.
   operation, what the office recorded, what the provider recorded, and the difference. Today's "open differences"
   is a simulated match (`matchOf`); a real one reads the provider's own statement. Needs its own spec, after the
   stored provider ledger (ADR 0025) and with the provider integration (`docs/providers/areen.md`).
-- [ ] **A backfilled operation's provider by name** (found 2026-11-17, ADR 0025 P.4): the backfill froze the old
+- [x] **A backfilled operation's provider by name** (found 2026-11-17, ADR 0025 P.4; closed by slice P.4b, 6e18950a: every operation entry takes its line's package's provider, the owner's answer 2): the backfill froze the old
   books' provider, found by package name and company; where that pair exists under several providers the first was
   taken (local dev: 4 entries of «500 جيجا», ويكوم, given to lian while their lines hold aren's and alloha's package).
   The owner decides before the backfill runs on a server whether such an entry takes its line's package instead.

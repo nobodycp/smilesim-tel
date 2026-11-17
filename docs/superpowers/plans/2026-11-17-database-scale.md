@@ -30,8 +30,9 @@ Last, money, each with its ADR:
   - [x] **Provider ledger P.2 backfill command** with its proof (`provider-ledger-backfill`); run on the local dev database: 46 entries filled, five providers equal to the agora. (dc13d39a)
   - [x] **Provider ledger P.3 index and VALIDATE** (release 2, after the backfill ran on the deployment): `WalletEntry_provider_createdAt_id`; the CHECK validated when no row breaks it, else a WARNING. (a24980c3)
   - [x] **Provider ledger P.4 reads switched** to the stored columns; the read-time fallback and the backfill command deleted. Closes the audit's finding 1 (§1, [W6]: the provider books loaded every operation entry ever). (6b7846a5)
+  - [x] **Provider ledger P.4b backfill at HEAD**: the server deploys main once, so the command lives at HEAD and runs after the deploy; every operation entry takes its line's package's provider (P.2's name matching replaced, ADR 0025 amendment); missing costs by today's writer rule; the CHECK validated; the overview's top providers read the stored provider. Local dev: 4 entries moved from lian to alloha and aren. (6e18950a)
   - [ ] **Provider ledger P.5 closed monthly totals**: only if the grouped sum measures over budget; waits for a measurement on a database at the audit's sizes (none exists now).
-  - [ ] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee).
+  - [x] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee): the entry stores used + fee − the open periods' cost; the stored disconnects corrected by the P.4b command (local dev: 4, sky 63288 → 49288). (a94de7a9)
   - [ ] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark.
 - [ ] **DB.12 Stored margin an entry** [MONEY].
 
