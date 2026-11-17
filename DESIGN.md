@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-17 (system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
+Last verified: 2026-11-17 (the sidebar foot: signing out as an icon beside the account; before it, system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
@@ -816,7 +816,8 @@ The shell is utilities in `components/app-shell.tsx`, `chrome.tsx` (`topbarIcon`
   current page is ink on `--rd-surface-2` with a 2px crimson bar and a crimson icon, hover is `--rd-surface-2`. A
   folding group (a `NavGroup`, e.g. «التقارير») slides its pages open under a hairline, each page marked by a small
   diamond that lights crimson when current. The foot holds the account (test id `side-user`: `Avatar`, name, layer →
-  `/settings`) and «تسجيل الخروج». The round handle on its edge shows on hover or keyboard focus and folds the sidebar
+  `/settings`) and «تسجيل الخروج»: open (and in the drawer) a muted icon button at the end of the account's row,
+  red under the pointer; on the folded rail a line of its own under the avatar. The round handle on its edge shows on hover or keyboard focus and folds the sidebar
   (the `[` key too) to a 76px rail: names fade, section titles become hairlines, and hovering an icon
   shows its name in a flyout (`data-slot="side-flyout"`) — pressing or hovering a group (التقارير) opens its pages as
   a small menu there; it never leaves the page. The width glides (320ms). Under 900px the sidebar is the drawer (menu

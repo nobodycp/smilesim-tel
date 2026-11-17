@@ -571,34 +571,44 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-1.5 grid gap-0.5 border-0 border-t border-solid border-line pt-2.5">
           {/* Language and theme live in the topbar at every width (spec 2026-11-09-admin-review, 7). */}
-          {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
-          <Link
-            href="/settings"
-            className={cn(
-              'flex h-12.5 items-center gap-2.75 overflow-hidden rounded-sm px-1.5 text-start hover:bg-surface-2',
-              rail && 'px-2',
+          {/* The account at the foot of the sidebar (Graphite): opens the profile. Open, signing out is an icon beside
+              it; on the folded rail it is a line of its own under the avatar. */}
+          <div className="flex items-center gap-1">
+            <Link
+              href="/settings"
+              className={cn(
+                'flex h-12.5 min-w-0 flex-1 items-center gap-2.75 overflow-hidden rounded-sm px-1.5 text-start hover:bg-surface-2',
+                rail && 'px-2',
+              )}
+              data-testid="side-user"
+              onClick={() => setMobileOpen(false)}
+              onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
+              onBlur={() => setFlyout(null)}
+            >
+              <Avatar>{initial}</Avatar>
+              <span className={cn('min-w-0', labelClass(rail, !mobile))}>
+                <b className="block overflow-hidden text-ellipsis text-md text-ink"><bdi>{shown}</bdi></b>
+                <small className="block text-xs text-muted">{role || ' '}</small>
+              </span>
+            </Link>
+            {!rail && (
+              <IconButton tone="faint" className="flex-none hover:text-danger" onClick={logout} aria-label={t.logout} title={t.logout}>
+                <LogOut {...glyph} />
+              </IconButton>
             )}
-            data-testid="side-user"
-            onClick={() => setMobileOpen(false)}
-            onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
-            onBlur={() => setFlyout(null)}
-          >
-            <Avatar>{initial}</Avatar>
-            <span className={cn('min-w-0', labelClass(rail, !mobile))}>
-              <b className="block overflow-hidden text-ellipsis text-md text-ink"><bdi>{shown}</bdi></b>
-              <small className="block text-xs text-muted">{role || ' '}</small>
-            </span>
-          </Link>
-          <button
-            type="button"
-            className={navLinkClass({ drawer: mobile, logout: true })}
-            onClick={logout}
-            onMouseEnter={mobile ? undefined : (event) => hint(event, t.logout)}
-            onBlur={() => setFlyout(null)}
-          >
-            <LogOut {...glyph} />
-            <span className={labelClass(rail, !mobile)}>{t.logout}</span>
-          </button>
+          </div>
+          {rail && (
+            <button
+              type="button"
+              className={navLinkClass({ logout: true })}
+              onClick={logout}
+              onMouseEnter={(event) => hint(event, t.logout)}
+              onBlur={() => setFlyout(null)}
+            >
+              <LogOut {...glyph} />
+              <span className={labelClass(rail, true)}>{t.logout}</span>
+            </button>
+          )}
         </div>
       </>
     );
