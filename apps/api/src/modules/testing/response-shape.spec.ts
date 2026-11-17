@@ -82,7 +82,7 @@ const catalogPackage = {
   id: 'pkg-1', code: 'wecom-500gb-3f9a2', providerProductCode: 'lian-wecom-500', name: '500 جيجا', dataGb: 500, smsCount: null, minutes: null, details: null, months: 1,
   enabled: true, forSale: true, actionModes: {}, esimPrice: null,
   provider: { code: 'lian', name: 'ليان', actionModes: {}, esimPrice: null },
-  company: { code: 'wecom', name: 'ويكوم', image: '', iccidLength: 19, iccidPrefix: '8997202', esim: true, esimPrice: 400 },
+  company: { code: 'wecom', name: 'ويكوم', iccidLength: 19, iccidPrefix: '8997202', esim: true, esimPrice: 400 },
   branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800,
   renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
   autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: true, autoSim: true,
@@ -153,6 +153,8 @@ async function serviceWith(tables: Record<string, unknown>) {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },
     sellPrice: { findMany: async () => [] },
+    // The company marks that are set (speed plan PF.7): none unless a spec says so.
+    $queryRaw: async () => [],
     ...tables,
   };
   return { service, gate: { sessionId } };
@@ -178,6 +180,8 @@ async function posServiceWith(tables: Record<string, unknown>) {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },
     sellPrice: { findMany: async () => [] },
+    // The company marks that are set (speed plan PF.7): none unless a spec says so.
+    $queryRaw: async () => [],
     ...tables,
   };
   return { service, gate: { sessionId } };
@@ -258,7 +262,8 @@ describe('office response shapes', () => {
     ];
     const { service, gate } = await serviceWith({
       package: { findMany: async () => packageRows },
-      company: { findMany: async () => [{ code: 'wecom', image: '', iccidLength: 19, iccidPrefix: '8997202', esim: false, esimPrice: 400 }] },
+      company: { findMany: async () => [{ code: 'wecom', iccidLength: 19, iccidPrefix: '8997202', esim: false, esimPrice: 400 }] },
+      $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }],
     });
     const shelf = await service.companiesShelf(gate);
     const wecom = shelf.companies.find((company) => company.code === 'wecom');
@@ -269,6 +274,9 @@ describe('office response shapes', () => {
     expect(keysOf(shelf.companies[0].sim)).toEqual(sorted(SIM_RULES_KEYS));
     expect(wecom!.sim).toEqual({ length: 19, prefix: '8997202', esim: false });
     expect(wecom!.esimPrice).toBe(400);
+    // The mark by URL, never its bytes (speed plan PF.7); null for a company without one (it was '').
+    expect(wecom!.image).toBe('/api/pictures/companies/wecom?v=0123456789abcdef');
+    expect(shelf.companies.find((company) => company.code === 'kalam')?.image).toBeNull();
     expect(shelf.companies.find((company) => company.code === 'kalam')?.esimPrice).toBe(500);
     expect(shelf.companies.find((company) => company.code === 'kalam')?.sim).toEqual({ length: null, prefix: '', esim: true });
     expect(keysOf(wecom!.providers[0])).toEqual(sorted(SHELF_PROVIDER_KEYS));
@@ -282,8 +290,8 @@ describe('office response shapes', () => {
     const { service, gate } = await serviceWith({
       package: { findMany: async () => [] },
       company: { findMany: async () => [
-        { code: 'zain', name: 'زين', image: '', iccidLength: null, iccidPrefix: null, esim: true, esimPrice: 500 },
-        { code: 'golan', name: 'جولان', image: '', iccidLength: null, iccidPrefix: null, esim: false, esimPrice: 300 },
+        { code: 'zain', name: 'زين', iccidLength: null, iccidPrefix: null, esim: true, esimPrice: 500 },
+        { code: 'golan', name: 'جولان', iccidLength: null, iccidPrefix: null, esim: false, esimPrice: 300 },
       ] },
     });
     const shelf = await service.companiesShelf(gate);
@@ -566,9 +574,12 @@ describe('office response shapes', () => {
   });
 
   it('answers /v1/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
-    const tables = { package: { findMany: async () => [catalogPackage] } };
+    const tables = { package: { findMany: async () => [catalogPackage] }, $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }] };
     const asBranch = await serviceWith(tables);
-    const branchRow = (await asBranch.service.packages(asBranch.gate)).packages[0];
+    const branchShelf = await asBranch.service.packages(asBranch.gate);
+    // The marks of the listed companies by URL, never their bytes (speed plan PF.7).
+    expect(branchShelf.companies).toEqual([{ name: 'ويكوم', image: '/api/pictures/companies/wecom?v=0123456789abcdef' }]);
+    const branchRow = branchShelf.packages[0];
     expect(keysOf(branchRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
     expect(branchRow).toMatchObject({
       branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, autoActivate: true,

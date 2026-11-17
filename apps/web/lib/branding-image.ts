@@ -35,7 +35,7 @@ export type ShrinkOptions = {
 /**
  * A picked file as a webp data URL at most `maxSide` on its longest side. Empty when the file is
  * not one of `types`, cannot be decoded, or is still over `limit` at the lowest quality. The office
- * identity and the offer pictures (speed plan PF.6) are shrunk here.
+ * identity, the offer pictures (speed plan PF.6) and the company marks (PF.7, `compactImage`) are shrunk here.
  */
 export async function shrinkImage(
   file: File,

@@ -6,6 +6,7 @@ import { NoticeWriterModule } from './notifications/notice-writer.module';
 import { RolesModule } from './access/roles/roles.module';
 import { CompaniesModule } from './catalog/companies/companies.module';
 import { OffersModule } from './catalog/offers/offers.module';
+import { PicturesModule } from './catalog/pictures/pictures.module';
 import { AuditModule } from './auditing/audit.module';
 import { NoticesModule } from './notifications/notices.module';
 import { CatalogModule } from './catalog/shipped/catalog.module';
@@ -30,7 +31,8 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 // The two global writers first: the activity log and the notice writer, each the one implementation of a port of
 // the platform (ADR 0020, slice R.2).
 // Then the bindings of access's two ports (slice R.8), global like the writers.
+// The public picture routes beside the branding's (speed plan PF.7).
 // The system monitor last (ADR 0020, amended 2026-11-17): it reads the others and none imports it.
 // The extension contract requires `any[]` here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, MonitoringModule];
+export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, PicturesModule, MonitoringModule];

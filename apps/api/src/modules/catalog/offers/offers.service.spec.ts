@@ -8,23 +8,35 @@ import { OFFER_IMAGE_BYTES, OffersService, decodedBytes, offerShows } from './of
 // Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1).
 type Row = Record<string, unknown> & { id: string; position: number };
 
+type FindMany = { where?: Record<string, unknown>; select?: Record<string, boolean> };
+
 function setup() {
   const kernel = new ServiceGraph(new MemoryAuthStore());
   const rows: Row[] = [];
+  // Every list read, as asked: what it selects and what it filters on (speed plan PF.7).
+  const reads: FindMany[] = [];
   const offer = {
-    findMany: async () => [...rows].sort((a, b) => a.position - b.position),
+    findMany: async (args: FindMany = {}) => {
+      reads.push(args);
+      // The ids-with-a-picture read filters on the picture being set; the lists filter on nothing or `active`.
+      const pictured = Boolean(args.where && 'AND' in args.where);
+      return [...rows].filter((row) => !pictured || Boolean(row.image)).sort((a, b) => a.position - b.position);
+    },
     findUnique: async ({ where }: { where: { id: string } }) => rows.find((row) => row.id === where.id) ?? null,
     count: async () => rows.length,
     create: async ({ data }: { data: Record<string, unknown> }) => {
-      const row = { id: `o${rows.length + 1}`, body: '', image: null, actionLabel: null, actionHref: null, seconds: 7, active: true, layers: 'branch,main_agent,agent,pos', startsAt: null, endsAt: null, createdAt: new Date(), position: 0, ...data } as Row;
+      const row = { id: `o${rows.length + 1}`, body: '', image: null, actionLabel: null, actionHref: null, seconds: 7, active: true, layers: 'branch,main_agent,agent,pos', startsAt: null, endsAt: null, createdAt: new Date(), updatedAt: new Date(1_800_000_000_000 + rows.length), position: 0, ...data } as Row;
       rows.push(row);
       return row;
     },
-    update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => Object.assign(rows.find((row) => row.id === where.id)!, data),
+    update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+      const row = rows.find((one) => one.id === where.id)!;
+      return Object.assign(row, data, { updatedAt: new Date((row.updatedAt as Date).getTime() + 1000) });
+    },
     delete: async ({ where }: { where: { id: string } }) => rows.splice(rows.findIndex((row) => row.id === where.id), 1)[0],
   };
   kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as ServiceGraph['prismaClient'];
-  return { service: new OffersService(kernel.uow, new OffersRepository(kernel.uow)), rows };
+  return { service: new OffersService(kernel.uow, new OffersRepository(kernel.uow)), rows, reads };
 }
 
 const actor = (layer: string, owner = false, grants: string[] = []): Actor => ({ id: layer, loginName: layer, nickname: layer, layer, isBranchOwner: owner, grants, operatorId: layer, impersonating: false });
@@ -100,5 +112,39 @@ describe('offers', () => {
     expect(moved.offers.map((row) => row.title)).toEqual(['ب', 'أ']);
     const left = await service.remove(owner, 'o1');
     expect(left.offers.map((row) => row.title)).toEqual(['ب']);
+  });
+
+  it('lists a picture by its URL, never its bytes, and reads no picture column to do it (speed plan PF.7)', async () => {
+    const { service, rows, reads } = setup();
+    await service.save(owner, { title: 'بصورة', image: picture });
+    await service.save(owner, { title: 'بلا صورة' });
+    reads.length = 0;
+    const listed = (await service.list(owner)).offers;
+    expect(listed.map((row) => row.image)).toEqual([`/api/pictures/offers/o1?v=${(rows[0].updatedAt as Date).getTime()}`, null]);
+    const live = (await service.live(actor('pos'))).offers;
+    expect(live.map((row) => row.image)).toEqual([`/api/pictures/offers/o1?v=${(rows[0].updatedAt as Date).getTime()}`, null]);
+    // Two reads a list: the rows, named column by column without the picture, and the ids whose picture is set.
+    expect(reads).toHaveLength(4);
+    for (const read of reads) expect(Object.keys(read.select ?? {})).not.toContain('image');
+    expect(Object.keys(reads[0].select!).sort()).toEqual(['actionHref', 'actionLabel', 'active', 'body', 'createdAt', 'endsAt', 'id', 'layers', 'position', 'seconds', 'startsAt', 'title', 'updatedAt']);
+    expect(reads[1]).toEqual({ where: { AND: [{ image: { not: null } }, { image: { not: '' } }] }, select: { id: true } });
+    // The version is the offer's `updatedAt`: an edit moves it, so the old URL is never kept for the new picture.
+    const before = listed[0].image;
+    await service.save(owner, { title: 'بصورة جديدة' }, 'o1');
+    expect((await service.list(owner)).offers[0].image).not.toBe(before);
+  });
+
+  it('keeps the picture when an edit leaves the key out, clears it on null, and refuses the URL a list carries', async () => {
+    const { service, rows } = setup();
+    await service.save(owner, { title: 'أ', image: picture });
+    await service.save(owner, { title: 'أ مُعدَّل' }, 'o1');
+    expect(rows[0]).toMatchObject({ title: 'أ مُعدَّل', image: picture });
+    const url = (await service.list(owner)).offers[0].image as string;
+    await expect(service.save(owner, { image: url }, 'o1')).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.save(owner, { title: 'ب', image: 'https://example.com/a.png' })).rejects.toMatchObject({ code: 'INVALID' });
+    expect(rows[0].image).toBe(picture);
+    await service.save(owner, { image: null }, 'o1');
+    expect(rows[0].image).toBeNull();
+    expect((await service.list(owner)).offers[0].image).toBeNull();
   });
 });

@@ -2,14 +2,13 @@ import { capList, UnitOfWork, parseInput, fail } from '../../platform';
 import { OffersRepository } from './offers.repository';
 import { refuseEntered, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import type { Offer } from '../../../generated/prisma/client';
 import type { Actor } from '../../access';
 import { OFFER_IMAGE_BYTES, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
+import { isPictureDataUrl, offerPictureUrl } from '../rules/pictures';
 
 // Offers (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): picture-and-text announcements on the home hero,
 // managed by the branch owner and staff with the edit grant, shown to the layers each one names.
 export { OFFER_IMAGE_BYTES, OFFER_LAYERS } from './offers.schemas';
-const IMAGE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
 
 /** The bytes a base64 data URL decodes to, without decoding it. */
 export function decodedBytes(dataUrl: string): number {
@@ -18,17 +17,24 @@ export function decodedBytes(dataUrl: string): number {
   return Math.floor((payload.length * 3) / 4) - padding;
 }
 
+/** An offer as the lists answer it. `image` is the picture's URL (speed plan PF.7), or null when it has none. */
 export type OfferView = {
   id: string; title: string; body: string; image: string | null; actionLabel: string | null; actionHref: string | null;
   seconds: number; active: boolean; position: number; layers: string[]; startsAt: string | null; endsAt: string | null;
 };
 
-function viewOf(row: Offer): OfferView {
+/** An offer row as a list reads it: every column but the picture (`OFFER_LIST_COLUMNS`). */
+type OfferListRow = {
+  id: string; title: string; body: string; actionLabel: string | null; actionHref: string | null; seconds: number;
+  active: boolean; position: number; layers: string; startsAt: Date | null; endsAt: Date | null; updatedAt: Date;
+};
+
+function viewOf(row: OfferListRow, hasPicture: boolean): OfferView {
   return {
     id: row.id,
     title: row.title,
     body: row.body,
-    image: row.image,
+    image: hasPicture ? offerPictureUrl(row.id, row.updatedAt) : null,
     actionLabel: row.actionLabel,
     actionHref: row.actionHref,
     seconds: row.seconds,
@@ -59,16 +65,17 @@ export class OffersService {
 
   /** The offers the signed-in account sees on its home now, in order. */
   async live(actor: Actor) {
-    const rows = await this.repo.activeOffers();
+    const [rows, pictured] = await Promise.all([this.repo.activeOffers(), this.repo.idsWithPicture()]);
     const now = new Date();
-    return { offers: rows.map(viewOf).filter((offer) => offerShows(offer, actor.layer, now)) };
+    return { offers: rows.map((row) => viewOf(row, pictured.has(row.id))).filter((offer) => offerShows(offer, actor.layer, now)) };
   }
 
   /** Every offer, for the «الإعلانات» page. */
   async list(actor: Actor) {
     this.gate(actor);
-    const { rows, capped } = capList(await this.repo.allOffers());
-    return { offers: rows.map(viewOf), capped };
+    const [all, pictured] = await Promise.all([this.repo.allOffers(), this.repo.idsWithPicture()]);
+    const { rows, capped } = capList(all);
+    return { offers: rows.map((row) => viewOf(row, pictured.has(row.id))), capped };
   }
 
   async save(actor: Actor, body: unknown, id?: string) {
@@ -122,7 +129,9 @@ export class OffersService {
   private parse(body: unknown, creating: boolean) {
     const input = parseInput(creating ? OfferBody : OfferUpdateBody, body);
     const { image, startsAt, endsAt } = input;
-    if (typeof image === 'string' && !IMAGE.test(image)) fail(400, 'INVALID');
+    // A picture is a data URL or null; the URL a list carries is not one (speed plan PF.7): "unchanged" is the key
+    // left out.
+    if (typeof image === 'string' && !isPictureDataUrl(image)) fail(400, 'INVALID');
     if (startsAt && endsAt && endsAt < startsAt) fail(400, 'INVALID');
     const layers = input.layers === undefined ? undefined : [...new Set(input.layers)].join(',');
     return {

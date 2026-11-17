@@ -109,7 +109,11 @@ export type OverviewPayload = {
   pulse: { current: PulseTotals; previous: PulseTotals | null; trend: (PulseTotals & { at: string })[] };
   providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;
 };
-/** An offer on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
+/**
+ * An offer on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). `image` is the picture's URL
+ * (`/api/pictures/offers/<id>?v=…`, speed plan PF.7) or null; a save leaves it out to keep the picture, sends a data
+ * URL to replace it and null to remove it — never the URL back.
+ */
 export type Offer = {
   id: string; title: string; body: string; image: string | null; actionLabel: string | null; actionHref: string | null;
   seconds: number; active: boolean; position: number; layers: string[]; startsAt: string | null; endsAt: string | null;
@@ -223,7 +227,8 @@ export type ProviderRow = {
   name: string;
   companies: {
     name: string;
-    image: string;
+    /** The mark's URL (`/api/pictures/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
+    image: string | null;
     packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean; autoActivate?: boolean }[];
   }[];
 };
@@ -239,7 +244,8 @@ export type Shelf = {
   companies: {
     code: string;
     name: string;
-    image: string;
+    /** The mark's URL (`/api/pictures/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
+    image: string | null;
     sim: SimRules;
     esimPrice: number;
     providers: {

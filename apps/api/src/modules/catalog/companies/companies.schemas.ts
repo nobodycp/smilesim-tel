@@ -23,13 +23,17 @@ export const CompanySimBody = z.object({
 });
 export type CompanySimBody = z.input<typeof CompanySimBody>;
 
-/** The largest company picture, in bytes, and the longest data URL that can hold it. */
-export const COMPANY_IMAGE_BYTES = 150_000;
-export const COMPANY_IMAGE_CHARS = 210_000;
+/**
+ * The largest new company mark, in decoded bytes (decision 11, speed plan PF.7): the web shrinks it to WebP, 256 px
+ * on its longest side, under this. The longest data URL that can hold it (base64 is 4/3, plus the prefix).
+ */
+export const COMPANY_IMAGE_BYTES = 50_000;
+export const COMPANY_IMAGE_CHARS = 70_000;
 
 /**
  * PUT companies/:code/image — the company's picture as a data URL; an empty or absent picture clears it. The
- * service checks the picture's type and its size in bytes.
+ * service checks the picture's type and its size in bytes: a URL (what the lists carry, speed plan PF.7) or an
+ * oversized mark is `INVALID`.
  */
 export const CompanyImageBody = z.object({
   image: dataUrl(COMPANY_IMAGE_CHARS).nullish(),

@@ -615,7 +615,7 @@ export const ar = {
   pendingMeta: '{n} بانتظار الكشف',
   uploadImage: 'رفع صورة',
   removeImage: 'إزالة الصورة',
-  companyImageHint: 'PNG أو JPEG أو WebP. تُصغَّر إلى 256 بكسل.',
+  companyImageHint: 'PNG أو JPEG أو WebP. تُصغَّر إلى 256 بكسل، وحتى 50 كيلوبايت.',
   simRulesTitle: 'قواعد SIM',
   settingsAccessTab: 'الإعدادات والصلاحيات',
   grantsSummary: '{n} مسموحة من {total}',

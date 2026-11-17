@@ -62,6 +62,60 @@ holds them while no package in the catalog does. Indexes: trigram GIN (`pg_trgm`
 `Task.msisdn`, `WalletEntry.msisdn`. No `text_pattern_ops` index: every number match stays `contains`, which a
 btree cannot serve, and the trigram index serves a full number too.
 
+## Pictures by URL (PF.7)
+
+Decisions 9, 10 and 11, as built. A company's mark and an offer's picture stay in their columns (`Company.image`,
+`Offer.image`, a data URL each) and are served by a route of their own; no list carries the bytes any more.
+
+**Routes.** Public, outside the session, like the branding pictures (a controller of its own under the prefix
+`pictures`, no actor interceptor, read only):
+
+- `GET /pictures/companies/:code?v=<version>`: the company's mark. The code is the company's public code (`cellcom`,
+  `wecom`: the lists already carry it and it is not a secret).
+- `GET /pictures/offers/:id?v=<version>`: the offer's picture. The id is the offer's UUID (v4, 122 random bits).
+
+Each answers the bytes decoded from the stored data URL with the stored type (`image/png`, `image/jpeg` or
+`image/webp`), a strong `ETag` (the version), and `Cache-Control: public, max-age=31536000, immutable` only when
+`?v=` is the current version; without it or with an old one, `no-cache`. `404 NOT_FOUND` when the company or offer
+does not exist or has no picture (or the stored value is not a picture data URL). No session, no door: an `<img>`
+request carries neither `Origin` nor `x-door`; the door, origin and rate-limit middlewares treat it as they treat
+`/branding/*`.
+
+**Versions.** An offer's version is its `updatedAt` in milliseconds: it moves on every edit (a reorder too), which
+costs a re-download of a picture after an edit, never a stale one. A company has no `updatedAt` and no column is
+added: its version is the first 16 hex digits of the MD5 of the stored data URL, computed by PostgreSQL in the list
+query's companion read (`md5("image")`, the column never leaves the database) and by the route over the same text.
+It changes exactly when the picture does.
+
+**Who may fetch what.** A company mark and an advertising picture are not secrets. Any company's mark answers by
+its code. Any offer's picture answers by its id, live or not: the route needs nothing secret beyond the id, and the
+id of an offer that was never live reaches only the accounts that list every offer (`GET /v1/offers`, the branch
+owner and the edit grant). An offer that was live and was switched off keeps answering to whoever kept its id.
+
+**Lists.** Every answer that carried a picture data URL carries the URL in the same key, as the web reaches it
+(`/api/pictures/companies/<code>?v=<version>`, `/api/pictures/offers/<id>?v=<version>`; the web rewrites `/api` to
+the API), or `null` when there is no picture:
+
+- `GET /v1/companies` `companies[].image` (was `''` when none, now `null`);
+- `GET /v1/packages` `companies[].image` (only companies with a picture are listed, as before);
+- `GET /v1/providers` `providers[].companies[].image` (was `''` when none, now `null`);
+- `GET /v1/offers`, `GET /v1/offers/live` and every offer write's answer `offers[].image` (`null` when none, as before).
+
+The list queries select no picture column: the company and offer reads name their columns, whether a company has a
+mark comes from one raw read of `code, md5(image)`, and whether an offer has a picture from a read of the ids whose
+picture is set. Left for a follow-up (another module): the number card's `companyImage` (`sales/line-reads.ts`),
+still a data URL, and the lines and tasks list queries that read `company: true`.
+
+**Writes.** A picture field takes a data URL or `null`; a URL (anything not a PNG, JPEG or WebP data URL) is
+`400 INVALID`. "Unchanged" is said by leaving the key out: the offers form sends `image` only when the picture was
+replaced (a data URL) or removed (`null`). An offer edit that sends back the stored data URL still skips the size
+check, as before. The company mark has its own route (`PUT /v1/companies/:code/image`), sent only on a change.
+
+**Stored format and limits (decision 11).** The web shrinks a company mark to WebP, 256 px on its longest side and
+at most 50 KB decoded (`lib/branding-image.ts` `shrinkImage`); the API refuses a new mark over 50,000 decoded bytes
+with `400 INVALID` ("بيانات غير صالحة", as any refused mark). Offers stay at 1600 px and 300 KB (PF.6). Pictures
+already stored are served as they are; nothing is migrated.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

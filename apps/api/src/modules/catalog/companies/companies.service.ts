@@ -73,7 +73,7 @@ export class CompaniesService {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const { rows, capped } = capList(await this.repo.shelfPackages());
     const byCompany = shelfByCompany(rows);
-    const stored = await this.repo.storedCompanies();
+    const [stored, marks] = await Promise.all([this.repo.storedCompanies(), this.repo.markUrls()]);
     const byCode = new Map(stored.map((row) => [row.code, row]));
     // The seeded companies in their order, then the ones added since (spec 2026-11-09-admin-review, 3), by name.
     const seeded = new Set<string>(companies.map((company) => company.code));
@@ -86,7 +86,8 @@ export class CompaniesService {
       companies: [...companies, ...added].map((company) => ({
         code: company.code,
         name: company.name,
-        image: byCode.get(company.code)?.image ?? '',
+        // The mark's URL (speed plan PF.7), or null when the company has none.
+        image: marks.get(company.code) ?? null,
         sim: simRulesOf(byCode.get(company.code) ?? null),
         esimPrice: byCode.get(company.code)?.esimPrice ?? ESIM_PRICE_DEFAULT,
         providers: [...(byCompany.get(company.code)?.values() ?? [])],

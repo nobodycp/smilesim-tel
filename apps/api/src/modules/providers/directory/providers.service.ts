@@ -14,10 +14,10 @@ export class ProvidersService {
 
   async list(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.repo.providersWithCatalog();
+    const [rows, marks] = await Promise.all([this.repo.providersWithCatalog(), this.repo.markUrls()]);
     return {
       providers: rows.map((row) => {
-        const byCompany = new Map<string, { name: string; image: string; packages: Array<{
+        const byCompany = new Map<string, { name: string; image: string | null; packages: Array<{
           code: string;
           name: string;
           dataGb: number | null;
@@ -38,7 +38,8 @@ export class ProvidersService {
           if (!item.company) continue;
           const company = byCompany.get(item.company.id) ?? {
             name: item.company.name,
-            image: item.company.image ?? '',
+            // The mark's URL (speed plan PF.7), or null when the company has none.
+            image: marks.get(item.company.code) ?? null,
             packages: [],
           };
           company.packages.push({

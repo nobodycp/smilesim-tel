@@ -3,6 +3,7 @@
 // (`app`) and the specs may reach inside.
 
 export { simLength, simPrefix } from './companies/companies.schemas';
+export { companyMarkUrls } from './companies/company-marks';
 export { SellPriceBody } from './packages/packages.schemas';
 export type { Action } from './rules/actions';
 export { publicPackageCode } from './rules/package-code';

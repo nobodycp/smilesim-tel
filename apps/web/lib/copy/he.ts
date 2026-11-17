@@ -615,7 +615,7 @@ export const he: Copy = {
   pendingMeta: '{n} ממתינים לדוח',
   uploadImage: 'העלאת תמונה',
   removeImage: 'הסרת התמונה',
-  companyImageHint: 'PNG, ‏JPEG או WebP. מוקטנת ל-256 פיקסלים.',
+  companyImageHint: 'PNG, ‏JPEG או WebP. מוקטנת ל-256 פיקסלים, עד 50 KB.',
   simRulesTitle: 'כללי SIM',
   settingsAccessTab: 'הגדרות והרשאות',
   grantsSummary: '{n} מתוך {total} מותרות',

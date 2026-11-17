@@ -19,9 +19,10 @@ export class PackageShelfService {
 
   async list(actor: Actor) {
     const field = editableField(actor.layer);
-    const [all, accounts] = await Promise.all([
+    const [all, accounts, marks] = await Promise.all([
       this.repo.shelfPackages(),
       this.tree.accounts(),
+      this.repo.markUrls(),
     ]);
     const { rows: onSale, capped } = capList(all);
     const path = this.tree.pathOf(actor.id, accounts);
@@ -39,10 +40,12 @@ export class PackageShelfService {
     const sellsTo = actor.layer === 'main_agent' ? 'agent' : actor.layer === 'agent' ? 'pos' : null;
     const ownSell = (packageId: string) => sellRows.find((row) => row.packageId === packageId && row.ownerId === actor.id) ?? null;
     const branch = actor.layer === 'branch';
+    // Each listed company's mark by name, as a URL (speed plan PF.7); a company without one is not listed.
     const images = new Map<string, string>();
     for (const row of rows) {
       const name = row.company?.name ?? '';
-      if (name && row.company?.image) images.set(name, row.company.image);
+      const mark = row.company ? marks.get(row.company.code) : undefined;
+      if (name && mark) images.set(name, mark);
     }
     return {
       capped,

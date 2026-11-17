@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../platform';
+import { companyMarkUrls } from '../catalog';
 
 /**
  * The database as this domain reads and writes it: providers, their ledger entries, reconciliations and the catalog rows made from them. One method per query, named for what it
@@ -17,13 +18,21 @@ export class ProvidersRepository {
     return this.uow.prisma.provider.findUnique({ where: { code } });
   }
 
-  /** The providers that have a package under a company, each with its packages and their companies. */
+  /**
+   * The providers that have a package under a company, each with its packages and their companies; a company
+   * without its picture (speed plan PF.7: `markUrls`).
+   */
   providersWithCatalog() {
     return this.uow.prisma.provider.findMany({
       where: { packages: { some: { companyId: { not: null } } } },
-      include: { packages: { include: { company: true }, orderBy: { code: 'asc' } } },
+      include: { packages: { include: { company: { select: { id: true, code: true, name: true } } }, orderBy: { code: 'asc' } } },
       orderBy: { name: 'asc' },
     });
+  }
+
+  /** The URL of every company mark that is set, by company code, without reading a picture (catalog `companyMarkUrls`). */
+  markUrls() {
+    return companyMarkUrls(this.uow.prisma);
   }
 
   providersByName() {

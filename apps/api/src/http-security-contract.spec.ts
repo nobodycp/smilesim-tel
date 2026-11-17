@@ -161,12 +161,14 @@ describe('the write routes, as the source has them', () => {
     // R.A: `/auth` is three controllers (sign-in, the account on itself, the owner on others), the same 35 routes.
     // Twenty-five since the system monitor M.2: the request log's controller (monitoring). Twenty-six since M.5: the
     // status's controller (monitoring). Twenty-seven since M.6: the alerts' controller (monitoring). Twenty-eight since
-    // M.11: the versions' controller (monitoring). 32 `/auth` routes since clean-up CL.4 removed three that no client
+    // M.11: the versions' controller (monitoring). Twenty-nine since speed PF.7: the public pictures' controller
+    // (`/pictures`, two reads, no write). 32 `/auth` routes since clean-up CL.4 removed three that no client
     // called (`POST users/:loginName/password`, `POST users/:loginName/disable`, `PATCH exemptions/:loginName`).
-    expect(controllers).toHaveLength(28);
+    expect(controllers).toHaveLength(29);
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(32);
-    // The empty prefix is the health probe: one read, no write.
-    expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'v1']);
+    // The empty prefix is the health probe: one read, no write. `pictures` is two public reads (speed PF.7).
+    expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'pictures', 'v1']);
+    expect(routes.filter((route) => route.controller === 'pictures').map(named).sort()).toEqual(['GET /pictures/companies/:code', 'GET /pictures/offers/:id']);
     // One prefix for the resources (slice R.11c): no route is declared under `office`.
     expect([...RESOURCE_PREFIXES]).toEqual(['v1']);
     expect(routes.filter((route) => route.path.startsWith('/office'))).toEqual([]);
@@ -245,6 +247,8 @@ describe('authorization and activity follow the controller, not the path', () =>
       ['health.controller.ts', ''],
       ...AUTH_CONTROLLERS.map((file) => [file, '']),
       ['modules/branding/branding.controller.ts', ''],
+      // Public reads (speed PF.7): no session to check, nothing to record.
+      ['modules/catalog/pictures/pictures.controller.ts', ''],
     ]);
   });
 

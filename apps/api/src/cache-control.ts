@@ -10,8 +10,8 @@ export const DEFAULT_CACHE_CONTROL = 'private, no-cache';
 /**
  * Sets the default before anything else runs, so it is on every answer: the handlers', the errors' and the refusals
  * the middlewares send before any handler (origin, rate limit, door). A route with a policy of its own replaces it
- * by setting the header itself: the branding pictures (immutable under the current `?v=`), the notices stream and
- * the health probe (`no-store`).
+ * by setting the header itself: the branding pictures and the company and offer pictures (immutable under the
+ * current `?v=`), the notices stream and the health probe (`no-store`).
  */
 export function cacheControl() {
   return (_req: Request, res: Response, next: NextFunction) => {

@@ -1,9 +1,10 @@
 import type { ImgHTMLAttributes } from 'react';
 
 /**
- * An image whose `src` is a `data:` or `blob:` URL from the API or the browser (site logo, favicon, company mark, a
- * file being picked). next/image has nothing to optimise there, so this is a plain <img>; the CSP allows exactly
- * those two schemes (proxy.ts, img-src). A picture with a real URL uses next/image instead.
+ * An image the API or the browser already sized: a picture route on the same origin (`/api/branding/*`, and the
+ * company marks and offer pictures `/api/pictures/*`, speed plan PF.7) or a `data:` / `blob:` URL (a file being
+ * picked, an eSIM QR). next/image has nothing to optimise there, so this is a plain <img>; the CSP allows `'self'`
+ * and those two schemes (proxy.ts, img-src). Any other picture uses next/image instead.
  */
 export function DataImage({ alt, ...props }: ImgHTMLAttributes<HTMLImageElement> & { alt: string }) {
   // eslint-disable-next-line @next/next/no-img-element -- data:/blob: source, see above

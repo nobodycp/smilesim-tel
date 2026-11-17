@@ -98,8 +98,11 @@ export function OffersScreen() {
       setError(apiText('بيانات غير صالحة'));
       return;
     }
+    // The picture goes only when it changed (speed plan PF.7): a data URL replaces it, null removes it; the URL the
+    // list carries is the stored picture, so its key is left out and the API keeps it.
+    const image = draft.image === null || draft.image.startsWith('data:') ? { image: draft.image } : {};
     const body: OfferInput = {
-      title: draft.title.trim(), body: draft.body.trim(), image: draft.image, actionLabel: draft.actionLabel.trim() || null, actionHref: draft.actionHref.trim() || null,
+      title: draft.title.trim(), body: draft.body.trim(), ...image, actionLabel: draft.actionLabel.trim() || null, actionHref: draft.actionHref.trim() || null,
       seconds, layers: draft.layers, startsAt: draft.startsAt || null, endsAt: draft.endsAt ? `${draft.endsAt}T23:59:59.999Z` : null, active: draft.active,
     };
     await run(() => (draft.id ? api.saveOffer(draft.id, body) : api.addOffer(body)), { note: t.saved, then: () => setDraft(null) });

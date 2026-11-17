@@ -615,7 +615,7 @@ export const en: Copy = {
   pendingMeta: '{n} awaiting the statement',
   uploadImage: 'Upload picture',
   removeImage: 'Remove picture',
-  companyImageHint: 'PNG, JPEG or WebP. Shrunk to 256 px.',
+  companyImageHint: 'PNG, JPEG or WebP. Shrunk to 256 px, 50 KB at most.',
   simRulesTitle: 'SIM rules',
   settingsAccessTab: 'Settings and permissions',
   grantsSummary: '{n} of {total} allowed',

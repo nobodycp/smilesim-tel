@@ -1,4 +1,5 @@
 import { LIST_CAP, UnitOfWork } from '../../platform';
+import { companyMarkUrls } from './company-marks';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 
@@ -11,13 +12,13 @@ import type { Prisma } from '../../../generated/prisma/client';
 export class CompaniesRepository {
   constructor(private readonly uow: UnitOfWork) {}
 
-  /** Every package that belongs to a company, with its provider, its company and the status of each of its numbers. */
+  /** Every package that belongs to a company, with its provider, its company's code and the status of each of its numbers. */
   shelfPackages() {
     return this.uow.prisma.package.findMany({
       where: { companyId: { not: null } },
       include: {
         provider: true,
-        company: true,
+        company: { select: { code: true } },
         lines: { select: { status: true } },
       },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
@@ -25,11 +26,16 @@ export class CompaniesRepository {
     });
   }
 
-  /** Every company with its image, its SIM rules and its eSIM price. */
+  /** Every company with its SIM rules and its eSIM price; not its picture (speed plan PF.7: `markUrls`). */
   storedCompanies() {
     return this.uow.prisma.company.findMany({
-      select: { code: true, name: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
+      select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
     });
+  }
+
+  /** The URL of every company mark that is set, by code, without reading a picture (`company-marks.ts`). */
+  markUrls() {
+    return companyMarkUrls(this.uow.prisma);
   }
 
   companyByCode(code: string) {
@@ -41,7 +47,7 @@ export class CompaniesRepository {
     return this.uow.prisma.company.update({ where: { id }, data });
   }
 
-  /** How many companies carry this name. */
+  /** Stores or clears a company's mark. */
   setImage(id: string, image: string | null) {
     return this.uow.prisma.company.update({ where: { id }, data: { image } });
   }

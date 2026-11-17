@@ -639,8 +639,9 @@ not an action: it stays ink (D3).
   letters on `markColor(name)` (`lib/company-mark.ts`, `hsl(h 42% 33%)`, at least 4.67:1 against white on every hue)
   with the cut corner, wherever packages are grouped (the packages list, a user's «الرزم والأسعار» tab, the numbers
   table) and beside a company's name.
-- Image: an image whose source is a `data:` or `blob:` URL (logos, company marks, the eSIM QR) is `DataImage`
-  (`components/data-image.tsx`); there is no bare `<img>`.
+- Image: an image whose source is a `data:` or `blob:` URL or a picture route of the API (logos, company marks
+  and offer pictures under `/api/pictures/`, the eSIM QR) is `DataImage` (`components/data-image.tsx`); there is no
+  bare `<img>`.
 
 ### Filters
 

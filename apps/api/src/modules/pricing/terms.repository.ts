@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, type Db, LIST_CAP } from '../platform';
 import { RENEWABLE_STATUSES } from './rules/line-prices';
+import { companyMarkUrls } from '../catalog';
 
 /**
  * The database as this domain reads and writes it: the terms an account sets for the accounts below it, and the renewal prices its lines carry. One method per query, named for what it
@@ -107,14 +108,22 @@ export class TermsRepository {
     return db.line.update({ where: { id }, data: { terms } });
   }
 
-  /** The shelf (slice R.8: from `PackagesRepository`): every package on sale under a company, with its provider and company, in catalog order. */
+  /**
+   * The shelf (slice R.8: from `PackagesRepository`): every package on sale under a company, with its provider and
+   * company, in catalog order. The company without its picture (speed plan PF.7): the marks come from `markUrls`.
+   */
   shelfPackages() {
     return this.uow.prisma.package.findMany({
       where: { companyId: { not: null }, enabled: true, forSale: true },
-      include: { provider: true, company: true },
+      include: { provider: true, company: { select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true } } },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
       take: LIST_CAP + 1,
     });
+  }
+
+  /** The URL of every company mark that is set, by company code, without reading a picture (catalog `companyMarkUrls`). */
+  markUrls() {
+    return companyMarkUrls(this.uow.prisma);
   }
 
   /** Sets an account's own sell price for a package, replacing the one it had. */

@@ -120,8 +120,9 @@ export function brandingSummary(facts: BrandingFacts | null): BrandingSummary {
 /**
  * The image route's cache policy. A year and `immutable` only when the request names the row's current
  * version: the URL then can never point at other bytes. Without it, or with an old one, the answer must be
- * revalidated, so a browser or a CDN never pins an old logo under a URL that outlived it.
+ * revalidated, so a browser or a CDN never pins an old logo under a URL that outlived it. The company and offer
+ * pictures follow the same rule (`catalog/pictures`, speed plan PF.7), a company mark under a text version.
  */
-export function imageCacheControl(askedVersion: unknown, version: number): string {
+export function imageCacheControl(askedVersion: unknown, version: number | string): string {
   return askedVersion === String(version) ? 'public, max-age=31536000, immutable' : 'no-cache';
 }

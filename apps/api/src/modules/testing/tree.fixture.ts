@@ -252,6 +252,8 @@ export async function tree() {
     },
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
+    // The company marks that are set (speed plan PF.7: one raw read of code and version): none here.
+    $queryRaw: async () => [],
     user: userModel,
     // `/v1/me` counts the branch owner's open alerts (system monitor M.6): none here.
     alert: { count: async () => 0 },

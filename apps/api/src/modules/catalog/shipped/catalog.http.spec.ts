@@ -24,7 +24,7 @@ describe('providers and companies over HTTP', () => {
     add('clerk', 'branch', false);
     add('pos1', 'pos', false);
     for (const id of ['owner', 'clerk', 'pos1']) sessions[id] = await store.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
-    const pkg = (code: string, company: { id: string; name: string; image: string | null } | null) => ({
+    const pkg = (code: string, company: { id: string; code: string; name: string } | null) => ({
       code, name: `n-${code}`, dataGb: 50, months: 1, branchCost: 1200, enabled: true, company,
       autoActivate: true, autoCharge: false, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: false, autoSim: true, allowDisconnect: true,
     });
@@ -33,11 +33,13 @@ describe('providers and companies over HTTP', () => {
       user: { findUnique: async ({ where }: { where: { id: string } }) => grants[where.id] },
       provider: {
         findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'lian' ? provider : null),
-        findMany: async () => [{ ...provider, packages: [pkg('p2', { id: 'c2', name: 'ويكوم', image: null }), pkg('p1', { id: 'c1', name: 'الوها', image: 'data:x' }), pkg('p0', null)] }],
+        findMany: async () => [{ ...provider, packages: [pkg('p2', { id: 'c2', code: 'wecom', name: 'ويكوم' }), pkg('p1', { id: 'c1', code: 'alloha', name: 'الوها' }), pkg('p0', null)] }],
         update: async (args: unknown) => void writes.push({ model: 'provider', args }),
       },
       // No package inherits a mode here: a provider change writes the provider alone (spec 2026-11-09-admin-review, 3).
       package: { findMany: async () => [] },
+      // The marks that are set (speed plan PF.7): code and version, never the picture.
+      $queryRaw: async () => [{ code: 'alloha', version: '0123456789abcdef' }],
       // The unit of work's transaction hands the work these same tables (slice R.7: the run modes are saved in `runTx`).
       $transaction: async (work: (tx: unknown) => Promise<unknown>) => work(tables),
       company: {
@@ -67,10 +69,11 @@ describe('providers and companies over HTTP', () => {
     expect(lian.code).toBe('lian');
     expect(lian.companies.map((c: { name: string }) => c.name)).toEqual(['الوها', 'ويكوم']);
     expect(lian.companies[0]).toEqual({
-      name: 'الوها', image: 'data:x',
+      name: 'الوها', image: '/api/pictures/companies/alloha?v=0123456789abcdef',
       packages: [{ code: 'p1', name: 'n-p1', dataGb: 50, months: 1, price: 1200, enabled: true, autoActivate: true, autoCharge: false, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: false, autoSim: true, allowDisconnect: true }],
     });
-    expect(lian.companies[1].image).toBe('');
+    // A company with no mark: null (speed plan PF.7; it was '' while the list carried the bytes).
+    expect(lian.companies[1].image).toBeNull();
     expect((await as('pos1', 'get', '/v1/providers')).status).toBe(403);
   });
 
@@ -124,5 +127,13 @@ describe('providers and companies over HTTP', () => {
     expect((await as('owner', 'put', '/v1/companies/none/image', { image: '' })).status).toBe(404);
     expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: 7 })).body).toMatchObject({ code: 'INVALID' });
     expect((await as('pos1', 'put', '/v1/companies/wecom/image', { image: '' })).status).toBe(403);
+  });
+
+  it('takes a new mark up to 50 KB and refuses a bigger one or the URL a list carries (decision 11, speed plan PF.7)', async () => {
+    const webp = (bytes: number) => `data:image/webp;base64,${Buffer.alloc(bytes, 2).toString('base64')}`;
+    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: webp(50_000) })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: webp(50_001) })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: '/api/pictures/companies/wecom?v=0123456789abcdef' })).body).toMatchObject({ code: 'INVALID' });
+    expect(writes.map((w) => w.args)).toEqual([{ where: { id: 'c2' }, data: { image: webp(50_000) } }]);
   });
 });
