@@ -16,6 +16,7 @@ import { rolesApi } from '../features/roles/api';
 import { auditApi } from '../features/audit/api';
 import { reportsApi } from '../features/reports/api';
 import { providerAccountsApi } from '../features/providers/api';
+import { systemApi } from '../features/system/api';
 
 export * from './api-types';
 
@@ -35,4 +36,5 @@ export const api = {
   ...auditApi,
   ...reportsApi,
   ...providerAccountsApi,
+  ...systemApi,
 };

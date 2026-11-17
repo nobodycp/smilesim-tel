@@ -174,7 +174,7 @@ function Row({ icon: Icon, label, wide = false, children }: { icon: LucideIcon; 
 }
 
 /** A Latin value (number, serial) with a copy button beside it. `data-slot="copy-value"` is its handle. */
-function CopyValue({ value }: { value: string }) {
+export function CopyValue({ value }: { value: string }) {
   const { t } = usePrefs();
   const [copied, setCopied] = useState(false);
   return (

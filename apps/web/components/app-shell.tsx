@@ -23,6 +23,7 @@ import {
   Shield,
   Radio,
   ListChecks,
+  ScrollText,
   TrendingUp,
   Users,
   Wallet,
@@ -325,6 +326,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             { label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true },
           ],
         },
+      ],
+    },
+    {
+      // The system monitor (spec 2026-11-17-system-monitor, D1): the branch owner's alone. The status, errors and
+      // alerts pages join it in their own slices.
+      title: t.navDevSecurity,
+      items: [
+        { label: t.navRequestLog, href: '/system/requests', icon: ScrollText, layers: ['branch'], owner: true },
       ],
     },
   ];

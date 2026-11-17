@@ -57,3 +57,11 @@ export function holdTone(hold: string): Tone {
   return hold === 'held' ? 'warning' : 'muted';
 }
 
+
+/** An HTTP answer in the request log: 2xx good, 4xx refused (a warning), 5xx failed (danger), anything else neutral. */
+export function requestTone(status: number): Tone {
+  if (status >= 200 && status < 300) return 'success';
+  if (status >= 400 && status < 500) return 'warning';
+  if (status >= 500) return 'danger';
+  return 'muted';
+}
