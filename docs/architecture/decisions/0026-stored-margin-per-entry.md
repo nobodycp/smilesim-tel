@@ -1,7 +1,7 @@
 # 0026 — Each sale's margins are stored on its wallet entry, one per layer; profit figures are SQL sums
 
 - Date: 2026-11-17
-- Status: **proposed — waiting for the owner's word.** Nothing here is built.
+- Status: **accepted.** The owner answered every question on 2026-11-17 (last section); the answers override the recommendations above where they differ.
 - Spec: `docs/superpowers/specs/2026-11-17-scale-speed-cleanup.md`, decision 4 ("each sale's margin a layer stored on
   its entry, so reports are exact over all time"; approved in principle, "own spec section and ADR before code").
 - Plan: `docs/superpowers/plans/2026-11-17-database-scale.md`, DB.12 [MONEY]. Evidence:

@@ -1,7 +1,7 @@
 # 0025 — A provider operation's provider and cost are stored on its wallet entry; the books are SQL sums
 
 - Date: 2026-11-17
-- Status: **proposed — waiting for the owner's word.** Nothing here is built.
+- Status: **accepted.** The owner answered every question on 2026-11-17 (last section); the answers override the recommendations above where they differ.
 - Spec: `docs/superpowers/specs/2026-11-17-scale-speed-cleanup.md`, decision 3 ("a stored provider ledger, written in
   each operation's transaction"; approved in principle, "own spec section and ADR before code").
 - Plan: `docs/superpowers/plans/2026-11-17-database-scale.md`, DB.5 [MONEY][LOCK]. Evidence:
@@ -277,13 +277,16 @@ Each one commit, each verified on its own.
 1. **The cost is fixed on the day: yes.** The ledger is a record to be reviewed; it is not edited afterwards. A later
    difference is a settlement entry.
 2. **A past operation belongs to the provider of its package at the time: yes.**
-3. **Disconnect: open, asked again.** The owner's words: when a number is disconnected the office gets the value
-   back from the provider. So the rule in the code today (a further purchase of `used share + 0.5 ₪` on top of the
-   full period counted at the sale) does not match: a disconnect should lower the purchases by what the provider
-   gives back. What the provider gives back exactly (all unused days, or less a fee) is asked.
-4. **An operation done at the provider whose money was given back to the customer: open, asked again.** The owner's
-   words: every operation goes through a provider and is deducted there. If so, such an operation is a purchase
-   (the provider took its price) and the recommendation above changes to counting it.
+3. **Disconnect: answered.** The provider gives back the price of the unused days less a disconnect fee of
+   0.5 ₪ (50 agorot, the fee the system already defines). The owner's example: a 30 ₪ period, the number worked
+   10 days, the provider gives back 19.5 ₪; the office's cost of that line is 10.5 ₪ (10 ₪ for the ten days and
+   0.5 ₪ for the disconnect). So today's books are wrong: they count the full 30 at the sale **and** a further
+   10.5 at the disconnect (40.5). Right: the disconnect lowers the purchases by what the provider gives back
+   (−19.5), leaving 10.5. Built as its own slice after the backfill has proved the stored figures equal today's.
+4. **An operation done at the provider whose money was given back to the customer: counted, and marked.** The
+   owner: a number charged at the provider and not charged to the point of sale is a serious money problem. It is a
+   purchase (the provider took its price), it shows as a loss of the branch, and it carries a visible mark so the
+   office finds where the fault happened. Built as its own slice, with its spec.
 5. **The providers report: a new requirement.** The owner wants, for every money operation, what the office
    recorded, what the provider recorded, and the difference between them. Today's "open differences" is a simulated
    match; a real one needs the provider's own statement (see `docs/providers/areen.md`) and its own spec. Recorded
