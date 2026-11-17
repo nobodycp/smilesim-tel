@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-17 (speed PF.3: the notices `limit` and the 15 s stream beat). The history of each change is in git.
+Last verified: 2026-11-17 (database scale DB.1–DB.3: the newest-first and lookup indexes, the cursor's `AND` form). The history of each change is in git.
 
 ## Rules
 
@@ -171,11 +171,21 @@ Status/kind/layer fields are `String`; the database refuses unknown values with 
 statuses: `working`, `done`, `rejected`, `cancelled` (CHECK `OfficeTask_status_known`, migration `20261110110000_task_and_entry_keys`; `pending` was retired and old rows were migrated). `prisma migrate diff`
 against the migrations is empty.
 
+Indexes for the lists (plan 2026-11-17-database-scale, DB.1–DB.2): `(createdAt DESC, id DESC)` on `Line`,
+`WalletEntry` and `Task` (NEWEST_FIRST); `Task(posId, createdAt DESC, id DESC)`; `WalletEntry(userId, createdAt DESC,
+id DESC)`; `Task(lineId)`, `WalletEntry(actorId)`, `Session(userId)`, `TaskNote(authorId)`. Indexes Prisma cannot
+state are raw SQL in their migration, not in the schema, and invisible to `prisma migrate diff`; the upgrade
+rehearsal checks they exist: the partial uniques `Task_open_activation_iccid` / `_msisdn`, the partial
+`WalletEntry_sale_or_refund_createdAt_id` (its predicate is `SALE_KINDS` with `amount < 0` or `REFUND_KINDS` with
+`amount > 0`: rebuild it if those lists change), the partial `ProviderOperation_unsettled_id` (`unsettledPage`) and
+the expression index `Notice_kind_taskId` on `(kind, payload->>'taskId')`, which `taskNoteSent` (raw SQL) filters.
+`after()` writes the cursor as `column <= X AND (column < X OR id < Y)` so those indexes get a bound.
+
 ## Tests
 
-154 spec files beside what they test. Service specs run on `testing/tree.fixture.ts` through
+155 spec files beside what they test. Service specs run on `testing/tree.fixture.ts` through
 `testing/api-facade.ts`; HTTP specs through `testing/api-test-app.ts` (or `Test.createTestingModule`
-with `API_PROVIDERS`). 32 `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
+with `API_PROVIDERS`). 33 `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
 one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec file at a time with
 `npm test --workspace api -- --forceExit <path>` (plain `npx jest` fails on ESM).
 
