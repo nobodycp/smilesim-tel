@@ -264,3 +264,12 @@ entry's own `providerId` instead of the line's current package.
   for this design, which computes in Node, but it rules out a pure SQL backfill).
 - Whether the web shows `capped` anywhere, and which screens a removal touches (web code not read).
 - How many entries on the staging server lack a kept ladder, and whether `laddersFor` can rebuild all of them.
+
+## The owner's answers (2026-11-17)
+
+1. **Whose profit after a point of sale moves: the accounts in the chain at the time of the sale.** The owner's
+   words: the office works by pricing; the agent gives the point of sale a price and the profit is recorded for
+   that agent directly, because the point of sale bought the lines from him.
+2. **Old sales: recorded at their time, never changed by a later price.** The owner called repricing the old record
+   "a big mistake". The backfill fixes their margin once and nothing moves it after.
+3. **All-time figures: always exact,** within a one-second budget; past it the daily summary is built.

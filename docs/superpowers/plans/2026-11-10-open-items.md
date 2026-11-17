@@ -35,6 +35,11 @@ or replaced by a later design. They stay in git history.
   postponed.
 - [ ] **Message management; WhatsApp and email notices.**
 
+- [ ] **Provider reconciliation by operation** (owner, 2026-11-17): the providers report shows, for every money
+  operation, what the office recorded, what the provider recorded, and the difference. Today's "open differences"
+  is a simulated match (`matchOf`); a real one reads the provider's own statement. Needs its own spec, after the
+  stored provider ledger (ADR 0025) and with the provider integration (`docs/providers/areen.md`).
+
 ## After the business logic: the security and whole-system pass (owner, 2026-11-16)
 
 The owner's order of work: first every feature the client asked for, then one full check of the system. Not to be

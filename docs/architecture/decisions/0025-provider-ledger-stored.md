@@ -271,3 +271,20 @@ Each one commit, each verified on its own.
 - How many operation entries on the staging server cannot be attributed (the local dev database has 46 operation-kind
   entries; I did not check staging).
 - What real providers bill: no adapter exists; matching is simulated.
+
+## The owner's answers (2026-11-17)
+
+1. **The cost is fixed on the day: yes.** The ledger is a record to be reviewed; it is not edited afterwards. A later
+   difference is a settlement entry.
+2. **A past operation belongs to the provider of its package at the time: yes.**
+3. **Disconnect: open, asked again.** The owner's words: when a number is disconnected the office gets the value
+   back from the provider. So the rule in the code today (a further purchase of `used share + 0.5 ₪` on top of the
+   full period counted at the sale) does not match: a disconnect should lower the purchases by what the provider
+   gives back. What the provider gives back exactly (all unused days, or less a fee) is asked.
+4. **An operation done at the provider whose money was given back to the customer: open, asked again.** The owner's
+   words: every operation goes through a provider and is deducted there. If so, such an operation is a purchase
+   (the provider took its price) and the recommendation above changes to counting it.
+5. **The providers report: a new requirement.** The owner wants, for every money operation, what the office
+   recorded, what the provider recorded, and the difference between them. Today's "open differences" is a simulated
+   match; a real one needs the provider's own statement (see `docs/providers/areen.md`) and its own spec. Recorded
+   in `docs/superpowers/plans/2026-11-10-open-items.md`.
