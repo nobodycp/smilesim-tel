@@ -13,7 +13,7 @@ First, no money writes:
 - [x] **DB.10 The branch sends no `posId IN` list.** (aa33c40c; map f3314819)
 - [x] **DB.6 Search:** `pg_trgm`, the digits/names split, Arabic-Indic digits. (1eae8df0; map 28d66409)
 - [x] **DB.7 Arabic normalisation** for account search. (90f0dec0, c60c0981; map 28d66409)
-- [x] **DB.11 SQL aggregates** for the overview's counts, sums and trend: line and task statuses grouped; the sales figures wait for DB.12 (their profit needs the rows). (0f4eaeb9; map f3314819)
+- [x] **DB.11 SQL aggregates** for the overview's counts, sums and trend: line and task statuses grouped (0f4eaeb9; map f3314819); the sales figures, deferred to DB.12 because their profit needed the rows, are SQL sums of the stored margins since M.4 (5cf2f7b1).
 
 Then, each with the owner's values or word:
 
@@ -34,6 +34,11 @@ Last, money, each with its ADR:
   - [ ] **Provider ledger P.5 closed monthly totals**: only if the grouped sum measures over budget; waits for a measurement on a database at the audit's sizes (none exists now).
   - [x] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee): the entry stores used + fee − the open periods' cost; the stored disconnects corrected by the P.4b command (local dev: 4, sky 63288 → 49288). (a94de7a9)
   - [ ] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark.
-- [ ] **DB.12 Stored margin an entry** [MONEY].
+- [ ] **DB.12 Stored margin an entry** [MONEY]. ADR 0026 and its amendment; the slices in the spec's section "Stored margin an entry (DB.12)".
+  - [x] **Stored margin M.1 columns and writer**: the chain by layer and four margins on each sale and refund entry, written by `post()` in its INSERT from the ladder; a refund copies its sale's ids; the CHECK `NOT VALID`; lock counts unchanged. (32b59071)
+  - [x] **Stored margin M.2 backfill command** at HEAD (`stored-margins-backfill`, run before `provider-ledger-backfill`): kept ladders projected, old sales built once on the path of their time, old refunds from their sale, the invariant in Node, the CHECK validated. Local dev: 27 entries (9 kept, 18 built), none left without. (78038686)
+  - [x] **Stored margin M.3 indexes and VALIDATE**: three partial chain indexes with margin, amount and kind included; the CHECK validated when no row breaks it. (51a17a27)
+  - [x] **Stored margin M.4 reads switched**: overview, previous period, profit report and CSV, providers report, finance summary, finance list margins and shares as SQL sums by the chain at the time; caps and `capped` removed (API and web); the read-time rebuild deleted. Old vs new on local dev: 64 figures, five accounts, equal. (5cf2f7b1)
+  - [ ] **Stored margin M.5 closed-day summary**: only if "all time" measures over the one-second budget; waits for a measurement on a database at the audit's sizes (none exists; 27 local rows prove the indexes serve the sums, not their speed).
 
 Not planned: DB.16 (ancestor columns), until production shows the need.
