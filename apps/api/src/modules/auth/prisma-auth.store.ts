@@ -28,6 +28,13 @@ export type AuthStoreClients = { prisma: PrismaClient; redis: Redis };
 
 const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 
+/**
+ * How long a process keeps the layers' session rules it read for the idle check of every request (spec
+ * 2026-11-17-scale-speed-cleanup, "A request's sign-in cost"). A change made in this process drops them at once;
+ * another API process follows within this time.
+ */
+export const SESSION_RULES_CACHE_MS = 60_000;
+
 /** The live key of a session, named by the hash of its token: Redis holds no token either. */
 const sessionKey = (tokenHash: string) => `session:${tokenHash}`;
 const failureKey = (loginName: string) => `login-fail:${loginName}`;
@@ -123,6 +130,9 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   private readonly logger = new Logger(PrismaAuthStore.name);
 
   private readonly ownsPrisma: boolean;
+
+  /** The layers' session rules as `liveSession` last read them, and when. Dropped by every write of the policy rows. */
+  private kept: { at: number; rules: Promise<Record<Layer, SessionRuleValues>> } | null = null;
 
   constructor(@Optional() @Inject(AUTH_STORE_CLIENTS) clients?: AuthStoreClients, @Optional() db?: PrismaService) {
     this.ownsClients = !clients;
@@ -236,6 +246,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
       update: { required },
       create: { layer, required },
     });
+    this.kept = null;
   }
 
   async layerMethods(): Promise<Record<Layer, TwoFactorMethod>> {
@@ -254,6 +265,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
       update: { method },
       create: { layer, method },
     });
+    this.kept = null;
   }
 
   async unenrolledUsers(layer?: Layer): Promise<StoredUser[]> {
@@ -272,6 +284,25 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async setSessionRules(layer: Layer, values: SessionRuleValues): Promise<void> {
     await this.prisma.layerPolicy.upsert({ where: { layer }, update: { ...values }, create: { layer, required: false, ...values } });
+    this.kept = null;
+  }
+
+  /**
+   * The layers' session rules for the idle check of a request: read at most once a `SESSION_RULES_CACHE_MS` by this
+   * process, dropped at once by a change made here. Everything else (sign-in, the sessions allowed, the settings
+   * screens) reads them afresh, and the two-step policy is never kept: a sign-in must see a layer just required.
+   */
+  private keptSessionRules(): Promise<Record<Layer, SessionRuleValues>> {
+    const now = Date.now();
+    if (this.kept && now - this.kept.at < SESSION_RULES_CACHE_MS) return this.kept.rules;
+    const rules = this.sessionRules();
+    const kept = { at: now, rules };
+    this.kept = kept;
+    // A failed read is not kept: the next request reads again.
+    rules.catch(() => {
+      if (this.kept === kept) this.kept = null;
+    });
+    return rules;
   }
 
   async rulesFor(user: Pick<StoredUser, 'layer' | 'maxSessions' | 'sessionMinutes'>): Promise<SessionRules> {
@@ -377,7 +408,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     const row = await this.prisma.session.findUnique({ where: { tokenHash }, include: { user: true } });
     if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null;
     const user = toStoredUser(row.user);
-    const rules = await this.rulesFor(user);
+    const rules = effectiveRules(user, (await this.keptSessionRules())[user.layer]);
     // A lowered idle time closes a session already idle longer than it.
     if (row.lastSeenAt.getTime() + rules.idleSeconds * 1000 <= Date.now()) return null;
     return { session: toSessionRow(row), user, rules };

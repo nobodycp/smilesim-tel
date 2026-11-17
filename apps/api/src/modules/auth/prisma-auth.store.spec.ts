@@ -415,6 +415,70 @@ describe('PrismaAuthStore', () => {
       });
     });
 
+    describe('the layers\' session rules, kept a minute for the idle check (spec 2026-11-17-scale-speed-cleanup)', () => {
+      let reads: number;
+
+      beforeEach(() => {
+        jest.useFakeTimers({ now: redis.now });
+        reads = 0;
+        const findMany = prisma.layerPolicy.findMany;
+        prisma.layerPolicy.findMany = async () => {
+          reads += 1;
+          return findMany();
+        };
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('reads them once a minute for every request, and again at once after a change made here', async () => {
+        const token = await save();
+        reads = 0;
+        for (let step = 0; step < 5; step += 1) expect(await store.liveSession(token)).not.toBeNull();
+        expect(reads).toBe(1);
+        // Lowered to 15 minutes while the session has been idle 20: closed at its next request, not a minute later.
+        prisma.sessions.find((row) => row.tokenHash === hashSessionToken(token))!.lastSeenAt = new Date(Date.now() - 20 * 60_000);
+        await store.setSessionRules('pos', { maxSessions: null, sessionMinutes: 15 });
+        expect(await store.liveSession(token)).toBeNull();
+        expect(reads).toBe(2);
+      });
+
+      it('reads them again when a minute has passed, so a change made by another process is followed within it', async () => {
+        const token = await save();
+        await store.liveSession(token);
+        reads = 0;
+        prisma.policies.push({ layer: 'pos', required: false, maxSessions: null, sessionMinutes: 15 });
+        jest.setSystemTime(Date.now() + 59_000);
+        await store.liveSession(token);
+        expect(reads).toBe(0);
+        jest.setSystemTime(Date.now() + 1000);
+        expect((await store.liveSession(token))?.rules.idleSeconds).toBe(15 * 60);
+        expect(reads).toBe(1);
+      });
+
+      it('never keeps them for sign-in, the sessions allowed, or the two-step policy', async () => {
+        const token = await save();
+        await store.liveSession(token);
+        reads = 0;
+        await store.rulesFor({ layer: 'pos', maxSessions: null, sessionMinutes: null });
+        await store.sessionRules();
+        await store.policy();
+        await store.layerMethods();
+        expect(reads).toBe(4);
+      });
+
+      it('drops them on a change of the two-step policy rows too', async () => {
+        const token = await save();
+        await store.liveSession(token);
+        await store.setPolicy('pos', true);
+        await store.setLayerMethod('pos', 'sms');
+        reads = 0;
+        await store.liveSession(token);
+        expect(reads).toBe(1);
+      });
+    });
+
     it('treats a session whose key has expired as gone, and does not revive it on touch', async () => {
       const token = await save();
       redis.advance(SESSION_TTL_SECONDS);
