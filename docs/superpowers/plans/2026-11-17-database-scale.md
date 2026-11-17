@@ -18,7 +18,7 @@ First, no money writes:
 Then, each with the owner's values or word:
 
 - [x] **DB.8 Capped counts** [CONTRACT]: `total` up to 10,000 with `totalCapped`, `countUpTo` in `platform/paging.ts`; the numbers list and card read the point of sale's login only. (ccdf1fa3, fa431b04)
-- [ ] **DB.9 The tree read once a request and kept out of transactions** [LOCK].
+- [x] **DB.9 The tree read once a request and kept out of transactions** [LOCK]: the sale priced on the path read before its transaction, confirmed under the wallet lock by its rows (ADR 0023); writes keep reading the tree afresh. (d1620076)
 - [x] **DB.13 Retention** [UNIQUE for the outbox]: notices 180 days read, 365 unread; ended sessions 30; published outbox messages 30, only of applied operations (ADR 0024); line counts 400; activity 90, batched; `AccessLog` kept. (0b523e8e)
 - [x] **DB.14 Request-log indexes**; the route figures from duration counts; the rollup is an open item. (78bb02a9)
 - [ ] **DB.15 Settings:** pool, time limits, fill factors.
