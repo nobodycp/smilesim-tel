@@ -46,9 +46,10 @@ export type LineFilter = { q?: string; status?: string; packageCode?: string; pr
  * The where clause of the numbers list. `q` searches the number and the serial (spaces removed,
  * so "055 024" finds 055024 and "899 720" finds that serial), plus the package name and the
  * company name. Provider, company, and package narrow the same row together. `sim` keeps the SIM (`sim`) or the
- * eSIM (`esim`) lines (spec 2026-11-11-ui-consistency-pass, D1).
+ * eSIM (`esim`) lines (spec 2026-11-11-ui-consistency-pass, D1). `posIds` null is every point of sale (the branch's
+ * own view): no id list is sent (database plan DB.10), as `taskWhereFor` and `financeWhere` already do.
  */
-export function linesWhere(posIds: string[], filter: LineFilter, suspendPeriods: number[] = []): Prisma.LineWhereInput {
+export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = []): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const packageCode = (filter.packageCode ?? '').trim();
   const provider = (filter.provider ?? '').trim();
@@ -71,7 +72,7 @@ export function linesWhere(posIds: string[], filter: LineFilter, suspendPeriods:
     ...(company ? { company: { name: company } } : {}),
   };
   return {
-    posId: { in: posIds },
+    ...(posIds ? { posId: { in: posIds } } : {}),
     // `expiring` and `suspended` are not stored statuses: they narrow the lines by their end date.
     ...(filter.status === 'expiring' ? expiringWhere() : filter.status === 'suspended' ? suspendedWhere(suspendPeriods) : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),

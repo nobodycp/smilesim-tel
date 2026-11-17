@@ -27,9 +27,9 @@ export class DeskRepository {
     return this.uow.prisma.task.count({ where });
   }
 
-  /** How many lines of these points of sale are stored with this status. */
-  lineCountInStatus(posIds: string[], status: string) {
-    return this.uow.prisma.line.count({ where: { posId: { in: posIds }, status } });
+  /** How many lines of these points of sale (null: of every point of sale, the branch's view) are stored with this status. */
+  lineCountInStatus(posIds: string[] | null, status: string) {
+    return this.uow.prisma.line.count({ where: { ...(posIds ? { posId: { in: posIds } } : {}), status } });
   }
 
   lineCount(where: Prisma.LineWhereInput) {
@@ -41,10 +41,10 @@ export class DeskRepository {
     return this.uow.prisma.line.groupBy({ by: ['posId'], where, _count: { _all: true } });
   }
 
-  /** The last eight line operations of these points of sale, with the account that paid. */
-  latestOperations(posIds: string[]) {
+  /** The last eight line operations of these points of sale (null: of every one, the branch's view), with the account that paid. */
+  latestOperations(posIds: string[] | null) {
     return this.uow.prisma.walletEntry.findMany({
-      where: { userId: { in: posIds }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
+      where: { ...(posIds ? { userId: { in: posIds } } : {}), kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
       orderBy: { createdAt: 'desc' },
       take: 8,
       include: { user: true },

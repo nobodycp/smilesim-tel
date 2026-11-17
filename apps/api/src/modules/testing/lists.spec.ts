@@ -179,7 +179,9 @@ describe('numbers list paging', () => {
     const { pages, calls } = await walk({ status: 'frozen' });
     expect(pages.map((page) => page.length)).toEqual([30, 5]);
     expect(new Set(pages.flat())).toEqual(new Set(expected.map((line) => line.id)));
-    expect(calls[0].where).toMatchObject({ status: 'frozen', posId: { in: ['pos1'] } });
+    // The walk reads as the branch, which sees every point of sale: no id list is sent (database plan DB.10).
+    expect(calls[0].where).toMatchObject({ status: 'frozen' });
+    expect(calls[0].where).not.toHaveProperty('posId');
   });
 
   it('filters by package code and combines it with the status', async () => {

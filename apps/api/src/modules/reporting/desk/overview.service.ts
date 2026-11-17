@@ -4,6 +4,7 @@ import { DeskRepository } from './desk.repository';
 import { AccountTree, holdsAny, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
+import type { Prisma } from '../../../generated/prisma/client';
 import { expiringWhere, suspendedWhere } from '../../sales';
 import { REFUND_KINDS, SALE_KINDS, marginOf } from '../../pricing';
 import { ProviderAccountsService, ProviderHealthService } from '../../providers';
@@ -64,7 +65,8 @@ export class OverviewService {
     const readsProviders = isBranch && !actor.impersonating && holdsAny(actor, ['reports', 'accounting']);
 
     const [lines, money, users, tasks, providers] = await Promise.all([
-      this.lines(posIds, now),
+      // The branch sees every point of sale and sends no id list (database plan DB.10), as `taskWhereFor` does.
+      this.lines(isBranch ? null : posIds, now),
       this.money(actor, from, accounts, period, now),
       this.users(actor, accounts, visible),
       this.tasks(actor, accounts, now),
@@ -94,9 +96,12 @@ export class OverviewService {
     };
   }
 
-  /** Lines now, under the viewer: each a slice of the donut (suspended and expiring are read from the end date). */
-  private async lines(posIds: string[], now: Date): Promise<LineCounts> {
-    const scope = { posId: { in: posIds } };
+  /**
+   * Lines now, under the viewer: each a slice of the donut (suspended and expiring are read from the end date).
+   * `posIds` null is every point of sale (the branch).
+   */
+  private async lines(posIds: string[] | null, now: Date): Promise<LineCounts> {
+    const scope: Prisma.LineWhereInput = posIds ? { posId: { in: posIds } } : {};
     const periods = (await this.repo.suspendPeriods()).map((row) => row.suspendAfterDays);
     const suspendedScope = { AND: [scope, suspendedWhere(periods, now)] };
     const [active, expiring, frozen, disconnected, suspended] = await Promise.all([

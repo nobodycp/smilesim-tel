@@ -35,7 +35,9 @@ export class LineReads {
     const within = query.loginName ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
     const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
-    const where = linesWhere(posIds, query, periods);
+    // The branch sees every point of sale: its own list sends no ids (database plan DB.10). Narrowed to one account,
+    // it sends that account's.
+    const where = linesWhere(actor.layer === 'branch' && !query.loginName ? null : posIds, query, periods);
     const [rows, total] = await Promise.all([
       this.repo.linesPage({ ...where, AND: after(cursorPosition(query.cursor)) }, LINES_PAGE + 1),
       this.repo.countLines(where),

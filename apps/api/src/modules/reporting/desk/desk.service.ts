@@ -43,13 +43,18 @@ export class DeskService {
     const taskWhere = { ...taskWhereFor(actor, accounts), status: 'pending' };
     // Open tasks (pending or being worked on) for the sidebar's count beside «المهام» (spec 2026-11-09-graphite-identity).
     const openWhere = { ...taskWhereFor(actor, accounts), status: { in: ['pending', 'working'] } };
+    // The branch sees every point of sale and sends no id list (database plan DB.10): every line and every line
+    // operation is a point of sale's (a line is only ever opened on or moved to one, and an operation is written on
+    // the line's point of sale). Another layer sends its own points of sale, and reads nothing when it has none.
+    const scoped = actor.layer === 'branch' ? null : posIds;
+    const reads = scoped === null || scoped.length > 0;
     const [pendingTasks, openTasks, activeLines, inactiveLines, expiringLines, entries] = await Promise.all([
       this.repo.taskCount(taskWhere),
       this.repo.taskCount(openWhere),
-      posIds.length ? this.repo.lineCountInStatus(posIds, 'active') : 0,
-      posIds.length ? this.repo.lineCountInStatus(posIds, 'disconnected') : 0,
-      posIds.length ? this.repo.lineCount({ posId: { in: posIds }, ...expiringWhere() }) : 0,
-      posIds.length ? this.repo.latestOperations(posIds) : [],
+      reads ? this.repo.lineCountInStatus(scoped, 'active') : 0,
+      reads ? this.repo.lineCountInStatus(scoped, 'disconnected') : 0,
+      reads ? this.repo.lineCount({ ...(scoped ? { posId: { in: scoped } } : {}), ...expiringWhere() }) : 0,
+      reads ? this.repo.latestOperations(scoped) : [],
     ]);
     return {
       pendingTasks,
