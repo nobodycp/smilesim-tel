@@ -176,6 +176,23 @@ model WalletEntry {
   reason       String?
   /** For a hold or a release: the amount held (positive) or released (negative). */
   held         Int?
+  /**
+   * A sale's and a refund's chain by layer and what each layer earned on it (ADR 0026), written in the entry's own
+   * INSERT from its `ladder` by `marginOf` and never updated: the point of sale (`chain[0]`), the agent and the main
+   * agent of the chain (null when it has none), and the branch (the chain's root, its id not stored). A refund's
+   * margins are negative (its ladder's `share`). No foreign keys, as the ids inside the ladder have none. Every profit
+   * figure is a SQL sum of these. The CHECK `WalletEntry_sale_margins` (a ladder has its point of sale and branch
+   * margin) and the partial indexes `WalletEntry_chainPos_createdAt`, `WalletEntry_chainAgent_createdAt`,
+   * `WalletEntry_chainMainAgent_createdAt` are raw SQL (migrations `20261117230000_stored_margins`,
+   * `20261117230100_stored_margins_indexes`, `20261117230200_stored_margins_validate`).
+   */
+  chainPosId       String?
+  chainAgentId     String?
+  chainMainAgentId String?
+  posMargin        Int?
+  agentMargin      Int?
+  mainAgentMargin  Int?
+  branchMargin     Int?
   createdAt    DateTime  @default(now())
 
   // An account's own entries and the finance page under it, newest first (NEWEST_FIRST, paging.ts).

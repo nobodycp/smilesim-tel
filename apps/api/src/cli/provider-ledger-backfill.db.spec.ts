@@ -64,7 +64,9 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
     await entriesStoredBeforeTheCheck(prisma, [
       entry('kept', 'activate', ids.lineA, 2100, '2026-10-01T10:00:00.000Z'), // provider filled, cost kept
       entry('period', 'activate', ids.lineA, null, '2026-10-02T10:00:00.000Z', { periodCost: 2050, esimPrice: 500 }), // 2050 + 500
-      entry('ladder', 'activate', ids.lineA, null, '2026-10-03T10:00:00.000Z', { ladder }), // the branch on the ladder: 1950
+      // The branch on the ladder: 1950. Its margins as the stored margins' backfill leaves them, which runs first
+      // (ADR 0026, amendment): the CHECK `WalletEntry_sale_margins` refuses an update of a ladder without them.
+      entry('ladder', 'activate', ids.lineA, null, '2026-10-03T10:00:00.000Z', { ladder, chainPosId: ids.pos, posMargin: 500, branchMargin: 1550 }),
       entry('renewal', 'charge', ids.lineA, null, '2026-10-04T10:00:00.000Z'), // the line's renewal terms: 1700
       entry('freeze', 'freeze', ids.lineA, null, '2026-10-05T10:00:00.000Z'), // 0
       entry('esim', 'esim', ids.lineA, null, '2026-10-06T10:00:00.000Z', { esimPrice: 500 }), // the fee: 500

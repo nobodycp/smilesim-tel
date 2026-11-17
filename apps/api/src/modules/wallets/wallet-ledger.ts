@@ -6,6 +6,7 @@ import type { Sale } from './sale';
 import { operationColumns } from './provider-cost';
 import { uncoveredDebit, withinCeiling } from './ceiling';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../pricing';
+import { NO_MARGINS, chainIdsOf, marginColumns, storedChainIds, type ChainIds } from './stored-margins';
 
 const log = logger('WalletLedger');
 
@@ -174,9 +175,10 @@ export class WalletLedger {
       }));
     }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
-    // A sale keeps its price chain. A chain that cannot be read stops the sale: an entry without one would be
-    // reported at today's prices, which is not what was paid.
-    const ladder = !sale
+    // A sale keeps its price chain, and a refund its sale's scaled by the part given back. Each layer's margin on it
+    // is stored beside it in the same INSERT (ADR 0026): computed here from the ladder and the path's layers already
+    // read, so no statement, read or lock is added under the wallet lock.
+    const priced = !sale
       ? null
       : amount < 0
         ? await this.saleLadder(tx, userId, kind, sale)
@@ -203,21 +205,39 @@ export class WalletLedger {
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
         periodCost: sale?.periodCost ?? null,
-        ...(ladder ? { ladder: ladder as unknown as Prisma.InputJsonValue } : {}),
+        ...(priced ? { ladder: priced.ladder as unknown as Prisma.InputJsonValue, ...marginColumns(priced.ladder, priced.ids) } : NO_MARGINS),
       },
     });
   }
 
-  /** A refund's ladder: the line's last sale, scaled by the refunded part of what was paid (profit-ladder.ts). */
-  private async refundOf(db: Db, refunded: number, sale: Pick<Sale, 'lineId' | 'packagePrice'>): Promise<Ladder | null> {
+  /**
+   * A refund's ladder: the line's last sale, scaled by the refunded part of what was paid (profit-ladder.ts), with
+   * that sale's chain ids, which the refund stores as its own (ADR 0026: its margins go to the accounts of the sale).
+   */
+  private async refundOf(db: Db, refunded: number, sale: Pick<Sale, 'lineId' | 'packagePrice'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
     if (!sale.lineId) return null;
     const last = await db.walletEntry.findFirst({
       where: { lineId: sale.lineId, kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
     if (!last) return null;
-    const base = (last.ladder as Ladder | null) ?? (await this.saleLadder(db, last.userId, last.kind, { lineId: last.lineId ?? '', packagePrice: last.packagePrice ?? 0 }));
-    return base ? refundLadder(base, refunded, sale.packagePrice || last.packagePrice || 0) : null;
+    const kept = last.ladder as Ladder | null;
+    const base = kept
+      ? { ladder: kept, ids: storedChainIds(last) ?? (await this.chainIdsOfKept(db, kept)) }
+      : await this.saleLadder(db, last.userId, last.kind, { lineId: last.lineId ?? '', packagePrice: last.packagePrice ?? 0 });
+    const ladder = base ? refundLadder(base.ladder, refunded, sale.packagePrice || last.packagePrice || 0) : null;
+    return base && ladder ? { ladder, ids: base.ids } : null;
+  }
+
+  /**
+   * The layers of a kept ladder's chain, for a sale entry that kept its ladder but not its chain ids: only one written
+   * before the stored margins and not yet backfilled (`stored-margins-backfill` gives every such entry its ids). Read
+   * by the chain's own ids, the accounts' layers never change.
+   */
+  private async chainIdsOfKept(db: Db, ladder: Ladder): Promise<ChainIds> {
+    const rows = await db.user.findMany({ where: { id: { in: ladder.chain } }, select: { id: true, layer: true } });
+    const layerOf = new Map(rows.map((row) => [row.id, row.layer]));
+    return chainIdsOf(ladder.chain.map((id) => ({ id, layer: layerOf.get(id) ?? '' })));
   }
 
   /**
@@ -227,9 +247,10 @@ export class WalletLedger {
    * The seller's path is the one the caller read before its transaction and priced the sale on (`sale.path`); it
    * is confirmed here, under the wallet lock, by its accounts' rows alone (`AccountTree.confirmedPath`), and a path
    * that is no longer the seller's refuses the sale (409). The whole tree is never read under the lock (database
-   * plan DB.9, ADR 0023). The price rows are read here, under the lock, by the path's ids, as before.
+   * plan DB.9, ADR 0023). The price rows are read here, under the lock, by the path's ids, as before. The path's
+   * layers name the chain's accounts the entry stores its margins for (ADR 0026, `chainIdsOf`).
    */
-  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path'>): Promise<Ladder | null> {
+  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
     const priceKind = SALE_KINDS[kind];
     if (!priceKind || !sale.lineId) return null;
     const line = await db.line.findUnique({ where: { id: sale.lineId }, select: { terms: true } });
@@ -242,7 +263,7 @@ export class WalletLedger {
     ]);
     const pkg = rows.packages[0];
     if (!pkg || !subscriber || path.length === 0) return null;
-    return ladderOf(
+    const ladder = ladderOf(
       path,
       rows.termRows.filter((row) => row.packageId === pkg.id),
       rows.sellRows.filter((row) => row.packageId === pkg.id),
@@ -250,6 +271,7 @@ export class WalletLedger {
       priceKind,
       sale.packagePrice,
     );
+    return { ladder, ids: chainIdsOf(path) };
   }
 
   async recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {
