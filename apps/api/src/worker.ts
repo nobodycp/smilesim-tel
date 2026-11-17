@@ -14,6 +14,7 @@ import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProvid
 import { readCredentials, startReadiness } from './modules/providers/integration/dispatch/worker-readiness';
 import { startHeartbeat } from './modules/monitoring/worker-heartbeat';
 import { startAlertPass } from './modules/monitoring/alert-pass';
+import { purgeMonitoring } from './modules/monitoring/retention';
 
 const log = logger('Worker');
 
@@ -78,6 +79,13 @@ export async function run(): Promise<void> {
       if (removed > 0) log.log(`activity purge: ${removed}`);
     } catch (error) {
       log.error(`activity purge: ${reason(error)}`);
+    }
+    // The system monitor's tables (M.8): its own try, so a failure of either purge does not stop the other. Counts only.
+    try {
+      const purged = await purgeMonitoring(prisma);
+      if (purged.requests + purged.errors + purged.alerts > 0) log.log(`monitoring purge: ${purged.requests} requests, ${purged.errors} errors, ${purged.alerts} alerts`);
+    } catch (error) {
+      log.error(`monitoring purge: ${errorCode(error)}`);
     } finally {
       await prisma.$disconnect();
     }

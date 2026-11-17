@@ -86,3 +86,17 @@ export const SLOW_P95_MS = 2_000;
 export const SLOW_WINDOW_MINUTES = 5;
 /** Not in the spec's table, for the same reason as `FAILING_MIN_REQUESTS`: one slow report on a quiet system is not "slow". */
 export const SLOW_MIN_REQUESTS = 20;
+
+// ── Retention (spec D2; slice M.8) ─────────────────────────────────────────────────────────────────────────────
+// Deleted by the worker's daily purge (`retention.ts`, beside the activity log's), and by the owner's buttons at any time.
+
+/** Requests and their server errors are kept this many days. */
+export const REQUEST_LOG_RETENTION_DAYS = 14;
+/** A closed alert is kept this many days after its last event; an open one is never purged (it is still happening). */
+export const CLOSED_ALERT_RETENTION_DAYS = 90;
+/**
+ * The purge deletes requests and errors this many rows a statement, each statement its own transaction, so that a
+ * backlog of millions (a first purge, a busy fortnight) never runs as one long statement: its row locks would hold
+ * the owner's clearing for its whole length and vacuum could reclaim nothing until it ended.
+ */
+export const PURGE_BATCH_ROWS = 5_000;
