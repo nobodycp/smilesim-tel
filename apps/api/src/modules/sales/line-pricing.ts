@@ -32,10 +32,7 @@ export class LinePricing {
    * a restart, the target of a switch). A renewal never asks: it debits the price on the line.
    */
   async resolveBuyPrice(userId: string, pkg: { id: string } & LayerPrices, kind: PriceKind, known?: PathNode[], db: Db = this.uow.prisma): Promise<number> {
-    const [path, { terms, sells }] = await Promise.all([
-      known ? Promise.resolve(known) : this.tree.pathOf(userId, await this.tree.accounts(db)),
-      this.ladder.termsFor(pkg.id, db),
-    ]);
+    const [path, { terms, sells }] = await Promise.all([this.pathFor(userId, known, db), this.ladder.termsFor(pkg.id, db)]);
     if (path.length === 0) return buyPriceFor([{ id: userId, loginName: '', layer: 'pos', deniedOps: '' }], [], [], pkg, kind);
     return buyPriceFor(path, terms, sells, pkg, kind);
   }
@@ -47,10 +44,25 @@ export class LinePricing {
    * not in the tree leaves the terms as captured.
    */
   async stampFor(terms: LineTerms, posId: string, known?: PathNode[], db: Db = this.uow.prisma): Promise<LineTerms> {
-    const path = known ?? this.tree.pathOf(posId, await this.tree.accounts(db));
+    const path = await this.pathFor(posId, known, db);
     if (path.length === 0) return terms;
     const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
     return this.ladder.stampWith(terms, path, await this.ladder.ladderRows(codes, path.map((node) => node.id), db));
+  }
+
+  /** The path from `userId` up, as a caller read it before its transaction, or now. */
+  async pathOf(userId: string): Promise<PathNode[]> {
+    return this.tree.pathOf(userId, await this.tree.accounts());
+  }
+
+  /**
+   * The path a price is built on. Outside a transaction: the one the caller read, else the tree's. Inside one (a
+   * client other than the root): never the whole tree (database plan DB.9, ADR 0023) — the caller's path confirmed
+   * by its accounts' rows, or the path read up by id (`AccountTree.confirmedPath`).
+   */
+  private async pathFor(userId: string, known: PathNode[] | undefined, db: Db): Promise<PathNode[]> {
+    if (db !== this.uow.prisma) return this.tree.confirmedPath(db, userId, known);
+    return known ?? this.pathOf(userId);
   }
 
   /** What a disconnect credits now (`refundable` false: nothing above the fee), or null when no paid period is open. */
@@ -71,11 +83,12 @@ export class LinePricing {
     return { terms, periods, lastPrice };
   }
 
-  async switchQuote(db: Db, line: PricedLine & { posId: string }, target: PackagePriceRow & { id: string }, now: Date) {
+  /** `posPath`: the line's point of sale's path as the caller read it (inside a transaction it is confirmed). */
+  async switchQuote(db: Db, line: PricedLine & { posId: string }, target: PackagePriceRow & { id: string }, now: Date, posPath?: PathNode[]) {
     const { terms, periods } = await this.openPeriodsOf(db, line, now);
     const nextTerms = packageTermsOf(target);
     // The whole ladder, as `stampFor` resolves it: the quote and the price the switched line carries are one number.
-    const newPrice = await this.resolveBuyPrice(line.posId, target, 'renewal', undefined, db);
+    const newPrice = await this.resolveBuyPrice(line.posId, target, 'renewal', posPath, db);
     const money = switchOver(periods, newPrice, daysOf(target.months));
     // The branch side: each open period's own cost (older rows: the line's terms, as a disconnect does), against
     // the target's subscription cost.

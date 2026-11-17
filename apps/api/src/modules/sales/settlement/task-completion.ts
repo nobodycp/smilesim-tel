@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 import type { z } from 'zod';
 import type { Task, Prisma } from '../../../generated/prisma/client';
 import { lineTermsOf, activationProviderCost, captureTerms, providerBranchCost, packageTermsOf } from '../../pricing';
-import type { Actor } from '../../access';
+import type { Actor, PathNode } from '../../access';
 import type { Action } from '../../catalog';
 import type { Sale } from '../../wallets';
 import { daysOf, periodEnd, renewOnto, renewStay, switchOnto, windowMonthsOf } from '../rules/periods';
@@ -32,6 +32,12 @@ export type Completion = {
   handedQr: string | null;
   /** The serial and the number this completion puts on a line, locked before the wallet. */
   claim: Claim;
+  /**
+   * The task's point of sale's path, read before the transaction (`pathOf`). Prices and the ladder are built on it
+   * once it is confirmed by its accounts' rows; the whole tree is not read in the transaction (DB.9, ADR 0023).
+   * Without it the path is read up by id.
+   */
+  posPath?: PathNode[];
 };
 
 /** What a handler did: the sale to record, whether it already wrote its wallet entry, and the amount it moved. */
@@ -79,6 +85,7 @@ export class TaskCompletion {
     // only one of two at the same moment does.
     if (!task || task.status !== 'working') fail(400, 'INVALID');
     const { handed, handedQr } = await this.handedBack(task, input);
+    const posPath = await this.pathOf(task.posId);
     const written = await this.uow.runTx(async (tx) => {
       // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
       const claimed = await this.repo.claimTask(tx, id, actor.id);
@@ -97,11 +104,16 @@ export class TaskCompletion {
       // handler, a switch settles its re-quoted amount inside its handler (ADR 0019, D10). Any other hold gives way
       // now, before the handler moves money of its own (roadmap N6).
       if (!keepsHoldForHandler(task)) await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
-      const { sale, amount } = await this.applyClaimed({ tx, task, actor, note, line, handed, handedQr, claim });
+      const { sale, amount } = await this.applyClaimed({ tx, task, actor, note, line, handed, handedQr, claim, posPath });
       return this.tasks.taskNotice(tx, 'done', task, actor, { packageName: sale?.packageName ?? '', amount, handlerName: actor.nickname });
     });
     await this.uow.publishQuietly(written);
     return { ok: true };
+  }
+
+  /** A point of sale's path up the tree, read before a transaction that completes its task (`Completion.posPath`). */
+  pathOf(posId: string): Promise<PathNode[]> {
+    return this.pricing.pathOf(posId);
   }
 
   /** A number for an activation that has none yet, as the branch's completion gives one. */
@@ -164,11 +176,12 @@ export class TaskCompletion {
    * The amount the task carried since it opened. A disconnect and a switch post their own. A debit the task's hold
    * covers exactly is captured: the hold becomes the charge without a second ceiling check.
    */
-  private async charge({ tx, task, actor, note }: Completion, sale: Sale | undefined): Promise<boolean> {
+  private async charge({ tx, task, actor, note, posPath }: Completion, given: Sale | undefined): Promise<boolean> {
     const how = taskCharge(task);
     if (how === 'requote' || how === 'own' || how === 'none') return false;
     // An add-on's wallet entry carries its name when the handler wrote no note.
     const entryNote = task.action === 'addon' ? note || task.note || '' : note;
+    const sale = given && posPath ? { ...given, path: posPath } : given;
     if (how === 'capture') await this.ledger.capture(tx, task.posId, task.held, task.posDelta, actor.operatorId, task.action, entryNote, sale);
     else await this.ledger.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, entryNote, sale);
     return true;
@@ -183,13 +196,13 @@ export class TaskCompletion {
     return task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
   }
 
-  private async activate({ tx, task, handedQr, claim }: Completion): Promise<Applied> {
+  private async activate({ tx, task, handedQr, claim, posPath }: Completion): Promise<Applied> {
     const pkg = await this.repo.packageWithRenewalsById(tx, task.packageId);
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
     const pkgTerms = packageTermsOf(pkg);
-    const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), task.posId, undefined, tx);
+    const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), task.posId, posPath, tx);
     // The task is claimed, so its own reservation is over: what it takes must be free of lines and of other tasks.
     const iccid = claim.iccid ?? null;
     await assertClaimFree(tx, claim);
@@ -206,7 +219,7 @@ export class TaskCompletion {
     });
     // The price the task was opened at is the price charged, so it is the price recorded (rule 1.5). Tasks opened
     // before the price was stored fall back to today's.
-    const packagePrice = task.unitPrice ?? (await this.pricing.resolveBuyPrice(task.posId, pkg, 'subscription', undefined, tx));
+    const packagePrice = task.unitPrice ?? (await this.pricing.resolveBuyPrice(task.posId, pkg, 'subscription', posPath, tx));
     return {
       sale: {
         msisdn: created.msisdn,
@@ -278,7 +291,7 @@ export class TaskCompletion {
     };
   }
 
-  private async switch({ tx, task, actor, note, line }: Completion): Promise<Applied> {
+  private async switch({ tx, task, actor, note, line, posPath }: Completion): Promise<Applied> {
     if (!line || !task.nextPackageId) {
       // Nothing to switch: the hold was kept for this handler, so it is given back here.
       await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
@@ -292,7 +305,10 @@ export class TaskCompletion {
     if (!whole(line.package) || !source || !whole(source) || !target || !whole(target)) fail(400, 'INVALID');
     const switched = switchOnto(lineTermsOf(line.terms, line.package), packageTermsOf(source), packageTermsOf(target), source.switches.map((item) => item.target.code));
     if ('error' in switched) fail(400, 'INVALID');
-    const quote = await this.pricing.switchQuote(tx, line, target, new Date());
+    // The line is priced on its own point of sale's path: the task's, read before the transaction, when the line is
+    // still that point of sale's; otherwise read up by id (DB.9).
+    const linePath = line.posId === task.posId ? posPath : undefined;
+    const quote = await this.pricing.switchQuote(tx, line, target, new Date(), linePath);
     const amount = -quote.difference;
     const sale: Sale = {
       msisdn: line.msisdn,
@@ -303,6 +319,7 @@ export class TaskCompletion {
       providerCost: quote.providerCost,
       period: periodOf(daysOf(target.months), null),
       periodCost: quote.periodCost,
+      ...(posPath ? { path: posPath } : {}),
     };
     // The difference is the one of today, not of the day the task opened: the days left are fewer now. It is
     // settled against the hold taken then. If the wallet cannot cover what the hold does not, this throws and the
@@ -316,7 +333,7 @@ export class TaskCompletion {
       else await this.ledger.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
     }
     // Same as an immediate switch: the line carries the renewal price its point of sale pays today.
-    const stamped = await this.pricing.stampFor(switched.terms, line.posId, undefined, tx);
+    const stamped = await this.pricing.stampFor(switched.terms, line.posId, linePath, tx);
     await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, target.id);
     return { sale, posted: true, amount };
   }

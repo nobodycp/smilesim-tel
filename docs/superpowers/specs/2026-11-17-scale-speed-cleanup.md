@@ -216,6 +216,38 @@ Measured with Prisma's query log over PostgreSQL (`access/sign-in-cost.db.spec.t
 Once a minute a session's request sends one more statement, its `UPDATE`. Not counted: the door check in front
 of the routes (`door.middleware.ts`), which reads the session once more when the request names its door.
 
+## The tree out of the wallet lock (DB.9)
+
+The owner's word (2026-11-17, below): the sale path takes the account path from the caller and no longer reads the
+tree inside the locked transaction. Decision and invariant: ADR 0023. As built:
+
+1. **Where the tree was read inside a money transaction** (`accounts(tx)` or a price read that fell back to it):
+   `WalletLedger.saleLadder` (every debit with a sale: an activation, an extension, a charge, a switch, a task's
+   capture or debit, the provider's settlement and a person's decision on it), and its use by `refundOf` for an
+   older sale without a stored ladder; `LinePricing.switchQuote` in an immediate switch's transaction and in a
+   switch task's completion; `LinePricing.stampFor` and `resolveBuyPrice` in a task's completion (an activation's
+   renewal stamp and an older task's buy price, a switch's stamp). One more read of the tree in a transaction is
+   not on a money path and holds no wallet lock: `TasksService.taskNotice` for an internal note (`branchOnly`); it
+   is left as it is.
+2. **Read before, confirmed under the lock.** Each caller reads the seller's path before its transaction and
+   passes it in (`Sale.path`, `posPath`, `Completion.posPath`). In the transaction `AccountTree.confirmedPath`
+   reads the path's accounts by id and requires each one there, its parent the next one on the path, its layer
+   unchanged; otherwise `409 DUPLICATE_REQUEST` and the transaction rolls back. Without a path the path is read up
+   the parent links by id. `LinePricing` never reads the whole tree with a transaction's client.
+3. **What a change between the read and the lock does** (ADR 0023's table): a move (of the seller or of an account
+   above it), a deleted account or a changed layer refuses the sale, nothing written; a freeze, a stop or a login
+   change does not (none prices or credits; stops are judged before the transaction, as before); a changed price
+   does not: the debit is the price quoted before the transaction and the ladder reads the price rows under the
+   lock, both as before. In the provider's settlement the refusal is technical: nothing is written and the sweeper
+   tries again.
+4. **No request memo for writes.** A sale already reads the tree once a request (the immediate switch's quote
+   before its transaction now takes the line's path too); a write that changes the tree (create, move, freeze,
+   delete an account) must not answer from a read made before its own write. Only GET shares a read (PF.9).
+
+Measured with Prisma's query log (`sales/sale-lock-tree.db.spec.ts`): from the wallet's lock to the end of the
+transaction an activation sends 11 statements and an extension 12, before and after; before, one of them read every
+account, after it reads the path's rows by id.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

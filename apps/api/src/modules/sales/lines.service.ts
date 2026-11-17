@@ -176,6 +176,8 @@ export class LinesService {
         ...(esim ? { esimPrice: esimFee } : {}),
         period: periodOf(daysOf(pkg.months), line.endsAt),
         periodCost: pkgTerms.subscription.branchCost,
+        // The path the price above was read on: the ledger confirms it under the wallet lock (DB.9).
+        path: posPath,
       });
       return line;
     });
@@ -334,7 +336,7 @@ export class LinesService {
     assertRunnable(next, 'switch', line.denied);
     const route = await this.route('switch', line.package, runsNow(line.package, 'switch'), input.outcome, line);
     if (!route.now) {
-      const quote = await this.pricing.switchQuote(this.uow.prisma, line, next, new Date());
+      const quote = await this.pricing.switchQuote(this.uow.prisma, line, next, new Date(), line.posPath);
       return this.defer(actor, line, { action: 'switch', nextPackageId: next.id, posDelta: -quote.difference, msisdn: line.msisdn, note: route.note });
     }
     let debited = false;
@@ -342,10 +344,11 @@ export class LinesService {
     const stamped = await this.pricing.stampFor(switched.terms, line.posId, line.posPath);
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
-      const quote = await this.pricing.switchQuote(tx, line, next, new Date());
+      // Priced on the path read before the transaction, confirmed here by its accounts' rows (DB.9).
+      const quote = await this.pricing.switchQuote(tx, line, next, new Date(), line.posPath);
       const posDelta = -quote.difference;
       debited = posDelta < 0;
-      const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(daysOf(next.months), null), periodCost: quote.periodCost };
+      const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(daysOf(next.months), null), periodCost: quote.periodCost, path: line.posPath };
       if (posDelta !== 0) await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
       else await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
       await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, next.id);
@@ -382,6 +385,7 @@ export class LinesService {
         providerCost: periodCost,
         period: periodOf(daysOf(windowMonthsOf(renewal.terms)), renewal.endsAt),
         periodCost,
+        path: line.posPath,
       });
       await this.repo.extendLine(tx, line.id, { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) });
     });
@@ -511,6 +515,7 @@ export class LinesService {
         providerCost: periodCost,
         period: periodOf(daysOf(line.package.months), endsAt),
         periodCost,
+        path: line.posPath,
       });
       await moveLineStatus(tx, line.id, ['disconnected'], 'active', {
         endsAt,

@@ -307,6 +307,8 @@ export class ProviderDecisions {
     const columns = decision === 'confirm-success' ? this.operations.storableResult(given) : null;
     const suppliedEsimCode = Boolean(given.esimCode);
     const handed = { ...(claim.iccid && claim.iccid !== task.iccid ? { iccid: claim.iccid } : {}), ...(claim.msisdn !== task.msisdn ? { msisdn: claim.msisdn } : {}) };
+    // The point of sale's path, read before the transaction and confirmed under the wallet lock (DB.9).
+    const posPath = await this.completion.pathOf(task.posId);
     let written: WrittenNotice[];
     try {
       written = await this.uow.runTx(async (tx) => {
@@ -327,7 +329,7 @@ export class ProviderDecisions {
         // 4. The line, the capture of the hold, the ledger's record and the task's result: the settlement's code.
         //    Written in the submitter's name with «النظام» as the handler (D12): the sale stays the submitter's. The
         //    account that decided is in the decision event above and on the activity record, and nowhere else.
-        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim });
+        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim, posPath });
       });
     } catch (error) {
       // The line could not be made for a business reason: the transaction rolled back whole. A confirmation is

@@ -1,3 +1,5 @@
+import type { PathNode } from '../access';
+
 /** What a wallet entry records about a sale (slice R.3: from the kernel's types, to the wallets that store it). */
 export type Sale = {
   msisdn: string;
@@ -12,6 +14,11 @@ export type Sale = {
   period?: { days: number; endsAt: Date | null };
   /** What the branch pays the provider for that whole period, without the eSIM fee: a refund reads it back. */
   periodCost?: number;
+  /**
+   * The seller's path up the tree as the caller read it before its transaction, the one the sale was priced on.
+   * Not stored: the ledger confirms it under the wallet lock and builds the entry's ladder on it (DB.9, ADR 0023).
+   */
+  path?: PathNode[];
 };
 
 /** What a wallet entry records about the sale of a line: number, package, company, and the price paid. */

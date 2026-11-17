@@ -45,7 +45,8 @@ export class AccountTree {
 
   /**
    * Every account, as the tree is walked. Inside a transaction pass its client (rule 1.3): that read goes through the
-   * transaction, every time. Without one, a GET request's calls share one read (`withRequestTree`).
+   * transaction, every time. Without one, a GET request's calls share one read (`withRequestTree`). A money path
+   * does not read it inside its transaction: it passes the path it read before and `confirmedPath` checks it (DB.9).
    */
   async accounts(db: Db = this.uow.prisma): Promise<Account[]> {
     const shared = db === this.uow.prisma ? requestTree.getStore() : undefined;
@@ -81,6 +82,53 @@ export class AccountTree {
     const accounts = await this.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
     return target;
+  }
+
+  /**
+   * The path from `userId` up to the root inside a transaction, without reading the whole tree (database plan
+   * DB.9, ADR 0023). A money path reads the tree before its transaction opens and passes the path in as `known`;
+   * here, under the wallet lock, one statement reads those accounts' rows by id (`WHERE id IN (path ids)`) and the
+   * path must still be the account's: every account there, each one's parent the next one on the path (the last
+   * one the root), each one's layer what it was. Those are what a price and a ladder are built on. When it is not,
+   * the account was moved meanwhile (or one above it was): `409 DUPLICATE_REQUEST`, as a line that changed under
+   * a request is refused (`lockUnchanged`), and the transaction rolls back. The caller asks again and reads the
+   * new path. A login, a stop or a freeze is not compared: none of them prices or credits anything, and a sale
+   * judged them before its transaction, as it did before DB.9.
+   *
+   * Without a known path (a refund's ladder of an older sale, a caller that read none) the path is read up the
+   * parent links one account at a time, by id: the accounts on the path and no others.
+   *
+   * No row is locked: under Read Committed this is what the whole-tree read it replaces gave, the path as it stood
+   * after the wallet lock was taken.
+   */
+  async confirmedPath(db: Db, userId: string, known?: PathNode[]): Promise<PathNode[]> {
+    if (!known || known.length === 0 || known[0].id !== userId) return this.pathById(db, userId);
+    const rows = await db.user.findMany({ where: { id: { in: known.map((node) => node.id) } }, select: { id: true, parentId: true, layer: true } });
+    const byId = accountsById(rows);
+    const holds = known.every((node, index) => {
+      const row = byId.get(node.id);
+      return row !== undefined && row.layer === node.layer && row.parentId === (known[index + 1]?.id ?? null);
+    });
+    if (!holds) fail(409, 'DUPLICATE_REQUEST');
+    return known;
+  }
+
+  /** The path up the parent links, one account by id at a time; stops at an account it has met (never loops). */
+  private async pathById(db: Db, userId: string): Promise<PathNode[]> {
+    const path: PathNode[] = [];
+    const seen = new Set<string>();
+    let id: string | null = userId;
+    while (id && !seen.has(id)) {
+      seen.add(id);
+      const row: { id: string; loginName: string; layer: string; deniedOps: string; parentId: string | null } | null = await db.user.findUnique({
+        where: { id },
+        select: { id: true, loginName: true, layer: true, deniedOps: true, parentId: true },
+      });
+      if (!row) break;
+      path.push({ id: row.id, loginName: row.loginName, layer: row.layer, deniedOps: row.deniedOps ?? '' });
+      id = row.parentId;
+    }
+    return path;
   }
 
   /** The ids from an account up to the root, the account first. */

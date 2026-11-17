@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Task, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import { errorCode, logger, ApiFailure, open, UnitOfWork, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME, storableEsimCode } from '../../platform';
-import type { Actor } from '../../access';
+import type { Actor, PathNode } from '../../access';
 import type { WrittenNotice, TaskNoticePayload } from '../../notifications';
 import type { OperationStatus } from '../../providers';
 import { ProviderOperationsService } from '../../providers';
@@ -140,6 +140,9 @@ export class ActivationSettlement {
     // sealed is a technical fault: it throws here, nothing is written, and the sweeper comes back to it.
     const handedQr = await this.lineCode(operation, task);
     const result = { iccid: operation.resultIccid, msisdn: operation.resultMsisdn };
+    // The point of sale's path, read before the transaction: the capture's ladder is built on it once it is
+    // confirmed under the wallet lock, and a point of sale moved meanwhile is a technical refusal, tried again (DB.9).
+    const posPath = await this.completion.pathOf(task.posId);
     let written: WrittenNotice[];
     try {
       written = await this.uow.runTx(async (tx) => {
@@ -158,7 +161,7 @@ export class ActivationSettlement {
         // 4. The line, the capture of the hold, the ledger's record and the task's result: the same code the
         //    branch's completion by hand runs.
         const handed = { ...(result.iccid ? { iccid: result.iccid } : {}), ...(result.msisdn ? { msisdn: result.msisdn } : {}) };
-        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim });
+        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim, posPath });
       });
     } catch (error) {
       if (error instanceof NothingToApply) return 'skipped';
@@ -286,7 +289,7 @@ export async function submitterOf(lines: LinesRepository, task: Task): Promise<A
  * written: the settlement of a provider's verdict runs it, and so does a person's decision that confirms or
  * corrects one (`provider-decisions.ts`), so a decision never moves the sale to the account that decided.
  */
-export async function applyAsSettlement(completion: TaskCompletion, tasks: TasksService, tx: Prisma.TransactionClient, task: Task, submitter: Actor, put: { handed: { iccid?: string; msisdn?: string }; handedQr: string | null; claim: Claim }): Promise<WrittenNotice[]> {
-  const { sale, amount } = await completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed: put.handed, handedQr: put.handedQr, claim: put.claim });
+export async function applyAsSettlement(completion: TaskCompletion, tasks: TasksService, tx: Prisma.TransactionClient, task: Task, submitter: Actor, put: { handed: { iccid?: string; msisdn?: string }; handedQr: string | null; claim: Claim; posPath?: PathNode[] }): Promise<WrittenNotice[]> {
+  const { sale, amount } = await completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed: put.handed, handedQr: put.handedQr, claim: put.claim, posPath: put.posPath });
   return tasks.taskNotice(tx, 'done', task, submitter, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME }, false, true);
 }

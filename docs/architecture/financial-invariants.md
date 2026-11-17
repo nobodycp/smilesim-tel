@@ -51,6 +51,10 @@ Apart from that chain:
   takes it `FOR SHARE`). Those transactions touch the
   provider and the operation only: no task, line or wallet.
 - **The outbox** is claimed with `FOR UPDATE SKIP LOCKED` and a lease (`outbox.repository.ts`): it never waits.
+- **No account row is locked, and the tree is not read, under a wallet lock** (DB.9, ADR 0023): a sale is priced on
+  the seller's path read before its transaction; under the lock `AccountTree.confirmedPath` reads only the path's
+  rows by id and refuses with `409 DUPLICATE_REQUEST` when an account on it moved. Proof:
+  `sales/sale-lock-tree.db.spec.ts`.
 
 No guard checks the order across files today. It is held by the specs above and by review; R.0 only writes it down.
 

@@ -198,14 +198,19 @@ export class WalletLedger {
   /**
    * The price chain of a sale as it stands now, kept on its wallet entry so each layer's margin stays what it was
    * (profit-ladder.ts). Null for an entry that is not a sale, or a line or package that cannot be read.
+   *
+   * The seller's path is the one the caller read before its transaction and priced the sale on (`sale.path`); it
+   * is confirmed here, under the wallet lock, by its accounts' rows alone (`AccountTree.confirmedPath`), and a path
+   * that is no longer the seller's refuses the sale (409). The whole tree is never read under the lock (database
+   * plan DB.9, ADR 0023). The price rows are read here, under the lock, by the path's ids, as before.
    */
-  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice'>): Promise<Ladder | null> {
+  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path'>): Promise<Ladder | null> {
     const priceKind = SALE_KINDS[kind];
     if (!priceKind || !sale.lineId) return null;
     const line = await db.line.findUnique({ where: { id: sale.lineId }, select: { terms: true } });
     const code = (line?.terms as { packageCode?: string } | null)?.packageCode;
     if (!code) return null;
-    const path = this.tree.pathOf(posId, await this.tree.accounts(db));
+    const path = await this.tree.confirmedPath(db, posId, sale.path);
     const [rows, subscriber] = await Promise.all([
       this.ladder.ladderRows([code], path.map((node) => node.id), db),
       db.package.findUnique({ where: { code }, select: { subscriberPrice: true, renewalSubscriberPrice: true } }),
