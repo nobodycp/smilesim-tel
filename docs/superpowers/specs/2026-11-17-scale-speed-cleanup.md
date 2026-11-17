@@ -232,3 +232,18 @@ of the routes (`door.middleware.ts`), which reads the session once more when the
 The server's own changes (Cloudflare, PostgreSQL settings on the host, the runtime upgrade): the handover lists
 them. The security pass (limits everywhere, the account lock). Ancestor or path columns for visibility (DB.16):
 only on evidence from production.
+
+## The owner's answers of 2026-11-17 (second round)
+
+- **Retention (DB.13), yes to every value:** a read notice 180 days, an unread one a year; an ended session
+  30 days; a published outbox message 30 days (only one whose operation is applied); a line-count snapshot
+  400 days; the account-entry log (`AccessLog`) kept for ever.
+- **Settings (DB.15), yes:** statement time limit 15 s for the API, idle-in-transaction 30 s, pool 20 for the API
+  and 10 for the worker; the CSV export is excepted from the statement limit.
+- **The tree out of the wallet lock (DB.9), yes by name:** the sale path takes the account path from the caller
+  and no longer reads the tree inside the locked transaction.
+- **Company logos in the numbers table:** kept.
+- **The finance number search no longer reading notes:** left open; the whole finance section is to be
+  rearranged, and the question is decided there.
+- **`apps/web/audit-output`** (old check output, untracked): deleted.
+- **The Coolify upgrade:** not done yet; `docs/operations/2026-11-12-coolify-upgrade-preparation.md` stays.
