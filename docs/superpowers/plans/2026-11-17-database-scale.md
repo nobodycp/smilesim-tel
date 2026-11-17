@@ -28,8 +28,9 @@ Last, money, each with its ADR:
 - [ ] **DB.5 Provider ledger stored** [MONEY][LOCK]. ADR 0025; the slices in the spec's section "Provider ledger stored (DB.5)".
   - [x] **Provider ledger P.1 columns and writers**: `WalletEntry.providerId` and the CHECK `NOT VALID`; every writer of an operation stores its provider and cost in the same INSERT. (9c695ada)
   - [x] **Provider ledger P.2 backfill command** with its proof (`provider-ledger-backfill`); run on the local dev database: 46 entries filled, five providers equal to the agora. (dc13d39a)
-  - [ ] **Provider ledger P.3 index and VALIDATE** (release 2, after the backfill ran on the deployment).
-  - [ ] **Provider ledger P.4 reads switched** to the stored columns; the read-time fallback deleted.
+  - [x] **Provider ledger P.3 index and VALIDATE** (release 2, after the backfill ran on the deployment): `WalletEntry_provider_createdAt_id`; the CHECK validated when no row breaks it, else a WARNING. (a24980c3)
+  - [x] **Provider ledger P.4 reads switched** to the stored columns; the read-time fallback and the backfill command deleted. Closes the audit's finding 1 (§1, [W6]: the provider books loaded every operation entry ever). (6b7846a5)
+  - [ ] **Provider ledger P.5 closed monthly totals**: only if the grouped sum measures over budget; waits for a measurement on a database at the audit's sizes (none exists now).
   - [ ] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee).
   - [ ] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark.
 - [ ] **DB.12 Stored margin an entry** [MONEY].
