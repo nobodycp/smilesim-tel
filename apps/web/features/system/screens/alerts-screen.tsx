@@ -71,14 +71,16 @@ const ICONS: Record<AlertKind, LucideIcon> = {
 const WARNING_KINDS: readonly AlertKind[] = ['rate_limit', 'slow'];
 
 /*
- * The cards: one column, two from 1100px (an odd last card takes the whole row, as the status page's do), 12px apart,
+ * The cards: one column, two from 768px (cards in a row share its height; an odd last card takes the whole row, as
+ * the status page's do), 12px apart,
  * under a small heading per part (open now, ended). Each card a Pane with the home panes' head (the kind's icon and
  * name, its state badge), then the meaning line, a ruled fact list, «ماذا تفعل» on `--rd-surface-2`, and the actions.
  * The alert the bell's notice named is ringed in `--rd-accent` and scrolled into view.
  */
-const GRID = 'grid items-start gap-3 xl:grid-cols-2 xl:[&>:last-child:nth-child(odd)]:col-span-full [.desk_&]:flex-none';
+const GRID = 'grid gap-3 md:grid-cols-2 md:[&>:last-child:nth-child(odd)]:col-span-full [.desk_&]:flex-none';
 const CARD = 'flex min-w-0 scroll-mt-20 flex-col';
-const BODY = 'grid content-start gap-2.5 px-4.5 py-3.5';
+const BODY = 'flex flex-1 flex-col gap-2.5 px-4.5 py-3.5';
+const SKELETON_BODY = 'grid content-start gap-2.5 px-4.5 py-3.5';
 const PART_TITLE = 'm-0 text-md font-bold text-muted';
 const TODO = 'm-0 rounded-sm bg-surface-2 px-3 py-2.5 text-md text-ink-2';
 
@@ -202,7 +204,10 @@ function AlertCard({
   const Icon = ICONS[alert.kind] ?? Ban;
   const open = alert.state === 'open';
   const tone = open ? (WARNING_KINDS.includes(alert.kind) ? 'warning' : 'danger') : 'muted';
-  const ago = (iso: string) => t.sysAgo.replace('{span}', span(locale as Locale, secondsSince(iso, now)));
+  const ago = (iso: string) => {
+    const seconds = secondsSince(iso, now);
+    return seconds < 10 ? t.justNow : t.sysAgo.replace('{span}', span(locale as Locale, seconds));
+  };
   // A state's own figure (a service down, slowness) counts the worker's rounds, not events: it is not shown.
   const counted = alert.kind !== 'service_down' && alert.kind !== 'slow';
   const unseen = open && !alert.seenAt;
@@ -280,7 +285,7 @@ function AlertCard({
             {todos[alert.kind]}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mt-auto flex flex-wrap items-center gap-2">
           <Button asChild variant="secondary" size="sm">
             <Link href={requestsHref(alert.link)}>
               <ScrollText size={15} aria-hidden="true" />
@@ -322,7 +327,7 @@ function AlertSkeleton() {
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-4 w-14" />
       </div>
-      <div className={BODY}>
+      <div className={SKELETON_BODY}>
         <Skeleton className="h-3.5 w-full" />
         <Skeleton className="h-3.5 w-4/5" />
         <Skeleton className="h-3.5 w-3/5" />
@@ -447,7 +452,8 @@ function AlertsDesk() {
         </Button>
       )}
     >
-      <FilterBar loose onClear={() => setFilters({ state: '' })} clearLabel={t.clearFilters}>
+      {/* One chip: it stays on the page on a phone too (no «كل الفلاتر» drawer for a single choice). */}
+      <FilterBar loose bare>
         <label>
           {t.alertsState}
           <Select value={state} onValueChange={(value) => { setOlder(null); setFilters({ state: value }); }}>
