@@ -13,7 +13,9 @@ import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './
 // what we paid and settled, the credit limit, what open tasks are about to cost, and a ledger with a running balance.
 export const LEDGER_LIMIT = 1_000;
 
-const OPEN_TASKS = ['pending', 'working'];
+// The one open task status: no task is `pending` (migrations 20261109100000 and 20261110100000 rewrote those rows
+// to `working`; the `Task_status_known` CHECK refuses the value).
+const OPEN_TASKS = ['working'];
 
 type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLoginName: string };
 
