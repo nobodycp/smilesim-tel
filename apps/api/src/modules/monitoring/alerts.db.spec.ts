@@ -32,6 +32,8 @@ suite('the alerts in PostgreSQL: the pass, its notices, and the owner\'s routes'
   let prisma: ReturnType<typeof createPrismaClient>;
   let uow: UnitOfWork;
   let repo: AlertRepository;
+  /** The real audience query, kept for its own test: the pass below is handed this file's owner alone. */
+  let everyOwner: AlertRepository['branchOwners'];
   let service: AlertsService;
   const down = { worker: false, postgres: false, redis: false, outbox: false };
   const probe: PartsProbe = async () => ({ ...down });
@@ -68,6 +70,12 @@ suite('the alerts in PostgreSQL: the pass, its notices, and the owner\'s routes'
     uow = new UnitOfWork(new NoticeService(bus));
     uow.prismaClient = prisma;
     repo = new AlertRepository(uow);
+    // The alerts' audience is every branch owner in the database, and other spec files keep owners of their own in
+    // it at the same time: a notice written to one of theirs kept that file from deleting its account afterwards
+    // (`Notice_userId_fkey`; seen in a wide run on 2026-11-17, `request-log.db.spec.ts`). So the pass of this file
+    // tells this file's owner only; the audience query itself is read, and judged, in its own test.
+    everyOwner = repo.branchOwners.bind(repo);
+    repo.branchOwners = (async () => [{ id: ownerId }]) as unknown as AlertRepository['branchOwners'];
     service = new AlertsService(repo);
   });
 
@@ -85,6 +93,18 @@ suite('the alerts in PostgreSQL: the pass, its notices, and the owner\'s routes'
     await prisma.user.deleteMany({ where: { id: ownerId } });
     await prisma.$disconnect();
     process.env.DATABASE_URL = previousUrl;
+  });
+
+  it('the audience is the branch owners who are not frozen: this file\'s owner is in it, its main agent is not', async () => {
+    const audience = (await prisma.$transaction((tx) => everyOwner(tx))).map((row) => row.id);
+    expect(audience).toContain(ownerId);
+    expect(audience).not.toContain(mainId);
+    await prisma.user.update({ where: { id: ownerId }, data: { disabledAt: new Date() } });
+    try {
+      expect((await prisma.$transaction((tx) => everyOwner(tx))).map((row) => row.id)).not.toContain(ownerId);
+    } finally {
+      await prisma.user.update({ where: { id: ownerId }, data: { disabledAt: null } });
+    }
   });
 
   it('opens at the threshold and not under it, telling the branch owner once and no one else', async () => {
