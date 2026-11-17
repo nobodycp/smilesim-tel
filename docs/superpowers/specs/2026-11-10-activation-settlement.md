@@ -524,7 +524,7 @@ Changed in this document:
 
 Conflicts with text and code outside this document, to be settled in the slice named:
 
-1. **ADR 0016 and `plans/2026-11-10-production-config-and-simulation.md`** say a trial server may set
+1. **ADR 0016 and the production-config plan (removed 2026-11-17)** say a trial server may set
    `NODE_ENV=staging` to keep the simulation. D18 withdraws that for any deployment that will dispatch. Those two
    documents are corrected in S.12a. A staging copy that only demonstrates screens with simulated answers is then
    a development copy, not a staging of the provider flow.

@@ -1,7 +1,7 @@
 # 0017 — A provider operation is a stored record with a guarded life, written with an outbox message
 
-Date: 2026-11-10. Status: accepted as a foundation (owner task 02); nothing calls it yet. Spec and plan:
-`docs/superpowers/{specs,plans}/2026-11-10-provider-operation-lifecycle.md`.
+Date: 2026-11-10. Status: accepted as a foundation (owner task 02); nothing calls it yet. Spec:
+`docs/superpowers/specs/2026-11-10-provider-operation-lifecycle.md`.
 
 ## Context
 

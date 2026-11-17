@@ -1,7 +1,7 @@
 # 0015 — Reads do not write, queries are parsed, a package's code does not name its provider
 
 Date: 2026-11-10. Status: accepted (owner: «اكمل» to the two proposals, and «ضيف الثغرة إلى خطة العمل وكملها»).
-Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-backend-loose-ends.md`.
+Spec: `docs/superpowers/specs/2026-11-10-backend-loose-ends.md`.
 
 ## Decisions
 

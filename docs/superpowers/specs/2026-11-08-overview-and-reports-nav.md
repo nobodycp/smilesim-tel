@@ -101,4 +101,4 @@ Owner (2026-11-09): «معلقه وليست عالقه — خط انتهي اش�
 3. ~~Provider-side amount~~: both, answered 2026-11-09 (E).
 
 ## Order
-The plan `docs/superpowers/plans/2026-11-08-overview-and-reports-nav.md` has one slice per decision, in this order: A → B → C → D → H → I → F → G → E (simulated; owner 2026-11-09).
+The plan (done; removed 2026-11-17; in git history) had one slice per decision, in this order: A → B → C → D → H → I → F → G → E (simulated; owner 2026-11-09).

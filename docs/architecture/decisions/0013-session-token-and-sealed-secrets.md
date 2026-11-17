@@ -1,7 +1,7 @@
 # 0013 — The session cookie is a token; authenticator secrets are sealed
 
-Date: 2026-11-10. Status: accepted. Spec and plan:
-`docs/superpowers/{specs,plans}/2026-11-10-session-and-secret-storage.md`.
+Date: 2026-11-10. Status: accepted. Spec:
+`docs/superpowers/specs/2026-11-10-session-and-secret-storage.md`.
 
 ## Context
 

@@ -147,8 +147,16 @@ started, piece by piece, before that; each part gets its own spec then.
   owner: one provider's document, sandbox access, and answers to P1–P14 of the spec. People's decisions on an unknown
   operation exist (S.9); only the automatic status inquiry is missing, and it waits for the provider's contract.
 
+## Later (recorded, not planned) — moved from `2026-11-08-gap-roadmap` (2026-11-17)
+
+The gap roadmap's N1–N9 are built; it was removed in clean-up CL.7. Its "Later" list, verbatim:
+
+Provider API integration (to be discussed again with the providers' documents), inventory, top-up requests with
+proof, customers, a maximum sell price, WhatsApp and email notifications, package offers and details (long
+discussion pending), automated backups, add-ons (today a manual line task; later a priced task charged on completion).
+
 ## Settled on 2026-11-10
 
 - «سكاي» is both a provider and a network (a company) of the same name: the seed is right as it is.
 - `PUT /branding` from an entered session: covered by `branding.http.spec.ts`.
-- `session-and-secret-storage` T.3, T.5 and S.7: done (see that plan).
+- `session-and-secret-storage` T.3, T.5 and S.7: done (spec `2026-11-10-session-and-secret-storage`, ADR 0013).

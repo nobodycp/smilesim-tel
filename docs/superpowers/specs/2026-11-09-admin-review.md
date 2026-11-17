@@ -1,7 +1,7 @@
 # Admin panel review — spec
 
 Date: 2026-11-09. Owner request, in sections. Each section is added here as the owner names it; the plan
-(`docs/superpowers/plans/2026-11-09-admin-review.md`) gets one slice group per section.
+(done; removed 2026-11-17; in git history) had one slice group per section.
 
 ## Section 1 — Reports: from eight to five
 

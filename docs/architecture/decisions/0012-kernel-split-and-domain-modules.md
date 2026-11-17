@@ -1,6 +1,6 @@
 # 0012 — The office kernel is split; one Nest module and one repository per domain
 
-Date: 2026-11-10. Status: accepted. Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-office-kernel-split.md`.
+Date: 2026-11-10. Status: accepted. Spec: `docs/superpowers/specs/2026-11-10-office-kernel-split.md`.
 
 ## Context
 
@@ -14,7 +14,7 @@ depended on. `OfficeModule` listed 18 controllers and 29 providers flat, and ser
    `WalletLedger` (wallets), `PriceLadder` (terms), `LineAccess` (lines), `LayerRoles` (roles). `OfficeKernel` is gone.
 2. One Nest module a domain (`<domain>/<domain>.module.ts`), exporting only what another domain uses. No cycles.
 3. One repository a domain (`<domain>.repository.ts`): one method a query, taking the client when it may run in a
-   transaction; no rule and no permission in it. Since plan backend-loose-ends B.1 there is no exception.
+   transaction; no rule and no permission in it. Since spec `2026-11-10-backend-loose-ends` B1 there is no exception.
 4. Done as a strangler: delegates first, then each domain switched, then the delegates deleted, specs green at
    every commit.
 

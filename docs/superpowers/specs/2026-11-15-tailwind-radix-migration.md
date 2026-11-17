@@ -1,7 +1,7 @@
 # Spec — move `apps/web` from hand-written CSS to Tailwind CSS v4 + owned Radix components
 
-Date: 2026-11-15 · Owner instruction (chat, 2026-11-15) · Decision: ADR 0022 · Plan:
-`docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md`
+Date: 2026-11-15 · Owner instruction (chat, 2026-11-15) · Decision: ADR 0022 · Plan: done with T7.1
+(removed 2026-11-17; in git history)
 
 ## Goal
 

@@ -2,7 +2,7 @@
 
 Date: 2026-11-13. Source: `docs/reviews/2026-11-13-ui-audit.md` (moved from the untracked root `AUDIT_REPORT.md` in plan slice P0.1, content unchanged; Arabic; 277 confirmed findings in section 3, root causes and
 "تعارضات بين الحلول" in section 2, a draft plan in section 5, a draft rules section for `DESIGN.md` in section 6).
-Plan: `docs/superpowers/plans/2026-11-13-ui-maintenance.md`. Owner request (2026-11-13): a complete, very detailed
+Plan: superseded from P1.3 by the Tailwind migration (ADR 0022) and removed 2026-11-17; in git history. Owner request (2026-11-13): a complete, very detailed
 maintenance plan, checked by more than one model; every step done by one executor and reviewed by two; phases entered
 only after two agents confirm the previous one is ready; then a visual audit by several models on every screen size,
 with the same one-finds / two-confirm method.
@@ -26,7 +26,7 @@ Make the desk's look **one system with one definition per thing**, and keep it t
 
 Counts below are approximate and the ids are samples. The **complete** list — all 277 findings, each with its
 location and the slice(s) that close it — is the plan's coverage appendix
-(`docs/superpowers/plans/2026-11-13-ui-maintenance.md`, "Coverage appendix"); completeness is checked there, not here.
+("Coverage appendix"; the plan was removed 2026-11-17; in git history); completeness was checked there, not here.
 
 | Cause | What is wrong | Findings (ids as in the plan's coverage appendix) |
 |---|---|---|

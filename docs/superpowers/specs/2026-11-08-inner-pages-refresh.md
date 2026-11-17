@@ -1,6 +1,6 @@
 # Inner pages refresh — trail, tabs, cards, the user page, the finance page
 
-Date: 2026-11-08 · Status: approved by owner (chat, 2026-11-08, from two reference screenshots) · Plan: `docs/superpowers/plans/2026-11-08-inner-pages-refresh.md`
+Date: 2026-11-08 · Status: approved by owner (chat, 2026-11-08, from two reference screenshots) · Plan: done (removed 2026-11-17; in git history)
 
 The owner liked parts of another dashboard and asked for the ideas, in our own look (our tokens, our type, no copied
 brand or colours). Approved: 1 (trail), 2 (user page + tabs everywhere), 3 (cards), 5 (tab counts), 6 (finance).

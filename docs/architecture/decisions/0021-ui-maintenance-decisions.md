@@ -3,13 +3,13 @@
 Date: 2026-11-14. Status: **accepted**. D1–D28 and the branch are the owner's own answers of 2026-11-13; the audit-file,
 rule-file, graphify and click-deferral answers are the recommended answers, taken by the orchestrator under the
 owner's instruction of 2026-11-14 and **to be confirmed by the owner**; the three named exceptions under D2 are
-P0.1's own reading, not an owner answer, and are **to be confirmed by the owner**. Spec and plan:
-`docs/superpowers/{specs,plans}/2026-11-13-ui-maintenance.md`. Findings: `docs/reviews/2026-11-13-ui-audit.md`
+P0.1's own reading, not an owner answer, and are **to be confirmed by the owner**. Spec:
+`docs/superpowers/specs/2026-11-13-ui-maintenance.md` (its plan removed 2026-11-17; in git history). Findings: `docs/reviews/2026-11-13-ui-audit.md`
 (the UI audit, 277 findings; Arabic). Recorded by plan slice P0.1.
 
 > **Superseded in part (2026-11-15, ADR 0022):** the styling plan this ADR served, the 2026-11-13 maintenance plan from
 > slice P1.3 on (repairing the legacy stylesheets in place, with per-slice visual verification), is superseded by
-> ADR 0022 and the Tailwind migration plan (`docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md`): the
+> ADR 0022 and the Tailwind migration (spec `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md`): the
 > stylesheets are replaced by Tailwind CSS v4 utilities and owned Radix components, without visual verification
 > (owner, 2026-11-15). The decisions D1–D28 stay in force and the migration slices apply them. The slice names below
 > (P1.4 … P8) refer to the superseded plan; a decision's content still holds where its slice never ran. The migration

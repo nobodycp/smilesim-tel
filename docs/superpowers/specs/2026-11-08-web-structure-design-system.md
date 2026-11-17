@@ -1,6 +1,6 @@
 # Web structure and design system — spec (Phase 5)
 
-Date: 2026-11-08 · Parent plan: `docs/superpowers/plans/2026-11-08-architecture-refactor.md` (Phase 5) · ADR 0003
+Date: 2026-11-08 · Parent plan: the architecture refactor of 2026-11-08, Phase 5 (removed 2026-11-17; in git history) · ADR 0003
 
 ## Goal
 

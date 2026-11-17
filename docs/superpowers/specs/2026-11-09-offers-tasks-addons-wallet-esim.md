@@ -1,6 +1,6 @@
 # Offers hero, task notes and statuses, line add-ons, wallet page, eSIM per package
 
-Date: 2026-11-09 · Status: approved by the request (chat 2026-11-09) · Plan: `docs/superpowers/plans/2026-11-09-offers-tasks-addons-wallet-esim.md`
+Date: 2026-11-09 · Status: approved by the request (chat 2026-11-09) · Plan: done (removed 2026-11-17; in git history)
 
 ## 1. Offers (الإعلانات) — a hero carousel on every account's home
 

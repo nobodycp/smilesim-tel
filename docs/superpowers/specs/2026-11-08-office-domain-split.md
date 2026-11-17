@@ -1,6 +1,6 @@
 # Office domain split — spec
 
-Date: 2026-11-08 · Parent plan: `docs/superpowers/plans/2026-11-08-architecture-refactor.md` (Phase 3)
+Date: 2026-11-08 · Parent plan: the architecture refactor of 2026-11-08, Phase 3 (removed 2026-11-17; in git history)
 
 ## Goal
 

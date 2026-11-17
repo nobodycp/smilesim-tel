@@ -1,6 +1,6 @@
 # Improvements 1–3: honest sorting, a permission matrix, API guards
 
-Date: 2026-11-08 · Status: approved by owner (improvements 1, 2, 3) · Plan: `docs/superpowers/plans/2026-11-08-improvements-1-3.md`
+Date: 2026-11-08 · Status: approved by owner (improvements 1, 2, 3) · Plan: improvements 1–3 (removed 2026-11-17; in git history)
 
 ## 1. Sorting on server-paged tables
 

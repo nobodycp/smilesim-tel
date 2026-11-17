@@ -1,7 +1,7 @@
 # 0016 — A production API does not start with unsafe settings, and never simulates a provider
 
 Date: 2026-11-10. Status: accepted (owner task 01). Changes ADR 0011's "on by default, in production too" and its
-"warn rather than stop". Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-production-config-and-simulation.md`.
+"warn rather than stop". Spec: `docs/superpowers/specs/2026-11-10-production-config-and-simulation.md`; what each deployment sets: `docs/handover/technical-operations-ar.md`, section 6.
 
 ## Context
 

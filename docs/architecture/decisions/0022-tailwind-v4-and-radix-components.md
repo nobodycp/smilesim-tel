@@ -2,7 +2,7 @@
 
 - Status: accepted (owner, 2026-11-15)
 - Supersedes: the styling parts of ADR 0021's plan from P1.3 on (the decisions D1–D28 themselves stay in force )
-- Plan: `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md`
+- Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` (the plan, done with T7.1, removed 2026-11-17; in git history)
 
 ## Context
 

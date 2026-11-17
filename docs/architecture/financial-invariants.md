@@ -1,6 +1,6 @@
 # Financial invariants: what no refactor may change
 
-- **Written:** 2026-11-13, slice R.0 of the plan `2026-11-13-office-retirement` (ADR 0020).
+- **Written:** 2026-11-13, slice R.0 of the office retirement (ADR 0020).
 - **Status:** a description of the code at `626f61b` plus R.0. It decides nothing new. Where it and the code
   disagree, the code and its PostgreSQL specs are right and this file is fixed in the same change.
 - **Why one file:** these rules are spread over ADR 0004, 0010, 0017, 0018 and 0019 and over comments in four
@@ -23,7 +23,7 @@ Each rule names where it lives and what proves it. "Guard" is a rule of `archite
 
 | Rule | Where | Proof |
 |---|---|---|
-| One primitive: `UnitOfWork.runTx` (Read Committed). Notices are written through the transaction's client (a rollback takes them back) and published only after the commit, once; a publish that fails is logged and the committed change stands. Since slice R.2 the unit of work holds the notice writer behind the platform's `NoticeWriter` port. | `kernel/unit-of-work.ts`; `shared/ports.db.spec.ts` (commit, rollback, a failed publish after a money move) | guard `transaction-outside-unit-of-work` (5 known sites outside it today, none on the path of a sale, a hold, a capture or a verdict: the trial-accounts seeder of the auth store, saving a provider-statement reconciliation, saving a provider's modes with its packages, the worker's attestation, the eSIM sealing script; each is judged in the plan `2026-11-13-office-retirement`, "R.0 verified") |
+| One primitive: `UnitOfWork.runTx` (Read Committed). Notices are written through the transaction's client (a rollback takes them back) and published only after the commit, once; a publish that fails is logged and the committed change stands. Since slice R.2 the unit of work holds the notice writer behind the platform's `NoticeWriter` port. | `kernel/unit-of-work.ts`; `shared/ports.db.spec.ts` (commit, rollback, a failed publish after a money move) | guard `transaction-outside-unit-of-work` (5 known sites outside it today, none on the path of a sale, a hold, a capture or a verdict: the trial-accounts seeder of the auth store, saving a provider-statement reconciliation, saving a provider's modes with its packages, the worker's attestation, the eSIM sealing script; each was judged in slice R.0 of the office retirement) |
 | A transaction reads through its own client, never the root one. | every `runTx` body | guard `root-client-in-tx` |
 | Writes that belong together are one transaction. | services | guard `multi-write-outside-tx` |
 | A status changes only through a guarded write (the expected current status is in the `WHERE`). | `line-state.ts` `moveLineStatus`, `provider-operations.repository.ts` `moveStatus`, task claims | guards `unguarded-status-write`, `operation-writes` |
