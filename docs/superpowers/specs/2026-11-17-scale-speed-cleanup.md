@@ -322,7 +322,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. P.2's command is deleted with it. | done |
 | P.4b | **The backfill at HEAD** (`cli/provider-ledger-backfill.ts`, ADR 0025 amendment): the server deploys `main` once, so the command must exist in the release it runs on. It gives every operation entry its line's package's provider (moving the ones P.2's name matching gave to another provider), fills a missing cost by today's writer rule, and validates the CHECK. The overview's top providers read the stored provider. | done |
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
-| P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Its own spec first. | after P.4 |
+| P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | building |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
 (the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
@@ -449,6 +449,143 @@ validated; a second run wrote nothing.
 cheaper package already stores a negative difference; the ledger page and `provider-operations` keep every row with
 a cost ≠ 0; the providers report and the overview add it. The providers report's share bar clamps a provider's share
 to 0–100 % (a window holding only a disconnect gives that provider a negative cost).
+
+## Paid at the provider, not charged to the point of sale (DB.5 P.7)
+
+The owner (ADR 0025, answer 4 and "an activation priced zero", 2026-11-17): a number the provider charged the
+office for and the point of sale was not charged for is a serious money problem. Such an operation **is a purchase**
+(the provider took its price), it shows as **a loss of the branch**, and it carries **a visible mark** so the office
+finds where it went wrong.
+
+### Every path where the provider performs an operation and the point of sale ends up not charged
+
+| # | Path (file, function) | Today | P.7 |
+|---|---|---|---|
+| 1 | **Given back after the provider's success**: `sales/settlement/provider-decisions.ts`, `ProviderDecisions.answer`, effect `release-after-success` → `TasksService.rejectByDecision` (ADR 0019 D15/D16, T11). Only an activation task has a provider operation (`operationKey` is `activate:<task>`), and the decision exists only for an operation in `exception` (succeeded at the provider, its line could not be made). | the task is rejected and its hold given back; **no operation entry**: in no provider's books | an `activate` entry, amount 0, on the point of sale's wallet, marked `given_back` |
+| 2 | **An activation task priced 0**: `sales/settlement/task-completion.ts`, `TaskCompletion.applyClaimed` (the branch's completion, the settlement's `apply`, and the decisions `confirm-success` / `apply-corrected` all run it). `taskCharge` answers `none` for `posDelta` 0, so `recordOp` writes the entry with the sale as the handler built it: a plain activation names no cost there (`activationProviderCost` is undefined), so `operationColumns` stores **0**. | cost 0 | the package's cost (`postedCost`, the subscription's branch cost on the line's new terms, the figure a priced task stores), marked `priced_zero` |
+| 3 | **An immediate activation priced 0**: `sales/lines.service.ts`, `LinesService.activate` (`ledger.move` with `posDelta` 0). | the real cost (`activationProviderCost ?? providerBranchCost`), amount 0, no mark | the same cost, marked `priced_zero` |
+| 4 | **A renewal priced 0, now** (`LinesService.extend`, `restartDisconnected` for `charge` / `reactivate`; `ledger.move` with 0) **or by task** (`TaskCompletion.renew` → `recordOp`). | the real cost (`periodCost`, the renewal branch cost), no mark | the same cost, marked `priced_zero` |
+
+Ruled out, with the reason:
+
+- **A switch whose difference is 0** (`switchPackage`, `TaskCompletion.switch` → `recordOp`): not a sale priced 0. The
+  point of sale pays a difference between two packages; a difference of 0 is the price list, and the entry already
+  stores the provider's quoted difference. Not marked.
+- **The kinds the provider does not price** (`freeze`, `unfreeze`, `rename`, `sim`, `refresh`, `transfer`) cost 0 and
+  charge 0: nothing is lost. `disconnect` gives money back on both sides (P.6). `esim` is charged its fee or not run.
+  An add-on (`addon`) is not a provider operation kind (no provider, no cost is stored for it).
+- **The immediate route's provider call** (`LinesService.route` → `gateway.run`) followed by a transaction that fails
+  (number taken, ceiling): `run` answers success only in the simulation (`SimulatedProviderGateway`; in production it
+  answers `NOT_CONNECTED`), and a real provider's activation goes by the dispatch route (ADR 0019 D13), whose success
+  is settled, decided or given back (path 1). Named here for when a real in-request gateway is built.
+- **A decision `declare-failure`, a reject or cancel of a task**: the operation is `failed` (terminal: `failed` never
+  moves to `succeeded`, `provider-operation.rules.ts`) or `abandoned`: the provider did not run it.
+- **An exception still open** (succeeded, not applied, not given back): the hold is still held and the task open;
+  it becomes path 1 or is applied. Not a loss until then.
+
+### What is written
+
+One `WalletEntry` per operation, as every operation is written, with one new column:
+
+- **`WalletEntry.providerLoss`** — nullable text, `given_back` or `priced_zero`; null on every other row. A column
+  naming the reason, not a new entry kind: the row stays an `activate` / `charge` / `extend` / `reactivate`
+  operation, so the provider's books (`providerId`, `providerCost`), the finance kind filter, the number's history and
+  the CHECK `WalletEntry_operation_priced` read it as the operation it is, and the reason is one column the screens
+  filter on. A CHECK `WalletEntry_provider_loss` (migration `20261117240000_provider_loss`) refuses another value and
+  refuses a mark on a row that moves money or has no provider. A partial index
+  `WalletEntry_provider_loss` on (`providerId`, `createdAt` DESC, `id` DESC) `WHERE "providerLoss" IS NOT NULL` serves
+  the summary's count and the filter.
+- Path 1 (`given_back`): `kind` `activate`, `amount` 0, `balanceAfter` the wallet's balance (unchanged), on the
+  task's **point of sale's** wallet (the account the number was for, where the office looks for it), `actorId` the
+  approving account's operator, `note` the task's rejection note (`PROVIDER_RELEASED_NOTE`, so the point of sale
+  reads it as given back), `msisdn` what the provider handed back else the task's, no `lineId` (no line was made),
+  the package's name and company, `packagePrice` the task's `unitPrice` (what the sale would have charged),
+  `providerId` the task's package's provider, **`providerCost` the package's cost at the provider now** —
+  `Package.branchCost`, plus the eSIM fee for an eSIM task (`packageActivationCost`, `pricing/rules/prices.ts`: the
+  figure an activation of that package stores; the task keeps no record of the cost of the day it opened).
+  Written by `WalletLedger.recordOp` in the approval's transaction, **after** `rejectByDecision`'s `release`, so under
+  the wallet lock that release takes (when the task held money; a task priced 0 held nothing and `recordOp` reads the
+  wallet without a lock, as every `recordOp` does — it writes no balance). The package is read **before** the
+  transaction. The lock order (task → operation → wallet) is unchanged; nothing is added to the sale path.
+- Paths 2–4 (`priced_zero`): set by `operationColumns` (`wallets/provider-cost.ts`) in the entry's own INSERT, from
+  what it already has: a kind priced at the provider other than `switch` (`activate`, `charge`, `extend`,
+  `reactivate`), amount 0, and a cost above 0. Path 2 only changes which sale `recordOp` is given (`charged`, which
+  carries `postedCost`, instead of `sale`). **No statement, read or lock is added**: `sale-lock-tree.db.spec.ts` keeps
+  11 and 12.
+
+### The margins of a marked row
+
+The point of sale paid 0, so nobody below the branch earned or lost anything on it; the branch paid the provider.
+A marked row stores **`branchMargin` = − `providerCost`** and the other six margin columns null (no ladder, no
+chain ids). Against `marginOf`: a ladder for it would hold `posSell` 0 and every cost 0 below the branch and the
+provider's cost at the branch, giving the branch `0 − cost` and every other layer 0 — the stored figure, with the
+lower layers' zeros left null (they add nothing to a sum, and a row with no chain ids is in no lower layer's figures).
+ADR 0026's invariant (`marginBreaks`) gains the case: a row with no ladder stores none of the seven, **except a
+marked row, which stores only `branchMargin` = − `providerCost`**. The CHECK `WalletEntry_sale_margins` (a ladder
+needs its margins) is unchanged.
+
+**Not a sale in the reports' counts.** The sales and refunds every count and volume reads are
+`kind ∈ SALE_KINDS AND amount < 0` or a refund with `amount > 0` (`saleOrRefundWhere`, the overview's
+`SALE_OR_REFUND`): a marked row moves 0, so it adds no sale, no volume and no profit to the home, the profit report or
+the finance summary. **Where the loss is counted:** the providers report (`InsightsService.supply` sums
+`branchMargin` over every operation entry of a provider, so its branch profit falls by the cost), the provider's
+books (a purchase), and the branch's finance list (its margin column shows − cost). Whether the home's and the
+profit report's profit should also subtract it is a question for the owner (below); it is not done here because those
+sums read the partial sales index, whose predicate a marked row does not meet.
+
+### Where the mark is seen, and by whom
+
+The **branch only** — the owner and the branch accounts the screens already allow (`reports` for
+`provider-operations`, `accounting` or `reports` for the provider accounts). Lower layers never read a provider's
+cost today: `provider-operations`, the provider accounts and the providers report refuse any layer but the branch,
+and the finance list's rows carry no cost (`margin` is the viewer's own stored margin: null on a marked row for
+anyone but the branch, which has no chain ids). P.7 keeps it so:
+
+- `GET provider-operations`: each item `loss` (`given_back` | `priced_zero` | null); the query `loss=any|given_back|priced_zero`
+  filters in SQL; `stats.losses` counts the marked operations of the window.
+- `GET provider-accounts` and `GET provider-accounts/:code`: each summary `losses`, the provider's marked operations
+  ever (one grouped count over the partial index, read with the purchases); each ledger row `loss`.
+- `GET finance` (and its CSV): each item `loss`, **null for any viewer but the branch**; the query
+  `loss=any|given_back|priced_zero` is refused (403 `FORBIDDEN`) for another layer, so a lower layer cannot find the
+  marked rows by filtering. The point of sale still sees its own row (an `activate` that moved 0, with the note), as
+  it sees every operation on its wallet, without the mark, the cost or the margin.
+- Web: a `Badge variant="danger" dot` labelled «خسارة: أُعيد المبلغ» / «خسارة: بسعر صفر» (en / he alike, a title saying
+  what it means) on the row in «عمليات المزودين», the provider's ledger and «المالية»; a filter «خسارة الفرع» there
+  (finance: shown to the branch only); on «حسابات المزودين» a column with the count as a danger badge linking to
+  «عمليات المزودين» filtered on that provider's marked operations, and the same link on the provider's page when its
+  count is above 0. Copy keys in ar / en / he (`npm run check:copy`). The existing badge, no new look.
+
+### Old rows (trial data, the owner's standing rule)
+
+`cli/provider-ledger-backfill.ts` gains the P.7 pass, in its one transaction, each change printed:
+
+- **Given back:** found from stored data: every `ProviderDecisionEvent` approved with decision `release-after-success`
+  names its operation, which names its task (point of sale, package, eSIM, number). For each one without its entry
+  (an `activate` entry marked `given_back` on that point of sale's wallet for that number and package), the entry is
+  written as above, dated at the approval, its `balanceAfter` the point of sale's balance after its last entry before
+  that time, its cost the package's cost now (printed as such: no older figure is kept).
+- **Priced zero:** every `activate`, `charge`, `extend`, `reactivate` entry that moved 0 and is not marked: an
+  `activate` that stored cost 0 is re-priced by the rule the command already uses for a missing activation cost
+  (the period cost kept on the entry, the line's terms, the package), and every one whose cost is then above 0 is
+  marked `priced_zero` with `branchMargin` = − cost.
+- A second run writes nothing. On the local dev database: no decision event and no entry that moved 0 exist (see the
+  run in the ADR's "As built (P.7)").
+
+### Proof
+
+`wallets/provider-loss.db.spec.ts`: each path (the approved release; a task priced 0 by the branch; an immediate
+activation priced 0; a renewal now and by task priced 0) writes the marked entry with its provider, cost and margins;
+the provider's purchases include it and its summary counts it; `provider-operations` filters it; the point of sale's
+balance and money entries are unchanged to the agora; a lower layer's finance rows carry no mark and no margin, its
+filter is refused; the CLI pass on a fixture. `sale-lock-tree.db.spec.ts` unchanged; `response-shape.spec.ts` pins the
+new fields.
+
+### For the owner
+
+- Should the home's and the profit report's branch profit subtract these losses (today they are sales figures:
+  they do not move)?
+- A given-back operation's cost is the package's price at the approval; if the provider's price changed between its
+  success and the approval, the difference is a settlement entry (answer 1).
 
 ## Stored margin an entry (DB.12)
 
