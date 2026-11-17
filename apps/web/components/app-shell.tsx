@@ -26,6 +26,7 @@ import {
   Radio,
   ListChecks,
   ScrollText,
+  ShieldAlert,
   TrendingUp,
   Users,
   Wallet,
@@ -152,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [flyout, setFlyout] = useState<{ top: number; label: string; items?: NavItem[] } | null>(null);
-  const { ready, failed, retrying, retry, me, initialName, initialBalance } = useDesk();
+  const { ready, failed, retrying, retry, me, initialName, initialBalance, refresh: refreshMe } = useDesk();
   const { reachable } = useConnection();
   const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
   const pageTitle = usePageTitleValue();
@@ -183,6 +184,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     wide.addEventListener('change', onChange);
     return () => wide.removeEventListener('change', onChange);
   }, [mobileOpen]);
+
+  // A new alert's notice (system monitor M.7) raises the sidebar's alert count: `me` is read again when it arrives.
+  const freshAlert = fresh?.kind === 'system.alert' ? fresh.id : '';
+  useEffect(() => {
+    if (freshAlert) void refreshMe();
+  }, [freshAlert, refreshMe]);
 
   async function openNotice(row: NoticeRow) {
     if (!row.read) await markRead(row.id);
@@ -331,11 +338,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      // The system monitor (spec 2026-11-17-system-monitor, D1): the branch owner's alone. The alerts page joins it in
-      // its own slice.
+      // The system monitor (spec 2026-11-17-system-monitor, D1): the branch owner's alone. «الإنذارات» carries the open
+      // alerts not yet seen (`me.openAlerts`), as «المهام» carries the open tasks.
       title: t.navDevSecurity,
       items: [
         { label: t.navSystemStatus, href: '/system', icon: Gauge, layers: ['branch'], owner: true },
+        { label: t.navAlerts, href: '/system/alerts', icon: ShieldAlert, layers: ['branch'], owner: true, count: me?.openAlerts ?? 0 },
         { label: t.navRequestLog, href: '/system/requests', icon: ScrollText, layers: ['branch'], owner: true },
         { label: t.navErrors, href: '/system/errors', icon: Bug, layers: ['branch'], owner: true },
       ],
