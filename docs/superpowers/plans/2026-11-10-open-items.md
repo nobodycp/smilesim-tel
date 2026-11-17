@@ -50,6 +50,11 @@ started, piece by piece, before that; each part gets its own spec then.
   account, nobody is told, and the owner cannot see or lift it. Wanted: a timed lock of the account when a
   cracking attempt is under way, by its own design (how long, what the account's owner and the branch see, who may
   unlock, what a locked account's open sessions do).
+- [ ] **The server log prints a crash as it is.** `platform/api-exception.filter.ts` writes a 5xx's raw message and
+  stack to the process log (`logger.error(error.stack ?? error.message)`). An error's message can carry a value of
+  the request (seen in the M.4 crash spec of the system monitor, 2026-11-17: a secret sent in a body appeared in
+  the test's log output). The stored `RequestError` row is filtered (`errorReport`); the process log is not. To
+  decide in this pass: filter that line the same way, at the cost of less to read when debugging.
 - [ ] **The full check of the system** after the client's features: security, limits, and whatever the business
   logic left open.
 
