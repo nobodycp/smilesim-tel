@@ -20,7 +20,7 @@ Then, each with the owner's values or word:
 - [ ] **DB.8 Capped counts** [CONTRACT].
 - [ ] **DB.9 The tree read once a request and kept out of transactions** [LOCK].
 - [ ] **DB.13 Retention** [UNIQUE for the outbox].
-- [ ] **DB.14 Request-log indexes.**
+- [x] **DB.14 Request-log indexes**; the route figures from duration counts; the rollup is an open item. (78bb02a9)
 - [ ] **DB.15 Settings:** pool, time limits, fill factors.
 
 Last, money, each with its ADR:
