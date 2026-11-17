@@ -23,11 +23,6 @@ export function accountTone(frozen: boolean): Tone {
   return frozen ? 'warning' : 'success';
 }
 
-/** A notice: unread wants attention, read is quiet. */
-export function noticeTone(read: boolean): Tone {
-  return read ? 'muted' : 'warning';
-}
-
 /** Something that is on or off: for sale, enabled, a grant allowed. Off is danger. */
 export function onOffTone(on: boolean): Tone {
   return on ? 'success' : 'danger';

@@ -9,12 +9,6 @@ export function accountLabel(login: string, name?: string | null): string {
   return full && full !== login ? `${login} (${full})` : login;
 }
 
-/** `accountLabel` with the session directory filling in a name the caller does not hold. */
-export function useAccountLabel() {
-  const { names } = useDesk();
-  return (login: string, name?: string | null) => accountLabel(login, name ?? names[login]);
-}
-
 /**
  * A reference to an account: the login name, then the full name in parentheses.
  * The name comes from the prop when the row carries it, else from the session directory.

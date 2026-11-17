@@ -152,7 +152,7 @@
   /* One disabled look for every control: `opacity-disabled` (Tailwind migration T6.2). */
   --opacity-disabled: var(--rd-opacity-disabled);
 
-  /* The 4px step: `p-1` = --rd-space-1, `gap-2.5` = --rd-space-2-5, `m-0.5` = --rd-space-0-5, `p-6` = --rd-space-6. */
+  /* The 4px step: every spacing utility is `--spacing` × n (`p-1` 4px, `gap-2.5` 10px, `p-6` 24px). */
   --spacing: var(--rd-space-1);
 
   --z-index-raised: var(--rd-z-raised);
@@ -373,7 +373,6 @@
     --rd-space-3-5: 14px;
     --rd-space-4: 16px;
     --rd-space-5: 20px;
-    --rd-space-6: 24px;
     /* Off-step frame spacing, named at today's value (ADR 0021 D6 a; Tailwind migration T6.3): the pane's inline
        padding and foot, the lede's foot and a pane's tabs' sides (18px); the canvas's inline gutter (28px) and, from
        768px, its top (22px) and foot (56px); its foot under 768px (48px). */

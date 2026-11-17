@@ -1,18 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { layerName } from '../../components/names';
-import { Button } from '../../components/ui/button';
-import { api } from '../../lib/api';
-import type { LayerKey, SessionRuleResult, SessionRuleValues } from '../../lib/api-types';
+import type { SessionRuleResult, SessionRuleValues } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
-import { useApiQuery } from '../../lib/use-api-query';
 import { cn } from '../../lib/cn';
 
 // Session rules (spec 2026-11-08-session-rules): sessions allowed and idle time, per layer (settings) and per account
 // (the user page's «الجلسات»). An empty choice follows the next level: account → layer → default.
 
-const LAYERS: readonly LayerKey[] = ['branch', 'main_agent', 'agent', 'pos'];
 // The server's ranges (apps/api/src/modules/auth/sessions.ts).
 const SESSION_COUNT = { min: 1, max: 10 } as const;
 const SESSION_MINUTES = { min: 15, max: 43200 } as const;
@@ -139,57 +134,4 @@ export function sessionRulesValid(values: SessionRuleValues) {
   const countOk = count === null || (Number.isInteger(count) && count >= SESSION_COUNT.min && count <= SESSION_COUNT.max);
   const minutesOk = minutes === null || (Number.isFinite(minutes) && minutes >= SESSION_MINUTES.min && minutes <= SESSION_MINUTES.max);
   return countOk && minutesOk;
-}
-
-/** Settings, branch owner only: one row per layer. */
-export function LayerSessionRulesPane({ setError, setNote }: { setError: (text: string) => void; setNote: (text: string) => void }) {
-  const { t, apiText } = usePrefs();
-  const rules = useApiQuery(['auth', 'session-rules'], () => api.sessionRules());
-  const [drafts, setDrafts] = useState<Partial<Record<LayerKey, SessionRuleValues>>>({});
-  const [busy, setBusy] = useState<LayerKey | null>(null);
-  const view = rules.data;
-
-  async function save(layer: LayerKey) {
-    if (!view) return;
-    setError('');
-    setNote('');
-    setBusy(layer);
-    const result = await api.setLayerSessionRules(layer, drafts[layer] ?? view.layers[layer]);
-    setBusy(null);
-    if (!result.ok) return setError(apiText(result));
-    setDrafts((current) => ({ ...current, [layer]: undefined }));
-    setNote(t.sessionRulesSaved);
-    await rules.reload();
-  }
-
-  return (
-    // The pane (`.pane`, `.pane-head`, `.pane-body`) stays legacy classes until Tailwind migration T3.3. One row per
-    // layer (settings.css `.session-rules`): the name over its two fields and «حفظ», a hairline under each but the
-    // last; stacked under 641px.
-    <section className="pane">
-      <header className="pane-head"><h2>{t.sessionRulesTitle}</h2></header>
-      <div className="pane-body">
-        <p className="m-0 text-sm text-muted">{t.sessionRulesHint}</p>
-        {view ? (
-          <ul className="m-0 grid list-none gap-3 p-0">
-            {LAYERS.map((layer) => (
-              <li
-                key={layer}
-                className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-end gap-2 border-b border-line pb-3 last:border-b-0 last:pb-0 max-sm:grid-cols-1"
-              >
-                <strong className="col-span-full">{layerName(t, layer)}</strong>
-                <RuleSelects
-                  values={drafts[layer] ?? view.layers[layer]}
-                  fallback={view.defaults}
-                  fallbackLabel={t.followDefault}
-                  onChange={(values) => setDrafts((current) => ({ ...current, [layer]: values }))}
-                />
-                <Button type="button" disabled={busy !== null || !drafts[layer] || !sessionRulesValid(drafts[layer]!)} onClick={() => save(layer)}>{t.save}</Button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-    </section>
-  );
 }

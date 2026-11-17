@@ -182,9 +182,3 @@ export function latinWhen(value: string, precise = false): string {
     : `${pad(date.getHours())}:${pad(date.getMinutes())}`;
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${clock}`;
 }
-
-export function whole(value: string): number | null {
-  if (!/^\d+$/.test(value)) return null;
-  const parsed = Number(value);
-  return Number.isInteger(parsed) ? parsed : null;
-}

@@ -51,11 +51,6 @@ export const CITIES: readonly City[] = [
   { key: 'rahat', ar: 'رهط', en: 'Rahat', he: 'רהט' },
 ];
 
-export function cityLabel(key: string, locale: Locale): string {
-  const city = CITIES.find((row) => row.key === key);
-  return city ? city[locale] : key;
-}
-
 /** The list sorted by the label of the current language. */
 export function citiesFor(locale: Locale): City[] {
   return [...CITIES].sort((a, b) => a[locale].localeCompare(b[locale], locale));
