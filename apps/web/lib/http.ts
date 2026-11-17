@@ -5,6 +5,7 @@ import { reportReach } from './connection';
 import { doorFromHost } from './doors';
 import type { ApiResult } from './api-types';
 import { reloadAt } from './reload-at';
+import { writeEnded, writeStarted } from './write-mark';
 
 const base = () => (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001' : '/api');
 
@@ -18,7 +19,20 @@ function endsSession(status: number, code: string | undefined, message: string):
   return (status === 401 && message === 'يلزم تسجيل الدخول') || (status === 403 && message === 'هذا الحساب ليس لهذا المدخل');
 }
 
+// A write (any method but GET) is counted at its start and its end, so a read shared for a few seconds is never one
+// asked before or during a write (lib/write-mark.ts, useApiQuery).
 export async function request<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<ApiResult<T>> {
+  const write = method !== 'GET' && typeof window !== 'undefined';
+  if (!write) return send<T>(method, path, body, extraHeaders);
+  writeStarted();
+  try {
+    return await send<T>(method, path, body, extraHeaders);
+  } finally {
+    writeEnded();
+  }
+}
+
+async function send<T>(method: string, path: string, body: unknown, extraHeaders: Record<string, string>): Promise<ApiResult<T>> {
   let response: Response;
   const door = typeof window === 'undefined' ? null : doorFromHost(window.location.host);
   const headers: Record<string, string> = { ...extraHeaders };
