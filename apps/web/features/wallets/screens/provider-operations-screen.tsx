@@ -16,23 +16,31 @@ import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
+import { LossBadge } from '../../../components/loss-badge';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
 
 const EMPTY_STATS: ProviderOpStats = { count: 0, cost: 0, monthCost: 0 };
 
+/** A filter the page opens with from its address (`?provider=…&loss=any`: the provider accounts' loss count links here). */
+function asked(name: string): string {
+  return typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get(name) ?? '';
+}
+
 export function ProviderOperationsScreen() {
   const { t } = usePrefs();
-  const [provider, setProvider] = useState('');
+  const [provider, setProvider] = useState(() => asked('provider'));
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
   const [days, setDays] = useState<PeriodDays>(30);
   const from = periodFrom(days);
   const to = '';
   const [match, setMatch] = useState('');
+  // The operations marked as the branch's loss (spec DB.5 P.7): all of them, or one reason.
+  const [loss, setLoss] = useState(() => (['any', 'given_back', 'priced_zero'].includes(asked('loss')) ? asked('loss') : ''));
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
-    `${provider}|${kind}|${q}|${from}|${to}|${match}`,
-    async (cursor) => pick(await api.providerOperations({ provider, kind, q, from, to, match, cursor }), (data) => ({
+    `${provider}|${kind}|${q}|${from}|${to}|${match}|${loss}`,
+    async (cursor) => pick(await api.providerOperations({ provider, kind, q, from, to, match, loss, cursor }), (data) => ({
       ...pageRows(data),
       extra: { stats: data.stats ?? EMPTY_STATS, providers: data.providers ?? [] },
     })),
@@ -48,6 +56,7 @@ export function ProviderOperationsScreen() {
       render: (row) => (
         <span className={kindCellClass}>
           <ReasonTag tone={reasonTone(row.kind)}>{actionName(t, row.kind)}</ReasonTag>
+          <LossBadge loss={row.loss} />
           {/* Same tag as the finance page: the eSIM fee folded into this operation's cost. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
             <Badge variant="muted" dot title={t.esimSaleTagTitle}>
@@ -80,7 +89,7 @@ export function ProviderOperationsScreen() {
     <Desk title={t.navProviderOps} lede={t.providerOpsLede} error="" note="">
       <ReportFilters>
         <Period days={days} onPick={setDays} />
-        <FilterBar loose onClear={() => { setProvider(''); setKind(''); setQ(''); setMatch(''); }} clearLabel={t.clearFilters}>
+        <FilterBar loose onClear={() => { setProvider(''); setKind(''); setQ(''); setMatch(''); setLoss(''); }} clearLabel={t.clearFilters}>
           <label className="filter-search">
             <Search size={16} strokeWidth={1.9} aria-hidden="true" />
             <span className="sr-only">{t.number}</span>
@@ -108,6 +117,15 @@ export function ProviderOperationsScreen() {
               <SelectItem value="pending">{t.matchPending}</SelectItem>
             </Select>
           </label>
+          <label>
+            {t.lossFilter}
+            <Select value={loss} onValueChange={setLoss}>
+              <SelectItem value="">{t.allRows}</SelectItem>
+              <SelectItem value="any">{t.lossAny}</SelectItem>
+              <SelectItem value="given_back">{t.lossGivenBack}</SelectItem>
+              <SelectItem value="priced_zero">{t.lossPricedZero}</SelectItem>
+            </Select>
+          </label>
         </FilterBar>
       </ReportFilters>
       <StatRow>
@@ -115,6 +133,7 @@ export function ProviderOperationsScreen() {
         <Stat label={t.providerCost} value={<Money value={stats.cost} />} meta={<>{t.providerMonth}: <Money value={stats.monthCost} /></>} />
         <Stat tone="success" label={t.matchMatched} value={<span className="text-success">{stats.matched ?? 0}</span>} meta={t.pendingMeta.replace('{n}', String(stats.pending ?? 0))} />
         <Stat tone="danger" label={t.matchDifference} value={<span className={stats.differences ? 'text-danger' : undefined}>{stats.differences ?? 0}</span>} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
+        <Stat tone="danger" label={t.providerLosses} value={<span className={stats.losses ? 'text-danger' : undefined}>{stats.losses ?? 0}</span>} />
       </StatRow>
       <Pane>
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 9 }} />

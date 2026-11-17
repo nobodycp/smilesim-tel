@@ -1,27 +1,31 @@
 import { expect, test } from '@playwright/test';
 import { chooseOption, serveApi } from './desk';
 
-const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, held: 3500, available: 59500 };
-const lian = { code: 'lian', name: 'ليان', purchases: 2000, payments: 0, settlements: 0, balance: -2000, creditLimit: 0, held: 0, available: -2000 };
+const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, held: 3500, available: 59500, losses: 1 };
+const lian = { code: 'lian', name: 'ليان', purchases: 2000, payments: 0, settlements: 0, balance: -2000, creditLimit: 0, held: 0, available: -2000, losses: 0 };
 
 // Provider accounts (roadmap N7): the branch sees its balance with each provider and records payments and the credit.
 test('the branch reads its provider accounts, opens one, and records a payment and a settlement', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     'GET /provider-accounts': () => ({ body: { rows: [sky, lian], totals: { balance: 11000, held: 3500, owed: 2000 } } }),
     'GET /provider-accounts/sky': () => ({ body: { summary: sky, capped: false, ledger: [
-      { id: 'x1', at: '2026-11-05T00:00:00.000Z', kind: 'payment', amount: 20000, balanceAfter: 13000, note: 'دفعة', msisdn: '', packageName: '', actorLoginName: 'admin' },
-      { id: 'o1', at: '2026-11-01T00:00:00.000Z', kind: 'activate', amount: -3500, balanceAfter: -3500, note: '', msisdn: '0550000001', packageName: '400 جيجا', actorLoginName: '' },
+      { id: 'x1', at: '2026-11-05T00:00:00.000Z', kind: 'payment', amount: 20000, balanceAfter: 13000, note: 'دفعة', msisdn: '', packageName: '', actorLoginName: 'admin', loss: null },
+      { id: 'o1', at: '2026-11-01T00:00:00.000Z', kind: 'activate', amount: -3500, balanceAfter: -3500, note: '', msisdn: '0550000001', packageName: '400 جيجا', actorLoginName: '', loss: 'given_back' },
     ] } }),
     'POST /provider-accounts/sky/entries': () => ({ body: { ok: true } }),
   });
   await page.goto('http://admin.localhost:3910/provider-accounts');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   await expect(page.getByTestId('stat-row').getByTestId('stat').nth(1)).toContainText('20.00 ₪');
+  // Paid at the provider, not charged to the point of sale (spec DB.5 P.7): sky's one loss links to the operations list.
+  await expect(page.getByRole('link', { name: '1' })).toHaveAttribute('href', '/provider-operations?provider=sky&loss=any');
   await page.getByRole('link', { name: 'سكاي' }).click();
   await expect(page).toHaveURL(/\/provider-accounts\/sky$/);
   await expect(page.getByTestId('stat-row').getByTestId('stat').nth(3)).toContainText('595.00 ₪');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('دفعة');
+  await expect(page.getByTestId('data-table').locator('tbody tr').nth(1).getByTestId('loss-badge')).toHaveText('خسارة: أُعيد المبلغ');
+  await expect(page.getByRole('link', { name: /1 عمليات بخسارة/ })).toHaveAttribute('href', '/provider-operations?provider=sky&loss=any');
 
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dialog = page.getByRole('dialog');

@@ -510,8 +510,16 @@ export type ActivityRow = {
   subjectKind: string;
   subjectRef: string;
 };
-/** `matched`, `differences`, `pending`, `differenceAmount`: the simulated matching (spec E), over the dated rows. */
-export type ProviderOpStats = { count: number; cost: number; monthCost: number; matched?: number; differences?: number; pending?: number; differenceAmount?: number };
+/**
+ * Why an operation the provider was paid for charged the point of sale nothing (spec DB.5 P.7): the money was given
+ * back after the provider's success, or the package was sold at 0. The branch's loss; the branch alone reads it.
+ */
+export type ProviderLoss = 'given_back' | 'priced_zero';
+/**
+ * `matched`, `differences`, `pending`, `differenceAmount`: the simulated matching (spec E), over the dated rows.
+ * `losses`: the operations of the window marked as the branch's loss (P.7).
+ */
+export type ProviderOpStats = { count: number; cost: number; monthCost: number; matched?: number; differences?: number; pending?: number; differenceAmount?: number; losses?: number };
 export type ProviderOpRow = {
   id: string;
   at: string;
@@ -524,6 +532,8 @@ export type ProviderOpRow = {
   cost: number;
   /** The eSIM fee inside this operation's cost, when it sold or issued an eSIM. */
   esimPrice: number | null;
+  /** The branch's loss on it, and why (P.7); null for every other operation. */
+  loss: ProviderLoss | null;
   /** Matching, simulated until real providers are connected (spec E). */
   matchSource?: 'api' | 'statement';
   matchState?: 'matched' | 'difference' | 'pending';
@@ -556,6 +566,8 @@ export type FinanceRow = {
   packagePrice: number | null;
   /** The eSIM fee inside `amount`, when the sale was an eSIM. */
   esimPrice: number | null;
+  /** For the branch: the provider was paid and the point of sale charged nothing, and why (P.7); null otherwise. */
+  loss: ProviderLoss | null;
   note: string;
 };
 /** What an immediate activation hands back: the line as the provider issued it. */
@@ -819,9 +831,13 @@ export type ProviderAccount = {
   code: string; name: string; purchases: number; payments: number; settlements: number;
   balance: number; creditLimit: number; alertFloor: number; held: number; available: number;
   matchSource?: 'api' | 'statement'; matchEveryDays?: number; lastMatchedAt?: string | null; matchOverdue?: boolean; openDifferences?: number;
+  /** Its operations it was paid for and the point of sale was not charged for, ever (P.7). */
+  losses: number;
 };
 export type ProviderLedgerRow = {
   id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLoginName: string;
+  /** An operation marked as the branch's loss, and why (P.7); null for a payment, a settlement and every other operation. */
+  loss: ProviderLoss | null;
 };
 export type ProviderAccountDetail = { summary: ProviderAccount; ledger: ProviderLedgerRow[]; capped: boolean };
 

@@ -10,7 +10,7 @@ const summary = { balance: 24806, ceiling: 0, held: 0, unlimited: false, moneyIn
 const entry = {
   id: 'e1', at: '2026-11-06T16:27:00.000Z', loginName: 'pos1', layer: 'pos', actorLoginName: 'pos1', kind: 'activate', amount: -3800,
   balanceBefore: 30000, balanceAfter: 26200, msisdn: '0550000001', companyName: 'سلكوم', packageName: '150 جيجا', packagePrice: 3800,
-  esimPrice: null, note: '', margin: 300,
+  esimPrice: null, note: '', margin: 300, loss: null,
 };
 
 // «المالية» is a statement only (spec 2026-11-09-admin-review, 1): no wallet cards, the table first, the CSV of the

@@ -41,6 +41,16 @@ export function ProviderAccountsScreen() {
         : row.matchSource === 'api' ? t.matchSourceApi : row.lastMatchedAt ? <bdi dir="ltr">{latinWhen(row.lastMatchedAt)}</bdi> : t.matchNever,
     },
     { key: 'differences', header: t.matchOpenDifferences, num: true, sortValue: (row) => row.openDifferences ?? 0, render: (row) => (row.openDifferences ? <Badge variant="danger" dot>{row.openDifferences}</Badge> : '0') },
+    // Paid at the provider, not charged to the point of sale (spec DB.5 P.7): each one is looked at, from the operations list.
+    {
+      key: 'losses',
+      header: t.providerLosses,
+      num: true,
+      sortValue: (row) => row.losses,
+      render: (row) => (row.losses
+        ? <Link className={ROW_LINK} href={`/provider-operations?provider=${encodeURIComponent(row.code)}&loss=any`}><Badge variant="danger" dot>{row.losses}</Badge></Link>
+        : '0'),
+    },
   ];
   return (
     <Desk title={allowed ? t.providerAccounts : ''} lede={t.providerAccountsLede} error={read.error} note="">
@@ -50,7 +60,7 @@ export function ProviderAccountsScreen() {
         <Stat icon="tasks" tone="warning" label={t.held} value={data ? <Money value={data.totals.held} /> : '—'} meta={t.heldHint} />
       </StatRow>
       <Pane>
-        <DataTable columns={columns} rows={data?.rows ?? []} rowKey={(row) => row.code} loading={!read.loaded} failed={read.error} onRetry={() => void read.reload()} empty={t.noRows} keepHead skeleton={{ rows: 3, columns: 7 }} />
+        <DataTable columns={columns} rows={data?.rows ?? []} rowKey={(row) => row.code} loading={!read.loaded} failed={read.error} onRetry={() => void read.reload()} empty={t.noRows} keepHead skeleton={{ rows: 3, columns: 8 }} />
       </Pane>
     </Desk>
   );

@@ -2,6 +2,7 @@
 
 import { DateField } from '../../../components/date-field';
 import { Coins } from 'lucide-react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -9,7 +10,9 @@ import { Desk, Money, Pane, actionName, latinWhen } from '../../../components/de
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
+import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { LossBadge } from '../../../components/loss-badge';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { CsvLink } from '../../reports/report-kit';
@@ -104,7 +107,10 @@ export function ProviderAccountScreen() {
       key: 'kind',
       header: t.movement,
       render: (row) => (
-        <span className={cn(TAG, row.kind === 'payment' ? TAG_TONE.payment : row.kind === 'settlement' ? TAG_TONE.settlement : TAG_TONE.other)}>{kindName(row.kind)}</span>
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className={cn(TAG, row.kind === 'payment' ? TAG_TONE.payment : row.kind === 'settlement' ? TAG_TONE.settlement : TAG_TONE.other)}>{kindName(row.kind)}</span>
+          <LossBadge loss={row.loss} />
+        </span>
       ),
     },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
@@ -153,6 +159,12 @@ export function ProviderAccountScreen() {
           {t.to}
           <DateField value={to} onChange={(next) => setTo(next)} />
         </label>
+        {/* Paid at the provider, not charged to the point of sale (spec DB.5 P.7): the count, linking to the list of them. */}
+        {summary?.losses ? (
+          <Link className="no-underline" href={`/provider-operations?provider=${encodeURIComponent(summary.code)}&loss=any`}>
+            <Badge variant="danger" dot>{t.providerLossesCount.replace('{n}', String(summary.losses))}</Badge>
+          </Link>
+        ) : null}
       </FilterBar>
       <Pane>
         <DataTable columns={columns} rows={read.data?.ledger ?? []} rowKey={(row) => row.id} loading={!read.loaded} failed={read.error} onRetry={() => void read.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 7 }} />

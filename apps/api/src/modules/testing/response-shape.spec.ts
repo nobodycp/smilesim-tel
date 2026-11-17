@@ -7,6 +7,7 @@ import { companies } from '../catalog/shipped/shipped-catalog';
 import { ApiFacade } from './api-facade';
 import { encodeCursor } from '../platform/paging';
 import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settlement.rules';
+import { PROVIDER_LOSSES } from '../wallets/provider-cost';
 import { RequestLogRepository } from '../monitoring/request-log.repository';
 import { RequestLogService } from '../monitoring/request-log.service';
 import type { RequestLogWriter } from '../monitoring/request-log.writer';
@@ -719,6 +720,15 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toContain(`export type ApplyReason = ${APPLY_ERRORS.map((reason) => `'${reason}'`).join(' | ')};`);
     // No read of a decision declares an eSIM code.
     for (const body of [typeBody(source, 'DecisionRecord'), typeBody(source, 'DecisionStanding'), typeBody(source, 'TaskOperationState'), waiting]) expect(body).not.toMatch(/esimQr|esimCode:/);
+  });
+
+  // Spec DB.5 P.7: the loss mark, an addition to four answers (`provider-loss.db.spec.ts` pins what the API answers).
+  it('the loss mark: ProviderLoss, and the field on FinanceRow, ProviderOpRow, ProviderLedgerRow and ProviderAccount', () => {
+    expect(source).toContain(`export type ProviderLoss = ${PROVIDER_LOSSES.map((loss) => `'${loss}'`).join(' | ')};`);
+    for (const name of ['FinanceRow', 'ProviderOpRow']) expect(typeBody(source, name)).toMatch(/\n {2}loss: ProviderLoss \| null;/);
+    expect(typeBody(source, 'ProviderLedgerRow')).toMatch(/\n {2}loss: ProviderLoss \| null;/);
+    expect(typeBody(source, 'ProviderAccount')).toMatch(/\n {2}losses: number;/);
+    expect(source).toMatch(/export type ProviderOpStats = \{[^}]*\blosses\?: number[^}]*\};/);
   });
 
   it('the request log: RequestLogRow, RouteFigures, RequestLogSummary and the list envelope', () => {
