@@ -30,6 +30,7 @@ export { isUniqueViolation } from './prisma-errors';
 export { PrismaService } from './prisma.service';
 export { RESOURCE_CONTROLLER_PREFIXES } from './route-prefixes';
 export { MAX_AGOROT, PeriodQuery, agorot, code, dataUrl, id, isOn, loginName, optionalAgorot, optionalText, positiveAgorot, providerHint, queryCursor, queryDay, queryFlag, queryOneOf, queryText, text } from './schemas';
+export { normalizeArabic } from './normalize-arabic';
 export { asciiDigits, searchTerms } from './search';
 export type { SearchTerms } from './search';
 export { isSealed, open, seal, secretsKey } from './secret-box';

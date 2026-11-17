@@ -6,6 +6,7 @@ import { accountLabel } from './account-name';
 import { cn } from '../lib/cn';
 import { api } from '../lib/api';
 import { everyAccount } from '../lib/directory';
+import { normalizeArabic } from '../lib/normalize-arabic';
 import { usePrefs } from '../lib/prefs';
 import { sharedKeys } from '../lib/query';
 import { useApiQuery } from '../lib/use-api-query';
@@ -78,9 +79,10 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
       if (stop) return;
       const next: Hit[] = [];
       if (users) {
+        // The rule the users page's server search reads (lib/normalize-arabic.ts): «احمد» finds «أحمد».
+        const folded = normalizeArabic(needle);
         for (const row of users) {
-          const login = row.loginName.toLowerCase();
-          if (!row.nickname.includes(needle) && !login.includes(needle.toLowerCase())) continue;
+          if (!normalizeArabic(row.nickname).includes(folded) && !normalizeArabic(row.loginName).includes(folded)) continue;
           next.push({
             key: `user-${row.loginName}`,
             href: `/users?q=${encodeURIComponent(needle)}`,

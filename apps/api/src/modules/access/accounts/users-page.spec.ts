@@ -20,6 +20,21 @@ describe('usersPage', () => {
     expect(usersPage(rows, { layer: 'nobody' }).total).toBe(5);
   });
 
+  it('matches Arabic names whatever the hamza, ta marbuta, marks or tatweel, and Latin whatever the case (plan DB.7)', () => {
+    const names = [row('a1', 'agent', 'أحمد'), row('a2', 'agent', 'فاطمة'), row('a3', 'agent', 'مُحمّد'), row('a4', 'agent', 'مصطفى'), row('Pos_X', 'pos', 'نقطة ٣')];
+    const found = (q: string) => usersPage(names, { q }).items.map((item) => item.loginName);
+    expect(found('احمد')).toEqual(['a1']);
+    expect(found('إحمد')).toEqual(['a1']);
+    expect(found('فاطمه')).toEqual(['a2']);
+    expect(found('محمد')).toEqual(['a3']);
+    expect(found('محـمد')).toEqual(['a3']);
+    expect(found('مصطفي')).toEqual(['a4']);
+    expect(found('نقطه 3')).toEqual(['Pos_X']);
+    expect(found('pos_x')).toEqual(['Pos_X']);
+    // Before DB.7 each of these found nothing: the match was the text as typed.
+    expect(found('سعيد')).toEqual([]);
+  });
+
   it('reads on from the cursor, page after page, and from the right place when the last row is gone', () => {
     const first = usersPage(rows, {}, 2);
     expect(first.items.map((item) => item.loginName)).toEqual(['owner', 'ma1']);

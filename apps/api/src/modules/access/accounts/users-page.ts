@@ -1,8 +1,8 @@
-import { encodeKeyCursor, keyCursor } from '../../platform';
+import { encodeKeyCursor, keyCursor, normalizeArabic } from '../../platform';
 
 // The users list and the directory, paged by the server. The list is ordered by layer (branch, main agent, agent, point of sale)
-// and then by login name, the order the desk always drew; `q` matches the login or the full name as typed, and
-// `layer` keeps one layer. Pure: the service hands it the accounts the actor may see.
+// and then by login name, the order the desk always drew; `q` matches the login or the full name, both sides read
+// through `normalizeArabic` (plan DB.7: «احمد» finds «أحمد», case aside), and `layer` keeps one layer. Pure: the service hands it the accounts the actor may see.
 
 export const USERS_PAGE = 50;
 /** The directory's rows are a few short fields, read whole by the pickers: a larger page, still bounded. */
@@ -33,11 +33,11 @@ function readCursor(cursor: string | undefined) {
 }
 
 export function usersPage<T extends Row>(rows: T[], filter: UsersFilter, size = USERS_PAGE) {
-  const needle = (filter.q ?? '').trim();
+  const needle = normalizeArabic(filter.q ?? '');
   const layer = USER_LAYERS.find((value) => value === filter.layer);
   const matching = rows
     .filter((row) => !layer || row.layer === layer)
-    .filter((row) => !needle || row.nickname.includes(needle) || row.loginName.includes(needle))
+    .filter((row) => !needle || normalizeArabic(row.nickname).includes(needle) || normalizeArabic(row.loginName).includes(needle))
     .sort((a, b) => compare({ rank: rank(a.layer), login: a.loginName }, { rank: rank(b.layer), login: b.loginName }));
   const after = readCursor(filter.cursor);
   const start = after ? matching.findIndex((row) => compare({ rank: rank(row.layer), login: row.loginName }, after) > 0) : 0;
