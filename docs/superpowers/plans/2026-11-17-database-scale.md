@@ -6,9 +6,9 @@ DB.1–DB.16 here. One slice = one commit, ticked with its hash. Marks: [MONEY],
 
 First, no money writes:
 
-- [ ] **DB.1 Indexes for the newest-first order** (lines, wallet entries, tasks; the partial sales index).
-- [ ] **DB.2 Foreign-key and lookup indexes**; `taskNoteSent` filters the text key its index serves.
-- [ ] **DB.3 The cursor's `AND` form** in `platform/paging.ts`, pinned by its spec.
+- [x] **DB.1 Indexes for the newest-first order** (lines, wallet entries, tasks; the partial sales index). (2ae5a2b8)
+- [x] **DB.2 Foreign-key and lookup indexes**; `taskNoteSent` filters the text key its index serves. (d71a7236)
+- [x] **DB.3 The cursor's `AND` form** in `platform/paging.ts`, pinned by its spec. (717a5b6f; map be4d64b1)
 - [ ] **DB.4 The health watch and the provider books** read what they need, once.
 - [ ] **DB.10 The branch sends no `posId IN` list.**
 - [ ] **DB.6 Search:** `pg_trgm`, the digits/names split, Arabic-Indic digits.
