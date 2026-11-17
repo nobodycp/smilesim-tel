@@ -82,6 +82,25 @@ export class ProviderOperationsRepository {
     return db.outboxMessage.create({ data: { topic, aggregateId, sequence, payload: { operationId: aggregateId } } });
   }
 
+  /**
+   * Deletes up to `limit` of the operations' outbox messages that were published before `before` and whose
+   * operation is applied (plan DB.13, ADR 0024). `appliedAt` is written only on a `succeeded` or `failed` operation,
+   * and neither moves again (`canMove`): every message is written after a guarded move out of `requested`,
+   * `pending` or `unknown`, so no later verdict can reach the insert whose unique key the deleted row held, and the
+   * settlement of a message that comes again finds the operation applied and does nothing. A message still
+   * unpublished, or of an operation not applied (waiting, unknown, an exception, a verdict not acted on), is kept.
+   * One statement; answers the rows deleted.
+   */
+  deleteAppliedOutbox(db: Db, before: Date, limit: number): Promise<number> {
+    return db.$executeRaw`
+      DELETE FROM "OutboxMessage" WHERE "id" IN (
+        SELECT m."id" FROM "OutboxMessage" m JOIN "ProviderOperation" o ON o."id" = m."aggregateId"
+        WHERE m."topic" IN (${OPERATION_REQUESTED}, ${OPERATION_SETTLED}) AND m."publishedAt" < ${before}
+          AND o."appliedAt" IS NOT NULL AND o."status" IN ('succeeded', 'failed')
+        LIMIT ${limit}
+      )`;
+  }
+
   operationById(db: Db, id: string) {
     return db.providerOperation.findUnique({ where: { id } });
   }

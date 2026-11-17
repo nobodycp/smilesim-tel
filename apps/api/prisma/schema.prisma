@@ -816,6 +816,8 @@ model Notice {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+  // The daily purge walks notices by age, every account at once (plan DB.13: read ones after 180 days, all after 365).
+  @@index([createdAt])
   // Whether a task's note was already sent (`taskNoteSent`) has an expression index Prisma cannot state:
   // `Notice_kind_taskId` on (kind, payload->>'taskId') (migration `20261117160000_lookup_indexes`).
 }
@@ -833,6 +835,8 @@ model LineCountSnapshot {
   updatedAt    DateTime @updatedAt
 
   @@id([userId, day])
+  // The daily purge deletes the days older than 400, every account at once (plan DB.13).
+  @@index([day])
 }
 
 // Office identity: one row (id = 1) the branch owner edits from /branding.

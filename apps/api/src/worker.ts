@@ -5,6 +5,10 @@ import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
 import { purgeActivity } from './modules/auditing/activity-log';
+import { purgeSessions } from './modules/auth/session-retention';
+import { purgeNotices } from './modules/notifications/notice-retention';
+import { purgeOutbox } from './modules/providers/integration/operations/outbox-retention';
+import { purgeLineSnapshots } from './modules/reporting/desk/line-snapshot-retention';
 import { DeploymentSendGate } from './modules/providers/integration/dispatch/dispatch-gate';
 import { dispatchSettings } from './modules/providers/integration/dispatch/dispatch-policy';
 import { buildAdapters } from './modules/providers/integration/dispatch/provider-adapters';
@@ -75,11 +79,22 @@ export async function run(): Promise<void> {
 
   const purge = async () => {
     const prisma = createPrismaClient();
-    try {
-      const removed = await purgeActivity(prisma);
-      if (removed > 0) log.log(`activity purge: ${removed}`);
-    } catch (error) {
-      log.error(`activity purge: ${reason(error)}`);
+    // The retention of each table (plan DB.13, `platform/retention.ts`), each in its own try, so a failure of one
+    // does not stop the others. Counts only, never a row's content.
+    const retention: [string, () => Promise<string | null>][] = [
+      ['activity', async () => { const n = await purgeActivity(prisma); return n > 0 ? `${n}` : null; }],
+      ['notice', async () => { const n = await purgeNotices(prisma); return n.read + n.unread > 0 ? `${n.read} read, ${n.unread} unread` : null; }],
+      ['session', async () => { const n = await purgeSessions(prisma); return n > 0 ? `${n}` : null; }],
+      ['outbox', async () => { const n = await purgeOutbox(prisma); return n > 0 ? `${n}` : null; }],
+      ['line-count', async () => { const n = await purgeLineSnapshots(prisma); return n > 0 ? `${n}` : null; }],
+    ];
+    for (const [table, run] of retention) {
+      try {
+        const counts = await run();
+        if (counts) log.log(`${table} purge: ${counts}`);
+      } catch (error) {
+        log.error(`${table} purge: ${errorCode(error)}`);
+      }
     }
     // The system monitor's tables (M.8): its own try, so a failure of either purge does not stop the other. Counts only.
     try {

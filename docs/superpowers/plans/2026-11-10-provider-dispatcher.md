@@ -38,4 +38,4 @@ not pushed, not deployed; migrations applied to a throwaway test database only.
 1. A provider status check on the gateway and its use for `unknown`.
 2. A branch screen listing unknown operations, with the verdict buttons (`resolveUnknown`).
 3. The first real adapter, and `recordIn` inside the activation's transaction (ADR 0017 "Wiring an activation").
-4. Pruning published outbox rows; counters for unknown and failed operations.
+4. Counters for unknown and failed operations. (Pruning published outbox rows: done by database plan DB.13, ADR 0024.)

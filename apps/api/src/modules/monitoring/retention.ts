@@ -1,4 +1,5 @@
 import type { Prisma } from '../../generated/prisma/client';
+import { inBatches } from '../platform';
 import { CLOSED_ALERT_RETENTION_DAYS, PURGE_BATCH_ROWS, REQUEST_LOG_RETENTION_DAYS } from './thresholds';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -11,16 +12,6 @@ export function monitoringPurgeBefore(now: Date = new Date()): { requests: Date;
     requests: new Date(now.getTime() - REQUEST_LOG_RETENTION_DAYS * DAY_MS),
     alerts: new Date(now.getTime() - CLOSED_ALERT_RETENTION_DAYS * DAY_MS),
   };
-}
-
-/** Runs one bounded delete until it removes fewer rows than its bound; answers the rows removed in all. */
-async function inBatches(deleteSome: (limit: number) => Promise<number>, batch: number): Promise<number> {
-  let removed = 0;
-  for (;;) {
-    const count = await deleteSome(batch);
-    removed += count;
-    if (count < batch) return removed;
-  }
 }
 
 /**
