@@ -93,7 +93,8 @@ or alone.
 
 A rule looks at the last minutes of the request log and opens an **alert** when it is passed. An alert says what
 happened, where, by whom, how many times, since when, and links to the rows that caused it. It stays **open**
-until the owner marks it seen, or 30 minutes pass without the rule being passed again.
+until 30 minutes pass without the rule being passed again; the owner marking it seen takes it out of the sidebar's
+count and does not close it (it is still happening).
 
 | Alert | Rule (first values, D6) |
 |---|---|
@@ -109,6 +110,16 @@ until the owner marks it seen, or 30 minutes pass without the rule being passed 
 | Slow | the 95th percentile of all requests over 2 s for 5 min |
 
 The rules run every 30 s in the worker (one place, whatever the number of API copies).
+
+As built (M.6, reviewed 2026-11-17), three points the table does not say:
+
+- The two rules over a share ("the system is failing" by its 5xx share, "slow") need at least 20 requests in their
+  window, so one crash or one slow report on a quiet system opens nothing.
+- PostgreSQL being down cannot be written while it is down: the alert is written by the first round after it
+  answers again, with the time it was down.
+- **The worker runs the rules, so a worker that is down warns of nothing, itself included.** The status page still
+  shows it (the API reads the heartbeat), the sidebar count does not. To close in the security pass or earlier: the
+  API raising that one alert itself.
 
 **How the owner hears of it (D4):** a notice in the bell that is there today (`Notice`, live through the stream),
 the count on the sidebar section, and the page. One notice an alert, not one a request. SMS, e-mail or WhatsApp
