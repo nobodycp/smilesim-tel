@@ -13,7 +13,10 @@ async function bootstrap() {
   // Before anything is opened: a production process with unsafe settings does not start (ADR 0016).
   assertProductionConfig(wholeEnv());
   // The default JSON limit is 100 KB; a 768px logo plus its dark copy (PUT /branding) needs more.
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  // `forceCloseConnections`: on a stop the open connections are closed with the server. Without it a notice stream
+  // (one endless request a tab) keeps the server from closing, and the process, its modules already destroyed, stays
+  // until it is killed: the API was down for as long as a tab was open (seen on the running copy, 2026-11-17).
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, forceCloseConnections: true });
   app.disable('x-powered-by');
   app.use(securityHeaders());
   // JSON only: a form posted by another page has no body the API reads (review 2026-11-10, S8).

@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { RATE_LIMIT_SIGN_IN } from './rate-limit.middleware';
@@ -154,3 +156,15 @@ describe('the request log middleware', () => {
     }
   });
 });
+
+// The waiting rows are written when the process is told to stop: `main.ts` turns the shutdown hooks on for that.
+// With the hooks on and nothing else, a stop destroyed the modules and then waited for every open connection, and a
+// notice stream never ends: the process stayed, serving nothing, until it was killed (seen on the running copy).
+describe('the API stops when it is told to, open streams or not', () => {
+  it('main.ts turns the shutdown hooks on and closes the open connections with the server', () => {
+    const main = readFileSync(join(__dirname, 'main.ts'), 'utf8');
+    expect(main).toContain('app.enableShutdownHooks();');
+    expect(main).toContain('forceCloseConnections: true');
+  });
+});
+
