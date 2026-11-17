@@ -25,15 +25,33 @@ import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { CopyValue } from '../../lines/line-details';
 import { ReportFilters } from '../../reports/report-kit';
 import type { RequestLogFilters } from '../api';
-import { CELL_SUB, PANE_HEAD, PANE_TITLE } from '../kit';
+import { CELL_SUB, PANE_HEAD, PANE_TITLE, routeText } from '../kit';
 import { useSystemOwner } from '../use-system-owner';
 
 // The filters in the address (`?status=5xx&route=/v1/lines/:id`). `status` is a class of answers here; the API also
-// takes one status (`404`), which a link may carry and the menu then shows as its own choice.
-const FILTER_KEYS = ['status', 'route', 'account', 'ip', 'slower', 'from', 'to'] as const;
+// takes one status (`404`), which a link may carry and the menu then shows as its own choice. `from` / `to` are days
+// from the date fields, or two moments from an alert's link (`2026-11-17T10:02:00.000Z`), which the API takes as they
+// are and the page says in a line under the filters.
+const FILTER_KEYS = ['status', 'code', 'method', 'route', 'path', 'unmatched', 'account', 'ip', 'slower', 'from', 'to'] as const;
 const STATUS_CLASSES = ['2xx', '4xx', '5xx'] as const;
 const STATUS = /^([1-5]xx|[1-5]\d\d)$/;
+/*
+ * The «مسارات غير معروفة» toggle chip: the filter panel's chip rules draw it, as «السالب فقط» on the balances report.
+ */
+const TOGGLE_CHIP = 'm-0 min-h-9 max-touch:min-h-11';
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MOMENT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/;
+const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+// The API's error codes, as the copy names them; the two the web makes up itself (no answer, no code) are not sent.
+const WEB_ONLY_CODES = new Set(['NETWORK', 'GENERIC']);
+
+function isMoment(value: string) {
+  return MOMENT.test(value) && !Number.isNaN(new Date(value).getTime());
+}
+
+function dayOrMoment(value: string) {
+  return DAY.test(value) || isMoment(value) ? value : '';
+}
 
 /*
  * The request log's cells: Latin values (method, pattern, path, code, address) are `bdi dir="ltr"` inside the RTL page;
@@ -43,6 +61,12 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * stretched, the empty and failed blocks' `min-height: 100%` would resolve against the row and overflow the pane.
  */
 const ROUTE_GRID = 'grid items-start gap-3 xl:grid-cols-2 [.desk_&]:flex-none';
+
+/*
+ * A table's `bdi` stays on one line (the table's own rule); on a phone's card a long route breaks instead (after a
+ * slash first, `routeText`), so the card never runs past its column (the errors page's rule).
+ */
+const PHONE_WRAP = 'wrap-anywhere max-sm:whitespace-normal';
 
 function ms(value: number) {
   return <bdi dir="ltr">{value.toLocaleString('en')} ms</bdi>;
@@ -75,15 +99,20 @@ function RequestLogDesk() {
   const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
   const status = STATUS.test(filters.status) ? filters.status : '';
   const slower = /^\d{1,6}$/.test(filters.slower) && Number(filters.slower) <= 600_000 ? filters.slower : '';
-  const from = DAY.test(filters.from) ? filters.from : '';
-  const to = DAY.test(filters.to) ? filters.to : '';
+  const from = dayOrMoment(filters.from);
+  const to = dayOrMoment(filters.to);
+  const method = (METHODS as readonly string[]).includes(filters.method) ? filters.method : '';
+  const codes = Object.keys(t.errors).filter((name) => !WEB_ONLY_CODES.has(name));
+  const code = codes.includes(filters.code) ? filters.code : '';
+  const unmatched = filters.unmatched === '1' ? '1' : '';
   const [route, setRoute] = useDebouncedField(filters.route, useCallback((value: string) => setFilters({ route: value }), [setFilters]));
+  const [path, setPath] = useDebouncedField(filters.path, useCallback((value: string) => setFilters({ path: value }), [setFilters]));
   const [account, setAccount] = useDebouncedField(filters.account, useCallback((value: string) => setFilters({ account: value }), [setFilters]));
   const [ip, setIp] = useDebouncedField(filters.ip, useCallback((value: string) => setFilters({ ip: value }), [setFilters]));
   const [slowerText, setSlowerText] = useDebouncedField(slower, useCallback((value: string) => setFilters({ slower: value }), [setFilters]));
 
-  const query: RequestLogFilters = { status, route: filters.route, account: filters.account, ip: filters.ip, slowerThan: slower, from, to };
-  const key = `${status}|${filters.route}|${filters.account}|${filters.ip}|${slower}|${from}|${to}`;
+  const query: RequestLogFilters = { status, code, method, route: filters.route, path: filters.path, unmatched, account: filters.account, ip: filters.ip, slowerThan: slower, from, to };
+  const key = `${status}|${code}|${method}|${filters.route}|${filters.path}|${unmatched}|${filters.account}|${filters.ip}|${slower}|${from}|${to}`;
   const list = usePaged<RequestLogRow>(key, async (cursor) => pick(await api.requestLog({ ...query, cursor }), pageRows));
   const summary = useApiQuery(['api', 'system', 'requests', 'summary', key], () => api.requestLogSummary(query));
   const { run, busy } = useAction({
@@ -93,7 +122,7 @@ function RequestLogDesk() {
   });
 
   function clearFilters() {
-    setFilters({ status: '', route: '', account: '', ip: '', slower: '', from: '', to: '' });
+    setFilters({ status: '', code: '', method: '', route: '', path: '', unmatched: '', account: '', ip: '', slower: '', from: '', to: '' });
   }
 
   function clearLog() {
@@ -139,21 +168,27 @@ function RequestLogDesk() {
     },
   ];
 
-  // A route of the two lists filters the log by its pattern; the requests no route matched have none to filter by.
+  // A route of the two lists filters the log by its method and pattern; the requests no route matched (an empty
+  // pattern) by `unmatched=1` and the method.
   const routeColumns: Column<RouteFigures>[] = [
     {
       key: 'route',
       header: t.reqLogRoute,
-      kind: 'wrap',
       render: (row) => {
         const label = (
-          <span>
-            <bdi dir="ltr" className="font-semibold">{row.method}</bdi> {row.route ? <bdi dir="ltr" className="wrap-anywhere">{row.route}</bdi> : <span className="text-muted">{t.reqLogUnknownRoute}</span>}
+          <span className="whitespace-normal">
+            <bdi dir="ltr" className="font-semibold">{row.method}</bdi> {row.route ? <bdi dir="ltr" className={PHONE_WRAP}>{routeText(row.route)}</bdi> : <span className="text-muted">{t.reqLogUnknownRoute}</span>}
           </span>
         );
-        if (!row.route) return label;
+        const filter = row.route ? { method: row.method, route: row.route, unmatched: '' } : { method: row.method, route: '', unmatched: '1' };
         return (
-          <Button type="button" variant="link" className="h-auto p-0 text-start" aria-label={`${t.reqLogByRoute}: ${row.method} ${row.route}`} onClick={() => setFilters({ route: row.route })}>
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto max-w-full p-0 text-start whitespace-normal"
+            aria-label={`${t.reqLogByRoute}: ${row.method} ${row.route || t.reqLogUnknownRoute}`}
+            onClick={() => setFilters(filter)}
+          >
             {label}
           </Button>
         );
@@ -193,16 +228,34 @@ function RequestLogDesk() {
             </Select>
           </label>
           <label>
+            {t.reqLogMethod}
+            <Select value={method} onValueChange={(next) => setFilters({ method: next })}>
+              <SelectItem value="">{t.allRows}</SelectItem>
+              {METHODS.map((name) => <SelectItem key={name} value={name}><bdi dir="ltr">{name}</bdi></SelectItem>)}
+            </Select>
+          </label>
+          <label>
             {t.reqLogRoute}
             <input dir="ltr" aria-label={t.reqLogRoute} value={route} maxLength={200} onChange={(event) => setRoute(event.target.value)} />
+          </label>
+          <label>
+            {t.reqLogPathContains}
+            <input dir="ltr" aria-label={t.reqLogPathContains} value={path} maxLength={200} onChange={(event) => setPath(event.target.value)} />
+          </label>
+          <label>
+            {t.reqLogCode}
+            <Select value={code} onValueChange={(next) => setFilters({ code: next })}>
+              <SelectItem value="">{t.allRows}</SelectItem>
+              {codes.map((name) => <SelectItem key={name} value={name}><bdi dir="ltr">{name}</bdi></SelectItem>)}
+            </Select>
           </label>
           <label>
             {t.reqLogAccount}
             <input dir="ltr" aria-label={t.reqLogAccount} value={account} maxLength={60} onChange={(event) => setAccount(event.target.value)} />
           </label>
           <label>
-            {t.reqLogAddress}
-            <input dir="ltr" aria-label={t.reqLogAddress} value={ip} maxLength={64} onChange={(event) => setIp(event.target.value)} />
+            {t.reqLogAddressStarts}
+            <input dir="ltr" aria-label={t.reqLogAddressStarts} placeholder="10.0." value={ip} maxLength={64} onChange={(event) => setIp(event.target.value)} />
           </label>
           <label>
             {t.reqLogSlowerThan}
@@ -210,14 +263,27 @@ function RequestLogDesk() {
           </label>
           <label>
             {t.from}
-            <DateField value={from} onChange={(next) => setFilters({ from: next })} />
+            <DateField value={from.slice(0, 10)} onChange={(next) => setFilters({ from: next })} />
           </label>
           <label>
             {t.to}
-            <DateField value={to} onChange={(next) => setFilters({ to: next })} />
+            <DateField value={to.slice(0, 10)} onChange={(next) => setFilters({ to: next })} />
+          </label>
+          <label className={TOGGLE_CHIP}>
+            <input type="checkbox" checked={unmatched === '1'} onChange={(event) => setFilters({ unmatched: event.target.checked ? '1' : '', ...(event.target.checked ? { route: '' } : {}) })} />
+            <span>{t.reqLogUnmatched}</span>
           </label>
         </FilterBar>
       </ReportFilters>
+      {isMoment(from) || isMoment(to) ? (
+        <p className="m-0 text-md text-muted" role="status" data-testid="request-log-range">
+          {t.reqLogRange.split(/(\{from\}|\{to\})/).map((piece, index) => {
+            if (piece === '{from}') return <bdi key={index} dir="ltr" className="tabular-nums">{from ? latinWhen(from, true) : '—'}</bdi>;
+            if (piece === '{to}') return <bdi key={index} dir="ltr" className="tabular-nums">{to ? latinWhen(to, true) : '—'}</bdi>;
+            return piece;
+          })}
+        </p>
+      ) : null}
       <StatRow>
         <Stat label={t.reqLogCount} value={figures ? figures.count.toLocaleString('en') : '—'} meta={t.reqLogCountMeta} />
         <Stat
