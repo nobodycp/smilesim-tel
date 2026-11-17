@@ -385,6 +385,17 @@ SELECT "providerId", count(*) FROM "WalletEntry" WHERE "providerLoss" IS NOT NUL
 
 ⏳ لم يُنشر ولم يُشغَّل على أي خادم. على قاعدة التطوير المحلية لا توجد حالة (لا قرار إرجاع، ولا عملية بسعر صفر): الأمر طبع `P.7: marked priced_zero 0; given back written 0; sold at 0 left unmarked 0`، والتشغيل الثاني لم يكتب شيئاً. 🔐
 
+**الخسائر في أرقام ربح الفرع (المواصفة DB.5 P.8، 2026-11-18).** ربح الفرع في الصفحة الرئيسية وتقرير الأرباح (وملفه) وملخّص المالية صار **صافياً بعد طرح** العمليات المعلَّمة بخسارة في الفترة نفسها؛ عدد المبيعات وحجمها لا يتغيّران، وأرقام الوكلاء ونقاط البيع لا تتغيّر. القراءة الثانية للخسائر تخدمها فهرس جزئي جديد. ما يلزم في التحديث:
+
+1. مع النشر تُطبَّق `20261118000000_provider_loss_created_at`: فهرس جزئي `WalletEntry_loss_createdAt` على (`createdAt` DESC) حيث `providerLoss` ليس فارغاً. `CREATE INDEX` عادي (الجدول صغير، والصفوف المعلَّمة قليلة). لا أمر يُشغَّل بعده: أمر `provider-ledger-backfill` (P.7) يحفظ `branchMargin` على كل صف معلَّم.
+2. الفحص (الجواب المتوقَّع `1`):
+```sql
+SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_loss_createdAt';
+```
+   `scripts/backup/rehearse-upgrade.sh` يفحصه مع بقية الفهارس الجزئية (11).
+
+ما يراه المكتب: «دليل تسليم العميل» §12. ⏳ لم يُنشر على أي خادم.
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال

@@ -361,4 +361,29 @@ The spec section "Paid at the provider, not charged to the point of sale (DB.5 P
   `P.7: marked priced_zero 0; given back written 0; sold at 0 left unmarked 0`, purchases unchanged (alloha 25500,
   aren 5000, sky 49288), the CHECK still validated; a second run wrote nothing.
 - **Open for the owner:** whether the home's and the profit report's branch profit should also subtract these
-  losses (today they are sales figures and do not).
+  losses (today they are sales figures and do not). **Answered 2026-11-17: yes** — «الخسارة تبيّن في الداش بورد عندي
+  خسائر، وتنطرح من الربح أكيد»; built as P.8 below.
+
+### As built (P.8)
+
+The owner's answer of 2026-11-17: the losses show on the home and are subtracted from the branch's profit. The spec
+section "Branch losses in the profit figures (DB.5 P.8)" holds the rule; in short:
+
+- **For the branch only**, every profit figure is the sales' and refunds' `branchMargin` plus the `branchMargin`
+  (− cost) of the marked operations of the same period, bucket or group: the home's profit, its trend and period
+  cards, the period before, its top packages / companies / providers (a group with losses and no sale ranks with count
+  0), the profit report's rows and totals and its CSV, and the finance summary. Counts, volumes, activations and
+  refunds stay the sales'. The providers report already counted the losses (P.7), so the home's top providers and it
+  now agree.
+- **New fields:** `sales.losses` `{ count, amount }` and `PulseTotals.losses` on `GET /v1/overview`; `losses` and
+  `lossAmount` on each profit row and the totals of `GET /v1/finance/profits` (and two CSV columns, the branch's only);
+  `losses` `{ count, amount }` on `GET /v1/finance/summary`. Amounts positive agorot; null / 0 for another layer.
+- **How it is read:** a second read beside the sales read (which keeps its predicate and the partial sales index),
+  `WHERE "providerLoss" IS NOT NULL` and the period, served by the new partial index `WalletEntry_loss_createdAt`
+  (`createdAt` DESC), migration `20261118000000_provider_loss_created_at`; run for the branch only, so a lower layer's
+  home, report and summary send no extra statement. Over all time the trend starts at the older of the first sale and
+  the first loss (`firstLoss`), so every loss is on the axis. Nothing is added to a write path.
+- **Web:** the branch's home profit card reads the net profit and its meta line names the losses (danger link to
+  `/provider-operations?loss=any`) or «لا خسائر»; «الأرباح» has a «خسائر» column and the losses under its profit stat.
+- **Proof:** `reporting/desk/branch-losses.db.spec.ts` (each figure for the branch, the lower layers unchanged with no
+  loss read, the index chosen by `EXPLAIN` on two years of marked rows); `response-shape.spec.ts` pins the web types.
