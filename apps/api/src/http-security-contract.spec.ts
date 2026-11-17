@@ -158,11 +158,12 @@ const AUTH_CONTROLLERS = ['modules/auth/account-security.controller.ts', 'module
 const named = (route: Route) => `${route.method} ${route.path}`;
 
 describe('the write routes, as the source has them', () => {
-  it('reads the real controllers: twenty-four of them, their prefixes, and the write routes of each', () => {
+  it('reads the real controllers: twenty-five of them, their prefixes, and the write routes of each', () => {
     // Twenty-two since slice R.8: the priced shelf and the sell prices have a controller of their own in pricing
     // (`PackageShelfController`); the routes are the same three, under the same prefix. Twenty-four since slice
     // R.A: `/auth` is three controllers (sign-in, the account on itself, the owner on others), the same 35 routes.
-    expect(controllers).toHaveLength(24);
+    // Twenty-five since the system monitor M.2: the request log's controller (monitoring).
+    expect(controllers).toHaveLength(25);
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(35);
     // The empty prefix is the health probe: one read, no write.
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'v1']);
@@ -172,8 +173,8 @@ describe('the write routes, as the source has them', () => {
     const count = (prefix: string) => writes.filter((route) => route.controller === prefix).length;
     // Between R.11b and R.11c every resource write was served twice (also under `/office/`): 179 then, 103 now.
     // 78 since package plan D.3a (`PUT packages/:code/durations`, `DELETE packages/:code/durations/:id`; the pin
-    // was left at 76 then and is corrected here).
-    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 78, auth: 26, branding: 1, all: 105 });
+    // was left at 76 then and corrected in system monitor M.1); 79 since M.2 (`DELETE system/requests`).
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 79, auth: 26, branding: 1, all: 106 });
   });
 
   it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
@@ -215,18 +216,19 @@ describe('the duplicate guard and the idempotency key', () => {
 
   it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
     // A move made on the real routes: every `/v1/` route given another path. The guard is decided by the
-    // controller, so the same 78 are guarded and nothing new is unguarded.
+    // controller, so the same 79 are guarded and nothing new is unguarded.
     const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
     const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/v1\//, '/elsewhere/') }));
     expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
-    expect(moved.filter(guarded)).toHaveLength(78);
+    expect(moved.filter(guarded)).toHaveLength(79);
   });
 });
 
 describe('authorization and activity follow the controller, not the path', () => {
   it('every resource controller resolves the actor, but the one that starts and ends an entered session', () => {
     const resources = controllers.filter((controller) => controller.prefix === 'v1');
-    expect(resources).toHaveLength(19);
+    // Twenty since the system monitor M.2 (the request log's controller).
+    expect(resources).toHaveLength(20);
     const without = resources.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
     // `handoff` has no session yet and `leave` ends one: the service checks the session itself.
     expect(without).toEqual(['modules/access/accounts/account-session.controller.ts']);

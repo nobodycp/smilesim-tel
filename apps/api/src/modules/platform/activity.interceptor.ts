@@ -21,11 +21,13 @@ export class ActivityInterceptor implements NestInterceptor {
     if (!meta) return next.handle();
     const req = context.switchToHttp().getRequest<Request>();
     const event = { action: meta.action, subjectKind: meta.subjectKind, subjectRef: meta.subject(req) };
-    const record = (result: 'ok' | 'fail', reason: string) => this.activity.record(gateOf(req), req.ip ?? '', event, result, reason);
+    const record = (result: 'ok' | 'fail', reason: string, draft = event) => this.activity.record(gateOf(req), req.ip ?? '', draft, result, reason);
     const res = context.switchToHttp().getResponse<Response>();
+    // A subject known only from the answer (`answered`) replaces the request's when the route answers.
+    const answeredEvent = (value: unknown) => (meta.answered ? { ...event, subjectRef: meta.answered(value) } : event);
     return next.handle().pipe(
       // A repeat of a request already answered did nothing: the act is on record once, from the first time.
-      mergeMap((value) => (res.getHeader(REPLAY_HEADER) ? [value] : from(record('ok', '').then(() => value)))),
+      mergeMap((value) => (res.getHeader(REPLAY_HEADER) ? [value] : from(record('ok', '', answeredEvent(value)).then(() => value)))),
       catchError((error: unknown) =>
         error instanceof ApiFailure
           ? from(record('fail', error.code)).pipe(mergeMap(() => throwError(() => error)))

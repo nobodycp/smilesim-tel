@@ -42,6 +42,7 @@ export function setupOpenApi(app: INestApplication): void {
       .addTag('tasks', 'Branch tasks')
       .addTag('sales', 'Lines, activation, settlement, decisions, transfers')
       .addTag('reporting', 'Reports, home, overview')
+      .addTag('monitoring', 'The system monitor: the request log (branch owner only)')
       .build(),
   );
 

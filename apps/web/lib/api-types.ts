@@ -819,3 +819,45 @@ export type NewPackage = {
   modes: Record<string, 'auto' | 'manual' | 'off' | 'inherit'>;
   addons: { name: string; price: number }[];
 };
+
+/**
+ * One row of the request log (system monitor, `GET /v1/system/requests`, branch owner only): one HTTP request.
+ * `route` is empty when no route matched; `operatorLoginName` names who entered, for an entered session, else null.
+ */
+export type RequestLogRow = {
+  id: string;
+  at: string;
+  durationMs: number;
+  method: string;
+  route: string;
+  path: string;
+  status: number;
+  code: string;
+  actorLoginName: string;
+  layer: string;
+  operatorLoginName: string | null;
+  ip: string;
+  userAgent: string;
+  requestId: string;
+  bytesIn: number;
+  bytesOut: number;
+};
+/** The request log's list answer. */
+export type RequestLogPage = Page<RequestLogRow>;
+/** One route of the summary: its calls and the median and 95th percentile of its durations, in milliseconds. */
+export type RouteFigures = {
+  method: string;
+  route: string;
+  calls: number;
+  medianMs: number;
+  p95Ms: number;
+};
+/** `GET /v1/system/requests/summary`: under the same filters as the list. `errorRate` is the share of 5xx, 0 to 1. */
+export type RequestLogSummary = {
+  count: number;
+  refused: number;
+  failed: number;
+  errorRate: number;
+  slowest: RouteFigures[];
+  busiest: RouteFigures[];
+};

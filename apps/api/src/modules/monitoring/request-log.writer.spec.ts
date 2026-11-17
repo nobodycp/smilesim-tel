@@ -3,7 +3,7 @@ import type { RequestLogRepository } from './request-log.repository';
 
 // The request log's writer (spec 2026-11-17-system-monitor, slice M.1): batches, the timer, a database that refuses,
 // and the account named from a session's hash. Over a stand-in repository; the real one is followed into PostgreSQL
-// by `request-log.middleware.spec.ts`.
+// by `request-log.db.spec.ts`.
 
 const draft = (n: number, extra: Partial<RequestLogDraft> = {}): RequestLogDraft => ({
   at: new Date(), durationMs: 1, method: 'GET', route: '/v1/x', path: `/v1/x/${n}`, status: 200, code: '',

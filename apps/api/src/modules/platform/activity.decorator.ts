@@ -9,6 +9,11 @@ export type ActivityMeta = {
   subjectKind: string;
   /** The subject reference written into the log, read from the request. */
   subject: (req: Request) => string;
+  /**
+   * For a route whose subject is only known once it answered (how many rows a clearing removed): the subject read
+   * from the answer, in place of `subject`, when the route answers. A refusal keeps `subject`.
+   */
+  answered?: (answer: unknown) => string;
 };
 
 /** A route parameter, as the subject of the logged action. */
@@ -29,8 +34,14 @@ const none = (): string => '';
  * Logs the route in the activity log: once with `ok` after it answers, or with `fail` and the refusal code
  * when it throws an ApiFailure. See ActivityInterceptor.
  */
-export const Activity = (action: ActivityAction, subjectKind: string, subject: (req: Request) => string = none) =>
-  SetMetadata(ACTIVITY_KEY, { action, subjectKind, subject } satisfies ActivityMeta);
+export const Activity = (action: ActivityAction, subjectKind: string, subject: (req: Request) => string = none, answered?: (answer: unknown) => string) =>
+  SetMetadata(ACTIVITY_KEY, { action, subjectKind, subject, ...(answered ? { answered } : {}) } satisfies ActivityMeta);
+
+/** An answer's field, as the subject of the logged action (`@Activity(…, none, answerField('removed'))`). */
+export const answerField = (name: string) => (answer: unknown): string => {
+  const value = (answer as Record<string, unknown> | null | undefined)?.[name];
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+};
 
 export const NO_ACTIVITY_KEY = 'audit:no-activity';
 

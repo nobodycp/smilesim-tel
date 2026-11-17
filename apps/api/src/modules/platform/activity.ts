@@ -89,6 +89,8 @@ export const ACTIVITY_ACTIONS = [
   'user_contact',
   // An eSIM code was answered by a line's or a task's detail (ADR 0019, D17: `line.esim_read`).
   'esim_read',
+  // The owner cleared the request log (system monitor M.2); the subject is how many rows it removed.
+  'request_log_clear',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

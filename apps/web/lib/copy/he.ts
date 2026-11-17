@@ -786,6 +786,7 @@ export const he: Copy = {
   decWaitingSince: "ממתין מאז",
   decHeldAmount: "הסכום המוחזק",
   actEsimRead: 'צפייה בקוד eSIM',
+  actRequestLogClear: 'ניקוי יומן הבקשות',
   actProviderMode: 'מצב ספק',
   actCompanyAdd: 'הוספת חברה',
   actPackageAdd: 'הוספת חבילה',

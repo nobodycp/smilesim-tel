@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import { Controller, Get, INestApplication, Param, Post, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Controller, Delete, Get, INestApplication, Param, Post, UseFilters, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { Activity, param } from './activity.decorator';
+import { Activity, answerField, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { ActivityRecorder } from './activity';
 import { ApiFailure } from './api-failure';
@@ -28,6 +28,12 @@ class ProbeController {
   @Activity('fund', 'account')
   broken() {
     throw new Error('bug');
+  }
+
+  @Delete('cleared')
+  @Activity('request_log_clear', 'request_log', undefined, answerField('removed'))
+  cleared() {
+    return { removed: 7 };
   }
 
   @Get('quiet')
@@ -61,6 +67,12 @@ describe('ActivityInterceptor and ApiExceptionFilter', () => {
     expect(response.status).toBe(201);
     expect(response.body).toEqual({ ok: true, login: 'pos1' });
     expect(events()).toEqual([[{ action: 'user_package', subjectKind: 'user', subjectRef: 'pos1:pkg9' }, 'ok', '']]);
+  });
+
+  it('takes the subject from the answer when the route says so (how many rows a clearing removed)', async () => {
+    const response = await request(app.getHttpServer()).delete('/t/cleared');
+    expect(response.status).toBe(200);
+    expect(events()).toEqual([[{ action: 'request_log_clear', subjectKind: 'request_log', subjectRef: '7' }, 'ok', '']]);
   });
 
   it('turns a refusal into its status and { message, code }, and logs it as fail with the code', async () => {

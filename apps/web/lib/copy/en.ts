@@ -786,6 +786,7 @@ export const en: Copy = {
   decWaitingSince: "Waiting since",
   decHeldAmount: "Amount held",
   actEsimRead: 'Viewed an eSIM code',
+  actRequestLogClear: 'Request log cleared',
   actProviderMode: 'Provider mode',
   actCompanyAdd: 'Company added',
   actPackageAdd: 'Package added',

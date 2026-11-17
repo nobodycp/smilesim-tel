@@ -1,138 +1,16 @@
 import 'reflect-metadata';
-import { Controller, Get, Module, Param, Post, UseInterceptors, type INestApplication, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
+import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { DoorMiddleware } from './door.middleware';
-import { OriginMiddleware } from './origin.middleware';
-import { RATE_LIMIT_SIGN_IN, RateLimitMiddleware } from './rate-limit.middleware';
-import { REQUEST_ID_HEADER, RequestLogMiddleware } from './request-log.middleware';
-import { AUTH_STORE } from './modules/auth/auth.store';
+import { RATE_LIMIT_SIGN_IN } from './rate-limit.middleware';
+import { REQUEST_ID_HEADER } from './request-log.middleware';
 import { hashSessionToken } from './modules/auth/session-token';
-import { MemoryAuthStore } from './modules/auth/testing/memory-auth.store';
-import { ActorInterceptor } from './modules/access/actor.interceptor';
-import { ActorResolver } from './modules/access/actor-resolver';
-import type { Actor } from './modules/access/types';
-import { API_PROVIDERS } from './modules/platform/api-providers';
-import { fail } from './modules/platform/api-failure';
-import { RESOURCE_CONTROLLER_PREFIXES } from './modules/platform/route-prefixes';
 import { RequestLogWriter, type RequestLogDraft } from './modules/monitoring/request-log.writer';
-import { RequestLogRepository } from './modules/monitoring/request-log.repository';
-import { UnitOfWork } from './modules/platform/unit-of-work';
-import { NOTICE_WRITER } from './modules/platform/notices';
-import { createPrismaClient } from './db';
+import type { RequestLogRepository } from './modules/monitoring/request-log.repository';
+import { leaked, probeApp, sendSecrets } from './request-log.fixture';
 
 // The request log's middleware (spec 2026-11-17-system-monitor, slice M.1): what reaches a row and what never does.
-// The writer is a stand-in that keeps the drafts it is handed; `request-log.writer.db.spec.ts` follows the same
-// requests into PostgreSQL.
-
-/** Values a request can carry that must never reach the log, sent every way a request carries them. */
-const SECRETS = {
-  password: 'Pa55-word-NEVER-LOGGED',
-  code: '771234',
-  esimCode: 'LPA:1$smdp.example$ESIM-NEVER-LOGGED',
-  session: 'sid-token-NEVER-LOGGED',
-  home: 'home-token-NEVER-LOGGED',
-  query: 'query-token-NEVER-LOGGED',
-  bearer: 'bearer-NEVER-LOGGED',
-  apiKey: 'api-key-NEVER-LOGGED',
-  idempotency: 'idem-key-NEVER-LOGGED',
-};
-
-const OWNER: Actor = { id: 'owner-1', loginName: 'branch', nickname: 'branch', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'owner-1', impersonating: false };
-const ENTERED: Actor = { id: 'pos-1', loginName: 'pos1', nickname: 'pos1', layer: 'pos', isBranchOwner: false, grants: [], operatorId: 'owner-1', impersonating: true };
-
-/** Sessions the stand-in resolver knows: the owner's own, and the owner inside a point of sale. */
-const resolver = {
-  actor: async (gate: { sessionId?: string }) => {
-    if (gate.sessionId === 'owner-sid' || gate.sessionId === SECRETS.session) return OWNER;
-    if (gate.sessionId === 'entered-sid') return ENTERED;
-    return fail(401, 'LOGIN_REQUIRED');
-  },
-};
-
-@Controller(RESOURCE_CONTROLLER_PREFIXES)
-@UseInterceptors(ActorInterceptor)
-class SignedInProbe {
-  @Get('probe/:id')
-  read(@Param('id') id: string) {
-    return { id };
-  }
-
-  @Post('probe/:id')
-  write() {
-    return { ok: true };
-  }
-
-  @Get('forbidden')
-  forbidden() {
-    return fail(403, 'FORBIDDEN');
-  }
-
-  @Get('crash')
-  crash() {
-    throw new Error('a bug');
-  }
-}
-
-@Controller(RESOURCE_CONTROLLER_PREFIXES)
-class OpenProbe {
-  @Get('open')
-  open() {
-    return { ok: true };
-  }
-
-  @Get('notices/stream')
-  stream() {
-    return { ok: true };
-  }
-}
-
-@Controller()
-class HealthProbe {
-  @Get('health')
-  health() {
-    return { ok: true };
-  }
-}
-
-/** The app's four middleware in the app's order, over probe routes, with the given writer. */
-async function probeApp(writer: Partial<RequestLogWriter> | null, extra: unknown[] = []) {
-  @Module({
-    controllers: [SignedInProbe, OpenProbe, HealthProbe],
-    providers: [
-      RequestLogMiddleware, OriginMiddleware, RateLimitMiddleware, DoorMiddleware, ...API_PROVIDERS,
-      { provide: AUTH_STORE, useValue: new MemoryAuthStore() },
-      { provide: ActorResolver, useValue: resolver },
-      ...(writer ? [{ provide: RequestLogWriter, useValue: writer }] : [RequestLogWriter, RequestLogRepository]),
-      ...(extra as never[]),
-    ],
-  })
-  class ProbeModule implements NestModule {
-    configure(consumer: MiddlewareConsumer) {
-      consumer.apply(RequestLogMiddleware, OriginMiddleware, RateLimitMiddleware, DoorMiddleware).forRoutes('*');
-    }
-  }
-  const moduleRef = await Test.createTestingModule({ imports: [ProbeModule] }).compile();
-  const app: INestApplication = moduleRef.createNestApplication();
-  await app.init();
-  return { app, moduleRef };
-}
-
-/** One write and one read that carry every secret: body, query, cookies, headers. */
-async function sendSecrets(app: INestApplication) {
-  const cookie = `sid=${SECRETS.session}; home=${SECRETS.home}; other=${SECRETS.code}`;
-  const headers = { Cookie: cookie, Authorization: `Bearer ${SECRETS.bearer}`, 'X-Api-Key': SECRETS.apiKey, 'Idempotency-Key': SECRETS.idempotency, 'X-Code': SECRETS.code };
-  const write = await request(app.getHttpServer())
-    .post(`/v1/probe/one?token=${SECRETS.query}&password=${SECRETS.password}`)
-    .set(headers)
-    .send({ password: SECRETS.password, code: SECRETS.code, esimCode: SECRETS.esimCode, nested: { secret: SECRETS.session } });
-  const read = await request(app.getHttpServer()).get(`/v1/probe/two?code=${SECRETS.code}&esim=${encodeURIComponent(SECRETS.esimCode)}`).set(headers);
-  return [write, read];
-}
-
-function leaked(text: string): string[] {
-  return Object.entries(SECRETS).filter(([, value]) => text.includes(value) || text.includes(encodeURIComponent(value))).map(([name]) => name);
-}
+// The writer is a stand-in that keeps the drafts it is handed; `modules/monitoring/request-log.db.spec.ts` follows
+// the same requests into PostgreSQL.
 
 describe('the request log middleware', () => {
   let app: INestApplication;
@@ -274,47 +152,5 @@ describe('the request log middleware', () => {
     } finally {
       await broken.close();
     }
-  });
-});
-
-// The same requests into PostgreSQL through the real writer (PostgreSQL only: see wallet-concurrency.db.spec.ts).
-const url = process.env.TEST_DATABASE_URL;
-const suite = url ? describe : describe.skip;
-
-suite('the request log in PostgreSQL', () => {
-  jest.setTimeout(30_000);
-  const previousUrl = process.env.DATABASE_URL;
-  let app: INestApplication;
-  let writer: RequestLogWriter;
-  let prisma: ReturnType<typeof createPrismaClient>;
-
-  beforeAll(async () => {
-    process.env.DATABASE_URL = url;
-    prisma = createPrismaClient();
-    let moduleRef;
-    ({ app, moduleRef } = await probeApp(null, [UnitOfWork, { provide: NOTICE_WRITER, useValue: {} }]));
-    writer = moduleRef.get(RequestLogWriter);
-  });
-
-  afterAll(async () => {
-    await app.close();
-    await prisma.$disconnect();
-    process.env.DATABASE_URL = previousUrl;
-  });
-
-  it('no secret sent with a request reaches its row', async () => {
-    const answers = await sendSecrets(app);
-    await writer.flush();
-    const ids = answers.map((answer) => answer.headers['x-request-id'] as string);
-    const rows = await prisma.requestLog.findMany({ where: { requestId: { in: ids } }, orderBy: { at: 'asc' } });
-    expect(rows).toHaveLength(2);
-    expect(leaked(JSON.stringify(rows))).toEqual([]);
-    expect(rows.map(({ method, route, path, status }) => ({ method, route, path, status }))).toEqual([
-      { method: 'POST', route: '/v1/probe/:id', path: '/v1/probe/one', status: 201 },
-      { method: 'GET', route: '/v1/probe/:id', path: '/v1/probe/two', status: 200 },
-    ]);
-    // The session the handlers resolved names its account; the cookie itself is nowhere.
-    expect(rows.map((row) => row.actorLoginName)).toEqual(['branch', 'branch']);
-    await prisma.requestLog.deleteMany({ where: { requestId: { in: ids } } });
   });
 });

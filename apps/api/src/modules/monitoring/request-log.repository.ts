@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../generated/prisma/client';
-import { UnitOfWork } from '../platform';
+import { Prisma } from '../../generated/prisma/client';
+import { UnitOfWork, after } from '../platform';
+import type { RequestFilter } from './request-log.rules';
+
+/** One route's figures in the summary: how often it was called and how long it took, in whole milliseconds. */
+export type RouteFigures = { method: string; route: string; calls: number; medianMs: number; p95Ms: number };
+
+/** How many of the summary's slowest and most called routes are named. */
+export const SUMMARY_ROUTES = 5;
+
+type Position = Parameters<typeof after>[0];
 
 /**
  * The database as the request log reads and writes it. One method per query, named for what it returns or changes.
- * No rule and no permission lives here (backend-engineering.mdc 5.1).
+ * No rule and no permission lives here (backend-engineering.mdc 5.1). A filter is turned into a Prisma `where` for
+ * the rows and into SQL for the summary, side by side here, so the two read the same rows.
  */
 @Injectable()
 export class RequestLogRepository {
@@ -25,4 +35,94 @@ export class RequestLogRepository {
       select: { tokenHash: true, kind: true, operatorId: true, user: { select: { id: true, loginName: true, layer: true } } },
     });
   }
+
+  /** The id of the account with this login name, or null. */
+  async accountId(loginName: string): Promise<string | null> {
+    return (await this.uow.prisma.user.findUnique({ where: { loginName }, select: { id: true } }))?.id ?? null;
+  }
+
+  /** The login names of the given accounts, by id (the accounts that entered others, for one page). */
+  loginNames(ids: string[]) {
+    return this.uow.prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, loginName: true } });
+  }
+
+  /** The rows under the filter after the cursor, newest first. */
+  rows(filter: RequestFilter, position: Position, take: number) {
+    return this.uow.prisma.requestLog.findMany({ where: { AND: [whereOf(filter), ...after(position, 'at')] }, orderBy: [{ at: 'desc' }, { id: 'desc' }], take });
+  }
+
+  count(filter: RequestFilter) {
+    return this.uow.prisma.requestLog.count({ where: whereOf(filter) });
+  }
+
+  /** How many rows the filter holds, how many were refused (4xx) and how many failed (5xx): counted by the database. */
+  async totals(filter: RequestFilter): Promise<{ count: number; refused: number; failed: number }> {
+    const [row] = await this.uow.prisma.$queryRaw<{ count: number; refused: number; failed: number }[]>`
+      SELECT count(*)::int AS "count",
+             (count(*) FILTER (WHERE "status" BETWEEN 400 AND 499))::int AS "refused",
+             (count(*) FILTER (WHERE "status" >= 500))::int AS "failed"
+      FROM "RequestLog" WHERE ${sqlOf(filter)}`;
+    return { count: row?.count ?? 0, refused: row?.refused ?? 0, failed: row?.failed ?? 0 };
+  }
+
+  /**
+   * The slowest routes (by their 95th percentile) and the most called, `SUMMARY_ROUTES` of each, with the median and
+   * the 95th percentile of their durations: grouped and ranked by the database (`percentile_cont`, interpolated,
+   * rounded to whole milliseconds). A route is its method and pattern; requests no route matched are one group, `''`.
+   */
+  async routeFigures(filter: RequestFilter): Promise<{ slowest: RouteFigures[]; busiest: RouteFigures[] }> {
+    const rows = await this.uow.prisma.$queryRaw<(RouteFigures & { list: 'slowest' | 'busiest' })[]>`
+      WITH "figures" AS (
+        SELECT "method", "route", count(*)::int AS "calls",
+               round(percentile_cont(0.5) WITHIN GROUP (ORDER BY "durationMs"))::int AS "medianMs",
+               round(percentile_cont(0.95) WITHIN GROUP (ORDER BY "durationMs"))::int AS "p95Ms"
+        FROM "RequestLog" WHERE ${sqlOf(filter)}
+        GROUP BY "method", "route"
+      )
+      (SELECT 'slowest' AS "list", * FROM "figures" ORDER BY "p95Ms" DESC, "medianMs" DESC, "calls" DESC, "route", "method" LIMIT ${SUMMARY_ROUTES})
+      UNION ALL
+      (SELECT 'busiest' AS "list", * FROM "figures" ORDER BY "calls" DESC, "p95Ms" DESC, "route", "method" LIMIT ${SUMMARY_ROUTES})`;
+    const figures = (list: string) => rows.filter((row) => row.list === list).map(({ method, route, calls, medianMs, p95Ms }) => ({ method, route, calls, medianMs, p95Ms }));
+    return { slowest: figures('slowest'), busiest: figures('busiest') };
+  }
+
+  /** Deletes every row of the request log, and nothing else; answers how many. */
+  async clear(): Promise<number> {
+    return (await this.uow.prisma.requestLog.deleteMany({})).count ?? 0;
+  }
 }
+
+/** The filter as Prisma's `where`. */
+function whereOf(filter: RequestFilter): Prisma.RequestLogWhereInput {
+  const and: Prisma.RequestLogWhereInput[] = [];
+  if (filter.status) and.push({ status: filter.status });
+  if (filter.code) and.push({ code: filter.code });
+  if (filter.route !== undefined) and.push({ route: filter.route });
+  if (filter.account) {
+    const { loginName, id } = filter.account;
+    and.push({ OR: [{ actorLoginName: loginName }, ...(id ? [{ actorId: id }, { operatorId: id }] : [])] });
+  }
+  if (filter.ip) and.push({ ip: filter.ip });
+  if (filter.slowerThan !== undefined) and.push({ durationMs: { gt: filter.slowerThan } });
+  if (filter.from) and.push({ at: { gte: filter.from } });
+  if (filter.to) and.push({ at: { lte: filter.to } });
+  return and.length > 0 ? { AND: and } : {};
+}
+
+/** The same filter as SQL, for the queries the database groups and ranks. Values are parameters, never text. */
+function sqlOf(filter: RequestFilter): Prisma.Sql {
+  const and: Prisma.Sql[] = [];
+  if (filter.status) and.push(Prisma.sql`"status" BETWEEN ${filter.status.gte} AND ${filter.status.lte}`);
+  if (filter.code) and.push(Prisma.sql`"code" = ${filter.code}`);
+  if (filter.route !== undefined) and.push(Prisma.sql`"route" = ${filter.route}`);
+  if (filter.account) {
+    const { loginName, id } = filter.account;
+    and.push(id ? Prisma.sql`("actorLoginName" = ${loginName} OR "actorId" = ${id} OR "operatorId" = ${id})` : Prisma.sql`"actorLoginName" = ${loginName}`);
+  }
+  if (filter.ip) and.push(Prisma.sql`"ip" = ${filter.ip}`);
+  if (filter.slowerThan !== undefined) and.push(Prisma.sql`"durationMs" > ${filter.slowerThan}`);
+  if (filter.from) and.push(Prisma.sql`"at" >= ${filter.from}`);
+  if (filter.to) and.push(Prisma.sql`"at" <= ${filter.to}`);
+  return and.length > 0 ? Prisma.join(and, ' AND ') : Prisma.sql`TRUE`;
+}
+

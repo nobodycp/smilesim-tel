@@ -6,6 +6,11 @@ import { hashOnce } from './test-hash';
 import { companies } from '../catalog/shipped/shipped-catalog';
 import { ApiFacade } from './api-facade';
 import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settlement.rules';
+import { RequestLogRepository } from '../monitoring/request-log.repository';
+import { RequestLogService } from '../monitoring/request-log.service';
+import type { RequestLogWriter } from '../monitoring/request-log.writer';
+import type { UnitOfWork } from '../platform/unit-of-work';
+import type { Actor } from '../access/types';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: DeskMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -68,6 +73,12 @@ const catalogPackage = {
   autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: true, autoSim: true,
   allowActivate: true, allowCharge: true, allowDisconnect: true, allowFreeze: true, allowSwitch: true, allowExtend: true, allowRename: true, allowSim: true,
 };
+
+// The request log (system monitor M.2), branch owner only: the list's rows and envelope, and the summary.
+const REQUEST_ROW_KEYS = ['id', 'at', 'durationMs', 'method', 'route', 'path', 'status', 'code', 'actorLoginName', 'layer', 'operatorLoginName', 'ip', 'userAgent', 'requestId', 'bytesIn', 'bytesOut'];
+const REQUEST_LIST_KEYS = ['items', 'nextCursor', 'total'];
+const REQUEST_SUMMARY_KEYS = ['count', 'refused', 'failed', 'errorRate', 'slowest', 'busiest'];
+const ROUTE_FIGURES_KEYS = ['method', 'route', 'calls', 'medianMs', 'p95Ms'];
 
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
@@ -372,6 +383,31 @@ describe('office response shapes', () => {
     expect(where).toEqual({ companyId: { not: null }, enabled: true, forSale: true });
   });
 
+  it('answers the request log and its summary with the pinned keys, and never a session, an id of who entered or a body', async () => {
+    const row = {
+      id: 'r1', at: new Date('2026-11-17T10:00:00Z'), durationMs: 12, method: 'GET', route: '/v1/lines/:id', path: '/v1/lines/abc', status: 200, code: '',
+      actorId: 'pos1', actorLoginName: 'pos1', operatorId: 'admin', layer: 'pos', ip: '127.0.0.1', userAgent: 'agent', requestId: 'q1', bytesIn: 0, bytesOut: 40,
+    };
+    const prisma = {
+      requestLog: { findMany: async () => [row], count: async () => 1 },
+      user: { findMany: async () => [{ id: 'admin', loginName: 'admin' }], findUnique: async () => null },
+      $queryRaw: async (strings: TemplateStringsArray) =>
+        strings.join('').includes('percentile_cont')
+          ? [{ list: 'slowest', method: 'GET', route: '/v1/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }, { list: 'busiest', method: 'GET', route: '/v1/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }]
+          : [{ count: 1, refused: 0, failed: 0 }],
+    };
+    const service = new RequestLogService(new RequestLogRepository({ prisma } as unknown as UnitOfWork), { flush: async () => undefined } as unknown as RequestLogWriter);
+    const owner = { id: 'admin', loginName: 'admin', nickname: 'admin', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as Actor;
+    const list = await service.list(owner, {});
+    expect(keysOf(list)).toEqual(sorted(REQUEST_LIST_KEYS));
+    expect(keysOf(list.items[0])).toEqual(sorted(REQUEST_ROW_KEYS));
+    expect(list.items[0]).toMatchObject({ actorLoginName: 'pos1', operatorLoginName: 'admin', at: '2026-11-17T10:00:00.000Z' });
+    const summary = await service.summary(owner, {});
+    expect(keysOf(summary)).toEqual(sorted(REQUEST_SUMMARY_KEYS));
+    expect(keysOf(summary.slowest[0])).toEqual(sorted(ROUTE_FIGURES_KEYS));
+    expect(keysOf(summary.busiest[0])).toEqual(sorted(ROUTE_FIGURES_KEYS));
+  });
+
   it('answers /v1/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
     const tables = { package: { findMany: async () => [catalogPackage] } };
     const asBranch = await serviceWith(tables);
@@ -500,6 +536,15 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toContain(`export type ApplyReason = ${APPLY_ERRORS.map((reason) => `'${reason}'`).join(' | ')};`);
     // No read of a decision declares an eSIM code.
     for (const body of [typeBody(source, 'DecisionRecord'), typeBody(source, 'DecisionStanding'), typeBody(source, 'TaskOperationState'), waiting]) expect(body).not.toMatch(/esimQr|esimCode:/);
+  });
+
+  it('the request log: RequestLogRow, RouteFigures, RequestLogSummary and the list envelope', () => {
+    expect(declared(typeBody(source, 'RequestLogRow'))).toEqual({ required: sorted(REQUEST_ROW_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'RouteFigures'))).toEqual({ required: sorted(ROUTE_FIGURES_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'RequestLogSummary'))).toEqual({ required: sorted(REQUEST_SUMMARY_KEYS), optional: [] });
+    expect(source).toContain('export type RequestLogPage = Page<RequestLogRow>;');
+    const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]);
+    expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS));
   });
 
   it('SimRules', () => {

@@ -121,6 +121,10 @@ const EXPECTED: [route: string, access: string][] = [
   ['PUT /v1/roles/ID1', 'ynnnnn'],
   ['DELETE /v1/sell-prices/CODE1', 'nnnyyn'],
   ['PUT /v1/sell-prices/CODE1', 'nnnyyn'],
+  // Spec 2026-11-17-system-monitor, D1: the request log is the branch owner's alone, whatever grants staff hold.
+  ['GET /v1/system/requests', 'ynnnnn'],
+  ['GET /v1/system/requests/summary', 'ynnnnn'],
+  ['DELETE /v1/system/requests', 'ynnnnn'],
   ['GET /v1/tasks', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /v1/tasks/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /v1/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec

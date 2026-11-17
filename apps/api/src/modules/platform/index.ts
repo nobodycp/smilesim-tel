@@ -8,7 +8,7 @@ export { createPrismaClient } from '../../db';
 export { DOOR_HOSTS, Layer, expectedLayer } from '../../doors';
 export { ERROR_MESSAGES, errorBody } from '../../errors';
 export type { ErrorCode } from '../../errors';
-export { Activity, NoActivity, bodyField, param } from './activity.decorator';
+export { Activity, NoActivity, answerField, bodyField, param } from './activity.decorator';
 export { ActivityInterceptor } from './activity.interceptor';
 export { ACTIVITY_ACTIONS, ActivityRecorder } from './activity';
 export type { ActivityAction, ActivityDraft } from './activity';

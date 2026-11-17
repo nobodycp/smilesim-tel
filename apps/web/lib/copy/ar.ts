@@ -786,6 +786,7 @@ export const ar = {
   decWaitingSince: "بانتظار منذ",
   decHeldAmount: "المبلغ المحجوز",
   actEsimRead: 'عرض رمز eSIM',
+  actRequestLogClear: 'مسح سجل الطلبات',
   actProviderMode: 'وضع المزود',
   actCompanyAdd: 'إضافة شركة',
   actPackageAdd: 'إضافة رزمة',
