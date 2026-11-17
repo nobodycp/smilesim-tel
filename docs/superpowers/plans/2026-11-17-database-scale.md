@@ -11,8 +11,8 @@ First, no money writes:
 - [x] **DB.3 The cursor's `AND` form** in `platform/paging.ts`, pinned by its spec. (717a5b6f; map be4d64b1)
 - [x] **DB.4 The health watch and the provider books** read what they need, once. (dbab787e; map f3314819)
 - [x] **DB.10 The branch sends no `posId IN` list.** (aa33c40c; map f3314819)
-- [ ] **DB.6 Search:** `pg_trgm`, the digits/names split, Arabic-Indic digits.
-- [ ] **DB.7 Arabic normalisation** for account search.
+- [x] **DB.6 Search:** `pg_trgm`, the digits/names split, Arabic-Indic digits. (1eae8df0; map 28d66409)
+- [x] **DB.7 Arabic normalisation** for account search. (90f0dec0, c60c0981; map 28d66409)
 - [x] **DB.11 SQL aggregates** for the overview's counts, sums and trend: line and task statuses grouped; the sales figures wait for DB.12 (their profit needs the rows). (0f4eaeb9; map f3314819)
 
 Then, each with the owner's values or word:
