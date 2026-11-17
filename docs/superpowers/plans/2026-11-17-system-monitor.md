@@ -74,13 +74,13 @@ warnings. M.8 the upkeep. Each stops at a usable state; the owner may reorder M.
 
 ## Second round (spec sections 5 and 6; owner, 2026-11-17)
 
-- [ ] **M.9 A stopped worker is warned of (API).** A timer in the API (monitoring, stopped with the module) reads
+- [x] **M.9 A stopped worker is warned of (API).** (API `49788a42`) A timer in the API (monitoring, stopped with the module) reads
   the heartbeat every 30 s and opens `service_down` for `worker` past the `down` limit, through the same repository
   and notice as the pass; the worker's own pass does not open a second one. Specs: opens once with several
   checkers, one notice, closes after the worker is back.
-- [ ] **M.10 The server log.** `platform/api-exception.filter.ts` logs `errorReport` and the request id. Spec: a
+- [x] **M.10 The server log.** (API `4584b84c`) `platform/api-exception.filter.ts` logs `errorReport` and the request id. Spec: a
   crash that carries a secret in its message leaves none in the captured log.
-- [ ] **M.11 Versions (API and worker).** `StackVersion` + migration; `monitoring/versions.*`: what is in use on
+- [x] **M.11 Versions (API and worker).** (API and worker `2511a88e`; web pending in M.12) `StackVersion` + migration; `monitoring/versions.*`: what is in use on
   the API side, the daily check in the worker (npm registry, endoflife.date; `VERSION_CHECK`; a time limit a
   call; a failed call keeps the last answer), the notice `system.update`, `GET /v1/system/versions`,
   `POST /v1/system/versions/check`. Handover: the new variable, the two hosts the server calls.
