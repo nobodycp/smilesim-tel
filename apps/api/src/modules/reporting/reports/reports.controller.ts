@@ -1,4 +1,4 @@
-import { PeriodQuery, ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
+import { PeriodQuery, ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES, withExportLimit } from '../../platform';
 import { CursorQuery } from '../../wallets';
 import { BalancesQuery } from './reports.schemas';
 import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
@@ -42,7 +42,7 @@ export class ReportsController {
   @ApiZodQuery(BalancesQuery)
   @ApiErrorResponse(400, 401, 403)
   async balancesExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: BalancesQuery) {
-    return this.csv(res, 'balances', await this.insights.balancesCsv(actor, query));
+    return this.csv(res, 'balances', await withExportLimit(() => this.insights.balancesCsv(actor, query)));
   }
 
   @Get('reports/supply/export')
@@ -50,7 +50,7 @@ export class ReportsController {
   @ApiZodQuery(PeriodQuery)
   @ApiErrorResponse(400, 401, 403)
   async supplyExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: PeriodQuery) {
-    return this.csv(res, 'supply', await this.insights.supplyCsv(actor, query));
+    return this.csv(res, 'supply', await withExportLimit(() => this.insights.supplyCsv(actor, query)));
   }
 
   @Get('reports/providers')

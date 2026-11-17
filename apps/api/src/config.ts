@@ -5,6 +5,9 @@ export const ENV_NAMES = [
   'NODE_ENV',
   'PORT',
   'DATABASE_URL',
+  // The most connections the process's main database pool opens (DB.15): the API's (default 20) or the worker's
+  // (default 10). `db.ts` states every other pool and the time limits.
+  'DATABASE_POOL_MAX',
   'REDIS_URL',
   'WEB_ORIGIN',
   'COOKIE_DOMAIN',
@@ -46,3 +49,18 @@ export function wholeEnv(): Record<string, string | undefined> {
   return process.env;
 }
 
+
+/** The most `DATABASE_POOL_MAX` may ask for: past about 80 connections the office needs PgBouncer, not a bigger pool. */
+export const POOL_MAX_CEILING = 80;
+
+/**
+ * `DATABASE_POOL_MAX` read as a number of connections: `undefined` when it is unset (the process's default is
+ * used), `null` when it is set to anything but a whole number from 1 to `POOL_MAX_CEILING`.
+ */
+export function poolMaxSetting(value: string | undefined): number | null | undefined {
+  const text = value?.trim() ?? '';
+  if (text === '') return undefined;
+  if (!/^\d+$/.test(text)) return null;
+  const count = Number(text);
+  return count >= 1 && count <= POOL_MAX_CEILING ? count : null;
+}

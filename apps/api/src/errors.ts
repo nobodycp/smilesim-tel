@@ -78,6 +78,7 @@ export const ERROR_MESSAGES = {
   // Answers that come from no rule of ours: a body over the limit, and a fault in the server itself.
   TOO_LARGE: 'الطلب أكبر من المسموح',
   METHOD_UNAVAILABLE: 'طريقة التحقق هذه غير متاحة حالياً. المتاح تطبيق المصادقة، أو راجع إدارة الفرع',
+  TOO_SLOW: 'استغرق الطلب وقتاً أطول من المسموح. ضيّق البحث أو الفترة وأعد المحاولة',
   SERVER_ERROR: 'حدث خطأ في الخادم. أعد المحاولة',
 } as const;
 

@@ -19,7 +19,7 @@ const log = logger('ReservationConflicts');
 
 /** The groups as the database holds them: `kind`, the shared value, and the tasks' ids, oldest first. */
 export async function openConflicts(): Promise<ReservationConflict[]> {
-  const prisma = createPrismaClient();
+  const prisma = createPrismaClient('tool');
   try {
     return await prisma.$queryRaw<ReservationConflict[]>`
       SELECT 'serial' AS kind, "iccid" AS value, array_agg("id" ORDER BY "createdAt", "id") AS "taskIds"

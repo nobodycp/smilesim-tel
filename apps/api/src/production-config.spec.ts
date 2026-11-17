@@ -1,4 +1,4 @@
-import { ProductionConfigError, assertProductionConfig, productionConfigProblems, trustedProxyHops } from './production-config';
+import { ProductionConfigError, assertProductionConfig, productionConfigProblems, trustedProxyHops, workerConfigProblems } from './production-config';
 
 const KEY = Buffer.alloc(32, 7).toString('base64');
 const REDIS = 'redis://:redis-password-value@redis:6379';
@@ -56,6 +56,10 @@ describe('production configuration', () => {
     ['TRIAL_SEED', { TRIAL_SEED: 'true' }],
     ['TRIAL_SEED', { TRIAL_SEED: ' TRUE ' }],
     ['TRIAL_SEED_ALLOW_PRODUCTION', { TRIAL_SEED_ALLOW_PRODUCTION: 'true' }],
+    ['DATABASE_POOL_MAX', { DATABASE_POOL_MAX: '0' }],
+    ['DATABASE_POOL_MAX', { DATABASE_POOL_MAX: '81' }],
+    ['DATABASE_POOL_MAX', { DATABASE_POOL_MAX: '2.5' }],
+    ['DATABASE_POOL_MAX', { DATABASE_POOL_MAX: 'twenty' }],
   ])('refuses an unsafe %s (%j)', (name, over) => {
     expect(named(safe(over))).toEqual([name]);
     expect(() => assertProductionConfig(safe(over))).toThrow(ProductionConfigError);
@@ -72,6 +76,11 @@ describe('production configuration', () => {
     }
     expect(message).toContain('Refusing to start: 4 unsafe production setting(s).');
     for (const value of [secret, 'redis-password-value', 'private.example.com', 'on-purpose']) expect(message).not.toContain(value);
+  });
+
+  it('takes a pool size from 1 to 80, or none', () => {
+    for (const value of [undefined, '', '1', '20', ' 80 ']) expect(named(safe({ DATABASE_POOL_MAX: value }))).toEqual([]);
+    for (const value of [undefined, '10', '-1']) expect(workerConfigProblems({ ...safe({ DATABASE_POOL_MAX: value }), DATABASE_URL: 'postgresql://db/smilesim' }).map((problem) => problem.split(':')[0])).toEqual(value === '-1' ? ['DATABASE_POOL_MAX'] : []);
   });
 
   it('reads the proxy hops as a whole number only', () => {

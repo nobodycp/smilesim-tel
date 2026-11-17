@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import { STATEMENT_CANCELLED, isStatementCancelled } from './prisma-errors';
 
 /** What went wrong, as one line for the log: the error's message, never the object. */
 export function reason(error: unknown): string {
@@ -64,6 +65,8 @@ const KNOWN_ERROR_CODES: ReadonlySet<string> = new Set([
  * for a `TimeoutError`, else `unclassified`. Never the message, never the stack, never a code that is not listed.
  */
 export function errorCode(error: unknown): string {
+  // A statement cut by its time limit (DB.15) is logged by PostgreSQL's code, whatever wrapped it.
+  if (isStatementCancelled(error)) return STATEMENT_CANCELLED;
   const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined;
   if (typeof code === 'string' && KNOWN_ERROR_CODES.has(code)) return code;
   if (error instanceof Error && error.name === 'TimeoutError') return 'timeout';

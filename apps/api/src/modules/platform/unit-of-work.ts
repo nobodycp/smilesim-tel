@@ -46,8 +46,14 @@ export class UnitOfWork {
    */
   constructor(@Inject(NOTICE_WRITER) readonly notice: NoticeWriter, @Optional() private readonly db?: PrismaService) {}
 
+  /**
+   * The client to use: the one handed in (the worker's, a spec's), else the API's `PrismaService.client`, asked each
+   * time and not kept, so a CSV export's reads go to the export client (`withExportLimit`, DB.15).
+   */
   get prisma(): PrismaClient {
-    this.prismaClient ??= this.db?.client ?? createPrismaClient();
+    if (this.prismaClient) return this.prismaClient;
+    if (this.db) return this.db.client;
+    this.prismaClient = createPrismaClient();
     return this.prismaClient;
   }
 

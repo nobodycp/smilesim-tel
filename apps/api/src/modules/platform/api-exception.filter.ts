@@ -4,7 +4,7 @@ import { isProduction, isTest } from '../../config';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { ApiFailure } from './api-failure';
 import { errorReport, type ErrorReport } from './log';
-import { isMissingRow, isUniqueViolation } from './prisma-errors';
+import { isMissingRow, isStatementCancelled, isUniqueViolation } from './prisma-errors';
 import { ServerErrorRecorder } from './server-errors';
 
 /** The code a plain HTTP status answers with when nothing more specific is known. */
@@ -89,6 +89,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
     // A write lost a race on a unique column, or its row was gone: a conflict or a miss, not a crash.
     if (isUniqueViolation(error)) return { status: 409, code: 'DUPLICATE_REQUEST' };
     if (isMissingRow(error)) return { status: 404, code: 'NOT_FOUND' };
+    // A statement that ran past its time limit (DB.15: 15 s, an export 90 s) was cancelled by PostgreSQL. A server
+    // error, kept and logged by its code (`57014`); the caller is told the request took too long, not that it broke.
+    // 500 and not 503: the web takes a 502, 503 or 504 for a gateway's answer and would say the server is unreachable.
+    if (isStatementCancelled(error)) return { status: 500, code: 'TOO_SLOW' };
     // body-parser errors carry their own status (400 malformed JSON, 413 too large).
     const status = (error as { status?: unknown; statusCode?: unknown } | null)?.status ?? (error as { statusCode?: unknown } | null)?.statusCode;
     if (typeof status === 'number' && status >= 400 && status < 500) return { status, code: CODE_OF_STATUS[status] ?? 'INVALID' };

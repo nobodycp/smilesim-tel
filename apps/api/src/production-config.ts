@@ -1,6 +1,7 @@
 // What a production process must be told before it starts (ADR 0016). One pure check over the environment, run by
 // main.ts before anything is opened. It names the variable and the rule, never the value.
 
+import { POOL_MAX_CEILING, poolMaxSetting } from './config';
 import { dispatchSettings } from './modules/providers/integration/dispatch/dispatch-policy';
 import { SUPPORTED_ADAPTERS } from './modules/providers/integration/dispatch/adapter-manifest';
 
@@ -61,12 +62,23 @@ export function productionConfigProblems(env: Env): string[] {
     problems.push('PROVIDER_SIMULATION: must be unset or "0"; provider operations are never simulated in production.');
   }
 
+  problems.push(...poolMaxProblems(env));
   problems.push(...dispatchConfigProblems(env));
 
   if (isTrue(env.TRIAL_SEED)) problems.push('TRIAL_SEED: must not be "true"; the trial accounts have a published password.');
   if (isTrue(env.TRIAL_SEED_ALLOW_PRODUCTION)) problems.push('TRIAL_SEED_ALLOW_PRODUCTION: must not be "true"; the trial accounts have a published password.');
 
   return problems;
+}
+
+/**
+ * `DATABASE_POOL_MAX` (DB.15), the same rule for the API and the worker: unset (the API opens at most 20
+ * connections, the worker 10), or a whole number from 1 to 80. A value the process cannot use does not start it.
+ */
+export function poolMaxProblems(env: Env): string[] {
+  return poolMaxSetting(env.DATABASE_POOL_MAX) === null
+    ? [`DATABASE_POOL_MAX: must be unset or a whole number from 1 to ${POOL_MAX_CEILING}; it is the most database connections the process opens.`]
+    : [];
 }
 
 /**
@@ -108,6 +120,7 @@ export function workerConfigProblems(env: Env): string[] {
   if (!database || (database.protocol !== 'postgresql:' && database.protocol !== 'postgres:')) problems.push('DATABASE_URL: must be a postgresql:// address.');
   const simulation = env.PROVIDER_SIMULATION;
   if (simulation !== undefined && simulation !== '' && simulation !== '0') problems.push('PROVIDER_SIMULATION: must be unset or "0"; provider operations are never simulated in production.');
+  problems.push(...poolMaxProblems(env));
   problems.push(...dispatchConfigProblems(env));
   if (Buffer.from(env.SECRETS_KEY ?? '', 'base64').length !== 32) {
     problems.push("SECRETS_KEY: must be 32 random bytes in base64, the same as the API's; the worker opens eSIM codes when it settles an activation, and the providers' credentials when it dispatches.");

@@ -248,6 +248,66 @@ Measured with Prisma's query log (`sales/sale-lock-tree.db.spec.ts`): from the w
 transaction an activation sends 11 statements and an extension 12, before and after; before, one of them read every
 account, after it reads the path's rows by id.
 
+## Database settings (DB.15)
+
+The owner's values (second round below): a statement limit of 15 s for the API, 30 s idle in a transaction, a pool
+of 20 for the API and 10 for the worker, the CSV export excepted from the statement limit. Evidence: the audit,
+sections 7, 9 and 10.
+
+**Where the limits are set: on each connection, by the application.** `apps/api/src/db.ts` builds every client from
+`poolConfigOf(role, url)`, a `pg` pool config whose `statement_timeout` and `idle_in_transaction_session_timeout`
+`pg` 8 sends as startup parameters of each connection (read in `pg/lib/client.js` `getStartupConf`). Not
+`ALTER ROLE` / `ALTER SYSTEM`: the server's role is not the application's to change, and a role setting would also
+bind `prisma migrate deploy` (a long index build would be cut), `pg_dump` and the backup scripts, and an operator's
+`psql`. Each of those opens its own connection and gets none of these limits.
+
+| Client (`DatabaseRole`) | Pool | Statement limit | Idle in a transaction |
+|---|---|---|---|
+| `api` (`PrismaService`) | `DATABASE_POOL_MAX`, default 20 | 15 s | 30 s |
+| `export` (the CSV routes, `withExportLimit`) | 2 | 90 s | 30 s |
+| `worker` (dispatch, settlement, sweeper, heartbeat, alerts) | `DATABASE_POOL_MAX`, default 10 | 60 s | 30 s |
+| `purge` (the worker's daily purge, opened and closed with it) | 2 | 60 s | 30 s |
+| `tool` (`cli/` reports an operator runs by hand) | 2 | none | 30 s |
+
+- **The worker: 60 s, not none.** Nobody waits on it, so it gets more room than the API; but a statement that runs
+  past a minute is a fault to see in the log, not a reason to hold a connection and its locks for ever. The daily
+  purges delete at most 5,000 rows a statement (DB.13), far under it; a purge statement that is cut is logged by its
+  code and the next day's run continues.
+- **The exports: 90 s, on their own small client.** Each of the six export routes (finance, profits, balances,
+  supply, a provider's ledger, activity) wraps its service call in `withExportLimit`, an `AsyncLocalStorage` under
+  which `PrismaService.client` (and so `UnitOfWork.prisma`) answers the export client. A `SET LOCAL` was the other
+  choice; it needs a transaction around reads spread over several services, and Prisma's interactive transaction
+  ends at 15 s (`TRANSACTION_LIMITS`). 90 s stays under the 100 s Cloudflare waits for an answer, so a slow export
+  is answered by the API, not cut by the proxy.
+- **Idle in a transaction: 30 s for every client.** No transaction waits on anything but the database (a provider is
+  called after its mark is committed, ADR 0019), so only a stuck process reaches it; PostgreSQL then ends the session
+  (`25P03`) and its locks are let go.
+- **The pool:** `DATABASE_POOL_MAX`, a whole number from 1 to 80, else a production process does not start
+  (`production-config.ts`, ADR 0016) and any other throws when it builds the client. One API and one worker open at
+  most 34 connections of PostgreSQL's 100.
+
+**A cut statement.** PostgreSQL cancels it with `57014`; Prisma wraps it as `P2039` (a model query) or `P2010` (raw
+SQL) with the driver's code in `meta` (`platform/prisma-errors.ts` `isStatementCancelled`). The error filter answers
+**500 `TOO_SLOW`** ("The request took longer than allowed…", in the three languages) and keeps it as a server error
+whose code is `57014` (`errorCode`), never the driver's words. Not 503 or 504: the web takes those for a gateway's
+answer and would say the server cannot be reached (`apps/web/lib/http.ts` `reachedApi`).
+
+**Table settings, migration `20261117200000_table_settings`.** `Wallet` fillfactor 70, `Session` 80;
+`ActivityEvent` `autovacuum_vacuum_scale_factor` 0.02 (`RequestLog` already has it, migration
+`20261117180000_request_log_indexes`); `WalletEntry` and `Line` `autovacuum_analyze_scale_factor` 0.02. Then the
+three `NOT VALID` checks (`Wallet_held_not_negative`, `Line_status_known`, `Task_status_known`) are validated, each
+only when no stored row breaks it (a `DO` block; otherwise a `WARNING` and the check stays `NOT VALID`), so the
+migration cannot fail on a deployment's old rows. Every statement takes `SHARE UPDATE EXCLUSIVE` (checked: reads and
+writes go on, the table's file is not rewritten); validation reads the table once. Prisma states none of it:
+`schema.prisma` names each beside its model, `prisma migrate diff` stays empty, `rehearse-upgrade.sh` checks the six
+storage settings. On the local dev and test databases every row passed and the three are validated.
+
+`Session.lastSeenAt` at most once a minute was done by PF.9.
+
+Proof: `platform/database-settings.db.spec.ts` (the limits each client's connections report, the export client
+inside `withExportLimit`, the pool's size by distinct backends, a raw and a model statement cut and answered
+`TOO_SLOW` and kept as `57014`, the storage parameters and the validated checks), `production-config.spec.ts`.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked

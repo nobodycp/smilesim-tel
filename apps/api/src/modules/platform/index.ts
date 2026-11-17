@@ -27,7 +27,7 @@ export { BALANCES_PAGE, FEED_PAGE, LINES_PAGE, LIST_CAP, NEWEST_FIRST, NOTICES_P
 export type { Page, Total } from './paging';
 export { PlatformModule } from './platform.module';
 export { isUniqueViolation } from './prisma-errors';
-export { PrismaService } from './prisma.service';
+export { PrismaService, withExportLimit } from './prisma.service';
 export { RESOURCE_CONTROLLER_PREFIXES } from './route-prefixes';
 export { ACTIVITY_RETENTION_DAYS, ENDED_SESSION_RETENTION_DAYS, LINE_SNAPSHOT_RETENTION_DAYS, PUBLISHED_OUTBOX_RETENTION_DAYS, READ_NOTICE_RETENTION_DAYS, RETENTION_BATCH_ROWS, UNREAD_NOTICE_RETENTION_DAYS, daysBefore, inBatches } from './retention';
 export { MAX_AGOROT, PeriodQuery, agorot, code, dataUrl, id, isOn, loginName, optionalAgorot, optionalText, positiveAgorot, providerHint, queryCursor, queryDay, queryFlag, queryOneOf, queryText, text } from './schemas';

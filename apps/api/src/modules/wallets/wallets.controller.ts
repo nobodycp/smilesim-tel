@@ -1,4 +1,4 @@
-import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
+import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES, withExportLimit } from '../platform';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery } from './wallets.schemas';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -70,7 +70,7 @@ export class WalletsController {
   @ApiZodQuery(FinanceQuery)
   @ApiErrorResponse(400, 401, 403)
   async financeExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: FinanceQuery) {
-    const csv = await this.walletDesk.financeCsv(actor, query);
+    const csv = await withExportLimit(() => this.walletDesk.financeCsv(actor, query));
     // Set only once the file exists: a refusal before it still answers as JSON.
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="finance.csv"');
@@ -90,7 +90,7 @@ export class WalletsController {
   @ApiZodQuery(ProfitsQuery)
   @ApiErrorResponse(400, 401, 403)
   async profitsExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: ProfitsQuery) {
-    const csv = await this.walletDesk.profitCsv(actor, query);
+    const csv = await withExportLimit(() => this.walletDesk.profitCsv(actor, query));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="profits.csv"');
     return csv;

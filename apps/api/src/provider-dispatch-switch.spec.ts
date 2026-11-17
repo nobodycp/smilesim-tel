@@ -598,7 +598,7 @@ describe('what ships: the API can decide a route and nothing more; only the work
     const worker = text('worker.ts');
     const at = (needle: string) => worker.indexOf(needle);
     expect(at('assertWorkerConfig(environment);')).toBeGreaterThan(0);
-    for (const opening of ['new IORedis(', 'createPrismaClient()', 'new Worker(', 'buildProviderDispatch(']) expect(at(opening)).toBeGreaterThan(at('assertWorkerConfig(environment);'));
+    for (const opening of ['new IORedis(', 'createPrismaClient(', 'new Worker(', 'buildProviderDispatch(']) expect(at(opening)).toBeGreaterThan(at('assertWorkerConfig(environment);'));
     expect(worker.match(/buildProviderDispatch\(/g)).toHaveLength(1);
   });
 

@@ -25,7 +25,7 @@ export type MethodFindings = {
 };
 
 export async function storedFindings(): Promise<MethodFindings> {
-  const prisma = createPrismaClient();
+  const prisma = createPrismaClient('tool');
   try {
     const layers = await prisma.$queryRaw<MethodFindings['layers']>`
       SELECT "layer", "method", "required" FROM "LayerPolicy" WHERE "method" IN ('sms', 'email') ORDER BY "layer"`;

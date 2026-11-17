@@ -1,5 +1,5 @@
 import { AuditQuery } from './audit.schemas';
-import { ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
+import { ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES, withExportLimit } from '../platform';
 import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -28,7 +28,7 @@ export class AuditController {
   @ApiZodQuery(AuditQuery)
   @ApiErrorResponse(400, 401, 403)
   async export(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: AuditQuery) {
-    const csv = await this.auditLog.csv(actor, query);
+    const csv = await withExportLimit(() => this.auditLog.csv(actor, query));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="activity.csv"');
     return csv;

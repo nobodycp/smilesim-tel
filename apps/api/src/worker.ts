@@ -48,7 +48,7 @@ export async function run(): Promise<void> {
   //   provider **and** this worker built an adapter for it. This build has no adapter (S.12b adds the first), so
   //   nothing is built, nothing is attested and nothing is sent, whatever the settings say.
   const processors = [...backgroundProcessors];
-  const dispatchPrisma = createPrismaClient();
+  const dispatchPrisma = createPrismaClient('worker');
   // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
   const relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
   relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
@@ -78,7 +78,8 @@ export async function run(): Promise<void> {
   );
 
   const purge = async () => {
-    const prisma = createPrismaClient();
+    // A small client of its own (two connections, the worker's statement limit: `db.ts`), closed after the purge.
+    const prisma = createPrismaClient('purge');
     // The retention of each table (plan DB.13, `platform/retention.ts`), each in its own try, so a failure of one
     // does not stop the others. Counts only, never a row's content.
     const retention: [string, () => Promise<string | null>][] = [

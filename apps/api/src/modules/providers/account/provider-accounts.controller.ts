@@ -1,4 +1,4 @@
-import { PeriodQuery, ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, NoActivity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
+import { PeriodQuery, ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, NoActivity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES, withExportLimit } from '../../platform';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
@@ -38,7 +38,7 @@ export class ProviderAccountsController {
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
   async export(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Param('code') code: string, @Query() query: PeriodQuery) {
-    const csv = await this.accounts.ledgerCsv(actor, code, query);
+    const csv = await withExportLimit(() => this.accounts.ledgerCsv(actor, code, query));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="provider-${code}.csv"`);
     return csv;

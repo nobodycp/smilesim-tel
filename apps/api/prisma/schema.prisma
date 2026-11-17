@@ -63,6 +63,7 @@ model User {
   @@index([parentId])
 }
 
+// Storage, raw SQL in migration 20261117200000_table_settings (the schema cannot state it): fillfactor 80.
 model Session {
   id         String    @id @default(uuid())
   userId     String
@@ -122,6 +123,8 @@ model LayerPolicy {
   sessionMinutes Int?
 }
 
+// Storage, raw SQL in migration 20261117200000_table_settings: fillfactor 70; the CHECK
+// `Wallet_held_not_negative` validated there.
 model Wallet {
   userId  String @id
   user    User   @relation(fields: [userId], references: [id])
@@ -131,6 +134,7 @@ model Wallet {
   held    Int    @default(0)
 }
 
+// Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_analyze_scale_factor 0.02.
 model WalletEntry {
   id           String    @id @default(uuid())
   userId       String
@@ -546,6 +550,8 @@ model SellPrice {
   @@unique([packageId, ownerId])
 }
 
+// Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_analyze_scale_factor 0.02; the CHECK
+// `Line_status_known` validated there.
 model Line {
   id            String       @id @default(uuid())
   msisdn        String       @unique
@@ -578,6 +584,7 @@ model Line {
   @@index([iccid(ops: raw("gin_trgm_ops"))], type: Gin, map: "Line_iccid_trgm_idx")
 }
 
+// The CHECK `Task_status_known`, validated in migration 20261117200000_table_settings.
 /// A branch task. The table was `OfficeTask` until migration `20261116100000_task_table_names`.
 model Task {
   id            String           @id @default(uuid())
@@ -650,6 +657,7 @@ model TaskNote {
   @@index([authorId], map: "TaskNote_authorId_idx")
 }
 
+// Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_vacuum_scale_factor 0.02.
 model ActivityEvent {
   id          String   @id @default(uuid())
   at          DateTime @default(now())
@@ -669,6 +677,7 @@ model ActivityEvent {
   @@index([action, at])
 }
 
+// Storage, raw SQL in migration 20261117180000_request_log_indexes: autovacuum_vacuum_scale_factor 0.02.
 /**
  * One HTTP request the API received (spec 2026-11-17-system-monitor, section 2): technical, read by the branch
  * owner only, kept 14 days. Never a body, a cookie, a query string or a header value other than the user agent.
