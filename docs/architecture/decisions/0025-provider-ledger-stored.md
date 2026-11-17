@@ -321,3 +321,11 @@ Found in review after P.4; built as slice P.4b. Overrides "Backfill" above and t
    (DB.5 P.6)"). Rule 4's "today `used share + DISCONNECT_FEE`" is replaced. The same command corrects the disconnects
    stored in the old form (a stored figure above the fee) to the stored figure less the open periods' cost at their
    own time, each printed; the same trial-data justification, and never after launch.
+
+### The owner's answer on an activation priced zero (2026-11-17, later)
+
+A package activated for a point of sale whose price for it is 0 (a task with `posDelta` 0, recorded without money)
+stores a provider cost of 0 today, while the provider takes the package's price. The owner: it stores **the
+package's real cost at the provider**; the operation then shows as a loss of the branch. Built with P.7 (the
+operation done at the provider and given back to the customer), which is the same case: the provider was paid and
+the point of sale was not charged.
