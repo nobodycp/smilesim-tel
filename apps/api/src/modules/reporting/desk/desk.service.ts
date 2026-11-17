@@ -12,9 +12,13 @@ export class DeskService {
   constructor(private readonly tree: AccountTree, private readonly repo: DeskRepository) {}
 
   async me(actor: Actor) {
-    const [wallet, accounts] = await Promise.all([
+    // The branch owner in person sees the open, unseen alerts' count (system monitor M.6, D1); every other account
+    // gets no `openAlerts` at all.
+    const owner = isOwner(actor) && !actor.impersonating;
+    const [wallet, accounts, openAlerts] = await Promise.all([
       this.repo.walletOf(actor.id),
       this.tree.accounts(),
+      owner ? this.repo.openUnseenAlerts() : Promise.resolve(null),
     ]);
     return {
       loginName: actor.loginName,
@@ -28,6 +32,7 @@ export class DeskService {
       impersonating: actor.impersonating,
       balance: wallet?.balance ?? 0,
       ceiling: wallet?.ceiling ?? 0,
+      ...(openAlerts === null ? {} : { openAlerts }),
     };
   }
 

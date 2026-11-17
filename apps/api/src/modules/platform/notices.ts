@@ -41,13 +41,47 @@ export type ProviderNoticePayload = { code: string; name: string; reason: 'failu
 /** A statement provider was not matched within its period (spec 2026-11-08-overview-and-reports-nav, E). */
 export type MatchOverduePayload = { code: string; name: string; matchEveryDays: number; lastMatchedAt: string | null };
 
+/**
+ * The kinds of the system monitor's alerts (spec 2026-11-17-system-monitor, section 4): one a rule of the table,
+ * in its order. Declared here, beside the notice that names them; `monitoring/alert-rules.ts` decides them.
+ */
+export type SystemAlertKind =
+  | 'password_cracking'
+  | 'many_accounts'
+  | 'second_step'
+  | 'rate_limit'
+  | 'probing'
+  | 'wrong_door'
+  | 'permission_probing'
+  | 'system_failing'
+  | 'service_down'
+  | 'slow';
+
+/**
+ * A new alert of the system monitor (M.6), told to the branch owner once, when it opens. What the bell needs to name
+ * it: its kind and its subject (the fields the kind names, empty otherwise). Never a password, a code or a session.
+ */
+export type SystemAlertNoticePayload = {
+  alertId: string;
+  alertKind: SystemAlertKind;
+  loginName: string;
+  ip: string;
+  method: string;
+  route: string;
+  path: string;
+  part: string;
+  detail: string;
+  count: number;
+};
+
 export type NoticeDraft =
   | { kind: 'task.opened' | 'task.taken' | 'task.released' | 'task.note' | 'task.done' | 'task.rejected' | 'task.cancelled'; payload: TaskNoticePayload }
   | { kind: 'fund.received' | 'fund.deducted'; payload: FundNoticePayload }
   | { kind: 'wallet.negative' | 'wallet.ceiling'; payload: WalletNoticePayload }
   | { kind: 'transfer.out' | 'transfer.in'; payload: TransferNoticePayload }
   | { kind: 'provider.problem' | 'provider.recovered'; payload: ProviderNoticePayload }
-  | { kind: 'provider.match_overdue'; payload: MatchOverduePayload };
+  | { kind: 'provider.match_overdue'; payload: MatchOverduePayload }
+  | { kind: 'system.alert'; payload: SystemAlertNoticePayload };
 
 export type NoticeKind = NoticeDraft['kind'];
 

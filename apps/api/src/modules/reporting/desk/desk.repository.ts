@@ -11,6 +11,14 @@ import { UnitOfWork, NEWEST_FIRST } from '../../platform';
 export class DeskRepository {
   constructor(private readonly uow: UnitOfWork) {}
 
+  /**
+   * The system monitor's alerts that are open and not yet seen (M.6), for the owner's sidebar count. A count of
+   * monitoring's table, read here because no module imports monitoring (ADR 0020, amended 2026-11-17).
+   */
+  openUnseenAlerts() {
+    return this.uow.prisma.alert.count({ where: { state: 'open', seenAt: null } });
+  }
+
   walletOf(userId: string) {
     return this.uow.prisma.wallet.findUnique({ where: { userId } });
   }

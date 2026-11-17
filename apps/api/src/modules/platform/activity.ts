@@ -91,6 +91,8 @@ export const ACTIVITY_ACTIONS = [
   'esim_read',
   // The owner cleared the request log (system monitor M.2); the subject is how many rows it removed.
   'request_log_clear',
+  // The owner deleted the closed alerts (system monitor M.6); the subject is how many it removed.
+  'alert_clear',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

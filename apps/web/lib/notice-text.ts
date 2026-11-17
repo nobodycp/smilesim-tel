@@ -23,6 +23,7 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'provider.problem': return t.noticeProviderProblem;
     case 'provider.recovered': return t.noticeProviderRecovered;
     case 'provider.match_overdue': return t.noticeMatchOverdue;
+    case 'system.alert': return t.noticeSystemAlert;
     default: return row.kind;
   }
 }
@@ -69,6 +70,13 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     parts.push(t.noticeMatchOverdueDetail.replace('{n}', String(p.matchEveryDays ?? 7)));
     return parts.join(' · ');
   }
+  if (row.kind === 'system.alert') {
+    // The alert's kind, then what it is about: an account, an address, a route or a part (system monitor M.6).
+    parts.push(alertKindName(t, String(p.alertKind ?? '')));
+    const about = p.loginName || p.ip || (p.route ? `${p.method} ${p.route}`.trim() : '') || p.path || p.part;
+    if (about) parts.push(about);
+    return parts.join(' · ');
+  }
   if (row.kind === 'provider.problem' || row.kind === 'provider.recovered') {
     if (p.name) parts.push(p.name);
     if (row.kind === 'provider.problem' && p.reason === 'failures') parts.push(t.providerProblemFailures.replace('{n}', String(p.failures ?? 0)));
@@ -76,6 +84,23 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     return parts.join(' · ');
   }
   return row.actorName;
+}
+
+/** The name of an alert's kind (system monitor M.6); an unknown kind is shown as it came. */
+export function alertKindName(t: Copy, kind: string): string {
+  switch (kind) {
+    case 'password_cracking': return t.alertPasswordCracking;
+    case 'many_accounts': return t.alertManyAccounts;
+    case 'second_step': return t.alertSecondStep;
+    case 'rate_limit': return t.alertRateLimit;
+    case 'probing': return t.alertProbing;
+    case 'wrong_door': return t.alertWrongDoor;
+    case 'permission_probing': return t.alertPermissionProbing;
+    case 'system_failing': return t.alertSystemFailing;
+    case 'service_down': return t.alertServiceDown;
+    case 'slow': return t.alertSlow;
+    default: return kind;
+  }
 }
 
 export function noticeAge(t: Copy, iso: string, now = Date.now()): string {

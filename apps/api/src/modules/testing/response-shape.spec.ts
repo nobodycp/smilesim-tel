@@ -10,6 +10,8 @@ import { RequestLogRepository } from '../monitoring/request-log.repository';
 import { RequestLogService } from '../monitoring/request-log.service';
 import type { RequestLogWriter } from '../monitoring/request-log.writer';
 import { StatusService } from '../monitoring/status.service';
+import { AlertRepository } from '../monitoring/alert.repository';
+import { AlertsService } from '../monitoring/alerts.service';
 import type { StatusRepository } from '../monitoring/status.repository';
 import type { StatusRedis } from '../monitoring/status-redis';
 import type { ProviderHealthService } from '../providers/directory/provider-health.service';
@@ -22,6 +24,8 @@ import type { Actor } from '../access/types';
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
 
 const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'stops', 'impersonating', 'balance', 'ceiling'];
+// The branch owner's alone (system monitor M.6): the open, unseen alerts. Every other account's answer has no such key.
+const ME_OWNER_KEYS = ['openAlerts'];
 // The announcements board left the home (spec 2026-11-09-admin-review, 6.2): no `canPost`, no `announcements`.
 const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'operations'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
@@ -87,6 +91,11 @@ const ROUTE_FIGURES_KEYS = ['method', 'route', 'calls', 'medianMs', 'p95Ms'];
 const ERROR_GROUP_KEYS = ['method', 'route', 'name', 'message', 'count', 'firstAt', 'lastAt', 'lastRequestId', 'stack'];
 const ERROR_LIST_KEYS = ['items', 'capped', 'total'];
 const LOG_CLEARED_KEYS = ['removed', 'errorsRemoved'];
+// The alerts (system monitor M.6).
+const ALERT_KEYS = ['id', 'kind', 'state', 'loginName', 'ip', 'method', 'route', 'path', 'part', 'detail', 'count', 'firstAt', 'lastAt', 'closedAt', 'seenAt', 'seenByLoginName', 'link'];
+const ALERT_LINK_KEYS = ['from', 'to'];
+const ALERT_LINK_OPTIONAL_KEYS = ['status', 'code', 'method', 'route', 'unmatched', 'ip', 'account', 'slowerThan'];
+const ALERT_SEEN_KEYS = ['id', 'seenAt', 'seenByLoginName'];
 // The system status (M.5): the answer, a part, and each part's figures, by name.
 const STATUS_KEYS = ['at', 'state', 'parts'];
 const STATUS_PART_KEYS = ['name', 'state', 'note', 'figures'];
@@ -167,9 +176,13 @@ async function posServiceWith(tables: Record<string, unknown>) {
 const at = new Date(Date.UTC(2026, 9, 1));
 
 describe('office response shapes', () => {
-  it('answers /v1/me with the keys of DeskMe (the web\'s type)', async () => {
-    const { service, gate } = await serviceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) } });
-    expect(keysOf(await service.me(gate))).toEqual(sorted(ME_KEYS));
+  it('answers /v1/me with the keys of DeskMe (the web\'s type): the branch owner with the open alerts, the others without', async () => {
+    const { service, gate } = await serviceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) }, alert: { count: async () => 2 } });
+    const me = await service.me(gate);
+    expect(keysOf(me)).toEqual(sorted([...ME_KEYS, ...ME_OWNER_KEYS]));
+    expect(me).toMatchObject({ openAlerts: 2 });
+    const pos = await posServiceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) }, alert: { count: async () => { throw new Error('a point of sale never counts the alerts'); } } });
+    expect(keysOf(await pos.service.me(pos.gate))).toEqual(sorted(ME_KEYS));
   });
 
   it('answers /v1/home with the keys of HomePayload and of its rows', async () => {
@@ -434,6 +447,29 @@ describe('office response shapes', () => {
     expect(keysOf(summary.busiest[0])).toEqual(sorted(ROUTE_FIGURES_KEYS));
   });
 
+  it('answers the alerts, a seen mark and the clearing with the pinned keys (M.6)', async () => {
+    const row = {
+      id: 'a1', kind: 'probing', key: '404 10.0.0.9', state: 'open', loginName: '', accountId: null, ip: '10.0.0.9', method: '', route: '', path: '', part: '', detail: '404', count: 30,
+      firstAt: new Date('2026-11-17T10:00:00Z'), lastAt: new Date('2026-11-17T10:04:00Z'), closedAt: null, seenAt: null, seenById: null, seenByLoginName: '', createdAt: new Date('2026-11-17T10:04:30Z'),
+    };
+    const prisma = {
+      alert: {
+        findMany: async () => [row], count: async () => 1, findUnique: async () => ({ id: 'a1', state: 'open', seenAt: new Date('2026-11-17T11:00:00Z'), seenByLoginName: 'admin' }),
+        updateMany: async () => ({ count: 1 }), deleteMany: async () => ({ count: 3 }),
+      },
+    };
+    const service = new AlertsService(new AlertRepository({ prisma } as unknown as UnitOfWork));
+    const owner = { id: 'admin', loginName: 'admin', nickname: 'admin', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as Actor;
+    const list = await service.list(owner, {});
+    expect(keysOf(list)).toEqual(sorted(REQUEST_LIST_KEYS));
+    expect(keysOf(list.items[0])).toEqual(sorted(ALERT_KEYS));
+    // Never the account's id, the key or who saw it by id.
+    expect(list.items[0]).not.toHaveProperty('accountId');
+    expect(list.items[0].link).toEqual({ from: '2026-11-17T09:59:00.000Z', to: '2026-11-17T10:05:00.000Z', status: '404', ip: '10.0.0.9' });
+    expect(keysOf(await service.markSeen(owner, 'a1'))).toEqual(sorted(ALERT_SEEN_KEYS));
+    expect(await service.clear(owner)).toEqual({ removed: 3 });
+  });
+
   it('answers the system status with the pinned keys: nine parts, each with its figures (M.5)', async () => {
     const service = new StatusService(
       { ping: async () => undefined, database: async () => ({ connections: 1, sizeBytes: 1 }), heartbeat: async () => ({ workers: 1, lastBeatAgeS: 1 }), outbox: async () => ({ unpublished: 0, oldestAgeS: null }), appliedMigrations: async () => ['a'], carriedMigrations: async () => ['a'] } as unknown as StatusRepository,
@@ -532,7 +568,7 @@ describeWeb('web types match the pinned shapes', () => {
   const source = [webApi, webLines].map((file) => (existsSync(file) ? readFileSync(file, 'utf8') : '')).join('\n');
 
   it('DeskMe', () => {
-    expect(declared(typeBody(source, 'DeskMe'))).toEqual({ required: sorted(ME_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'DeskMe'))).toEqual({ required: sorted(ME_KEYS), optional: sorted(ME_OWNER_KEYS) });
   });
 
   it('HomePayload and its rows', () => {
@@ -615,6 +651,14 @@ describeWeb('web types match the pinned shapes', () => {
       expect(source).toContain(`| StatusPartOf<'${name}', ${type}>`);
     }
     expect(source).toContain("export type StatusState = 'ok' | 'warn' | 'down';");
+  });
+
+  it('DeskMe declares the owner\'s alert count as optional; the alerts: SystemAlert, AlertLink, AlertSeen, AlertsCleared (M.6)', () => {
+    expect(declared(typeBody(source, 'SystemAlert'))).toEqual({ required: sorted(ALERT_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'AlertLink'))).toEqual({ required: sorted(ALERT_LINK_KEYS), optional: sorted(ALERT_LINK_OPTIONAL_KEYS) });
+    expect(declared(typeBody(source, 'AlertSeen'))).toEqual({ required: sorted(ALERT_SEEN_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'AlertsCleared'))).toEqual({ required: ['removed'], optional: [] });
+    expect(source).toContain('export type SystemAlertPage = Page<SystemAlert>;');
   });
 
   it('the server errors: ErrorGroup, ErrorGroups and the clearings (M.4)', () => {

@@ -64,9 +64,12 @@ function harness() {
       log.push('queue closed');
     },
   };
+  // The alert pass (system monitor M.6): its round in flight writes notices, so it is waited for before the writer closes.
+  let alertRound: { promise: Promise<void> } = { promise: Promise.resolve() };
   const stop = workerShutdown({
     readiness,
     heartbeat: { stop: async () => void log.push('heartbeat stopped') },
+    alerts: { stop: async () => { log.push('alert pass told to stop'); await alertRound.promise; log.push('alert pass stopped'); } },
     stopTimers,
     queues: [queue],
     closeNotices: async () => void log.push('notice writer closed'),
@@ -76,6 +79,7 @@ function harness() {
     log, started, readinessRead, queue, stop,
     holdRelay: () => { const round = held(); relay = round; return round; },
     holdSweep: () => { const round = held<number>(); sweep = round; return round; },
+    holdAlerts: () => { const round = held(); alertRound = round; return round; },
     /** A settlement job that is running: it commits, then publishes its notices, when released. */
     startJob: () => {
       jobRunning = true;
@@ -122,6 +126,24 @@ describe('stopping a worker while its readiness round is slow (SIGTERM during re
     expect(at('notice writer closed')).toBeGreaterThan(at('attestations removed'));
     expect(at('database and redis released')).toBeGreaterThan(at('notice writer closed'));
     expect(at('database and redis released')).toBeGreaterThan(at('heartbeat stopped'));
+  });
+
+  it('the alert pass is told in the same turn, and its round in flight ends before the notice writer closes', async () => {
+    const h = harness();
+    const round = h.holdAlerts();
+    const stopping = h.stop();
+    await settle();
+    expect(h.queue.taking).toBe(false);
+    expect(h.log).toContain('alert pass told to stop');
+    h.readinessRead.release([]);
+    await settle();
+    // Readiness and the queues are done; the alert round still writes: the writer stays open.
+    expect(h.log).not.toContain('notice writer closed');
+    round.release();
+    await stopping;
+    const at = (step: string) => h.log.indexOf(step);
+    expect(at('notice writer closed')).toBeGreaterThan(at('alert pass stopped'));
+    expect(at('database and redis released')).toBeGreaterThan(at('notice writer closed'));
   });
 });
 

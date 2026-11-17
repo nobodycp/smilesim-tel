@@ -710,6 +710,42 @@ model WorkerHeartbeat {
   @@index([beatAt])
 }
 
+/// An early warning of the system monitor (spec 2026-11-17-system-monitor, section 4; slice M.6): a rule of
+/// `monitoring/alert-rules.ts` passed for one subject. Written by the worker's alert pass only. At most one `open`
+/// alert a (kind, key): a partial unique index of the migration (`Alert_open_kind_key_key`), which the schema cannot
+/// state. Names accounts, addresses, routes and parts only: never a password, a code, a cookie or a session.
+model Alert {
+  id              String    @id @default(uuid())
+  /// `SystemAlertKind` (platform/notices.ts).
+  kind            String
+  /// What the alert is about, by kind: a login name, an address, an account id, a route, a part's name.
+  key             String
+  /// `open` or `closed`.
+  state           String    @default("open")
+  /// The subject, the fields the kind names; empty when it names none.
+  loginName       String    @default("")
+  accountId       String?
+  ip              String    @default("")
+  method          String    @default("")
+  route           String    @default("")
+  path            String    @default("")
+  part            String    @default("")
+  /// A code that says more, by kind: the limit hit, the status probed, the refusal code.
+  detail          String    @default("")
+  /// Events (or, for a state, the rounds) counted since `firstAt`.
+  count           Int
+  firstAt         DateTime
+  lastAt          DateTime
+  closedAt        DateTime?
+  seenAt          DateTime?
+  seenById        String?
+  seenByLoginName String    @default("")
+  createdAt       DateTime  @default(now())
+
+  @@index([state, lastAt])
+  @@index([lastAt])
+}
+
 model AccessLog {
   id          String   @id @default(uuid())
   actorId     String

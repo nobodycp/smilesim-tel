@@ -23,6 +23,8 @@ export function hrefFor(draft: NoticeDraft): string {
   if (draft.kind.startsWith('task.')) return `/tasks/${(draft.payload as TaskNoticePayload).taskId}`;
   if (draft.kind === 'transfer.out' || draft.kind === 'transfer.in') return '/users';
   if (draft.kind === 'provider.match_overdue') return `/provider-accounts/${encodeURIComponent(draft.payload.code)}`;
+  // The alerts page, opened on this alert (system monitor M.6, M.7).
+  if (draft.kind === 'system.alert') return `/system/alerts?id=${encodeURIComponent(draft.payload.alertId)}`;
   if (draft.kind === 'provider.problem' || draft.kind === 'provider.recovered') return `/provider-accounts/${encodeURIComponent((draft.payload as ProviderNoticePayload).code)}`;
   return '/finance';
 }

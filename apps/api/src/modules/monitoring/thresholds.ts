@@ -30,3 +30,59 @@ export const OUTBOX_DOWN_AFTER_S = 600;
 export const REQUESTS_WINDOW_MINUTES = 15;
 export const REQUESTS_FAILED_WARN_SHARE = 0.01;
 export const REQUESTS_FAILED_DOWN_SHARE = 0.1;
+
+// ── Alerts (spec section 4, the table's first values; slice M.6) ──────────────────────────────────────────────
+// "At" a threshold opens: a count equal to it is passed (the spec says "5 failed sign-ins", not "over 5").
+
+/** How often the worker's alert pass runs, and how long an open alert stays open once its rule is no longer passed. */
+export const ALERT_PASS_EVERY_MS = 30_000;
+export const ALERT_QUIET_MINUTES = 30;
+
+/** Cracking a password: failed sign-ins for one login name, or the account's own sign-in lock seen in its window. */
+export const CRACKING_FAILS = 5;
+export const CRACKING_WINDOW_MINUTES = 10;
+/** The window in which a sign-in refused by the account's own lock (`RATE_LIMITED`, 10 failures in 15 min) counts. */
+export const ACCOUNT_LOCK_WINDOW_MINUTES = 15;
+
+/** One address trying many accounts: failed sign-ins for this many different login names. */
+export const MANY_ACCOUNTS_NAMES = 5;
+export const MANY_ACCOUNTS_WINDOW_MINUTES = 10;
+
+/** Second-step guessing: wrong codes for one account. */
+export const SECOND_STEP_WRONG = 5;
+export const SECOND_STEP_WINDOW_MINUTES = 10;
+
+/** Rate limit hit: any `429`; the window the pass looks back over for them. */
+export const RATE_LIMIT_HITS = 1;
+export const RATE_LIMIT_WINDOW_MINUTES = 10;
+
+/** Probing: `404` or `401` answers to one address. */
+export const PROBING_ANSWERS = 30;
+export const PROBING_WINDOW_MINUTES = 5;
+
+/** Wrong door or origin: `DOOR_MISMATCH` or cross-origin refusals to one address. */
+export const WRONG_DOOR_REFUSALS = 10;
+export const WRONG_DOOR_WINDOW_MINUTES = 10;
+
+/** Permission probing: `403` answers to one account. */
+export const PERMISSION_REFUSALS = 20;
+export const PERMISSION_WINDOW_MINUTES = 10;
+
+/** The system is failing: 5xx over this share of the requests, or this many crashes of one route. */
+export const FAILING_SHARE = 0.05;
+export const FAILING_ROUTE_CRASHES = 10;
+export const FAILING_WINDOW_MINUTES = 5;
+/**
+ * Not in the spec's table: the share is judged over this many requests at least, so that one crash on a quiet
+ * system (one request of one) is not "the system is failing". The crashes of one route have their own count.
+ */
+export const FAILING_MIN_REQUESTS = 20;
+
+/** A service is down: the worker, PostgreSQL, Redis or the outbox `down` for this long. */
+export const SERVICE_DOWN_MINUTES = 2;
+
+/** Slow: the 95th percentile of every request over this, over the window. */
+export const SLOW_P95_MS = 2_000;
+export const SLOW_WINDOW_MINUTES = 5;
+/** Not in the spec's table, for the same reason as `FAILING_MIN_REQUESTS`: one slow report on a quiet system is not "slow". */
+export const SLOW_MIN_REQUESTS = 20;

@@ -1,5 +1,4 @@
 import { totalmem } from 'node:os';
-import { performance } from 'node:perf_hooks';
 import { getHeapStatistics } from 'node:v8';
 import { Injectable } from '@nestjs/common';
 import { env, errorCode } from '../platform';
@@ -8,6 +7,7 @@ import { ProviderHealthService } from '../providers';
 import { RequestLogRepository } from './request-log.repository';
 import { StatusRedis, MONITORED_QUEUES } from './status-redis';
 import { StatusRepository } from './status.repository';
+import { timed, within } from './probe-time';
 import { PROBE_TIMEOUT_MS, REQUESTS_WINDOW_MINUTES } from './thresholds';
 import {
   judgeApi, judgeOutbox, judgePostgres, judgeProviders, judgeQueues, judgeRedis, judgeRequests, judgeSchema, judgeWorker, share, worst,
@@ -16,28 +16,6 @@ import {
 
 /** A part of the status: its state, why (a code), and the figures that say it; no figures when its probe failed. */
 export type StatusPart<Name extends string, Figures> = { name: Name; state: PartState; note: string; figures: Figures | null };
-
-/** A probe that took too long: its part is `down` with the note `timeout` (`errorCode` names it by this class's name). */
-class ProbeTimeout extends Error {
-  override name = 'TimeoutError';
-}
-
-/** `run`'s answer, or `ProbeTimeout` after `ms`. The probe left behind is not waited for: its answer is dropped. */
-async function within<T>(ms: number, run: () => Promise<T>): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    return await Promise.race([run(), new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new ProbeTimeout('probe')), ms); })]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** How long `run` took, in whole milliseconds. */
-async function timed(run: () => Promise<unknown>): Promise<number> {
-  const started = performance.now();
-  await run();
-  return Math.round(performance.now() - started);
-}
 
 const MISSING_NAMED = 10;
 

@@ -87,6 +87,8 @@ export type DeskMe = {
   impersonating: boolean;
   balance: number;
   ceiling: number;
+  /** The branch owner only: the system monitor's alerts that are open and not yet seen (M.6). Absent for every other account. */
+  openAlerts?: number;
 };
 /** One ranked row of the overview: a package, company, provider or account, by count or profit. */
 export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
@@ -604,6 +606,16 @@ export type NoticePayload = {
   /** `provider.match_overdue`: the provider's matching period and its last match. */
   matchEveryDays?: number;
   lastMatchedAt?: string | null;
+  /** `system.alert` (system monitor M.6): the alert, its kind and its subject (`loginName` is shared). */
+  alertId?: string;
+  alertKind?: AlertKind;
+  ip?: string;
+  method?: string;
+  route?: string;
+  path?: string;
+  part?: string;
+  detail?: string;
+  count?: number;
 };
 export type NoticeRow = {
   id: string;
@@ -970,4 +982,64 @@ export type SystemStatus = {
   at: string;
   state: StatusState;
   parts: StatusPart[];
+};
+/** An alert's kind: one rule of the system monitor's table (spec 2026-11-17-system-monitor, section 4). */
+export type AlertKind =
+  | 'password_cracking'
+  | 'many_accounts'
+  | 'second_step'
+  | 'rate_limit'
+  | 'probing'
+  | 'wrong_door'
+  | 'permission_probing'
+  | 'system_failing'
+  | 'service_down'
+  | 'slow';
+/** The request log's filters (`GET /v1/system/requests`) that show the rows behind an alert; `from`/`to` are moments. */
+export type AlertLink = {
+  from: string;
+  to: string;
+  status?: string;
+  code?: string;
+  method?: string;
+  route?: string;
+  unmatched?: '1';
+  ip?: string;
+  account?: string;
+  slowerThan?: string;
+};
+/**
+ * One alert (`GET /v1/system/alerts`, branch owner only). The subject fields its kind names are filled, the others
+ * empty: `detail` is the limit (`sign_in`, `session_writes`, `session_requests`), the status probed (`404`, `401`),
+ * `locked` (the account's own sign-in lock), the number of login names tried, `share` / `route`, or the p95 in ms.
+ */
+export type SystemAlert = {
+  id: string;
+  kind: AlertKind;
+  state: 'open' | 'closed';
+  loginName: string;
+  ip: string;
+  method: string;
+  route: string;
+  path: string;
+  part: string;
+  detail: string;
+  count: number;
+  firstAt: string;
+  lastAt: string;
+  closedAt: string | null;
+  seenAt: string | null;
+  seenByLoginName: string;
+  link: AlertLink;
+};
+export type SystemAlertPage = Page<SystemAlert>;
+/** `POST /v1/system/alerts/:id/seen`. */
+export type AlertSeen = {
+  id: string;
+  seenAt: string;
+  seenByLoginName: string;
+};
+/** `DELETE /v1/system/alerts`: the closed alerts removed. */
+export type AlertsCleared = {
+  removed: number;
 };

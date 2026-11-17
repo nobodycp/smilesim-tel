@@ -126,4 +126,15 @@ reads`). It reads what the others did; it changes none of their rules, no money,
   hands each request's row to the module's writer.
 - The activity log stays the business record; the request log is technical. Clearing the request log is itself
   recorded in the activity log, which monitoring never deletes from.
+- The alerts (slice M.6) read two tables of other modules **directly, through monitoring's own repository**
+  (`alert.repository.ts`): `RequestLog` (its own) and `ActivityEvent` (the auditing module's), for the refused
+  sign-ins by login name and the wrong second-step codes. Chosen over adding `auditing` to monitoring's
+  `DEPENDS_ON`: auditing's surface offers no such read (it would have to grow one used by monitoring alone), and a
+  read of rows changes nothing of auditing's rules. Monitoring writes nothing there. The parts that are down are
+  judged by the status's own probes and rules (`StatusRepository`, `StatusRedis`, `status.rules.ts`), not a copy.
+- The alert pass runs in the worker (`worker.ts`, owner `app`, a composition root), on the dispatch's unit of work,
+  apart from `WORKER_MONEY_PATH`; the API runs no pass.
+- `GET /v1/me` (reporting) carries the owner's count of open, unseen alerts. Reporting does not import monitoring:
+  `DeskRepository.openUnseenAlerts` counts the `Alert` table, a read of one number, the same way monitoring reads
+  the tables below it. Nothing else of monitoring is read from below.
 

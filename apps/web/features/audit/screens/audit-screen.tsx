@@ -30,7 +30,7 @@ const ACTIONS = [
   'package_renewals', 'package_switches', 'package_addon', 'user_package', 'user_ops', 'sell_price', 'offer',
   'provider_mode', 'provider_esim_price', 'provider_payment', 'provider_credit', 'provider_matching', 'provider_statement', 'provider_reconcile', 'provider_reconcile_item',
   'provider_dispatch_approve', 'provider_dispatch_pause', 'provider_dispatch_resume', 'provider_credential',
-  'request_log_clear',
+  'request_log_clear', 'alert_clear',
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;

@@ -98,6 +98,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'session_rules') return t.actSessionRules;
   if (action === 'user_contact') return t.actUserContact;
   if (action === 'request_log_clear') return t.actRequestLogClear;
+  if (action === 'alert_clear') return t.actAlertClear;
   return action;
 }
 

@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { PlatformModule, ServerErrorRecorder } from '../platform';
 import { AccessModule } from '../access';
 import { ProvidersModule } from '../providers';
+import { AlertRepository } from './alert.repository';
+import { AlertsController } from './alerts.controller';
+import { AlertsService } from './alerts.service';
 import { RequestLogController } from './request-log.controller';
 import { RequestLogRepository } from './request-log.repository';
 import { RequestLogService } from './request-log.service';
@@ -16,10 +19,14 @@ import { StatusService } from './status.service';
  * modules and none imports it. Every route it serves is the branch owner's alone (D1: `requireOwner`).
  * `RequestLogWriter` is exported for the request-log middleware, a composition root of the app, and bound under the
  * platform's `ServerErrorRecorder` port for the error filter (M.4): one writer, one buffer, one instance. The status
- * (M.5) reads the providers' health through `ProvidersModule`.
+ * (M.5) reads the providers' health through `ProvidersModule`. The alerts (M.6) are written by the worker's pass
+ * (`alert-pass.ts`, not a provider here: the API runs no pass) and read, marked seen and cleared here.
  */
-export const MONITORING_CONTROLLERS = [RequestLogController, StatusController];
-export const MONITORING_PROVIDERS = [RequestLogRepository, RequestLogWriter, { provide: ServerErrorRecorder, useExisting: RequestLogWriter }, RequestLogService, StatusRepository, StatusRedis, StatusService];
+export const MONITORING_CONTROLLERS = [RequestLogController, StatusController, AlertsController];
+export const MONITORING_PROVIDERS = [
+  RequestLogRepository, RequestLogWriter, { provide: ServerErrorRecorder, useExisting: RequestLogWriter }, RequestLogService, StatusRepository, StatusRedis, StatusService,
+  AlertRepository, AlertsService,
+];
 
 @Module({
   imports: [PlatformModule, AccessModule, ProvidersModule],
