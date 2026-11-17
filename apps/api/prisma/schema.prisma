@@ -192,7 +192,9 @@ model WalletEntry {
    * activation or renewal sold at 0). Null on every other row. Such a row moves 0, keeps its provider and cost, and
    * stores `branchMargin` = − `providerCost` (the branch's loss), no other margin. The CHECK `WalletEntry_provider_loss`
    * and the partial index `WalletEntry_provider_loss` (`providerId`, `createdAt` DESC, `id` DESC) WHERE `providerLoss`
-   * IS NOT NULL are raw SQL (migration `20261117240000_provider_loss`).
+   * IS NOT NULL are raw SQL (migration `20261117240000_provider_loss`); so is the partial index
+   * `WalletEntry_loss_createdAt` (`createdAt` DESC) WHERE `providerLoss` IS NOT NULL, which serves the branch's losses
+   * over a period in its profit figures (spec DB.5 P.8, migration `20261118000000_provider_loss_created_at`).
    */
   providerLoss String?
   chainPosId       String?
