@@ -440,7 +440,8 @@ function shipped(dir: string = src): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return name === 'testing' || name === 'generated' ? [] : shipped(path);
-    return name.endsWith('.ts') && !name.endsWith('.spec.ts') ? [path] : [];
+    // What the build leaves out (`tsconfig.build.json`, pinned below): specs, `testing` folders and `*.fixture.ts`.
+    return name.endsWith('.ts') && !name.endsWith('.spec.ts') && !name.endsWith('.fixture.ts') ? [path] : [];
   });
 }
 const files = shipped().map((path) => ({ path: relative(src, path), text: readFileSync(path, 'utf8') }));
@@ -480,7 +481,7 @@ describe('what ships: the API can decide a route and nothing more; only the work
     // Nothing shipped imports a `testing` folder (the scripted gateway, the open gate), and the build leaves them out.
     expect(paths(files.filter((file) => /from '[^']*\/testing\/[^']*'/.test(file.text) || /import\([^)]*\/testing\//.test(file.text)))).toEqual([]);
     const build = JSON.parse(readFileSync(join(src, '../tsconfig.build.json'), 'utf8')) as { exclude: string[] };
-    expect(build.exclude).toEqual(expect.arrayContaining(['src/**/testing/**', 'src/**/*.spec.ts']));
+    expect(build.exclude).toEqual(expect.arrayContaining(['src/**/testing/**', 'src/**/*.spec.ts', 'src/**/*.fixture.ts']));
   });
 
   it('the API\'s gateway answers the policy and sends nothing: `send` opens no connection, whatever the environment says', async () => {

@@ -52,7 +52,7 @@ describe('package catalog routes over HTTP', () => {
         findUnique: async ({ where, include }: { where: { code: string }; include?: Record<string, unknown> }) => {
           const found = packages[where.code];
           if (!found || !include?.lines) return found ?? null;
-          return { ...found, lines: [{ status: 'active' }, { status: 'frozen' }], renewals: [{ target: { code: 'p2' } }], switches: [] };
+          return { ...found, lines: [{ status: 'active' }, { status: 'frozen' }], renewals: [{ target: { code: 'p2' } }], switches: [], durations: [] };
         },
         findMany: async ({ where }: { where: { code: { in: string[] } } }) => where.code.in.map((code) => packages[code]).filter(Boolean),
         update: async (args: unknown) => void writes.push({ op: 'package.update', args }),

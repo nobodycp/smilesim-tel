@@ -477,7 +477,9 @@ describe('office response shapes', () => {
 
   it('answers the versions page with the pinned keys: each component in each place, the web\'s with no current and its runtime\'s cycles (M.11)', async () => {
     const checkedAt = new Date('2026-11-17T10:00:00Z');
-    const nodeCycles = [{ cycle: '26', latest: '26.13.1', eol: '2029-04-30' }, { cycle: process.version.slice(1).split('.')[0], latest: '99.0.0', eol: '2000-01-01' }];
+    // The cycle of the Node.js that runs this spec, and another that is never it (the test once named the other
+    // `26`, and failed the day the machine's Node.js became 26: two cycles of one name).
+    const nodeCycles = [{ cycle: '900', latest: '900.1.0', eol: '2099-04-30' }, { cycle: process.version.slice(1).split('.')[0], latest: '99.0.0', eol: '2000-01-01' }];
     const repo = {
       rows: async () => [
         { name: 'nodejs', kind: 'runtime', latest: '26.13.1', cycles: nodeCycles, checkedAt, failed: false },

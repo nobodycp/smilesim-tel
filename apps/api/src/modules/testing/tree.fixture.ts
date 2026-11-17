@@ -253,6 +253,8 @@ export async function tree() {
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: userModel,
+    // `/v1/me` counts the branch owner's open alerts (system monitor M.6): none here.
+    alert: { count: async () => 0 },
     line: lineModel,
     task: taskModel,
     package: packageModel,
