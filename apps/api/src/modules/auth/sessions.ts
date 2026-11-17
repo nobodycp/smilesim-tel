@@ -6,6 +6,19 @@ export const SESSION_COOKIE_SECONDS = 2592000;
 export const SESSION_LIMIT_RANGE = { min: 1, max: 10 } as const;
 export const SESSION_MINUTES_RANGE = { min: 15, max: 43200 } as const;
 
+/**
+ * How often a request writes the session row's last-activity time, at most (decision 13 of spec
+ * 2026-11-17-scale-speed-cleanup, "A request's sign-in cost"). A request whose stored time is younger writes nothing;
+ * the idle check still runs on every request against the stored time, so a session ends more than its idle limit
+ * less a minute, and at most its idle limit, after its last request.
+ */
+export const SESSION_TOUCH_SECONDS = 60;
+
+/** Whether a request writes the session's last-activity time: the stored one is a minute old or older. */
+export function activityDue(lastSeenAt: Date, now: number = Date.now()): boolean {
+  return now - lastSeenAt.getTime() >= SESSION_TOUCH_SECONDS * 1000;
+}
+
 /** One level's values; null follows the next level. */
 export type SessionRuleValues = { maxSessions: number | null; sessionMinutes: number | null };
 export type SessionRules = { maxSessions: number; idleSeconds: number };

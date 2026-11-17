@@ -18,7 +18,7 @@ import {
 } from './auth.store';
 import { LoginUser } from './decide-login';
 import { hashPassword } from './password';
-import { SessionRuleValues, SessionRules, effectiveRules } from './sessions';
+import { SessionRuleValues, SessionRules, activityDue, effectiveRules } from './sessions';
 import { TRIAL_PASSWORD, buildTrialSeed, trialSeedDecision } from './trial-seed';
 import { LOGIN_FAIL_WINDOW_SECONDS } from './validators';
 
@@ -399,8 +399,8 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     };
   }
 
-  /** Renews the key's TTL, and only for a key that still exists; the row follows. */
-  async touchSession(token: string, idleSeconds?: number): Promise<void> {
+  /** Renews the key's TTL, and only for a key that still exists; the row follows at most once a minute. */
+  async touchSession(token: string, idleSeconds?: number, lastSeenAt?: Date): Promise<void> {
     const tokenHash = hashSessionToken(token);
     let idle = idleSeconds;
     if (idle === undefined) {
@@ -409,6 +409,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     }
     if ((await this.redis.expire(sessionKey(tokenHash), idle)) !== 1) return;
     const now = new Date();
+    if (lastSeenAt && !activityDue(lastSeenAt, now.getTime())) return;
     await this.prisma.session.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { lastSeenAt: now, expiresAt: new Date(now.getTime() + idle * 1000) },

@@ -322,6 +322,99 @@ describe('PrismaAuthStore', () => {
       expect(redis.ttl(keyOf(token))).toBe(SESSION_TTL_SECONDS);
     });
 
+    describe('the last-activity time, written at most once a minute (spec 2026-11-17-scale-speed-cleanup, decision 13)', () => {
+      const N = 15;
+      let writes: number;
+
+      beforeEach(async () => {
+        jest.useFakeTimers({ now: redis.now });
+        await store.setSessionRules('pos', { maxSessions: null, sessionMinutes: N });
+        writes = 0;
+        const updateMany = prisma.session.updateMany;
+        prisma.session.updateMany = async (args) => {
+          writes += 1;
+          return updateMany(args);
+        };
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      /** The clock of the row checks and of Redis, moved together. */
+      const wait = (seconds: number) => {
+        jest.setSystemTime(Date.now() + seconds * 1000);
+        redis.advance(seconds);
+      };
+      /** What a signed-in request does first (ActorResolver.actor): the live check, then the touch. */
+      const visit = async (token: string) => {
+        const live = await store.liveSession(token);
+        if (live) await store.touchSession(token, live.rules.idleSeconds, live.session.lastSeenAt);
+        return live !== null;
+      };
+      const row = (token: string) => prisma.sessions.find((candidate) => candidate.tokenHash === hashSessionToken(token))!;
+
+      it('writes nothing while the stored time is younger than 60 s, and renews the live key on every request', async () => {
+        const token = await save();
+        const stored = row(token).lastSeenAt;
+        wait(59);
+        expect(await visit(token)).toBe(true);
+        expect(writes).toBe(0);
+        expect(row(token).lastSeenAt).toBe(stored);
+        expect(redis.ttl(keyOf(token))).toBe(N * 60);
+        wait(1);
+        expect(await visit(token)).toBe(true);
+        expect(writes).toBe(1);
+        expect(row(token).lastSeenAt.getTime()).toBe(Date.now());
+        expect(row(token).expiresAt.getTime()).toBe(Date.now() + N * 60_000);
+      });
+
+      it('keeps a session used every 30 s for longer than its idle limit open, about once a minute written', async () => {
+        const token = await save();
+        for (let step = 0; step < 4 * N; step += 1) {
+          wait(30);
+          expect(await visit(token)).toBe(true);
+        }
+        // 2N minutes of requests every 30 s: one write a minute, not one a request.
+        expect(writes).toBe(2 * N);
+      });
+
+      it('ends a session more than N - 1 and at most N minutes after its last request', async () => {
+        const token = await save();
+        // The worst case: the last request came 59 s after the last write, so the stored time is 59 s older.
+        wait(59);
+        expect(await visit(token)).toBe(true);
+        expect(writes).toBe(0);
+        wait((N - 1) * 60);
+        expect(await store.liveSession(token)).not.toBeNull();
+        wait(1);
+        expect(await store.liveSession(token)).toBeNull();
+        // The best case: the last request wrote, so the session lives the whole N minutes and not a second more.
+        const other = await save();
+        wait(N * 60 - 1);
+        expect(await store.liveSession(other)).not.toBeNull();
+        wait(1);
+        expect(await store.liveSession(other)).toBeNull();
+      });
+
+      it('a gap longer than N + 1 minutes ends it, and a touch after that revives nothing', async () => {
+        const token = await save();
+        wait(30);
+        expect(await visit(token)).toBe(true);
+        wait((N + 1) * 60 + 1);
+        expect(await visit(token)).toBe(false);
+        expect(await redis.exists(keyOf(token))).toBe(0);
+      });
+
+      it('a revoked session is refused at once, whatever its last-activity time', async () => {
+        const token = await save();
+        wait(10);
+        expect(await visit(token)).toBe(true);
+        await store.revokeSessions([idOf(token)]);
+        expect(await visit(token)).toBe(false);
+      });
+    });
+
     it('treats a session whose key has expired as gone, and does not revive it on touch', async () => {
       const token = await save();
       redis.advance(SESSION_TTL_SECONDS);

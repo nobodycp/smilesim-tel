@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import type { AuthStore, FullSessionRow, NewPasskey, PasskeyRow, SessionKind, SessionRow, SessionScope, StoredUser, TwoFactorMethod, UserPatch } from '../auth.store';
 import { LoginUser } from '../decide-login';
 import { Layer } from '../../../doors';
-import { SessionRuleValues, SessionRules, effectiveRules } from '../sessions';
+import { SessionRuleValues, SessionRules, activityDue, effectiveRules } from '../sessions';
 import { failureWindowExpired } from '../validators';
 
 // The auth store over plain arrays, for specs: no PostgreSQL, no Redis. Production binds PrismaAuthStore.
@@ -243,11 +243,12 @@ export class MemoryAuthStore implements AuthStore {
     return { session: { ...session }, user, rules };
   }
 
-  async touchSession(sessionId: string, idleSeconds?: number): Promise<void> {
+  async touchSession(sessionId: string, idleSeconds?: number, lastSeenAt?: Date): Promise<void> {
     const session = this.liveRow(sessionId);
     if (!session) return;
     const idle = idleSeconds ?? (await this.idleOf(session.userId));
     const now = new Date();
+    if (lastSeenAt && !activityDue(lastSeenAt, now.getTime())) return;
     session.lastSeenAt = now;
     session.expiresAt = new Date(now.getTime() + idle * 1000);
   }

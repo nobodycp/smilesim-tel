@@ -30,7 +30,7 @@ export class ActorResolver {
     if (!sessionId) fail(401, 'LOGIN_REQUIRED');
     const live = await this.auth.liveSession(sessionId);
     if (!live || live.session.scope !== 'full' || live.user.disabledAt) fail(401, 'LOGIN_REQUIRED');
-    await this.auth.touchSession(sessionId, live.rules.idleSeconds);
+    await this.auth.touchSession(sessionId, live.rules.idleSeconds, live.session.lastSeenAt);
     const impersonating = live.session.kind === 'impersonation';
     // Who really acted is kept on the entered session itself, never read from a cookie (rule 3.5).
     const operatorId = (impersonating && live.session.operatorId) || live.user.id;

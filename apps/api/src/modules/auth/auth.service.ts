@@ -95,7 +95,7 @@ export class AuthService {
     if (!sessionId) return null;
     const found = await this.store.liveSession(sessionId);
     if (!found || found.user.disabledAt) return null;
-    await this.store.touchSession(sessionId, found.rules.idleSeconds);
+    await this.store.touchSession(sessionId, found.rules.idleSeconds, found.session.lastSeenAt);
     return { session: found.session, user: found.user };
   }
 

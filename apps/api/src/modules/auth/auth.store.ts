@@ -109,8 +109,12 @@ export interface AuthStore {
   userBySession(sessionId: string): Promise<LoginUser | null>;
   /** The live session, its owner and the owner's rules; null when missing, revoked, expired, or idle past the rules. */
   liveSession(token: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null>;
-  /** Sets lastSeenAt to now and pushes the expiry the owner's idle time ahead (given, or read from the rules). */
-  touchSession(sessionId: string, idleSeconds?: number): Promise<void>;
+  /**
+   * Renews the live key by the owner's idle time (given, or read from the rules). Sets lastSeenAt to now and pushes
+   * the row's expiry the same time ahead, unless `lastSeenAt`, the stored time the request read, is younger than
+   * `SESSION_TOUCH_SECONDS` (`activityDue`): then the row is not written.
+   */
+  touchSession(sessionId: string, idleSeconds?: number, lastSeenAt?: Date): Promise<void>;
   /** Each layer's own session values (null follows the default). */
   sessionRules(): Promise<Record<Layer, SessionRuleValues>>;
   setSessionRules(layer: Layer, values: SessionRuleValues): Promise<void>;
