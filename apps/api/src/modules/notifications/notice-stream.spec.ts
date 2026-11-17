@@ -7,9 +7,10 @@ import { NoticesController } from './notices.controller';
 
 // The live notices stream (`GET /v1/notices/stream`), moved to `modules/notifications` by slice R.2 and not
 // changed: it subscribes the account's channel, writes each message as an event, pings and checks the session on
-// every 25 s beat, ends the stream when the session is no longer live, and unsubscribes once when the browser goes.
+// every 15 s beat (under the web proxy's 30 s idle limit; speed plan PF.3), ends the stream when the session is no
+// longer live, and unsubscribes once when the browser goes.
 
-const BEAT = 25_000;
+const BEAT = 15_000;
 const actor = { id: 'pos1' } as Actor;
 
 function stream(live: () => boolean) {
@@ -71,7 +72,10 @@ describe('the live notices stream', () => {
   it('pings and checks the session it was opened with on every beat, and stays open while it is live', async () => {
     const s = stream(() => true);
     await s.controller.noticeStream(actor, s.req, s.res);
-    jest.advanceTimersByTime(BEAT * 2);
+    jest.advanceTimersByTime(BEAT - 1);
+    await settle();
+    expect(s.written.filter((chunk) => chunk === ': ping\n\n')).toHaveLength(0);
+    jest.advanceTimersByTime(BEAT + 1);
     await settle();
     expect(s.written.filter((chunk) => chunk === ': ping\n\n')).toHaveLength(2);
     expect(s.calls.checked).toEqual(['stream-session', 'stream-session']);

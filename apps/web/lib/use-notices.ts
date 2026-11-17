@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type NoticeRow } from './api';
 
-// Live notices for the shell: one EventSource per tab, a reconnect that backs off from 1s to 30s,
-// and a slow poll that keeps the list honest when the stream is down. The latest arrival is
-// exposed as `fresh` so the shell can show it as a toast.
+// Live notices for the shell: one EventSource per tab, a reconnect that backs off from 1s to 30s.
+// The list is read once each time the stream opens (the first open and every re-open after a drop, so nothing sent
+// while it was down is missed); a slow poll keeps it honest only while the stream is down, and a stream that fails
+// before it ever opened reads the list once at once, so the bell is not empty. The read asks for the rows the panel
+// shows (speed plan PF.3). The latest arrival is exposed as `fresh` so the shell can show it as a toast.
 
 const PANEL = 10;
 const POLL_MS = 60_000;
@@ -19,7 +21,7 @@ export function useNotices(ready: boolean) {
   const toastTimer = useRef<number | null>(null);
 
   const pull = useCallback(async () => {
-    const result = await api.notices();
+    const result = await api.notices({ limit: PANEL });
     if (!result.ok) return;
     setNotices(result.data.items.slice(0, PANEL));
     setUnread(result.data.unread);
@@ -31,6 +33,8 @@ export function useNotices(ready: boolean) {
     let source: EventSource | null = null;
     let retry = 1_000;
     let retryTimer: number | null = null;
+    let poll: number | null = null;
+    let everOpened = false;
 
     const onNotice = (event: MessageEvent<string>) => {
       let row: NoticeRow;
@@ -52,29 +56,31 @@ export function useNotices(ready: boolean) {
       source.addEventListener('notice', onNotice as EventListener);
       source.onopen = () => {
         retry = 1_000;
+        everOpened = true;
+        if (poll !== null) window.clearInterval(poll);
+        poll = null;
         void pull();
       };
       source.onerror = () => {
         source?.close();
         source = null;
         if (stopped) return;
+        if (poll === null) {
+          if (!everOpened) void pull();
+          poll = window.setInterval(() => void pull(), POLL_MS);
+        }
         retryTimer = window.setTimeout(open, retry);
         retry = Math.min(retry * 2, 30_000);
       };
     };
 
-    // This effect subscribes to an external system (the stream and the poll). pull() sets state only after its
-    // await, in a later task, which the rule cannot see.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
-    void pull();
     open();
-    const poll = window.setInterval(() => void pull(), POLL_MS);
     return () => {
       stopped = true;
       source?.close();
       if (retryTimer) window.clearTimeout(retryTimer);
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
-      window.clearInterval(poll);
+      if (poll !== null) window.clearInterval(poll);
     };
   }, [ready, pull]);
 

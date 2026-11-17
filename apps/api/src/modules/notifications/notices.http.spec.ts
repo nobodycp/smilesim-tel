@@ -89,6 +89,27 @@ describe('notices over HTTP', () => {
     expect(where.AND).toEqual([{ createdAt: { lte: at(2) } }, { OR: [{ createdAt: { lt: at(2) } }, { id: { lt: 'n2' } }] }]);
   });
 
+  it('answers the rows asked for with limit, and the same counts and cursor as the full page would', async () => {
+    const response = await get('/v1/notices?limit=2');
+    expect(response.status).toBe(200);
+    expect(calls.findMany[0]).toMatchObject({ take: 3 });
+    expect(response.body.items.map((item: { id: string }) => item.id)).toEqual(['n3', 'n2']);
+    expect(response.body).toMatchObject({ unread: 2, total: 3, nextCursor: encodeCursor(at(2), 'n2') });
+  });
+
+  it('takes a limit from 1 to the page of 40, and refuses any other with 400 INVALID', async () => {
+    for (const limit of ['1', '10', '40']) {
+      calls.findMany = [];
+      const response = await get(`/v1/notices?limit=${limit}`);
+      expect(response.status).toBe(200);
+      expect(calls.findMany[0]).toMatchObject({ take: Number(limit) + 1 });
+    }
+    for (const limit of ['0', '41', '99', '100', '-1', '2.5', 'ten']) {
+      const response = await get(`/v1/notices?limit=${limit}`);
+      expect([limit, response.status, response.body.code]).toEqual([limit, 400, 'INVALID']);
+    }
+  });
+
   it('refuses a cursor it did not issue with 400 INVALID', async () => {
     const response = await get('/v1/notices?cursor=not-ours');
     expect(response.status).toBe(400);

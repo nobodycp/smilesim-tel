@@ -7,8 +7,11 @@ import { Actor, ActorInterceptor } from '../access';
 import type { Actor as ActorShape } from '../access';
 import { NoticeInboxService } from './notice-inbox.service';
 
-/** How often an open notices stream is pinged and its session checked again. */
-const STREAM_BEAT_MS = 25_000;
+/**
+ * How often an open notices stream is pinged and its session checked again. Under the web's proxy, which drops a
+ * stream after 30 s of silence, so a quiet stream is never cut (speed plan PF.3).
+ */
+const STREAM_BEAT_MS = 15_000;
 
 @ApiTags('notifications')
 @ApiCookieAuth('sid')

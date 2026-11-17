@@ -17,17 +17,18 @@ export class NoticeInboxService {
     const group = noticeGroupOf(query.group);
     const onlyUnread = query.unread === '1' || query.unread === 'true';
     const position = cursorPosition(query.cursor);
+    const size = query.limit ? Number(query.limit) : NOTICES_PAGE;
     const where = {
       userId: actor.id,
       ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
       ...(onlyUnread ? { readAt: null } : {}),
     };
     const [rows, unread, total] = await Promise.all([
-      this.repo.notices({ ...where, AND: after(position) }, NOTICES_PAGE + 1),
+      this.repo.notices({ ...where, AND: after(position) }, size + 1),
       this.repo.noticeCount({ userId: actor.id, readAt: null }),
       this.repo.noticeCount(where),
     ]);
-    const { items, nextCursor } = page(rows, NOTICES_PAGE);
+    const { items, nextCursor } = page(rows, size);
     return {
       unread,
       total,
