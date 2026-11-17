@@ -43,6 +43,9 @@ const REFUSED: [path: string, why: string][] = [
   ['/v1/system/requests?status=6xx', 'a status class that is not one'],
   ['/v1/system/requests?status=20', 'a status that is not three digits'],
   ['/v1/system/requests?code=NOT_A_CODE', 'an error code the API never answers'],
+  ['/v1/system/requests?method=TRACE', 'a method the filter does not offer'],
+  ['/v1/system/requests?unmatched=yes', 'a switch that is neither on nor off'],
+  ['/v1/system/requests/summary?method=get', 'a method in lower case'],
   ['/v1/system/requests?slowerThan=fast', 'a duration that is not a number'],
   ['/v1/system/requests?slowerThan=9999999', 'a duration past ten minutes'],
   ['/v1/system/requests/summary?from=yesterday', 'a moment that is not a date'],
@@ -65,6 +68,8 @@ const ACCEPTED = [
   '/v1/overview?period=day',
   '/v1/system/requests?status=4xx&code=LOGIN_REQUIRED&route=/v1/me&account=branch&ip=127.0.0.1&slowerThan=250&from=2026-11-17&to=2026-11-17T12:00:00Z',
   '/v1/system/requests?status=404',
+  '/v1/system/requests?method=DELETE&path=%25lines_&ip=10.0.&unmatched=1',
+  '/v1/system/requests/summary?method=POST&path=/v1/&ip=127.&unmatched=0',
   '/v1/system/requests/summary?status=5xx&from=2026-11-17T00:00:00Z',
   '/v1/system/errors?route=/v1/lines/:id&from=2026-11-17&to=2026-11-17',
 ];

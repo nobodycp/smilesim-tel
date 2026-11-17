@@ -4,10 +4,15 @@
 export type RequestFilter = {
   status?: { gte: number; lte: number };
   code?: string;
+  method?: string;
+  /** The route pattern, exact; `''` is the requests no route matched. */
   route?: string;
+  /** A part of the path as sent, case ignored, matched literally (`%`, `_` and a backslash are no wildcards). */
+  pathContains?: string;
   /** An account by login name; its id when it exists, to find it also as the account that entered another. */
   account?: { loginName: string; id: string | null };
-  ip?: string;
+  /** The start of the caller's address. */
+  ipStartsWith?: string;
   slowerThan?: number;
   from?: Date;
   to?: Date;
@@ -15,6 +20,11 @@ export type RequestFilter = {
 
 /** What the server errors are filtered by: a route pattern and a time range. */
 export type ErrorFilter = { route?: string; from?: Date; to?: Date };
+/** `text` for a `LIKE` pattern: its `%`, `_` and backslash match themselves (the backslash is PostgreSQL's default escape). */
+export function likeLiteral(text: string): string {
+  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 /** `4xx` is 400–499; `404` is 404 alone. */
 export function statusRange(status: string): { gte: number; lte: number } {
   if (status.endsWith('xx')) {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ERROR_MESSAGES, queryCursor, queryDay, queryText, type ErrorCode } from '../platform';
+import { ERROR_MESSAGES, queryCursor, queryDay, queryFlag, queryOneOf, queryText, type ErrorCode } from '../platform';
 
 // The queries of the request log routes (backend-engineering.mdc 4.1).
 
@@ -14,11 +14,21 @@ const millis = queryText(6).refine((value) => value === undefined || (/^\d{1,6}$
 /** One of the API's error codes. */
 const errorCode = queryText(40).refine((value) => value === undefined || ERROR_CODES.includes(value as ErrorCode));
 
-/** GET system/requests/summary — the filters of the log, without a cursor. */
+/** The methods a request can be filtered by. */
+export const REQUEST_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+
+/**
+ * GET system/requests/summary — the filters of the log, without a cursor. `route` is the pattern, exact; `path` is
+ * the path as sent, any part of it, case ignored; `ip` is the start of an address (`10.0.` finds a range);
+ * `unmatched=1` keeps the requests no route matched (an empty pattern, which `route` cannot ask for).
+ */
 export const RequestLogFilterQuery = z.object({
   status: statusFilter,
   code: errorCode,
+  method: queryOneOf(REQUEST_METHODS),
   route: queryText(200),
+  path: queryText(200),
+  unmatched: queryFlag,
   account: queryText(60),
   ip: queryText(64),
   slowerThan: millis,

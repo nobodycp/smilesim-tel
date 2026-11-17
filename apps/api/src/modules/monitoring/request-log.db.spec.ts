@@ -133,9 +133,43 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     expect(await ids({ slowerThan: '500' })).toEqual(['crash']);
     expect(await ids({ from: at(3), to: at(5) })).toEqual(['crash', 'missing', 'pos']);
     expect(await ids({ status: '4xx', route: `/t-${tag}/a` })).toEqual(['denied']);
+    // The requests no route matched, which an empty `route` cannot ask for.
+    expect(await ids({ unmatched: '1' })).toEqual(['missing']);
+    expect(await ids({ unmatched: '0' })).toEqual(['crash', 'denied', 'entered', 'missing', 'ok', 'other-ip', 'pos']);
     // The entered row names who entered by login name.
     const enteredRow = (await service.list(owner(), { ...ownDay, account: login('owner') })).items[0];
     expect(enteredRow).toMatchObject({ actorLoginName: login('pos'), operatorLoginName: login('owner'), layer: 'pos' });
+  });
+
+  it('filters by method, by a part of the path (case ignored, wildcards literal) and by the start of an address, in the rows and the summary alike', async () => {
+    await prisma.requestLog.createMany({
+      data: [
+        row(1, { requestId: 'get', path: `/T-${tag}/Lines/42` }),
+        row(2, { requestId: 'post', method: 'POST', path: `/t-${tag}/lines` }),
+        row(3, { requestId: 'delete', method: 'DELETE', path: `/t-${tag}/a_b%c`, ip: '10.0.7.9' }),
+        row(4, { requestId: 'lookalike', path: `/t-${tag}/axbyc`, ip: '10.01.1.1' }),
+        row(5, { requestId: 'backslash', path: `/t-${tag}/x\\y`, ip: '192.168.0.1' }),
+      ],
+    });
+    expect(await ids({ method: 'POST' })).toEqual(['post']);
+    expect(await ids({ method: 'DELETE' })).toEqual(['delete']);
+    expect(await ids({ path: 'lines' })).toEqual(['get', 'post']);
+    expect(await ids({ path: 'LINES/4' })).toEqual(['get']);
+    // `_` and `%` are the characters themselves, not one character and any characters.
+    expect(await ids({ path: 'a_b%c' })).toEqual(['delete']);
+    expect(await ids({ path: '_' })).toEqual(['delete']);
+    expect(await ids({ path: '%' })).toEqual(['delete']);
+    expect(await ids({ path: 'x\\y' })).toEqual(['backslash']);
+    // The start of an address finds a range; the whole address still finds itself; `_` is not a wildcard there either.
+    expect(await ids({ ip: '10.0.' })).toEqual(['delete', 'get', 'post']);
+    expect(await ids({ ip: '10.0.7.9' })).toEqual(['delete']);
+    expect(await ids({ ip: '10.0_' })).toEqual([]);
+    expect(await ids({ ip: '10.0.0.1' })).toEqual(['get', 'post']);
+    // The summary reads the same rows under the same filters.
+    expect((await service.summary(owner(), { ...ownDay, ip: '10.0.' })).count).toBe(3);
+    expect((await service.summary(owner(), { ...ownDay, path: '%' })).count).toBe(1);
+    expect((await service.summary(owner(), { ...ownDay, method: 'POST', path: 'LINES' })).busiest).toEqual([{ method: 'POST', route: `/t-${tag}/a`, calls: 1, medianMs: 10, p95Ms: 10 }]);
+    expect((await service.summary(owner(), { ...ownDay, unmatched: '1' })).count).toBe(0);
   });
 
   it('pages newest first by cursor, with the total of the filter', async () => {

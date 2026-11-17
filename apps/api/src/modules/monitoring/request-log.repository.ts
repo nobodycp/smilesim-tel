@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, after } from '../platform';
-import type { ErrorFilter, RequestFilter } from './request-log.rules';
+import { likeLiteral, type ErrorFilter, type RequestFilter } from './request-log.rules';
 
 /** One route's figures in the summary: how often it was called and how long it took, in whole milliseconds. */
 export type RouteFigures = { method: string; route: string; calls: number; medianMs: number; p95Ms: number };
@@ -140,17 +140,22 @@ function errorSqlOf(filter: ErrorFilter): Prisma.Sql {
   return and.length > 0 ? Prisma.join(and, ' AND ') : Prisma.sql`TRUE`;
 }
 
-/** The filter as Prisma's `where`. */
+/**
+ * The filter as Prisma's `where`. Prisma's `contains` and `startsWith` do not escape `LIKE`'s wildcards, so the
+ * text is escaped here (`likeLiteral`), the same as the SQL beside it.
+ */
 function whereOf(filter: RequestFilter): Prisma.RequestLogWhereInput {
   const and: Prisma.RequestLogWhereInput[] = [];
   if (filter.status) and.push({ status: filter.status });
   if (filter.code) and.push({ code: filter.code });
+  if (filter.method) and.push({ method: filter.method });
   if (filter.route !== undefined) and.push({ route: filter.route });
+  if (filter.pathContains) and.push({ path: { contains: likeLiteral(filter.pathContains), mode: 'insensitive' } });
   if (filter.account) {
     const { loginName, id } = filter.account;
     and.push({ OR: [{ actorLoginName: loginName }, ...(id ? [{ actorId: id }, { operatorId: id }] : [])] });
   }
-  if (filter.ip) and.push({ ip: filter.ip });
+  if (filter.ipStartsWith) and.push({ ip: { startsWith: likeLiteral(filter.ipStartsWith) } });
   if (filter.slowerThan !== undefined) and.push({ durationMs: { gt: filter.slowerThan } });
   if (filter.from) and.push({ at: { gte: filter.from } });
   if (filter.to) and.push({ at: { lte: filter.to } });
@@ -162,12 +167,14 @@ function sqlOf(filter: RequestFilter): Prisma.Sql {
   const and: Prisma.Sql[] = [];
   if (filter.status) and.push(Prisma.sql`"status" BETWEEN ${filter.status.gte} AND ${filter.status.lte}`);
   if (filter.code) and.push(Prisma.sql`"code" = ${filter.code}`);
+  if (filter.method) and.push(Prisma.sql`"method" = ${filter.method}`);
   if (filter.route !== undefined) and.push(Prisma.sql`"route" = ${filter.route}`);
+  if (filter.pathContains) and.push(Prisma.sql`"path" ILIKE ${`%${likeLiteral(filter.pathContains)}%`}`);
   if (filter.account) {
     const { loginName, id } = filter.account;
     and.push(id ? Prisma.sql`("actorLoginName" = ${loginName} OR "actorId" = ${id} OR "operatorId" = ${id})` : Prisma.sql`"actorLoginName" = ${loginName}`);
   }
-  if (filter.ip) and.push(Prisma.sql`"ip" = ${filter.ip}`);
+  if (filter.ipStartsWith) and.push(Prisma.sql`"ip" LIKE ${`${likeLiteral(filter.ipStartsWith)}%`}`);
   if (filter.slowerThan !== undefined) and.push(Prisma.sql`"durationMs" > ${filter.slowerThan}`);
   if (filter.from) and.push(Prisma.sql`"at" >= ${filter.from}`);
   if (filter.to) and.push(Prisma.sql`"at" <= ${filter.to}`);

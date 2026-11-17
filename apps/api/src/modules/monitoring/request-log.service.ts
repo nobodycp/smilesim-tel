@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FEED_PAGE, capList, cursorPosition, dayRange, page, parseInput } from '../platform';
+import { FEED_PAGE, capList, cursorPosition, dayRange, isOn, page, parseInput } from '../platform';
 import { requireOwner, type Actor } from '../access';
 import { RequestLogRepository } from './request-log.repository';
 import { RequestLogWriter } from './request-log.writer';
@@ -111,9 +111,12 @@ export class RequestLogService {
     return {
       ...(query.status ? { status: statusRange(query.status) } : {}),
       ...(query.code ? { code: query.code } : {}),
-      ...(query.route ? { route: query.route } : {}),
+      ...(query.method ? { method: query.method } : {}),
+      // No route matched: the empty pattern, which `route` (empty = not sent) cannot ask for.
+      ...(isOn(query.unmatched) ? { route: '' } : query.route ? { route: query.route } : {}),
+      ...(query.path ? { pathContains: query.path } : {}),
       ...(loginName ? { account: { loginName, id: await this.repo.accountId(loginName) } } : {}),
-      ...(query.ip ? { ip: query.ip } : {}),
+      ...(query.ip ? { ipStartsWith: query.ip } : {}),
       ...(query.slowerThan ? { slowerThan: Number(query.slowerThan) } : {}),
       ...(from ? { from } : {}),
       ...(to ? { to } : {}),
