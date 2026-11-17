@@ -27,7 +27,7 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   error rate, five slowest and five most called routes with median and p95, in SQL), `DELETE /v1/system/requests`
   (`@Activity('request_log_clear')`, the count in the record). Specs: owner only (permission matrix), the filters,
   the clearing leaves the activity log and writes its own event.
-- [ ] **M.3 Web: the section and the request log.** `apps/web/components/app-shell.tsx`: the group
+- [x] **M.3 Web: the section and the request log.** (`109e4159`) `apps/web/components/app-shell.tsx`: the group
   «المطورين والحماية» (branch, owner). `apps/web/features/system/` (api, screens), `app/system/requests/page.tsx`:
   the table on `DataTable` and `FilterBar`, the summary strip, the clear dialog. Copy in the three languages.
 - [ ] **M.4 Errors.** `RequestError` (requestId, at, route, name, message, stack top; filtered by
