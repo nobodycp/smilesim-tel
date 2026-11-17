@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -148,6 +148,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { t } = usePrefs();
   const branding = useBranding();
   const pathname = usePathname();
+  const router = useRouter();
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
@@ -195,7 +196,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!row.read) await markRead(row.id);
     closeNotices();
     dismiss();
-    window.location.assign(row.href);
+    // An in-app page: a client navigation, like the notices page's own rows (speed plan PF.10).
+    router.push(row.href);
   }
 
   function toggleCollapsed() {

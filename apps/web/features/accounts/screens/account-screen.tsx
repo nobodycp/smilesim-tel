@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
@@ -369,7 +370,7 @@ function AccountLines({ login }: { login: string }) {
     pick(await api.lines({ loginName: login, cursor }), pageRows),
   );
   const columns: Column<LineRow>[] = [
-    { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },
+    { key: 'number', header: t.number, render: (line) => <Link href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></Link> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName || '—' },
     { key: 'pos', header: t.pointOfSale, render: (line) => (line.posLoginName ? <AccountName login={line.posLoginName} /> : '—') },
     { key: 'status', header: t.status, render: (line) => <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge> },
