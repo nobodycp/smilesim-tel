@@ -66,6 +66,7 @@ function harness() {
   };
   const stop = workerShutdown({
     readiness,
+    heartbeat: { stop: async () => void log.push('heartbeat stopped') },
     stopTimers,
     queues: [queue],
     closeNotices: async () => void log.push('notice writer closed'),
@@ -109,6 +110,8 @@ describe('stopping a worker while its readiness round is slow (SIGTERM during re
     const stopping = h.stop();
     await settle();
     expect(h.queue.taking).toBe(false);
+    // The heartbeat (system monitor M.5) is told in the same turn, and is let go of before the database.
+    expect(h.log).toContain('heartbeat stopped');
     // The timers had no round in flight: their publisher may close at once, it serves the relay only.
     expect(h.log).not.toContain('notice writer closed');
     expect(h.log).not.toContain('database and redis released');
@@ -118,6 +121,7 @@ describe('stopping a worker while its readiness round is slow (SIGTERM during re
     expect(at('attestations removed')).toBeGreaterThanOrEqual(0);
     expect(at('notice writer closed')).toBeGreaterThan(at('attestations removed'));
     expect(at('database and redis released')).toBeGreaterThan(at('notice writer closed'));
+    expect(at('database and redis released')).toBeGreaterThan(at('heartbeat stopped'));
   });
 });
 

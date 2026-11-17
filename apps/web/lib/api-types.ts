@@ -890,3 +890,82 @@ export type RequestLogCleared = {
   removed: number;
   errorsRemoved: number;
 };
+
+/** A part's state on the system status (system monitor M.5): سليم / تحذير / متوقف. */
+export type StatusState = 'ok' | 'warn' | 'down';
+/**
+ * One part of `GET /v1/system/status`. `note` is a code saying why (`memory`, `stale`, `no_heartbeat`, `slow`,
+ * `not_configured`, `failed_jobs`, `waiting`, `late`, `provider_problem`, `server_errors`, `migration_missing`, or for
+ * a probe that failed `timeout` / an error code), empty when there is nothing to say. `figures` is null when the
+ * probe failed.
+ */
+export type StatusPartOf<Name extends string, Figures> = { name: Name; state: StatusState; note: string; figures: Figures | null };
+/** The API process. `memoryShare` (0 to 1) is the memory in use against `limitBytes`: the container's when it has one, else the heap's. */
+export type ApiFigures = {
+  uptimeS: number;
+  commit: string | null;
+  rssBytes: number;
+  heapUsedBytes: number;
+  limitBytes: number;
+  memoryBasis: 'container' | 'heap';
+  memoryShare: number;
+};
+/** `workers`: those that beat in the last 3 min; `lastBeatAgeS`: the latest beat's age, null when none ever beat. */
+export type WorkerFigures = {
+  workers: number;
+  lastBeatAgeS: number | null;
+};
+export type PostgresFigures = {
+  pingMs: number;
+  connections: number;
+  sizeBytes: number;
+};
+/** `configured: false` when the deployment names no Redis; then the two other figures are null. */
+export type RedisFigures = {
+  configured: boolean;
+  pingMs: number | null;
+  usedMemoryBytes: number | null;
+};
+export type QueuesFigures = {
+  configured: boolean;
+  queues: { name: string; waiting: number; active: number; failed: number }[];
+};
+/** `oldestAgeS` is null when nothing waits. */
+export type OutboxFigures = {
+  unpublished: number;
+  oldestAgeS: number | null;
+};
+export type ProvidersFigures = {
+  problems: number;
+  providers: { code: string; name: string; status: 'working' | 'problem'; reason: 'failures' | 'balance' | null }[];
+};
+/** The request log's last `windowMinutes`: `errorRate` is the share of 5xx, 0 to 1. */
+export type RequestsFigures = {
+  windowMinutes: number;
+  count: number;
+  failed: number;
+  errorRate: number;
+  slowestRoute: { method: string; route: string; p95Ms: number } | null;
+};
+/** Migrations the build carries and the database applied; `missing` names the first ten not applied. */
+export type SchemaFigures = {
+  carried: number;
+  applied: number;
+  missing: string[];
+};
+export type StatusPart =
+  | StatusPartOf<'api', ApiFigures>
+  | StatusPartOf<'worker', WorkerFigures>
+  | StatusPartOf<'postgres', PostgresFigures>
+  | StatusPartOf<'redis', RedisFigures>
+  | StatusPartOf<'queues', QueuesFigures>
+  | StatusPartOf<'outbox', OutboxFigures>
+  | StatusPartOf<'providers', ProvidersFigures>
+  | StatusPartOf<'requests', RequestsFigures>
+  | StatusPartOf<'schema', SchemaFigures>;
+/** `GET /v1/system/status` (branch owner only): the parts in this order, and `state`, the worst of them. */
+export type SystemStatus = {
+  at: string;
+  state: StatusState;
+  parts: StatusPart[];
+};

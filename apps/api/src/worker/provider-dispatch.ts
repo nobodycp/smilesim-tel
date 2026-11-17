@@ -170,6 +170,8 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
 /** What a worker lets go of when it stops, and in which order (`worker.ts` calls the answer on SIGTERM and SIGINT). */
 export type WorkerShutdownParts = {
   readiness: { stop: () => Promise<void> };
+  /** The worker's heartbeat (system monitor M.5): its timer stops with the others, and its beat in flight is waited for. */
+  heartbeat: { stop: () => Promise<void> };
   stopTimers: () => Promise<void>;
   queues: readonly { close: () => Promise<void> }[];
   closeNotices: () => Promise<void>;
@@ -179,7 +181,7 @@ export type WorkerShutdownParts = {
 
 /**
  * The worker's stop (slice R.2.1). Everything that starts new work is told to stop **at once**, in the same turn:
- * the readiness loop, the relay, recovery and sweep timers (each stop clears its timer before it waits for
+ * the readiness loop, the heartbeat, the relay, recovery and sweep timers (each stop clears its timer before it waits for
  * anything), and the queues (BullMQ stops taking jobs when `close` is called). Only then does anything wait: the
  * readiness round in flight and the removal of this worker's rows, the timers' rounds in flight and then the
  * queue publisher, the queues' running jobs. After all of them, the notice writer (no settlement is left to
@@ -194,7 +196,7 @@ export function workerShutdown(parts: WorkerShutdownParts): () => Promise<void> 
   let stopping: Promise<void> | null = null;
   return () => {
     stopping ??= (async () => {
-      await Promise.all([parts.readiness.stop(), parts.stopTimers(), ...parts.queues.map((queue) => queue.close())]);
+      await Promise.all([parts.readiness.stop(), parts.heartbeat.stop(), parts.stopTimers(), ...parts.queues.map((queue) => queue.close())]);
       await parts.closeNotices();
       await parts.release();
     })();

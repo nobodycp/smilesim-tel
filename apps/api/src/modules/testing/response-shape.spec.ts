@@ -9,6 +9,10 @@ import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settleme
 import { RequestLogRepository } from '../monitoring/request-log.repository';
 import { RequestLogService } from '../monitoring/request-log.service';
 import type { RequestLogWriter } from '../monitoring/request-log.writer';
+import { StatusService } from '../monitoring/status.service';
+import type { StatusRepository } from '../monitoring/status.repository';
+import type { StatusRedis } from '../monitoring/status-redis';
+import type { ProviderHealthService } from '../providers/directory/provider-health.service';
 import type { UnitOfWork } from '../platform/unit-of-work';
 import type { Actor } from '../access/types';
 
@@ -83,6 +87,24 @@ const ROUTE_FIGURES_KEYS = ['method', 'route', 'calls', 'medianMs', 'p95Ms'];
 const ERROR_GROUP_KEYS = ['method', 'route', 'name', 'message', 'count', 'firstAt', 'lastAt', 'lastRequestId', 'stack'];
 const ERROR_LIST_KEYS = ['items', 'capped', 'total'];
 const LOG_CLEARED_KEYS = ['removed', 'errorsRemoved'];
+// The system status (M.5): the answer, a part, and each part's figures, by name.
+const STATUS_KEYS = ['at', 'state', 'parts'];
+const STATUS_PART_KEYS = ['name', 'state', 'note', 'figures'];
+const STATUS_FIGURE_KEYS: Record<string, string[]> = {
+  api: ['uptimeS', 'commit', 'rssBytes', 'heapUsedBytes', 'limitBytes', 'memoryBasis', 'memoryShare'],
+  worker: ['workers', 'lastBeatAgeS'],
+  postgres: ['pingMs', 'connections', 'sizeBytes'],
+  redis: ['configured', 'pingMs', 'usedMemoryBytes'],
+  queues: ['configured', 'queues'],
+  outbox: ['unpublished', 'oldestAgeS'],
+  providers: ['problems', 'providers'],
+  requests: ['windowMinutes', 'count', 'failed', 'errorRate', 'slowestRoute'],
+  schema: ['carried', 'applied', 'missing'],
+};
+const FIGURE_TYPE_NAMES: Record<string, string> = {
+  api: 'ApiFigures', worker: 'WorkerFigures', postgres: 'PostgresFigures', redis: 'RedisFigures', queues: 'QueuesFigures',
+  outbox: 'OutboxFigures', providers: 'ProvidersFigures', requests: 'RequestsFigures', schema: 'SchemaFigures',
+};
 
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
@@ -412,6 +434,23 @@ describe('office response shapes', () => {
     expect(keysOf(summary.busiest[0])).toEqual(sorted(ROUTE_FIGURES_KEYS));
   });
 
+  it('answers the system status with the pinned keys: nine parts, each with its figures (M.5)', async () => {
+    const service = new StatusService(
+      { ping: async () => undefined, database: async () => ({ connections: 1, sizeBytes: 1 }), heartbeat: async () => ({ workers: 1, lastBeatAgeS: 1 }), outbox: async () => ({ unpublished: 0, oldestAgeS: null }), appliedMigrations: async () => ['a'], carriedMigrations: async () => ['a'] } as unknown as StatusRepository,
+      { configured: () => true, ping: async () => undefined, usedMemory: async () => 1, counts: async (name: string) => ({ name, waiting: 0, active: 0, failed: 0 }) } as unknown as StatusRedis,
+      { totals: async () => ({ count: 1, refused: 0, failed: 0 }), routeFigures: async () => ({ slowest: [{ method: 'GET', route: '/v1/x', calls: 1, medianMs: 1, p95Ms: 1 }], busiest: [] }) } as unknown as RequestLogRepository,
+      { current: async () => [{ code: 'sky', name: 'Sky', status: 'working', reason: null, failures: 0, available: 1, alertFloor: 0 }] } as unknown as ProviderHealthService,
+    );
+    const owner = { id: 'admin', loginName: 'admin', nickname: 'admin', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as Actor;
+    const status = await service.status(owner);
+    expect(keysOf(status)).toEqual(sorted(STATUS_KEYS));
+    expect(status.parts.map((part) => part.name)).toEqual(Object.keys(STATUS_FIGURE_KEYS));
+    for (const part of status.parts) {
+      expect(keysOf(part)).toEqual(sorted(STATUS_PART_KEYS));
+      expect({ name: part.name, keys: keysOf(part.figures as object) }).toEqual({ name: part.name, keys: sorted(STATUS_FIGURE_KEYS[part.name]) });
+    }
+  });
+
   it('answers the server errors grouped, and both clearings, with the pinned keys (M.4)', async () => {
     const group = { method: 'GET', route: '/v1/lines/:id', name: 'TypeError', message: 'unclassified', count: 2, firstAt: new Date('2026-11-17T10:00:00Z'), lastAt: new Date('2026-11-17T11:00:00Z'), lastRequestId: 'q2', stack: 'f (dist/a.js:1:1)\ng (dist/b.js:2:2)' };
     const prisma = {
@@ -567,6 +606,15 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toContain('export type RequestLogPage = Page<RequestLogRow>;');
     const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]);
     expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS));
+  });
+
+  it('the system status: SystemStatus, a part, and the figures of each part (M.5)', () => {
+    expect(declared(typeBody(source, 'SystemStatus'))).toEqual({ required: sorted(STATUS_KEYS), optional: [] });
+    for (const [name, type] of Object.entries(FIGURE_TYPE_NAMES)) {
+      expect({ name, keys: declared(typeBody(source, type)) }).toEqual({ name, keys: { required: sorted(STATUS_FIGURE_KEYS[name]), optional: [] } });
+      expect(source).toContain(`| StatusPartOf<'${name}', ${type}>`);
+    }
+    expect(source).toContain("export type StatusState = 'ok' | 'warn' | 'down';");
   });
 
   it('the server errors: ErrorGroup, ErrorGroups and the clearings (M.4)', () => {

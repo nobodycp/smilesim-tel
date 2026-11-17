@@ -126,12 +126,12 @@ describe('stopping the timers waits for the round in flight', () => {
 });
 
 describe('the worker stops through workerShutdown', () => {
-  it('SIGTERM and SIGINT call the stop workerShutdown builds, from the readiness loop, the timers, both queues, the notice writer and the connections', () => {
+  it('SIGTERM and SIGINT call the stop workerShutdown builds, from the readiness loop, the heartbeat, the timers, both queues, the notice writer and the connections', () => {
     // What the stop does, and in which order, is run for real in worker-shutdown-race.spec.ts; here, that the
     // worker hands it every part.
     const worker = readFileSync(join(__dirname, 'worker.ts'), 'utf8');
     const stop = worker.slice(worker.indexOf('const stop = workerShutdown({'), worker.indexOf("process.once('SIGINT'"));
-    for (const part of ['readiness,', 'stopTimers,', 'queues: workers,', 'closeNotices: dispatch.closeNotices,', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();', "process.once('SIGTERM', () => void stop());"]) {
+    for (const part of ['readiness,', 'heartbeat,', 'stopTimers,', 'queues: workers,', 'closeNotices: dispatch.closeNotices,', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();', "process.once('SIGTERM', () => void stop());"]) {
       expect({ part, there: stop.includes(part) }).toEqual({ part, there: true });
     }
     expect(worker).toContain("process.once('SIGINT', () => void stop());");

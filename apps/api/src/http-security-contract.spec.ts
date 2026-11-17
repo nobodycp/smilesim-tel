@@ -162,8 +162,9 @@ describe('the write routes, as the source has them', () => {
     // Twenty-two since slice R.8: the priced shelf and the sell prices have a controller of their own in pricing
     // (`PackageShelfController`); the routes are the same three, under the same prefix. Twenty-four since slice
     // R.A: `/auth` is three controllers (sign-in, the account on itself, the owner on others), the same 35 routes.
-    // Twenty-five since the system monitor M.2: the request log's controller (monitoring).
-    expect(controllers).toHaveLength(25);
+    // Twenty-five since the system monitor M.2: the request log's controller (monitoring). Twenty-six since M.5: the
+    // status's controller (monitoring).
+    expect(controllers).toHaveLength(26);
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(35);
     // The empty prefix is the health probe: one read, no write.
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'v1']);
@@ -229,8 +230,8 @@ describe('the duplicate guard and the idempotency key', () => {
 describe('authorization and activity follow the controller, not the path', () => {
   it('every resource controller resolves the actor, but the one that starts and ends an entered session', () => {
     const resources = controllers.filter((controller) => controller.prefix === 'v1');
-    // Twenty since the system monitor M.2 (the request log's controller).
-    expect(resources).toHaveLength(20);
+    // Twenty since the system monitor M.2 (the request log's controller); twenty-one since M.5 (the status's).
+    expect(resources).toHaveLength(21);
     const without = resources.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
     // `handoff` has no session yet and `leave` ends one: the service checks the session itself.
     expect(without).toEqual(['modules/access/accounts/account-session.controller.ts']);

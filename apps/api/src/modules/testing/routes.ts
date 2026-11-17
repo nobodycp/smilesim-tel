@@ -111,6 +111,7 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/v1/system/requests/summary', null],
   ['DELETE', '/v1/system/requests', ['request_log_clear', 'request_log', '']],
   ['GET', '/v1/system/errors', null],
+  ['GET', '/v1/system/status', null],
   ['DELETE', '/v1/system/errors', ['request_log_clear', 'request_errors', '']],
   ['GET', '/v1/tasks', null],
   ['GET', '/v1/tasks/ID1', null],

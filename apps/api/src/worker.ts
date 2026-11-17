@@ -12,6 +12,7 @@ import { RoutingProviderGateway } from './modules/providers/integration/dispatch
 import { assertWorkerConfig } from './production-config';
 import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers, workerShutdown } from './worker/provider-dispatch';
 import { readCredentials, startReadiness } from './modules/providers/integration/dispatch/worker-readiness';
+import { startHeartbeat } from './modules/monitoring/worker-heartbeat';
 
 const log = logger('Worker');
 
@@ -56,6 +57,8 @@ export async function run(): Promise<void> {
   const stopTimers = startProviderDispatchTimers(dispatch);
   // The readiness loop attests through the dispatch's unit of work, on the same client (slice R.5).
   const readiness = startReadiness(dispatch.uow, settings, gateway, rebuild);
+  // The system status reads the worker's age from this row (system monitor M.5), on the dispatch's client.
+  const heartbeat = startHeartbeat(dispatchPrisma);
   // Codes only: which providers have an adapter, and why each named one has none. Never a credential.
   for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
   log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target}, ${settings.deployment})` : 'off (no adapter built)'}`);
@@ -84,6 +87,7 @@ export async function run(): Promise<void> {
 
   const stop = workerShutdown({
     readiness,
+    heartbeat,
     stopTimers,
     queues: workers,
     closeNotices: dispatch.closeNotices,

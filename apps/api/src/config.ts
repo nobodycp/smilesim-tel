@@ -19,6 +19,8 @@ export const ENV_NAMES = [
   'TRIAL_SEED',
   'TRIAL_SEED_ALLOW_PRODUCTION',
   'SECRETS_KEY',
+  // The commit the build was made from, when the deployment gives it (Coolify sets it); shown by the system status.
+  'SOURCE_COMMIT',
 ] as const;
 
 export type EnvName = (typeof ENV_NAMES)[number];

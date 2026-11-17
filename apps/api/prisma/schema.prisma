@@ -699,6 +699,17 @@ model RequestError {
   @@index([requestId])
 }
 
+/// One row a worker process (system monitor M.5): written every 20 s by the worker with the database's clock, so
+/// the status reads its age on the same clock. Left to go stale when the worker stops; any worker's beat removes
+/// rows a day old.
+model WorkerHeartbeat {
+  workerId  String   @id
+  startedAt DateTime
+  beatAt    DateTime
+
+  @@index([beatAt])
+}
+
 model AccessLog {
   id          String   @id @default(uuid())
   actorId     String
