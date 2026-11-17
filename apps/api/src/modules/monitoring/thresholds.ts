@@ -37,6 +37,8 @@ export const REQUESTS_FAILED_DOWN_SHARE = 0.1;
 /** How often the worker's alert pass runs, and how long an open alert stays open once its rule is no longer passed. */
 export const ALERT_PASS_EVERY_MS = 30_000;
 export const ALERT_QUIET_MINUTES = 30;
+/** How often the API looks at the worker's heartbeat to raise "a service is down" for the worker itself (M.9). */
+export const WORKER_WATCH_EVERY_MS = 30_000;
 
 /** Cracking a password: failed sign-ins for one login name, or the account's own sign-in lock seen in its window. */
 export const CRACKING_FAILS = 5;

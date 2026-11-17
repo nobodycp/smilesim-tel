@@ -54,8 +54,7 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   `frontend.md`, `DESIGN.md` if a new primitive was needed.
 
 **Closing note (2026-11-17).** Every slice, M.0–M.8, is built and committed; nothing of it is deployed yet. Left on
-purpose: the worker-down alert raised by the API itself (a stopped worker warns of nothing, itself included; the
-status page still shows it), tuning the thresholds after a week on the trial server, alerts outside the app (SMS,
+purpose: tuning the thresholds after a week on the trial server, alerts outside the app (SMS,
 e-mail, WhatsApp wait for the messaging feature), and the Hebrew texts of the section, not yet read by a native
 speaker.
 

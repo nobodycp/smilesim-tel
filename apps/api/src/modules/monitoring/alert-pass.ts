@@ -106,19 +106,27 @@ export class AlertPass {
       rateLimited, probeAnswers, doorRefusals, permissionRefusals, requestFailures, routeCrashes, requestSpeed, downSpells: [...this.spells.values()] };
   }
 
-  /** Opens one alert and writes its notice to every branch owner, in one transaction; false when it was open already. */
   private open(finding: AlertFinding): Promise<boolean> {
-    return this.uow.runTx(async (tx) => {
-      const alertId = await this.repo.open(tx, finding);
-      if (!alertId) return false;
-      const owners = (await this.repo.branchOwners(tx)).map((owner) => owner.id);
-      // Names, never the account's id: the bell shows the login name.
-      const { loginName, ip, method, route, path, part, detail } = finding.subject;
-      const payload = { alertId, alertKind: finding.kind, loginName, ip, method, route, path, part, detail, count: finding.count };
-      this.uow.queueNotices(tx, await this.uow.notice.write(tx, owners, SYSTEM, { kind: 'system.alert', payload }));
-      return true;
-    });
+    return openAlert(this.repo, this.uow, finding);
   }
+}
+
+/**
+ * Opens one alert and writes its notice to every branch owner, in one transaction; false when it was open already.
+ * The one way an alert is opened, by the worker's pass and by the API's watch on the worker (M.9) alike: the partial
+ * unique index lets one of any number of racing openers in, and only that one tells the owners.
+ */
+export function openAlert(repo: AlertRepository, uow: UnitOfWork, finding: AlertFinding): Promise<boolean> {
+  return uow.runTx(async (tx) => {
+    const alertId = await repo.open(tx, finding);
+    if (!alertId) return false;
+    const owners = (await repo.branchOwners(tx)).map((owner) => owner.id);
+    // Names, never the account's id: the bell shows the login name.
+    const { loginName, ip, method, route, path, part, detail } = finding.subject;
+    const payload = { alertId, alertKind: finding.kind, loginName, ip, method, route, path, part, detail, count: finding.count };
+    uow.queueNotices(tx, await uow.notice.write(tx, owners, SYSTEM, { kind: 'system.alert', payload }));
+    return true;
+  });
 }
 
 /**

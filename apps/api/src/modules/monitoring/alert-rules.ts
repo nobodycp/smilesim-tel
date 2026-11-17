@@ -6,8 +6,9 @@ import type { SystemAlertKind } from '../platform';
 import {
   ALERT_QUIET_MINUTES, CRACKING_FAILS, FAILING_MIN_REQUESTS, FAILING_ROUTE_CRASHES, FAILING_SHARE,
   MANY_ACCOUNTS_NAMES, PERMISSION_REFUSALS, PROBING_ANSWERS, RATE_LIMIT_HITS, SECOND_STEP_WRONG, SERVICE_DOWN_MINUTES,
-  SLOW_MIN_REQUESTS, SLOW_P95_MS, WRONG_DOOR_REFUSALS,
+  SLOW_MIN_REQUESTS, SLOW_P95_MS, WORKER_DOWN_AFTER_S, WRONG_DOOR_REFUSALS,
 } from './thresholds';
+import { judgeWorker } from './status.rules';
 
 export type AlertState = 'open' | 'closed';
 
@@ -230,6 +231,20 @@ export function serviceDownRule(spells: DownSpell[]): AlertFinding[] {
   return spells
     .filter((spell) => spell.lastDownAt.getTime() - spell.since.getTime() >= SERVICE_DOWN_MINUTES * 60_000)
     .map((spell) => ({ kind: 'service_down', key: spell.part, count: 1, firstAt: spell.since, lastAt: spell.lastDownAt, recent: null, subject: subject({ part: spell.part }) }));
+}
+
+/**
+ * The worker's silence as the API's watch sees it (M.9): a spell of `worker` down since its last beat, when the
+ * status judges it `down` by its own limit (`judgeWorker`, 3 minutes); null while it beats. A deployment with no
+ * heartbeat row at all is the API's to wait for: the API starts first, so it is not judged until the API itself
+ * has been up for the same limit, and is then down since the API started. Its length is always past the rule's
+ * 2 minutes, so `serviceDownRule` opens it on the first look.
+ */
+export function workerDownSpell(beat: { lastBeatAgeS: number | null }, apiUptimeS: number, now: Date): DownSpell | null {
+  if (judgeWorker(beat).state !== 'down') return null;
+  if (beat.lastBeatAgeS === null && apiUptimeS < WORKER_DOWN_AFTER_S) return null;
+  const silentS = beat.lastBeatAgeS ?? apiUptimeS;
+  return { part: 'worker', since: new Date(now.getTime() - Math.round(silentS * 1000)), lastDownAt: now };
 }
 
 /** Slow: the 95th percentile of at least `SLOW_MIN_REQUESTS` requests over `SLOW_P95_MS`. One key, `p95`. */

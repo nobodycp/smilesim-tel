@@ -1,10 +1,10 @@
 import {
   addressSignInsOf, signInFailuresOf, wrongCodesOf, crackingRule, failingRule, findAlerts, limitOf, linkOf, manyAccountsRule, permissionRule, planRound, probingRule, rateLimitRule, secondStepRule,
-  serviceDownRule, slowRule, wrongDoorRule, type AlertFinding, type Counted,
+  serviceDownRule, slowRule, workerDownSpell, wrongDoorRule, type AlertFinding, type Counted,
 } from './alert-rules';
 import {
   ALERT_QUIET_MINUTES, CRACKING_FAILS, FAILING_MIN_REQUESTS, FAILING_ROUTE_CRASHES, MANY_ACCOUNTS_NAMES, PERMISSION_REFUSALS, PROBING_ANSWERS,
-  SECOND_STEP_WRONG, SERVICE_DOWN_MINUTES, SLOW_MIN_REQUESTS, SLOW_P95_MS, WRONG_DOOR_REFUSALS,
+  SECOND_STEP_WRONG, SERVICE_DOWN_MINUTES, SLOW_MIN_REQUESTS, SLOW_P95_MS, WORKER_DOWN_AFTER_S, WRONG_DOOR_REFUSALS,
 } from './thresholds';
 
 // The ten rules of the early warnings (spec 2026-11-17-system-monitor, section 4; slice M.6), alone: each opens at
@@ -91,6 +91,17 @@ describe('each rule opens at its threshold and not one under it', () => {
     const spell = (seconds: number) => ({ part: 'redis', since: at(0), lastDownAt: at(seconds) });
     expect(serviceDownRule([spell(SERVICE_DOWN_MINUTES * 60 - 1)])).toEqual([]);
     expect(serviceDownRule([spell(SERVICE_DOWN_MINUTES * 60)])).toMatchObject([{ kind: 'service_down', key: 'redis', recent: null, subject: { part: 'redis' } }]);
+  });
+
+  it('the API\'s watch on the worker (M.9): down past the status\'s limit, since its last beat; no heartbeat waits for the API\'s own first minutes', () => {
+    expect(workerDownSpell({ lastBeatAgeS: 5 }, 3600, at(0))).toBeNull();
+    expect(workerDownSpell({ lastBeatAgeS: WORKER_DOWN_AFTER_S }, 3600, at(0))).toBeNull();
+    const late = workerDownSpell({ lastBeatAgeS: WORKER_DOWN_AFTER_S + 1 }, 3600, at(1000));
+    expect(late).toEqual({ part: 'worker', since: at(1000 - WORKER_DOWN_AFTER_S - 1), lastDownAt: at(1000) });
+    // Always past the rule's two minutes: opened on the first look.
+    expect(serviceDownRule([late as NonNullable<typeof late>])).toMatchObject([{ kind: 'service_down', key: 'worker', subject: { part: 'worker' } }]);
+    expect(workerDownSpell({ lastBeatAgeS: null }, WORKER_DOWN_AFTER_S - 1, at(1000))).toBeNull();
+    expect(workerDownSpell({ lastBeatAgeS: null }, WORKER_DOWN_AFTER_S, at(1000))).toEqual({ part: 'worker', since: at(1000 - WORKER_DOWN_AFTER_S), lastDownAt: at(1000) });
   });
 
   it('slow: the 95th percentile of enough requests over 2 s', () => {

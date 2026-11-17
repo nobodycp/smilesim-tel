@@ -13,6 +13,7 @@ import { StatusController } from './status.controller';
 import { StatusRedis } from './status-redis';
 import { StatusRepository } from './status.repository';
 import { StatusService } from './status.service';
+import { WorkerWatchService } from './worker-watch';
 
 /**
  * The system monitor (spec 2026-11-17-system-monitor; ADR 0020, amended: the thirteenth module). It reads the other
@@ -20,12 +21,13 @@ import { StatusService } from './status.service';
  * `RequestLogWriter` is exported for the request-log middleware, a composition root of the app, and bound under the
  * platform's `ServerErrorRecorder` port for the error filter (M.4): one writer, one buffer, one instance. The status
  * (M.5) reads the providers' health through `ProvidersModule`. The alerts (M.6) are written by the worker's pass
- * (`alert-pass.ts`, not a provider here: the API runs no pass) and read, marked seen and cleared here.
+ * (`alert-pass.ts`, not a provider here: the API runs no pass) and read, marked seen and cleared here; the one alert
+ * the API opens itself is the worker's being down (M.9, `WorkerWatchService`), which a stopped worker cannot raise.
  */
 export const MONITORING_CONTROLLERS = [RequestLogController, StatusController, AlertsController];
 export const MONITORING_PROVIDERS = [
   RequestLogRepository, RequestLogWriter, { provide: ServerErrorRecorder, useExisting: RequestLogWriter }, RequestLogService, StatusRepository, StatusRedis, StatusService,
-  AlertRepository, AlertsService,
+  AlertRepository, AlertsService, WorkerWatchService,
 ];
 
 @Module({
