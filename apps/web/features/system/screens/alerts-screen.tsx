@@ -444,7 +444,7 @@ function AlertsDesk() {
       title={t.navAlerts}
       lede={t.alertsLede}
       error={error || (first.data ? first.error : '')}
-      note={note || (missing ? t.alertNotFound : '')}
+      note={note}
       action={(
         <Button type="button" variant="danger" onClick={() => { setError(''); setClearing(true); }}>
           <Trash2 size={15} aria-hidden="true" />
@@ -463,6 +463,9 @@ function AlertsDesk() {
           </Select>
         </label>
       </FilterBar>
+      {missing ? (
+        <p className="m-0 text-md font-semibold text-warning" role="status" data-testid="alert-missing">{t.alertNotFound}</p>
+      ) : null}
       {!first.data && first.loaded ? (
         <Pane>
           <LoadFailed message={first.error} onRetry={() => void first.reload()} busy={first.fetching} />
@@ -477,7 +480,7 @@ function AlertsDesk() {
             <ShieldCheck size={20} />
           </span>
           <p className="m-0 text-item font-bold text-ink">{emptyTitle}</p>
-          <p className="m-0 text-md text-muted">{t.alertsEmptyText}</p>
+          {state === '' ? <p className="m-0 text-md text-muted">{t.alertsEmptyText}</p> : null}
         </Pane>
       ) : (
         <>
