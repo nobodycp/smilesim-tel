@@ -2,24 +2,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * The look of a Button (Tailwind migration T2.1, ADR 0022), ported from the legacy `.ui-btn*` rules of ui.css and
- * graphite.css in their cascade order. A plain module (no React), so a Playwright spec can read the classes too.
+ * The look of a Button (ADR 0022). A plain module (no React), so a Playwright spec can read the classes too.
  *
  * Every variant but `link` is a box: 6px corners (ADR 0021 D19), weight 600, no browser border, a colour-only
  * transition (not the outline colour, so the focus outline does not fade in), the crimson focus ring
  * (2px of page colour, then 2px of `--rd-accent`), the one disabled strength (`opacity-disabled`, 45%) and no
  * pointer when disabled, a 0.97 press, and at least 44px high at 720px and under (the touch rule, also for a link
- * drawn as a button through `asChild`, which the legacy `.canvas button` rule never reached). Tailwind migration T6.2
- * added the touch height, the one disabled strength (it was 50%), the busy state (`aria-busy`, set by `loading`: the
- * spinner before the label, the button disabled) and the pressed state (`aria-pressed="true"`: the variant's hover
- * look held, ADR 0021 D13 — a pressed button never changes variant).
+ * drawn as a button through `asChild`); the busy state (`aria-busy`, set by `loading`: the spinner before the label,
+ * the button disabled) and the pressed state (`aria-pressed="true"`: the variant's hover look held, ADR 0021 D13 — a
+ * pressed button never changes variant).
  * - primary: the crimson fill (`--rd-accent-fill`, hover `--rd-accent-fill-hover`, white text), no shadow; every
  *   primary is crimson (ADR 0021 D2);
  * - secondary: the soft track (`--rd-surface-2`, an inset 1px ink line at 11%, hover `--rd-surface-3`); the line
  *   gives way to the ring on focus;
  * - ghost: no fill, `--rd-ink-2`, hover `--rd-surface-3` and ink;
  * - danger: the danger outline (border at 45%, text in `--rd-danger`, hover `--rd-danger-soft`), never a red fill;
- * - link: a button that reads as text (the legacy `.link-btn`): no box, the text's own colour and font, underline
+ * - link: a button that reads as text: no box, the text's own colour and font, underline
  *   on hover. It takes no size.
  * Sizes: sm 32px, md 34px (the pane control height, the default), lg 40px (the sign-in-sized screens).
  */

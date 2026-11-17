@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 /*
- * The one class-joining helper (ADR 0022, Tailwind migration T1.2): `clsx` builds the list (strings, arrays,
+ * The one class-joining helper (ADR 0022): `clsx` builds the list (strings, arrays,
  * `{ class: condition }`), `tailwind-merge` drops the earlier of two utilities that set the same thing, so a caller's
  * `className` wins over a component's default (`cn('px-3 text-ink', className)` with `px-4` gives `px-4 text-ink`).
  *
@@ -11,11 +11,11 @@ import { extendTailwindMerge } from 'tailwind-merge';
  * - the t-shirt names it already reads: text sizes 2xs…2xl and base, radii 2xs…lg, shadow sm;
  * - colours are read as "any other value" after the sizes, so `text-ink-2` is a colour and `text-md` a size;
  * - `--spacing` is one step, so `p-2.5` is a number it already reads.
- * Tailwind migration T6.2 added the named text sizes (`text-caption` … `text-figure-lead`: without them a size would
- * read as a colour and drop the text colour beside it), the line heights and letter spacing, the line shadows, the
- * disabled opacity and the layers over the dialog. Tailwind migration T6.3 added the edge shadow, the sheet's curve,
- * the shared entrances, line heights 1.25 and 1.5, the drawer's width and the shared layout values (`grid-cols-title-end`,
- * `grid-cols-fit-card`, `top-pop`); the radii `4xs` / `3xs` are t-shirt names it reads already.
+ * Listed below: the named text sizes (`text-caption` … `text-figure-lead`: without them a size would read as a
+ * colour and drop the text colour beside it), the line heights (1.25 and 1.5 included) and letter spacing, the line
+ * and edge shadows, the disabled opacity, the layers over the dialog, the sheet's curve, the shared entrances, the
+ * drawer's width and the shared layout values (`grid-cols-title-end`, `grid-cols-fit-card`, `top-pop`); the radii
+ * `4xs` / `3xs` are t-shirt names it reads already.
  */
 const twMerge = extendTailwindMerge({
   extend: {

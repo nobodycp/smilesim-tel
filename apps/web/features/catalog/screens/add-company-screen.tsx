@@ -33,10 +33,9 @@ import {
 import { SimFields, SimSample, paneHintClass, simToggleClass } from '../sim-fields';
 
 /*
- * The steps' look is shared with «إضافة رزمة» (features/catalog/add-steps.ts). What is this screen's own, ported from
- * graphite.css and pane.css (Tailwind migration T4.3): a company card's code is a pane note; the eSIM box is a pane
- * label laid out as a row 4px apart, at least 36px high (44px under 721px), its words at 11px `--rd-muted` 600 (the
- * pane's label rule outranked `.check`'s 13px ink).
+ * The steps' look is shared with «إضافة رزمة» (features/catalog/add-steps.ts). What is this screen's own: a company
+ * card's code is a pane note; the eSIM box is a pane label laid out as a row 4px apart, at least 36px high (44px under
+ * 721px), its words at 11px `--rd-muted` 600.
  */
 
 /**
@@ -121,7 +120,7 @@ export function AddCompanyScreen() {
 
   return (
     <Desk title={t.addCompany} lede="" error={error} note="">
-      {/* Outside a pane no legacy rule reached this note: a plain paragraph. */}
+      {/* Outside a pane no base rule reaches this note: a plain paragraph. */}
       {!canEdit && me ? <p>{t.addNeedsEdit}</p> : null}
       <Pane>
         <header className="pane-head"><h2 className={stepTitleClass}><span className={stepNoClass}>1</span>{t.stepProvider}</h2></header>

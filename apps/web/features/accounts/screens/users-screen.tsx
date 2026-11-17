@@ -37,8 +37,7 @@ const ACCOUNT_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 const FILTER_KEYS = ['q', 'layer'] as const;
 
 /*
- * The users list's own parts (Tailwind migration T4.2, ADR 0022), ported from desk/pane.css, desk/table.css, dialog.css
- * and graphite.css in their cascade order:
+ * The users list's own parts (ADR 0022):
  * - the list card's head: a row at least 52px high, 14px / 18px padding, its parts at both ends 8px apart, a 1px
  *   `--rd-line` rule under it; its title 14px ink bold with the count beside it, 8px apart; the count a 20px-wide pill
  *   of 6px sides on 4px corners, 11px `--rd-accent` 600 tabular on `--rd-accent-soft`;

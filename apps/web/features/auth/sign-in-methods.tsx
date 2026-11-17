@@ -17,22 +17,22 @@ import { TWO_FACTOR_METHODS, shownAmong } from './two-factor-policy';
 // Settings: the second step (app, SMS or email) and the passkeys (spec 2026-11-08-signin-methods).
 
 /*
- * The settings panes' own parts (Tailwind migration T3.2), ported from settings.css, forms.css, pane.css and graphite.css
- * in their cascade order. The panes themselves (`.pane`, `.pane-head`, `.pane-body`) stay legacy classes until T3.3.
+ * The settings panes' own parts. The panes themselves (`.pane`, `.pane-head`, `.pane-body`) are base rules in
+ * app/tailwind.css.
  */
-/** A note in a pane (pane.css `.pane .hint`): 12px muted, no margin. */
+/** A note in a pane: 12px muted, no margin. */
 const hintClass = 'm-0 text-sm text-muted';
-/** A form in a pane: forms.css's grid, `.pane form`'s 8px gap, graphite's `align-content: start`. */
+/** A form in a pane: a grid, 8px apart, its rows at the top. */
 const paneForm = 'grid content-start gap-2';
 /** The buttons under a choice, in one wrapping row 8px apart. */
 const actionsClass = 'flex flex-wrap gap-2';
-/** The enrolment link (forms.css `.code`): a scrolling 12px line on `--rd-surface-2`, 10px 12px, 6px corners. */
+/** The enrolment link: a scrolling 12px line on `--rd-surface-2`, 10px 12px, 6px corners. */
 const codeClass = 'm-0 overflow-x-auto rounded-sm bg-surface-2 px-3 py-2.5 text-start text-sm text-ink-2';
 
 /**
- * A session or a passkey as a card (graphite.css "Settings"): a 32px mark, the name and its line, the action at the end;
+ * A session or a passkey as a card: a 32px mark, the name and its line, the action at the end;
  * 12px in, on `--rd-surface-2` inside a hairline, 8px apart. The name is 12.5px semibold, the line 11px muted on one
- * line; the line reads left to right, at the reading end in RTL (settings.css `.session-meta`).
+ * line; the line reads left to right, at the reading end in RTL.
  */
 export const sessionClass = {
   list: 'm-0 grid list-none gap-2 p-0',
@@ -137,7 +137,7 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
           <>
             <p className={hintClass}>{t.twoFactorIdle}</p>
             {/* The methods as cards to choose from (Graphite): the name, then where the code goes. Three across on the
-                profile page (ported from the legacy `.settings-page .method-cards`), one under 521px. */}
+                profile page, one under 521px. */}
             {allowed.length === 1 ? (
               fixedOne ? <p className={hintClass}><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p> : null
             ) : (
@@ -230,7 +230,7 @@ export function PasskeysPane({ methods, reload, setError, setNote, when }: Notif
                 <span className={deviceClass} aria-hidden="true"><KeyIcon /></span>
                 <span className={sessionClass.copy}>
                   <strong className={sessionClass.name}><bdi>{passkey.name}</bdi></strong>
-                  {/* Left to right, as the session's line: the legacy `.session-meta { direction: ltr }`. */}
+                  {/* Left to right, as the session's line. */}
                   <small className={sessionClass.meta} dir="ltr">
                     {t.passkeyLastUsed}: {passkey.lastUsedAt ? <bdi dir="ltr">{when(passkey.lastUsedAt)}</bdi> : t.passkeyNeverUsed}
                   </small>

@@ -20,7 +20,7 @@ import { PANE_BODY, PANE_HEAD, PANE_HINT, PANE_TITLE } from './home-panes';
 type Period = OverviewPayload['period'];
 
 /*
- * The change chip in a period card's corner (legacy `.change`, graphite.css): 12px from the top and 14px from the
+ * The change chip in a period card's corner: 12px from the top and 14px from the
  * inline end, above the trend; a 22px pill, 2px between the arrow and the figure, 7px padding, 11.5px bold. Up is
  * `--rd-success` on its soft fill, down `--rd-danger` on its soft fill, no change `--rd-muted` on `--rd-surface-2`.
  * `data-trend` names the direction.
@@ -54,7 +54,7 @@ function Change({ now, before, period }: { now: number; before: number | null | 
 const stepLabel = (period: Period, at: string) => (at.length === 13 ? (period === 'day' ? `${at.slice(11)}:00` : `${at.slice(5, 10)} ${at.slice(11)}:00`) : at.length === 10 ? at.slice(5) : at);
 
 /*
- * The account band (Tailwind migration T4.1), ported from desk/home.css and graphite.css in their cascade order:
+ * The account band:
  * - the band: a grid 12px apart, two columns; from 1100px the lead and four cards (1.35fr, then four equal); under
  *   640px the fourth card takes the whole row. The branch's band is three equal columns, one under 768px. Its cards
  *   rise in (8px, 420ms), the second to the fourth 40ms after the one before, when motion is allowed;
@@ -176,7 +176,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
 type Movement = HomePayload['operations'][number];
 
 /*
- * The last operations (legacy `.op-list`, graphite.css): rows 12px apart in three columns (the operation, its detail,
+ * The last operations: rows 12px apart in three columns (the operation, its detail,
  * the amount and time at the end), 10px / 18px padding, a 1px `--rd-line` rule between rows, every other row on
  * `--rd-surface-2` at 45%; the detail 12.5px `--rd-muted`, gone under 641px with its column. A row's account and time
  * are 12px `--rd-muted`, 2px under the line above them.
@@ -227,10 +227,10 @@ export function LastOperations({ home, failed, onRetry, showAccount }: { home: H
 }
 
 /*
- * The tasks waiting (legacy `.waiting-list`, graphite.css): cards 10px apart, each a row 12px apart with 10px / 12px
+ * The tasks waiting: cards 10px apart, each a row 12px apart with 10px / 12px
  * padding and 6px corners on `--rd-surface-2` (a 1px inset `--rd-line` edge under the pointer): the task's mark, its
  * operation over the number, account and package (12px `--rd-muted`, 2px apart), and its age at the end. The mark is
- * the tasks list's (legacy `.task-mark`): 36px, 6px corners, `--rd-accent` on its soft fill, an 8px cut corner at the
+ * the tasks list's: 36px, 6px corners, `--rd-accent` on its soft fill, an 8px cut corner at the
  * top inline end.
  */
 const TASK_MARK = cn(

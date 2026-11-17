@@ -2,9 +2,9 @@ import { withWebVersions } from '../../../../features/system/versions';
 import { webVersions } from '../../../../features/system/web-versions';
 import type { SystemVersions } from '../../../../lib/api-types';
 
-// `GET /system/versions/data` (system monitor M.12): the versions page's answer, the web's own components filled in.
+// `GET /system/versions/data`: the versions page's answer, the web's own components filled in.
 // The web server asks the API's `GET /v1/system/versions` with the caller's own session cookie and door, so the API
-// decides who may see versions (the branch owner on the branch door, D1); only a 200 from it is answered with the
+// decides who may see versions (the branch owner on the branch door; spec 2026-11-17-system-monitor, D1); only a 200 from it is answered with the
 // web's versions. Any refusal is passed back as the API sent it, and nothing of the web is in it.
 
 export const dynamic = 'force-dynamic';

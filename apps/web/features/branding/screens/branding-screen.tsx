@@ -37,8 +37,7 @@ async function loadDraft(): Promise<Fetched<Draft>> {
 }
 
 /*
- * The identity page (Tailwind migration T4.10), ported from desk/branding.css, desk/pane.css, graphite.css and
- * responsive.css in their cascade order:
+ * The identity page:
  * - the layout: the form fills the width and the live preview keeps a 360px column beside it, 12px apart, both at the
  *   top; one column at 960px and under (the preview then stops being sticky, components/branding-preview.tsx);
  * - the form: a column 12px apart; its foot a wrapping row 8px apart;

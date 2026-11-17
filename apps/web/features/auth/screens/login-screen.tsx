@@ -153,8 +153,7 @@ export function LoginScreen() {
 }
 
 /*
- * The sign-in page's own parts (Tailwind migration T3.2), ported from graphite.css's sign-in block and auth.css's
- * entrance: each field a 6px grid, its label 12px semibold muted; the field a 44px sunken box with an inset hairline
+ * The sign-in page's own parts: each field a 6px grid, its label 12px semibold muted; the field a 44px sunken box with an inset hairline
  * at 70% of `--rd-field` and a muted 18px mark, crimson hairline and the focus ring while its input has focus; the
  * input bare inside it, keeping the box's fill when the browser autofills it (owner 2026-11-09); the two actions 44px,
  * bold, pressed to 98%, half-faded while busy. The head, the fields and the actions rise in 70ms apart.

@@ -118,8 +118,8 @@ export function SettingsScreen() {
 
   if (!ready) return <PageSkeleton />;
 
-  // The desk frame (`.desk`, `.page-head`) and the panes (`.pane`, `.pane-head`, `.pane-body`) stay legacy classes until
-  // Tailwind migration T3.3; the profile page's own parts are utilities (T3.2).
+  // The desk frame (`.desk`, `.page-head`) and the panes (`.pane`, `.pane-head`, `.pane-body`) are base rules in
+  // app/tailwind.css; the profile page's own parts are utilities.
   return (
     <div className="desk">
     <header className="page-head">
@@ -230,7 +230,7 @@ export function SettingsScreen() {
 }
 
 /*
- * The profile page's layout (Tailwind migration T3.2), ported from settings.css, responsive.css and graphite.css:
+ * The profile page's layout:
  * the two columns (1.2fr and at least 280px) from 960px, each a 12px stack sized to its panes; the field pairs one
  * column under 768px. The identity row: a 44px crimson square with the initial, the name 15px over the login 12.5px.
  */
@@ -239,7 +239,7 @@ const settingsClass = {
   col: 'grid grid-rows-none content-start gap-3',
   pair: 'grid grid-cols-2 gap-2 max-md:grid-cols-1',
 } as const;
-/** A form in a pane: forms.css's grid, `.pane form`'s 8px gap, graphite's `align-content: start`. */
+/** A form in a pane: a grid, 8px apart, its rows at the top. */
 const paneForm = 'grid content-start gap-2';
 
 function deviceLabel(agent: string) {

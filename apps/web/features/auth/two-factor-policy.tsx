@@ -37,7 +37,7 @@ export function savableMethod(method: TwoFactorMethod): TwoFactorMethod {
 }
 
 /**
- * The system's segmented choice (`Segmented`, Tailwind migration T3.2; the legacy `.seg.role-seg`): one segment per
+ * The system's segmented choice (`Segmented`): one segment per
  * option, full width inside a dialog or pane, each 8px in at its sides.
  */
 export function ModeSeg<T extends string>({ value, options, label, onChange, disabled }: {
@@ -92,10 +92,10 @@ export function LayerTwoFactor({ value, onChange }: {
   onChange: (next: { required: boolean; method: TwoFactorMethod }) => void;
 }) {
   const { t } = usePrefs();
-  // The block's own look is utilities (Tailwind migration T3.2, from graphite.css's two-step rule): its title 14px
-  // bold, the hint 12px muted (4px over, 12px under; the closing note 10px over), the method list 12px under the
-  // choice. Where it sits in the role dialog (a hairline and 14px above it) stays the dialog's rule, through
-  // `data-slot="layer-two-factor"`, until the roles screen is ported (T4.10).
+  // The block's own look is utilities: its title 14px bold, the hint 12px muted (4px over, 12px under; the closing
+  // note 10px over), the method list 12px under the choice. Where it sits in the role dialog (a hairline and 14px
+  // above it) is the roles screen's rule (features/roles/screens/roles-screen.tsx), through
+  // `data-slot="layer-two-factor"`.
   return (
     <section
       data-slot="layer-two-factor"

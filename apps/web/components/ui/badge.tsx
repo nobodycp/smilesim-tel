@@ -5,18 +5,17 @@ import { cn } from "../../lib/cn";
 export type BadgeVariant = "default" | "success" | "warning" | "danger" | "muted" | "info" | "violet";
 
 /*
- * A status pill (Tailwind migration T2.7, ADR 0022), ported from the legacy `.ui-badge*` rules of ui.css and the
- * graphite.css overrides over them, in their cascade order:
- * - the pill: an inline row as wide as its content, items centred, 6px between them, on one line, 4px corners
- *   (graphite), 2px / 8px padding, 11.5px semibold, the tone's soft fill and text, and an inset 1px ring of the text
+ * A status pill (ADR 0022):
+ * - the pill: an inline row as wide as its content, items centred, 6px between them, on one line, 4px corners,
+ *   2px / 8px padding, 11.5px semibold, the tone's soft fill and text, and an inset 1px ring of the text
  *   colour at 15% (`muted`: `--rd-line`);
  * - with `dot` (graphite's diamond status mark): no fill, no ring, no side padding, 7px between the mark and the
  *   words, 12.5px; the mark is a 7px square turned 45deg with 1px corners in the text colour, glowing 8px in it
  *   (`muted` does not glow).
- * `info` and `violet` have their own tokens since Tailwind migration T6.2 (`--rd-info`, `--rd-violet` and their soft
- * fills, both themes, text ≥4.5:1 on the soft fill): the pill and the mark draw them as every other tone (before,
- * their tokens did not exist and they drew no fill, no ring and the surrounding text colour).
- * Handles: `data-slot="badge"` (the legacy placement rules read it), `data-testid="badge"` (a caller's own wins).
+ * `info` and `violet` have their own tokens (`--rd-info`, `--rd-violet` and their soft fills, both themes, text
+ * ≥4.5:1 on the soft fill): the pill and the mark draw them as every other tone.
+ * Handles: `data-slot="badge"` (a base rule in app/tailwind.css places it in a `.pane-head`), `data-testid="badge"`
+ * (a caller's own wins).
  */
 const badgeVariants = cva("inline-flex w-fit items-center whitespace-nowrap rounded-xs py-0.5 font-semibold", {
   variants: {

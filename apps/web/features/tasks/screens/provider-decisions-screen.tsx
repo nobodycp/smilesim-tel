@@ -26,8 +26,7 @@ import { decisionName, phaseName, reasonName } from '../provider-operation-names
 type Waiting = 'approval' | 'decision';
 
 /*
- * The queue's rows (Tailwind migration T4.6, ADR 0022), ported from graphite.css's queue rules: the list's card is
- * `Pane` with no table head; each row a block of its own, a column 8px apart, 14px padding, its text at the reading start;
+ * The queue's rows (ADR 0022): the list's card is `Pane` with no table head; each row a block of its own, a column 8px apart, 14px padding, its text at the reading start;
  * its head a wrapping row 8px apart (the operation bold, its phase, the reason in 12px `--rd-ink-2`, «فتح التذكرة» pushed
  * to the end); the meta a wrapping row 14px / 2px apart in 12px `--rd-muted`; the next step 12px `--rd-ink-2`.
  */

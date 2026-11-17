@@ -1,4 +1,4 @@
-// The style check (ADR 0022, Tailwind migration T1.2): fails (exit 1) with file:line when the markup breaks a rule of
+// The style check (ADR 0022): fails (exit 1) with file:line when the markup breaks a rule of
 // the token + component system.
 //
 // It reads every .ts/.tsx file under app/, components/, features/ and lib/ with the TypeScript parser (comments are
@@ -7,7 +7,7 @@
 //       (and scroll-ml/mr/pl/pr), left-* right-* (insets), text-left text-right, border-l* border-r*, rounded-l*
 //       rounded-r* and the corner forms rounded-tl/tr/bl/br*, float-left/right, clear-left/right. Variants (`md:`,
 //       `hover:`, `[&>*]:`), `!` and negatives (`-ml-2`) are read through. An inset/margin/padding token needs a
-//       Tailwind value (a number, a fraction, px, auto, full, `[…]` or `(…)`), so a legacy class such as `pr-badge`
+//       Tailwind value (a number, a fraction, px, auto, full, `[…]` or `(…)`), so a plain class such as `pr-badge`
 //       is not one. A template part that ends in such a prefix (`ml-${n}`) counts too. Use the logical form:
 //       ms me ps pe start end text-start text-end border-s border-e rounded-s rounded-e rounded-ss/se/es/ee
 //       float-start/end clear-start/end;
@@ -21,7 +21,7 @@
 //   (d) a stylesheet (.css .scss .sass .less) anywhere under apps/web (dot folders, node_modules and the git-ignored
 //       outputs audit-output, test-results, playwright-report are not read) other than app/tailwind.css, the app's
 //       one stylesheet: it holds the tokens, and every other style is a utility in the markup or a variant in
-//       components/ui (ADR 0022; Tailwind migration T5.2 removed the frozen legacy list that T5.1 emptied).
+//       components/ui (ADR 0022).
 //
 // Run: node scripts/check-styles.mjs              (npm run check:styles, in apps/web and at the root)
 //      node scripts/check-styles.mjs --self-test  (proves every rule on fixtures; exit 1 if one is wrong)
@@ -226,7 +226,7 @@ function selfTest() {
   for (const token of physicalTokens) expect(`(a) ${token}`, tsx(`<div className="${token}" />`), 1);
   expect('(a) template part ending in a prefix', tsx('<div className={`flex ml-${gap}`} />'), 1);
   expect('(a) cva/cn arguments and constants', tsx("const base = 'px-2 ml-1'; cn('pr-2', ok && 'left-0');"), 3);
-  // Logical forms, legacy names and text pass.
+  // Logical forms, plain class names and text pass.
   const logicalTokens = ['ms-2', 'me-0.5', 'ps-4', 'pe-px', 'start-0', 'end-1/2', '-start-2', 'md:ms-auto', 'text-start',
     'text-end', 'border-s', 'border-e-2', 'rounded-s', 'rounded-e-card', 'rounded-ss-sm', 'rounded-ee', 'float-start',
     'pr-badge', 'left-pane', 'border-line', 'rounded-lg', 'text-lg', 'inset-x-0', 'top-0', 'bottom-2', 'pt-2', 'mb-1'];
@@ -257,7 +257,7 @@ function selfTest() {
   expect('(c) non-colour property passes', tsx("<i style={{ inlineSize: '50%', colorScheme: 'dark', top: 4 }} />"), 0);
   expect('(c) a variable style passes', tsx('<i style={s} />'), 0);
 
-  // (d) app/tailwind.css is the only stylesheet: every other one fails, a former legacy sheet included.
+  // (d) app/tailwind.css is the only stylesheet: every other one fails, whatever its folder or name.
   expect('(d) the Tailwind sheet alone passes', checkSheets([TAILWIND_SHEET]), 0);
   expect('(d) no stylesheet passes', checkSheets([]), 0);
   expect('(d) every other stylesheet fails', checkSheets([TAILWIND_SHEET, 'components/x.module.css', 'app/new.scss',

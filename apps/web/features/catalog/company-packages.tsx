@@ -42,7 +42,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
     {
       key: 'package',
       header: t.packageName,
-      // The name over its facts (legacy `.terms-name`): a grid 1px apart that does not wrap; the name 14px bold ink,
+      // The name over its facts: a grid 1px apart that does not wrap; the name 14px bold ink,
       // the facts 11.5px `--rd-muted` 500, tabular.
       render: (row) => (
         <span className="grid items-baseline gap-px whitespace-nowrap">
@@ -57,7 +57,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
       header: t.mainSellPair,
       num: true,
       sortValue: (row) => row.mainPrice,
-      // The price and the renewal on one line (legacy `.terms-pair`), 6px apart, tabular, the slash `--rd-faint`.
+      // The price and the renewal on one line, 6px apart, tabular, the slash `--rd-faint`.
       render: (row) => (
         <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums">
           <Money value={row.mainPrice} />

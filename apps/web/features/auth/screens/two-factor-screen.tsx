@@ -14,7 +14,7 @@ import { Select, SelectItem } from '../../../components/ui/select';
 import { methodName } from '../sign-in-methods';
 import { TWO_FACTOR_METHODS, shownAmong } from '../two-factor-policy';
 
-/** The enrolment link (forms.css `.code`): a scrolling 12px line on `--rd-surface-2`, 10px 12px, 6px corners. */
+/** The enrolment link: a scrolling 12px line on `--rd-surface-2`, 10px 12px, 6px corners. */
 const codeClass = 'm-0 overflow-x-auto rounded-sm bg-surface-2 px-3 py-2.5 text-start text-sm text-ink-2';
 
 // The sign-in step left in sessionStorage says whether this visit enrolls a new code or checks one. Read through
@@ -122,8 +122,7 @@ export function TwoFactorScreen() {
           </Select>
         </Label>
       )}
-      {/* The two notes are plain paragraphs: no legacy rule reached a `.hint` on these pages, so they keep the
-          browser's own paragraph margins. */}
+      {/* The two notes are plain paragraphs: they keep the browser's own paragraph margins. */}
       {enrolling && allowed && allowed.length === 1 && fixedOne && <p data-testid="method-only"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
       {enrolling && !byCode && otpauth && <p className={codeClass} dir="ltr">{otpauth}</p>}
       {byCode && sentTo && <p>{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}

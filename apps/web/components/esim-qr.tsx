@@ -16,8 +16,7 @@ import { DataImage } from './data-image';
 import { Fact, Facts } from './facts';
 
 /*
- * The look (Tailwind migration T4.5, ADR 0022), ported from desk/numbers.css with the legacy dialog and pane label
- * rules that reached the file label (dialog.css, pane.css), in their cascade order:
+ * The look (ADR 0022):
  * - the eSIM badge as a button: the badge is the visible part, the button is at least 44px high and pulled 10px into
  *   the row above and below, with no padding, border or fill; it lifts 1px under the pointer (fast); while the line's
  *   code is being asked for it is held at 55% with a waiting pointer and no lift; a 2px `--rd-focus` outline 2px out

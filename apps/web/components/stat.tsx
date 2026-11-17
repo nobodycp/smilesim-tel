@@ -5,15 +5,14 @@ import { Icon, type IconName } from './icon';
 type StatTone = 'success' | 'warning' | 'danger' | 'muted';
 
 /*
- * The figure cards (Tailwind migration T3.3, ADR 0022), ported from desk/components.css, graphite.css and
- * responsive.css in their cascade order.
+ * The figure cards (ADR 0022).
  *
- * `pointerGlowClass` is the figure tile's light (Tailwind migration T6.3: one variant for the five copies — Stat, the
- * fact cards, the wallet and home tiles, the line operation cards, the package cards): a soft `--rd-glow` light 180px
+ * `pointerGlowClass` is the figure tile's light (one variant for Stat, the fact cards, the wallet and home tiles, the
+ * line operation cards, the package cards): a soft `--rd-glow` light 180px
  * round under the pointer that fades in over 180ms (the shell sets `--mx` / `--my` on a card it finds by
  * `data-slot="stat"` / `"fact-card"`), on an `::after` layer under the content with the card's corners. When motion is
  * allowed the card lifts 2px under the pointer; the lift is a `transform`, so a card that rose in with its row keeps
- * the rise's end state, as the legacy cards did. The card sets its own position-free look (corners, edge, fill).
+ * the rise's end state. The card sets its own position-free look (corners, edge, fill).
  *
  * `figureCardClass` is the card both Stat and a `Facts variant="cards"` fact draw (graphite's figure and fact cards):
  * that light, 6px corners, no border, a 1px inset `--rd-line` edge, and the tag's cut corner (`--rd-cut`) at the top
@@ -60,8 +59,7 @@ const ICON_TONE: Record<StatTone, string> = {
  * 14px / 16px padding on `--rd-surface` (12px all round and no minimum under 768px); the label 12px `--rd-muted` 600;
  * the icon 17px, `--rd-muted` or its tone; the value across the card in ink, 1.45rem bold (1.2rem under 768px),
  * tabular; the bar 4px, a pill of ink on `--rd-surface-3`; the caption 12px `--rd-muted` 500. `highlight` draws the
- * value and the icon in `--rd-success` (graphite keeps the card on the surface). The legacy rules for what callers put
- * in the value (`.tone-success`, `.tone-danger`, `.stat-name`) read `[data-slot='stat']`.
+ * value and the icon in `--rd-success` (graphite keeps the card on the surface).
  */
 export function Stat({
   icon,

@@ -1,6 +1,6 @@
 import type { SystemVersions, VersionBehind, VersionCycle, VersionItem } from '../../lib/api-types';
 
-// The versions page's rules on the web side (spec 2026-11-17-system-monitor, section 5; slice M.12): the same reading,
+// The versions page's rules on the web side (spec 2026-11-17-system-monitor, section 5): the same reading,
 // comparing and cycle rule the API applies to its own components (apps/api/src/modules/monitoring/versions.rules.ts,
 // written out in the comments of `VersionBehind` and `VersionItem` in lib/api-types.ts), so the web's own components
 // are judged exactly as the API judges the rest. Pure: no React, no Node, no clock but the day handed in. Not

@@ -17,9 +17,9 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 /**
- * The action button (Tailwind migration T2.1; look in `button-variants.ts`). `data-slot="button"` is the handle the
- * legacy layout rules still read (`form > [data-slot='button']`, the dialog's touch height) until their screens move.
- * A pressed state is `aria-pressed`, passed through as given. `loading` is the busy state (Tailwind migration T6.2):
+ * The action button (look in `button-variants.ts`). `data-slot="button"` is the handle the base rules of
+ * app/tailwind.css read (`form > [data-slot='button']`, the dialog's touch height).
+ * A pressed state is `aria-pressed`, passed through as given. `loading` is the busy state:
  * the spinner before the label, the button disabled and `aria-busy="true"`, so a screen that waits on a request uses
  * it instead of a bare `disabled`.
  */

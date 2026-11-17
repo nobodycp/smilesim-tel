@@ -82,8 +82,7 @@ export function DisconnectConfirm({
       )}
     >
       {line ? (
-        // The legacy `.stack`: a grid 12px apart, its items allowed to shrink. The task line is a plain paragraph,
-        // as the legacy `.hint` gave it no rule outside a label, a pane or a table.
+        // A grid 12px apart, its items allowed to shrink. The task line is a plain paragraph.
         <div className="grid content-start gap-3 *:min-w-0">
           <Facts>
             <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>

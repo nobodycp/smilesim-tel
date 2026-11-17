@@ -12,12 +12,11 @@ import { cn } from '../lib/cn';
  * The filter bar (`data-slot` `filter-bar` > `filter-panel`): each field is a plain `<label>` child, drawn as a
  * Graphite chip — the field's name on a raised segment, its value beside it (spec 2026-11-09-graphite-identity). A
  * `Select` in a chip is the chip's value segment (`SelectChipContext`), and its list opens under the whole chip (the
- * options, the chosen one in crimson with a tick; components/ui/select.tsx, Radix Select since Tailwind migration
- * T2.4). Placed right above a table card it joins that card's top edge. On a phone the fields move into «كل الفلاتر»,
+ * options, the chosen one in crimson with a tick; components/ui/select.tsx, Radix Select).
+ * Placed right above a table card it joins that card's top edge. On a phone the fields move into «كل الفلاتر»,
  * a drawer.
  *
- * Its own parts are utilities since Tailwind migration T2.9, ported from desk/filters.css and graphite.css in their
- * cascade order:
+ * Its own parts are utilities:
  * - the bar: a row, 6px apart (8px on a phone), 12px / 16px padding, 6px corners, the surface fill and a 1px inset
  *   `--rd-line` ring; its bottom corners square when a pane follows it. `loose`: no padding, fill or ring.
  * - the panel: one wrapping row, 8px apart, nothing of its own. On a phone (under 768px) it is hidden until
@@ -30,8 +29,8 @@ import { cn } from '../lib/cn';
  * - the clear: at the row's end (at the start of its own line in the drawer), shown only once a chip holds a value.
  * - a chip's «×»: 26px, a 1px ink line at 11% at its start, `--rd-muted`, crimson on `--rd-accent-soft` under the
  *   pointer.
- * The chips themselves (labels, their fields, the search chip, the toggle chip) are still the legacy rules that read
- * `[data-slot='filter-panel'] > label` (graphite.css, filters.css) until the screens move (T4).
+ * The chips themselves (labels, their fields, the search chip, the toggle chip) are drawn by the base rules of
+ * app/tailwind.css that read `[data-slot='filter-panel'] > label`.
  * Handles: `data-slot` `filter-bar` (with `data-open`, `data-loose`, `data-bare`), `filter-panel`, `chip-clear`;
  * `data-testid="filter-panel"`.
  */

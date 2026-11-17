@@ -6,26 +6,25 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * A menu of actions next to its button (Tailwind migration T2.4, ADR 0022), on Radix DropdownMenu: the trigger is
+ * A menu of actions next to its button (ADR 0022), on Radix DropdownMenu: the trigger is
  * `aria-haspopup="menu"` with `aria-expanded`; the panel is a `role="menu"` of `role="menuitem"`s in a portal, placed
  * by Radix next to the trigger (flipped and kept 8px inside the window); ArrowUp/ArrowDown (wrapping), Home and End
  * move between items, Escape closes and gives the focus back to the trigger. It is not modal: a press outside closes
- * it and still reaches what was pressed, and the page keeps its scroll, as the legacy row menu did.
+ * it and still reaches what was pressed, and the page keeps its scroll.
  *
- * The look is the legacy row menu's (dialog.css `.row-menu-panel*`, `.row-menu-rule` and responsive.css), in their
- * cascade order:
+ * The look:
  * - the panel: at least 13rem and as wide as its longest line (never wider than the window less 16px), 6px padding,
  *   2px between lines, a 1px `--rd-line` border, 8px corners (`--rd-radius-card`), the surface fill,
  *   `--rd-shadow-pop`, 14px type at line height 1.25, above every layer (`--rd-z-top`);
  * - an item: a 38px line (44px at 720px and under), 10px between its icon and its label, 4px above and below, 4px on
- *   the left and 8px on the right whatever the direction (the legacy shorthand was physical), 6px corners, no fill,
+ *   the left and 8px on the right whatever the direction, 6px corners, no fill,
  *   ink 14px semibold on one line; its icon (an svg child) is a 15px glyph on a 27px `--rd-surface-2` tile with 4px
  *   corners in `--rd-ink-2`; under the pointer or on keyboard focus the line fills with `--rd-surface-2` and the tile
  *   turns `--rd-surface` and ink. `danger`: danger red, its tile `--rd-danger-soft`, the line `--rd-danger-soft` under
  *   the pointer or focus;
  * - the separator: a 1px `--rd-line-soft` rule, 4px above and below, 6px in from each side.
  * A disabled item (Radix `disabled`: skipped by the keyboard, `data-disabled` and `aria-disabled` on the line) is at
- * the one disabled strength with a not-allowed pointer and no hover fill (Tailwind migration T6.2).
+ * the one disabled strength with a not-allowed pointer and no hover fill.
  */
 
 export const DropdownMenu = MenuPrimitive.Root;
@@ -79,7 +78,7 @@ export interface DropdownMenuItemProps
   extends React.ComponentPropsWithoutRef<typeof MenuPrimitive.Item>,
     VariantProps<typeof itemVariants> {}
 
-/** One action. It is a `<button>` (Radix `asChild`), as the legacy menu's lines were. */
+/** One action. It is a `<button>` (Radix `asChild`). */
 export const DropdownMenuItem = React.forwardRef<React.ComponentRef<typeof MenuPrimitive.Item>, DropdownMenuItemProps>(
   ({ className, danger, children, ...props }, ref) => (
     <MenuPrimitive.Item ref={ref} asChild {...props}>

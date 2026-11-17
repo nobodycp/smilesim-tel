@@ -87,7 +87,7 @@ export type DeskMe = {
   impersonating: boolean;
   balance: number;
   ceiling: number;
-  /** The branch owner only: the system monitor's alerts that are open and not yet seen (M.6). Absent for every other account. */
+  /** The branch owner only: the system monitor's alerts that are open and not yet seen. Absent for every other account. */
   openAlerts?: number;
 };
 /** One ranked row of the overview: a package, company, provider or account, by count or profit. */
@@ -606,7 +606,7 @@ export type NoticePayload = {
   /** `provider.match_overdue`: the provider's matching period and its last match. */
   matchEveryDays?: number;
   lastMatchedAt?: string | null;
-  /** `system.alert` (system monitor M.6): the alert, its kind and its subject (`loginName` is shared). */
+  /** `system.alert` (the system monitor): the alert, its kind and its subject (`loginName` is shared). */
   alertId?: string;
   alertKind?: AlertKind;
   ip?: string;
@@ -616,7 +616,7 @@ export type NoticePayload = {
   part?: string;
   detail?: string;
   count?: number;
-  /** `system.update` (system monitor M.11): the components with a newer version (`count` is shared). */
+  /** `system.update` (the system monitor): the components with a newer version (`count` is shared). */
   names?: string[];
 };
 export type NoticeRow = {
@@ -879,7 +879,7 @@ export type RequestLogSummary = {
 };
 
 /**
- * One group of server errors (system monitor M.4, `GET /v1/system/errors`, branch owner only): the 5xx answers of
+ * One group of server errors (`GET /v1/system/errors`, branch owner only): the 5xx answers of
  * one route with one class and message. `message` is a code (`unclassified`, `timeout`, a driver's code), never the
  * error's words; `stack` is the top frames of the last one, a function and a file each; `lastRequestId` finds its row
  * in the request log.
@@ -907,7 +907,7 @@ export type RequestLogCleared = {
   errorsRemoved: number;
 };
 
-/** A part's state on the system status (system monitor M.5): سليم / تحذير / متوقف. */
+/** A part's state on the system status: سليم / تحذير / متوقف. */
 export type StatusState = 'ok' | 'warn' | 'down';
 /**
  * One part of `GET /v1/system/status`. `note` is a code saying why (`memory`, `stale`, `no_heartbeat`, `slow`,
@@ -1046,7 +1046,7 @@ export type AlertsCleared = {
   removed: number;
 };
 /**
- * How far a version in use is behind the newest (system monitor M.11). The API's rule, for the web to apply the
+ * How far a version in use is behind the newest. The API's rule, for the web to apply the
  * same to its own components (`current` null where `where` is `web`):
  * - read each version as up to three numbers after an optional `v`; a tag right after them (`-rc.1`, `beta1`) is a
  *   pre-release; anything after a space or a `+` is ignored (`17.6 (Debian …)` is `17.6`);

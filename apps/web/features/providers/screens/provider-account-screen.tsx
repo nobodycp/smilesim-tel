@@ -30,15 +30,13 @@ import { MatchingPane } from '../matching-pane';
 const BRANCH = ['branch'];
 
 /*
- * The look (Tailwind migration T4.8, ADR 0022), ported from desk/frame.css, desk/pane.css, dialog.css and graphite.css
- * in their cascade order:
+ * The look (ADR 0022):
  * - the page's actions: a wrapping inline row 8px apart, items centred;
  * - a movement's tag: an inline 22px row, 8px sides, 4px corners, 11.5px bold on one line; a payment
  *   `--rd-success` on `--rd-success-soft`, a settlement `--rd-muted` on `--rd-surface-2`, any other movement
- *   `--rd-warning` on `--rd-warning-soft` (graphite `.reason.r-leaf / r-mute / r-amber`);
+ *   `--rd-warning` on `--rd-warning-soft`;
  * - the ledger is `Pane`, tucked under the filter bar;
- * - the dialog: a column 12px apart; fields are dialog labels and fields; its hints plain paragraphs (no legacy rule
- *   reached a `.hint` paragraph in a dialog's body).
+ * - the dialog: a column 12px apart; fields are dialog labels and fields; its hints plain paragraphs.
  */
 const PAGE_ACTIONS = 'inline-flex flex-wrap items-center gap-2';
 const TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-caption font-bold';

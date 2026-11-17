@@ -21,16 +21,15 @@ const LIMIT = 8;
  * `allLabel`: a filter's «الكل» — the field's placeholder while nothing is picked; clearing goes back to it.
  * The list is drawn in a portal with a fixed position, so a filter chip's clipping or a dialog does not cut it.
  *
- * Look (Tailwind migration T2.2), ported from graphite.css's NameField block: the wrapper is a flex row the «×» sits
+ * Look: the wrapper is a flex row the «×» sits
  * in at the inline end (24px, 32px under 768px, 4px corners, `--rd-muted`, `--rd-surface-2` and ink on hover, the 2px
  * crimson focus outline); the list is the raised `--rd-surface-2` card (an 11% ink hairline and the pop shadow, 4px
  * padding, 6px corners, at most 360px / 92vw wide and 320px / 50vh tall, a thin scrollbar, the filter list's 140ms
  * entrance), each option 34px (44px under 768px), 13px medium `--rd-ink-2`, the active one on `--rd-surface` in ink, the
  * picked one crimson and bold, the matched part 800 ink, the hint 11px medium `--rd-muted`.
- * The text field itself takes the look of the place it sits in (the filter chip, the pane, the dialog: their legacy
- * rules, until those slices move them); it only grows to fill the row here. `data-slot="name-field"` is the handle those
- * rules read. Two legacy rules of the block never reached the field and are not carried: the 30px end padding beside
- * the «×» and the red border of `invalid` (both lost to the field rules by specificity); `invalid` is `aria-invalid`.
+ * The text field itself takes the look of the place it sits in (the filter chip, the pane, the dialog); it only grows
+ * to fill the row here. `data-slot="name-field"` is the handle the filter chip's rules in app/tailwind.css read.
+ * `invalid` is `aria-invalid`.
  */
 export function NameField({
   value,

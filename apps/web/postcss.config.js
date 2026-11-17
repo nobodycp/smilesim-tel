@@ -5,8 +5,7 @@
 // Tailwind CSS v4 (ADR 0022) reads app/tailwind.css, builds the utilities it
 // finds in apps/web (base: this folder) and, in production, minifies and
 // prefixes with Lightning CSS. Autoprefixer stays after it so the global rules
-// in that sheet's `@layer base` (moved from the legacy sheets in migration
-// T5.1) keep the prefixes they get today in dev and production alike.
+// in that sheet's `@layer base` get the same prefixes in dev and production.
 module.exports = {
   plugins: [
     [require('@tailwindcss/postcss'), { base: __dirname }],

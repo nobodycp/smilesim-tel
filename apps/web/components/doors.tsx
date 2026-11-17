@@ -3,8 +3,7 @@ import { copy } from '../lib/copy';
 
 /**
  * The door picker on the bare host: the office's name, a title and a line, then one card per door (two columns, one
- * under 561px). The look is utilities since Tailwind migration T3.1 (from doors.css, base.css `.brand-name` and
- * forms.css `.lede`).
+ * under 561px). The look is utilities.
  */
 export function Doors({ host, name }: { host: string; name?: string }) {
   const t = copy.ar;

@@ -30,8 +30,7 @@ const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> 
 };
 
 /*
- * The operation cards (Tailwind migration T4.2, ADR 0022), ported from desk/components.css `.op-grid` / `.op-card` /
- * `.op-mark` / `.op-text` and graphite.css in their cascade order:
+ * The operation cards (ADR 0022):
  * - the grid: as many columns of at least 260px as fit, 1px apart; the cards rise in (`riseInClass`);
  * - a card: a grid of the mark, the text and the switch, 12px apart at the top, at least 96px high with 14px padding,
  *   ink bold at the reading start on `--rd-surface` with a 1px `--rd-line-soft` ring and a 1px `--rd-line` rule under

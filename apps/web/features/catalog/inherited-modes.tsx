@@ -24,7 +24,7 @@ export function useActionNames(): Record<PackageAction, string> {
 }
 
 /*
- * The fold's look (Tailwind migration T4.3, ADR 0022), ported from graphite.css `.inherit-fold`: a 1px `--rd-line` box
+ * The fold's look (ADR 0022): a 1px `--rd-line` box
  * with 6px corners on `--rd-surface`. Its summary is one wrapping row, 6px by 12px apart, 12px by 14px inside, with no
  * browser marker: the title 13px ink, the count 12px `--rd-muted`, and at the end an 8px chevron drawn by two 2px
  * `--rd-muted` sides, pointing down while closed and up while open. The body is a grid 12px apart, 14px inside at the

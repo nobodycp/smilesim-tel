@@ -5,15 +5,13 @@ import { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { cn } from '../../lib/cn';
 
 /*
- * The box a choice is ticked in, and the round dot of one-of-many (Tailwind migration T2.3, ADR 0022), ported from
- * the legacy controls.css rules for `input[type=checkbox|radio]` (spec 2026-11-11-ui-consistency-pass, D5): an 18px
- * box on `--rd-surface` with a 1.5px border of ink at 32% and 4px corners; when on, the box fills with
- * `--rd-accent-fill` (border too) and its light mark (`--rd-on-accent`) grows in; under the pointer, an empty box
- * that is not disabled takes the `--rd-accent` border; on keyboard focus a 2px `--rd-accent` outline 2px out; at
- * 45% with a not-allowed pointer when disabled. Fill, border and mark ease over `--rd-dur-fast`.
- * Tailwind migration T6.2: the empty box's border is `--rd-field` (3:1 on the surface in both themes; ink at 32% was
- * under it, audit 3.10-08, and the base `input[type=checkbox]` rule follows); disabled is the one disabled strength
- * (`opacity-disabled`, the same 45%); `aria-invalid="true"` draws the border in `--rd-danger` while the box is empty;
+ * The box a choice is ticked in, and the round dot of one-of-many (ADR 0022; spec 2026-11-11-ui-consistency-pass,
+ * D5): an 18px box on `--rd-surface` with a 1.5px border of `--rd-field` (3:1 on the surface in both themes, audit
+ * 3.10-08; the base `input[type=checkbox]` rule in app/tailwind.css matches) and 4px corners; when on, the box fills
+ * with `--rd-accent-fill` (border too) and its light mark (`--rd-on-accent`) grows in; under the pointer, an empty
+ * box that is not disabled takes the `--rd-accent` border; on keyboard focus a 2px `--rd-accent` outline 2px out;
+ * when disabled, the one disabled strength (`opacity-disabled`, 45%) with a not-allowed pointer. Fill, border and mark
+ * ease over `--rd-dur-fast`. `aria-invalid="true"` draws the border in `--rd-danger` while the box is empty;
  * a checkbox can be `checked="indeterminate"` (some of a group): the fill with a short light bar instead of the tick.
  * Shared with radio-group.tsx.
  */

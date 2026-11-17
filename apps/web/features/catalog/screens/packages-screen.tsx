@@ -36,9 +36,8 @@ import { cn } from '../../../lib/cn';
 import { paneHintClass } from '../sim-fields';
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from desk/packages.css, frame.css, pane.css, graphite.css and
- * responsive.css in their cascade order:
- * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height (the legacy `.desk > .stack`);
+ * The look (ADR 0022):
+ * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height;
  *   it keeps the `stack` class as the handle the desk column, the canvas and `Pane` size by;
  * - the point of sale's cards (`CARD_GRID`, `CARD`): 180px columns at the start, 12px apart, each rising in when
  *   motion is allowed; a card is a grid 10px apart, at least 148px high, 16px inside, a 1px `--rd-line` border with 8px
@@ -46,10 +45,9 @@ import { paneHintClass } from '../sim-fields';
  *   (the shell sets `--mx` / `--my` on a card it finds by `data-slot="pos-company"` / `"pack-card"`) and a 2px lift
  *   when motion is allowed. A company card centres its picture (64px, 10px corners, contained on `--rd-surface-2`)
  *   or its letters (a 64px tile, 8px corners, 18px bold `--rd-on-mark`) over its name; a package card lines its
- *   rows at the start; its price 22px bold (weights capped at 700 since T6.3, ADR 0021 D7);
- * - the subscribe step: a pane whose body is the form, laid out as a block with no row gap (the legacy form was the
- *   pane itself, a child of `.desk > .stack`, so `.desk > .stack > .pane` made it a block and neither `.pane-body`'s
- *   12px nor `.pane form`'s 8px reached it); fields are pane labels and fields, the eSIM box a pane label laid out as
+ *   rows at the start; its price 22px bold (weights capped at 700, ADR 0021 D7);
+ * - the subscribe step: a pane whose body is the form, laid out as a block with no row gap; fields are pane labels
+ *   and fields, the eSIM box a pane label laid out as
  *   a row (at least 36px, 44px under 721px); the button inline at the start;
  * - a company's title (`CompanyTitle`): a row 12px apart, the picture 64px as above or the letters on a 48px tile
  *   (8px corners, 14px bold); the eyebrow 11px bold `--rd-muted`, tracked 0.02em;
@@ -105,7 +103,7 @@ const QUESTION = 'grid gap-3 motion-safe:animate-rise';
 const ASK = 'm-0 text-center text-3xl font-bold text-balance';
 
 const EYEBROW = 'm-0 text-xs font-bold tracking-head text-muted';
-/** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
+/** A phone's card (a table with `data-cards` whose cells carry their names): the price editor takes the card's whole row. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
 const SELL_CELL = cn(
   'inline-flex items-end justify-end gap-2',

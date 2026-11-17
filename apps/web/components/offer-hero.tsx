@@ -9,7 +9,7 @@ import { usePrefs } from '../lib/prefs';
 import { DataImage } from './data-image';
 
 /*
- * The hero's look (Tailwind migration T4.1), ported from desk/home.css with responsive.css:
+ * The hero's look:
  * - the hero: a card clipped to 8px corners, a 1px `--rd-line` border on `--rd-surface` with the card shadow; a 2px ink
  *   outline 2px out on keyboard focus;
  * - a slide: the text at the reading start and the picture at the end, 16px apart, 16px / 20px padding and 28px at the
@@ -25,7 +25,7 @@ import { DataImage } from './data-image';
  * - the dots: centred along the foot, 4px up; each button at least 20px by 24px (44px high at 720px and under, as every
  *   button on the canvas) with 2px padding; the dot an 8px pill of `--rd-surface-3`, 36px wide for the current offer
  *   (it widens over 180ms); its timer fills it with `--rd-primary-bg` from the reading start, linearly, over the offer's
- *   seconds (the `offer-fill` keyframes in desk/home.css). With reduced motion the slide does not fade and the timer
+ *   seconds (the `offer-fill` keyframes in app/tailwind.css). With reduced motion the slide does not fade and the timer
  *   does not run.
  */
 const ACTION = 'mt-1.5 inline-flex min-h-8.5 items-center rounded-pill bg-accent-fill px-3.5 text-md font-bold text-on-accent hover:bg-accent-fill-hover';

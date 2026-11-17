@@ -7,8 +7,7 @@ import { Icon } from './icon';
 import { Button } from './ui/button';
 
 /*
- * The look (Tailwind migration T3.3, ADR 0022), ported from desk/components.css with the `h1` element rule of
- * forms.css: the panel is a centred grid that fills the canvas, at most 28rem wide, 8px between its rows, 48px / 16px
+ * The look (ADR 0022): the panel is a centred grid that fills the canvas, at most 28rem wide, 8px between its rows, 48px / 16px
  * padding, centred text; its mark a 56px round tile in `--rd-danger` on `--rd-danger-soft`, 8px over the title, the
  * glyph 1.6rem at a 1.8 stroke; the title 20px; the text 14px `--rd-muted` at a 1.6 line height, 8px over the button,
  * which sits in the middle. The bar is one row the same shape as the return bar: 8px / 16px padding, 12px between

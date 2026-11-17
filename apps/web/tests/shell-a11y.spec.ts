@@ -40,7 +40,7 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
   await expect(bell).toBeFocused();
 });
 
-// The mobile drawer is a Sheet (Tailwind migration T3.1): closed, it is not in the page, so it takes neither the
+// The mobile drawer is a Sheet: closed, it is not in the page, so it takes neither the
 // keyboard nor screen readers; open, it is a dialog, and Escape closes it.
 test('the closed drawer is out of the page, and the open one is a dialog', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -59,7 +59,7 @@ test('the closed drawer is out of the page, and the open one is a dialog', async
 test('a collapsed sidebar stays collapsed after a reload', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
-  // The folded state is `data-collapsed` on the sidebar (Tailwind migration T3.1), not a class.
+  // The folded state is `data-collapsed` on the sidebar, not a class.
   const sidebar = page.getByTestId('sidebar');
   await expect(sidebar).not.toHaveAttribute('data-collapsed');
   await sidebar.getByRole('button', { name: 'طي القائمة' }).click();

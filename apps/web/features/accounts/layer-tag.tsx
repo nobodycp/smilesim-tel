@@ -5,10 +5,9 @@ import { cn } from '../../lib/cn';
 import { usePrefs } from '../../lib/prefs';
 
 /*
- * An account's layer as an outlined tag in the layer's own hue (Tailwind migration T4.2, ADR 0022), ported from
- * graphite.css `.layer-tag` / `.layer-tag.l-*`: 22px high, 8px sides, 4px corners, 11.5px bold on one line, a 1px inset
- * line in its own colour. A layer without a hue (staff) takes the text colour around it, as `.l-staff` did.
- * `data-slot="layer-tag"` is its handle. The audit and report screens still draw the legacy class until their slices.
+ * An account's layer as an outlined tag in the layer's own hue (ADR 0022): 22px high, 8px sides, 4px corners, 11.5px
+ * bold on one line, a 1px inset line in its own colour. A layer without a hue (staff) takes the text colour around it.
+ * `data-slot="layer-tag"` is its handle.
  */
 const HUE: Record<string, string> = {
   branch: 'text-layer-branch',

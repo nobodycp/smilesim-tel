@@ -5,8 +5,7 @@ import { usePrefs } from '../lib/prefs';
 import { cn } from '../lib/cn';
 
 /*
- * The sign-in art and brand row (Tailwind migration T3.2), ported from graphite.css's sign-in block: the art panel is
- * always dark (`--rd-login-room` under a crimson glow at 22%), padded 44px (28px 24px and at least 220px high under
+ * The sign-in art and brand row: the art panel is always dark (`--rd-login-room` under a crimson glow at 22%), padded 44px (28px 24px and at least 220px high under
  * 861px); the crimson tag (380px, 220px under 861px) rises from the reading start's bottom corner, turned -14deg with
  * its cut corner, and the title and line rise in after it. The tag's turn is `transform`, not Tailwind's `rotate`,
  * because the `gauth-tag` keyframes (app/tailwind.css) animate `transform`.

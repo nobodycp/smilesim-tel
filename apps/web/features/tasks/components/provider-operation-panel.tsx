@@ -19,8 +19,7 @@ import { DecisionDialog } from './decision-dialog';
 import { Evidence, ProposalCard, decisionActionsClass, decisionHintClass, stepLineClass } from './proposal-card';
 
 /*
- * The panel's look (Tailwind migration T4.6, ADR 0022), ported from graphite.css's provider-operation rules: a column
- * 8px apart, 14px padding, ruled off from the facts under it by a 1px `--rd-line`; its head a wrapping row 8px apart,
+ * The panel's look (ADR 0022): a column 8px apart, 14px padding, ruled off from the facts under it by a 1px `--rd-line`; its head a wrapping row 8px apart,
  * the title (12px bold, no margin) at the start and the phase at the end; the hint 12px `--rd-ink-2` at 1.6; the facts
  * a column 4px apart, each a wrapping row 8px apart with the name (11px bold `--rd-muted`) at the start and the value
  * (12px semibold) at the end, the held amount and its badge an inline row 8px apart; the decisions a column 8px apart

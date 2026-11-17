@@ -36,8 +36,7 @@ export function ActivationResult({ result, onClose }: { result: ApplyResult | nu
       footer={<Button type="button" onClick={leave}>{t.ok}</Button>}
     >
       {line ? (
-        // A column 12px apart (the legacy `.stack`); the note under it is a plain paragraph, as no legacy rule reached a
-        // `.hint` paragraph in a dialog's body (Tailwind migration T4.5).
+        // A column 12px apart; the note under it is a plain paragraph.
         <div className="grid content-start gap-3 *:min-w-0">
           {line.esimQr ? <QrTile src={line.esimQr} /> : null}
           <Facts>

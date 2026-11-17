@@ -36,10 +36,8 @@ const ACTIONS = [
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 
 /*
- * The log's cells (Tailwind migration T4.10): the actor's name and layer tag in one inline row 8px apart (graphite.css
- * `.who-cell`; the tag is `LayerTag`, the legacy `.layer-tag`); a task link in the text's colour, 700, not underlined
- * (desk/table.css `.row-link`); a failure's reason under its badge, a block 11.5px muted 400 at 1.3 (graphite.css
- * `[data-slot='table'] .sub`).
+ * The log's cells: the actor's name and layer tag (`LayerTag`) in one inline row 8px apart; a task link in the text's
+ * colour, 700, not underlined; a failure's reason under its badge, a block 11.5px muted 400 at 1.3.
  */
 const ROW_LINK = 'font-bold text-inherit no-underline';
 const CELL_SUB = 'block text-caption leading-1-3 font-normal text-muted';

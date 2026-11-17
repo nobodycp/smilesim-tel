@@ -26,7 +26,7 @@ function counted(template: string, n: number) {
 }
 
 /*
- * The company cards (Tailwind migration T4.3, ADR 0022), ported from graphite.css's company shelf:
+ * The company cards (ADR 0022):
  * - the grid: as many 220px-or-wider columns as fit, 12px apart; two columns 10px apart under 641px; when motion is
  *   allowed each card rises in (8px, 420ms), the second 40ms, the third 80ms and the rest 120ms after the first;
  * - the card: a grid of rows 6px apart with 18px padding (14px under 641px), 6px corners on `--rd-surface` with a 1px

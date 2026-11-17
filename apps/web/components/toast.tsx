@@ -21,7 +21,7 @@ export function useToasts() {
 }
 
 /**
- * The toasts (owner 2026-11-11), composed from components/ui/toast.tsx on Radix Toast (Tailwind migration T2.6):
+ * The toasts (owner 2026-11-11), composed from components/ui/toast.tsx on Radix Toast:
  * stacked under the top bar at the reading end (the whole width on a phone), over the page, at most three, the
  * newest last, each with its tone's icon; each closes from its «×» or by itself — a success after 4.6s, an error after
  * 9s, long enough to read on a phone (this timer, not Radix's, so hovering does not hold it) — and a bar along its
@@ -29,8 +29,8 @@ export function useToasts() {
  * raised on. Every outcome a page
  * reports shows here, the errors too (owner, 2026-11-17: one place, always in view). A page's own error is *held*
  * (`hold`): it stays for as long as the page reports it, first in the stack, with no timer — the same words reported
- * twice are still on screen the second time — and its «×» puts it away until the page reports something else. Kept from the legacy toasts:
- * - each toast is its own live region, `role="status"` (`role="alert"` for an error), as before. Radix's own
+ * twice are still on screen the second time — and its «×» puts it away until the page reports something else. Also:
+ * - each toast is its own live region, `role="status"` (`role="alert"` for an error). Radix's own
  *   announcer, which would read every message a second time and put a second copy of its words in the page, is
  *   drawn into a fragment that never joins the document;
  * - no hotkey moves the focus to the toasts (Radix's F8 is turned off) and no swipe closes one.

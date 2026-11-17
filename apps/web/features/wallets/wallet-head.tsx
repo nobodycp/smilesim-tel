@@ -17,7 +17,7 @@ const WINDOWS = [7, 30, 90] as const;
 type Window = (typeof WINDOWS)[number];
 
 /*
- * The wallet band (Tailwind migration T4.7), ported from desk/home.css and graphite.css in their cascade order:
+ * The wallet band:
  * - the band: a grid 12px apart, two columns; from 1100px the lead and three cards (1.6fr, then three equal); under
  *   640px the lead and the fourth card take the whole row. In the desk column it keeps its own height. Its cards rise
  *   in (8px, 420ms), the second to the fourth 40ms after the one before, when motion is allowed;
@@ -62,7 +62,7 @@ const TILE_META = 'mt-auto block text-sm leading-1-6 text-muted';
  * window's switch (7 days, 30 days, 3 months), which the tiles follow. The chart card is `Pane`; its head (one wrapping
  * row 12px apart, at least 52px high, 14px / 18px padding, a 1px `--rd-line` rule under it), title (14px bold ink),
  * hint (12px `--rd-muted`, 2px under the title) and body (a grid 12px apart, 14px / 18px / 18px padding, scrolling in
- * the desk) are ported from desk/pane.css, desk/components.css and graphite.css.
+ * the desk) are set here.
  */
 export function WalletHead() {
   const { t } = usePrefs();

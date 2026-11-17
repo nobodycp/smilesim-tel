@@ -64,8 +64,7 @@ function requestOf(kind: Kind, parentLoginName: string, choice: Choices): Transf
 type Option<T extends string> = { value: T; label: string };
 
 /*
- * Choices with no default (this dialog and the number card), ported from the legacy dialog.css rules (`.choice-*`,
- * `.check` in pane.css, responsive.css): a group is a fieldset of rows (14px at the sides, 2px above and 6px below,
+ * Choices with no default (this dialog and the number card): a group is a fieldset of rows (14px at the sides, 2px above and 6px below,
  * a 1px `--rd-line` border with 6px corners; its legend 12px bold ink, 6px at its sides, pulled 6px towards the
  * reading start); a row is a Radix RadioGroup (`role="radiogroup"`, the arrow keys move inside it) holding its name
  * (a 9.5rem column in 12px semibold `--rd-ink-2`) and its radios, 16px apart, on one line while the group is wide

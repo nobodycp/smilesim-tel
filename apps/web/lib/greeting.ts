@@ -6,7 +6,7 @@ import { usePrefs } from './prefs';
 const noSubscribe = () => () => {};
 
 /**
- * The greeting and today's date for the home page's lede (moved from the topbar, spec 2026-11-09-graphite-identity).
+ * The greeting and today's date for the home page's lede (spec 2026-11-09-graphite-identity).
  * Both depend on the browser's clock, so the server renders neither; one string, so the snapshot compares equal
  * between reads.
  */

@@ -31,14 +31,13 @@ import { cn } from '../../../lib/cn';
 type Group = { code: string; name: string; packages: UserPackageRow[] };
 
 /*
- * The look (Tailwind migration T4.2, ADR 0022), ported from desk/users.css (user terms), desk/filters.css and
- * graphite.css in their cascade order.
- * The filter card (the legacy hand-written `.filter-bar` / `.filter-panel`): the bar is FilterBar's — a row 6px apart
+ * The look (ADR 0022).
+ * The filter card: the bar is FilterBar's — a row 6px apart
  * (8px on a phone), 12px / 16px padding, 6px corners, the surface fill and a 1px inset `--rd-line` ring, its bottom
  * corners square over the pane under it; the panel one wrapping row 8px apart with nothing of its own, hidden on a
  * phone (under 768px: this card has no «كل الفلاتر» drawer). Each field grows from 9rem and its control fills the chip;
  * the summary takes its own width on one line (its own line, wrapping, under 1100px); the clear sits at the row's end
- * and shows once a field holds a value. The chips themselves are still the legacy rules that read
+ * and shows once a field holds a value. The chips themselves are the base rules of app/tailwind.css that read
  * `[data-slot='filter-panel'] > label`, as on every FilterBar.
  */
 const FILTER_BAR = cn(

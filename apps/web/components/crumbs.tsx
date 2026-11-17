@@ -70,7 +70,7 @@ export function ShellPath({ pathname, sections }: { pathname: string; sections: 
     return () => document.removeEventListener('keydown', onKey);
   }, [up, router]);
 
-  // The path sits in an inset box (Graphite; Tailwind migration T3.1, from shell.css and graphite.css): section titles
+  // The path sits in an inset box (Graphite): section titles
   // muted, the levels above the page `--rd-ink-2` links, the page itself ink. Under 900px it takes its own row.
   const level = 'overflow-hidden text-ellipsis rounded-xs px-1.5 py-0.75 text-md';
   return (
@@ -83,8 +83,7 @@ export function ShellPath({ pathname, sections }: { pathname: string; sections: 
             <Link
               href="/"
               className={cn(
-                // `.shell-path a` outranked `.shell-path-home` in the legacy cascade: the home link takes the level's
-                // padding, 4px corner and ink-2 at weight 500; only the span on «/» is muted with a 6px corner.
+                // The home link takes the level's padding, 4px corner and ink-2 at weight 500; only the span on «/» is muted with a 6px corner.
                 'grid size-7.5 place-items-center',
                 level,
                 'font-medium text-ink-2 hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent [&_svg]:size-4',

@@ -47,9 +47,9 @@ export function PageAlert({
   const { t } = usePrefs();
   // While the API is unreachable the shell's outage bar says so once; the page does not repeat it.
   const repeated = !reachable && error === t.errors.NETWORK;
-  // A page's error floats with the other messages, under the top bar (owner 2026-11-17): it was a strip at the top
-  // of the page, out of view for a seller who had scrolled down to the button. An open dialog shows it itself.
-  // It is held there for as long as the page reports it, as the strip was, so the same words reported twice are
+  // A page's error floats with the other messages, under the top bar (owner 2026-11-17), so a seller who has
+  // scrolled down to the button sees it. An open dialog shows it itself.
+  // It is held there for as long as the page reports it, so the same words reported twice are
   // still on screen the second time.
   useEffect(() => {
     hold(error && !held && !repeated ? error : '');
@@ -63,8 +63,8 @@ export function PageAlert({
 }
 
 /**
- * The dialog every screen uses (DESIGN.md → Controls and primitives, "Overlays"), composed from components/ui/dialog.tsx on Radix Dialog
- * (Tailwind migration T2.5). It is shown while `open` and gone (its content unmounted) while not.
+ * The dialog every screen uses (DESIGN.md → Controls and primitives, "Overlays"), composed from components/ui/dialog.tsx on Radix Dialog.
+ * It is shown while `open` and gone (its content unmounted) while not.
  *
  * Radix gives the portal, the `role="dialog"` named by the title and described by the lede, Tab and Shift+Tab
  * wrapping inside the panel, and the order of the layers (an open list or menu inside takes Escape and outside
@@ -162,7 +162,7 @@ export function Dialog({
           const first = [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].find((node) => !node.hasAttribute('disabled'));
           (field ?? first)?.focus();
         }}
-        // The focus goes back in the effect above, at once, as before.
+        // The focus goes back in the effect above, at once.
         onCloseAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => {
           event.preventDefault();
@@ -179,7 +179,7 @@ export function Dialog({
           </DialogHeading>
           <IconButton size="lg" tone="faint" className="flex-none" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></IconButton>
         </DialogHeader>
-        {/* The error line between the head and the body (the legacy `[data-slot='dialog'] > .error` rule). */}
+        {/* The error line between the head and the body. */}
         <Alert className="mx-4 mt-3 flex-none">{error}</Alert>
         <DialogBody data-testid="dialog-body">{children}</DialogBody>
         {footer ? <DialogFooter>{footer}</DialogFooter> : null}

@@ -6,27 +6,25 @@ import { cva } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * A segmented control: one choice out of a few, side by side (Tailwind migration T2.3, ADR 0022), on Radix
+ * A segmented control: one choice out of a few, side by side (ADR 0022), on Radix
  * ToggleGroup `type="single"`: the group is `role="radiogroup"`, each segment a `role="radio"` button with
  * `aria-checked` and `data-state="on|off"`; arrow keys move between segments (mirrored in RTL), Tab enters at the
- * chosen one. Picking the chosen segment again keeps it (the group never goes empty). Ported from the legacy `.seg`
- * rules of desk/pane.css and graphite.css in their cascade order:
+ * chosen one. Picking the chosen segment again keeps it (the group never goes empty). The look:
  * - the group: no padding, gap or border, 6px corners, no fill, an inset 1px ink line at 11%, clipped to its corners;
- *   `fill` makes it a full-width grid of equal segments (the legacy `.mode-card .seg` / `.role-seg`);
+ *   `fill` makes it a full-width grid of equal segments;
  * - a segment: 32px high, 10px sides, square, no border or fill, `--rd-muted` 12px bold; each after the first draws a
  *   1px ink line at 11% on its start edge; the chosen one sits on `--rd-surface-2` in ink with the 2px crimson thread
- *   underneath; at least 44px high at 720px and under (the touch rule of responsive.css). With `fill` a long label
- *   stays on one line and ends in an ellipsis.
- * States no legacy rule reached (Tailwind migration T6.2, from the system's own parts): under the pointer an
+ *   underneath; at least 44px high at 720px and under (the touch rule). With `fill` a long label stays on one line
+ *   and ends in an ellipsis.
+ * States: under the pointer an
  * unchosen, usable segment turns ink on `--rd-surface-2` (as a tab does); keyboard focus is the 2px `--rd-accent`
  * outline drawn inside the segment (the focus mark of an item in a strip or a list: tabs, segments, periods, page
  * numbers, list rows), so the group's clipping never cuts it; a disabled segment (or a disabled group) is at the one
  * disabled strength with a not-allowed pointer.
  *
- * `SegmentedToggle` / `SegmentedToggleItem` are the toggle form (Tailwind migration T6.2), the look of the period
- * switch (graphite.css `.period`, drawn by hand in features/reports/report-kit.tsx and features/wallets/wallet-head.tsx
- * until T6.3, which moved both onto it): a `role="group"` row of plain buttons, each `aria-pressed`, every one in the Tab order (no roving),
- * the caller keeping the choice. The row keeps its width, 4px corners, a 1px inset `--rd-line` edge, clipped; the
+ * `SegmentedToggle` / `SegmentedToggleItem` are the toggle form, the period switch of features/reports/report-kit.tsx
+ * and features/wallets/wallet-head.tsx: a `role="group"` row of plain buttons, each `aria-pressed`, every one in the
+ * Tab order (no roving), the caller keeping the choice. The row keeps its width, 4px corners, a 1px inset `--rd-line` edge, clipped; the
  * whole row under 768px, its buttons sharing it with 6px sides. A button: 34px (44px at 720px and under), 12px
  * sides, no border or fill, `--rd-muted` 12.5px semibold on one line, ink under the pointer; each after the first
  * draws a 1px `--rd-line` on its start edge; the pressed one sits on `--rd-surface-2` in ink over the crimson thread;

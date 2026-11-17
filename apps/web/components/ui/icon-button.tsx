@@ -3,19 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 
 /*
- * A square button that holds one icon (Tailwind migration T2.1, ADR 0022), ported from the legacy `.icon-btn` rules
- * (base.css, and its dialog and line-details takes in dialog.css and desk/numbers.css). No fill and no border at
- * rest, 6px corners, the ink focus outline (2px, 1px outside the box) that every keyboard-reached icon control shares.
+ * A square button that holds one icon (ADR 0022). No fill and no border at rest, 6px corners, the ink focus outline (2px, 1px outside the box) that every keyboard-reached icon control shares.
  * Sizes: md 34px (the default); lg 36px (a dialog's close); sm 28px with 4px corners (a copy button beside a value).
  * Tones: muted (`--rd-muted`, hover `--rd-surface-3`); faint (`--rd-muted` at rest, hover `--rd-surface-2`);
  * faint-to-ink (the same, ink under the pointer); danger (`--rd-danger`, hover `--rd-danger-soft`: an icon that
  * deletes).
- * States (Tailwind migration T6.2): at least 44 × 44 at 720px and under, every size (the touch rule; `sm` was 40px
- * under 641px and the others kept their size); disabled at the one disabled strength (`opacity-disabled`) with no
+ * States: at least 44 × 44 at 720px and under, every size (the touch rule); disabled at the one disabled strength (`opacity-disabled`) with no
  * pointer; pressed (`aria-pressed="true"`) holds the hover fill in ink (`danger`: its soft fill). The faint tones
  * draw their icon in `--rd-muted`, not `--rd-faint`: an icon that acts is a control and needs 3:1 (audit 3.10-05;
  * `--rd-faint` is for decoration and what cannot be used).
- * The topbar's control (Tailwind migration T6.3: the shell's `topbarIcon` recipe folded in, audit 3.5-16): size
+ * The topbar's control (audit 3.5-16): size
  * `topbar` is 44px under 768px and 36px from 768px with no padding and an 18px icon; tone `topbar` is `--rd-ink-2`,
  * the raised fill and ink under the pointer or while its panel is open (`aria-expanded`). The menu button, the
  * notices, the theme and the language draw it (components/chrome.tsx `topbarIcon`).

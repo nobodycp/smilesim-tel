@@ -39,21 +39,20 @@ const emptyDraft = (): RoleDraft => ({ id: '', name: '', kind: 'job', layer: '',
 const layerOf = (role: { layer?: string }) => role.layer || 'branch';
 
 /*
- * The matrix and the role form (Tailwind migration T4.10), ported from graphite.css's roles rules and dialog.css in
- * their cascade order:
- * - a role's kind under its name: a block 11.5px muted 400 at 1.3 (`[data-slot='table'] .sub`);
- * - a grant tile (`.grant`): a 22px inline grid, its mark centred, 4px corners, an inset 1px `--rd-line-strong` edge, at
- *   the text's middle; held (`.on`): `--rd-success` on `--rd-success-soft` with a `--rd-success` edge. A grant its layer
- *   can never use is a muted dash at 50% (`.grant-none`);
- * - the form (`.dialog-form`): a column 12px apart; the session rules and the two-step block under the grants each 8px
+ * The matrix and the role form:
+ * - a role's kind under its name: a block 11.5px muted 400 at 1.3;
+ * - a grant tile: a 22px inline grid, its mark centred, 4px corners, an inset 1px `--rd-line-strong` edge, at
+ *   the text's middle; held: `--rd-success` on `--rd-success-soft` with a `--rd-success` edge. A grant its layer
+ *   can never use is a muted dash at 50%;
+ * - the form: a column 12px apart; the session rules and the two-step block under the grants each 8px
  *   lower with a hairline and 14px above them;
- * - the grants block (`.role-block`): a grid with no gap; its head one row 8px over the groups, the title (14px bold
+ * - the grants block: a grid with no gap; its head one row 8px over the groups, the title (14px bold
  *   ink) at the start and the count (12px muted 500, tabular) at the end, on one baseline 12px apart;
- * - a group (`.role-group`): a 148px rail beside its rows, 16px apart, 4px above and under, a hairline over it; the
+ * - a group: a 148px rail beside its rows, 16px apart, 4px above and under, a hairline over it; the
  *   rail 9px down, its name 12.5px bold ink at 1.3 over its count (12px muted, tabular, 2px under). Under 641px the
  *   rail is one row over the rows (name at the start, count at the end, on one baseline), 12px above and 4px under
  *   the group, the rows 4px under the rail;
- * - a row (`.role-row`): the grant's name and its switch at the two ends, 12px apart, at least 34px high (44px under
+ * - a row: the grant's name and its switch at the two ends, 12px apart, at least 34px high (44px under
  *   641px), the whole row the target, a soft hairline between rows; the name 13px muted 500, ink 700 while on;
  * - the session rules' title as the grants' title, its hint 12px muted at 1.5, 4px over and 12px under it.
  */

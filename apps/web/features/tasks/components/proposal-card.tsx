@@ -12,8 +12,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { approveEffect, decisionName, evidenceName, isStale } from '../provider-operation-names';
 
 /*
- * The decision parts shared by the ticket's panel and the queue (Tailwind migration T4.6, ADR 0022), ported from
- * graphite.css's provider-operation rules:
+ * The decision parts shared by the ticket's panel and the queue (ADR 0022):
  * - a step's line (the proposal's head, a record's step, the evidence): a wrapping row on one baseline, 10px / 2px
  *   apart, 12px, no margin;
  * - the evidence in `--rd-muted`, each part after the first led by «· »; the note 12px at 1.6, kept as typed and

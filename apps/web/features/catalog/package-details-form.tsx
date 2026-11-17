@@ -28,12 +28,12 @@ function valueOf(amount: Amount): number | null | undefined {
 const DETAILS_LIMIT = 300;
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from desk/components.css, pane.css, forms.css and graphite.css.
+ * The look (ADR 0022).
  * The fields sit in a pane body (the package page's tab, «إضافة رزمة»'s step 2):
  * - GB, minutes and messages: as many 12rem-or-wider columns as fit, 12px apart; each a grid 4px apart at the top
  *   holding its pane field and its «غير محدود» box;
  * - a box: a pane label laid out as a row, at least 36px high (44px under 721px);
- * - the extra details: the pane body's text area, its 42px height (forms.css) under its 72px minimum, so it opens at
+ * - the extra details: the pane body's text area, its 42px height under its 72px minimum, so it opens at
  *   72px whatever its rows; its count a pane note;
  * - the tab's form (`PackageDetailsForm`): the pane body with `.pane form`'s 8px between rows, never wider than its
  *   column; its save at the start.

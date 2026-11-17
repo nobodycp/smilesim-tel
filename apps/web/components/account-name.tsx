@@ -12,8 +12,7 @@ export function accountLabel(login: string, name?: string | null): string {
 /**
  * A reference to an account: the login name, then the full name in parentheses.
  * The name comes from the prop when the row carries it, else from the session directory.
- * Look (Tailwind migration T2.7, from the legacy desk/table.css `.account-name` / `.account-full` rules): inline, may
- * shrink, the login in tabular digits; the full name `--rd-muted`, medium, at 0.92em, on one line. `className` places
+ * Look: inline, may shrink, the login in tabular digits; the full name `--rd-muted`, medium, at 0.92em, on one line. `className` places
  * the whole reference.
  */
 export function AccountName({ login, name, className }: { login: string | null | undefined; name?: string | null; className?: string }) {

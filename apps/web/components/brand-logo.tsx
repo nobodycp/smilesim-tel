@@ -5,7 +5,7 @@ import { cn } from '../lib/cn';
 import { DataImage } from './data-image';
 
 /**
- * The saved logo as its two copies; the theme shows one (Tailwind migration T3.1, from base.css `.brand-logo*`): the
+ * The saved logo as its two copies; the theme shows one: the
  * light copy by default and the dark one under `.dark`, each a block no wider than its box, contained. `onInk` is for
  * an ink panel (the sign-in art), where the copies swap the other way. `className` sizes both copies. Renders nothing
  * when no logo is saved.

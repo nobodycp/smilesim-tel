@@ -7,7 +7,7 @@ import { cva } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * A dropdown: one value out of a fixed short list (Tailwind migration T2.4, ADR 0022), on Radix Select. The trigger is
+ * A dropdown: one value out of a fixed short list (ADR 0022), on Radix Select. The trigger is
  * a `role="combobox"` button named by its label; the list is a `role="listbox"` of `role="option"`s in a portal, with
  * the keyboard (arrows, Home/End, type-ahead, Enter, Escape) and `dir` from Radix. Inside a `<form>` Radix adds a
  * hidden native select, so `name`, `required` and autofill (`autoComplete`) still reach the form.
@@ -15,24 +15,23 @@ import { cn } from '../../lib/cn';
  * Radix forbids an empty item value; the app's «الكل» / «—» choices are `''`. `SelectItem value=""` and
  * `value=""` on the root map to one private value inside, so callers keep `''`.
  *
- * The trigger is ported from the legacy native-select rules in their cascade order (forms.css `select`, ui.css
- * `.ui-select*`, graphite.css "Fields", frame.css `.desk select`, filters.css `.pane select`, dialog.css
- * `.dialog select`, table.css `.pane .table-pager select`, responsive.css `.auth/.canvas select`, and graphite.css's
- * filter-chip and pager rules). Every place keeps the chevron (16px, `--rd-faint`) 12px from the inline end, the
- * box-shadow transition and, when disabled, a not-allowed cursor at 60%. `place` names where it sits:
+ * The trigger: every place keeps the chevron (16px, `--rd-muted`: an icon on a control needs 3:1, audit 3.10-05) 12px
+ * from the inline end, the box-shadow transition and, when disabled, a not-allowed cursor at the one disabled
+ * strength (`opacity-disabled`) over the `--rd-surface-2` fill. `place` names where it sits:
  * - field: a field outside the desk (the sign-in screens): 36px, 6px corners, a 1px border at 70% of `--rd-field`,
  *   the sunken fill, 12px at the start and 36px at the end (the chevron's room), 14px type, `--rd-shadow-sm`;
  * - desk / dialog: the same at 34px (a field on the desk outside a pane, a field in a dialog);
  * - pane: a field inside a `.pane`: 34px, the full `--rd-field` border, the surface fill, 8px at the start, 13px type;
- * - pager: the pane look at 28px (40px at 640px and under), the pager's page-size field;
- * and all four but pager are 44px at 720px and under. Focus: an `--rd-accent` border and the 3px `--rd-focus` ring in
- * place of the shadow. Disabled: the `--rd-surface-2` fill. The type weight is the label's (`font: inherit`).
+ * - pager: the pane look at 28px, the pager's page-size field;
+ * and every place is 44px at 720px and under. Focus: an `--rd-accent` border and the 3px `--rd-focus` ring in place
+ * of the shadow. `aria-invalid="true"` draws `Input`'s inset 1px `--rd-danger` line while the field is not focused.
+ * The type weight is the label's (`font: inherit`).
  * Inside a `FilterBar` (SelectChipContext) the trigger is the chip's value segment instead: 30px, 10px into the chip,
  * 10px sides, a 1px ink line at 11% on its start edge and no other border or corner, the surface fill, ink 12.5px
  * semibold, as wide as its value (4.5rem to 16rem; the whole row in the phone drawer), a pointer cursor, and on focus
  * the 2px crimson thread under it. A chip that holds a value shows the FilterBar's «×» in place of the chevron.
  *
- * The list is the chip's own list of the legacy FilterBar (`.filter-pop`), now for every Select: raised
+ * The list, the same for every Select: raised
  * `--rd-surface-2` with an inset 1px ink line at 11% and `--rd-shadow-pop`, 6px corners, 4px padding, 1px between
  * rows, at most min(320px, 92vw) wide and min(360px, 60vh) high with a thin scrollbar, dropping in over 140ms when
  * motion is allowed. Under a chip it opens 6px below the chip, at the chip's start, at least max(180px, the chip's
@@ -40,11 +39,7 @@ import { cn } from '../../lib/cn';
  * corners, `--rd-ink-2` 13px medium, `--rd-surface` and ink under the pointer and on keyboard focus (with a 2px
  * crimson outline inside), the chosen one crimson and bold with a tick at the end.
  *
- * Tailwind migration T6.2 completed the states from the system's own parts: disabled is the one disabled strength
- * (`opacity-disabled`; it was 60%) over the `--rd-surface-2` fill; `aria-invalid="true"` draws `Input`'s inset 1px
- * `--rd-danger` line while the field is not focused; the chevron is `--rd-muted` (an icon on a control needs 3:1;
- * `--rd-faint` was under it, audit 3.10-05); the pager place is 44px at 720px and under like the others (it was 40px
- * under 641px). `SelectEmpty` is the list's row for nothing to choose (no rows yet, or none left): the row's size in
+ * `SelectEmpty` is the list's row for nothing to choose (no rows yet, or none left): the row's size in
  * `--rd-muted`, not focusable.
  */
 
@@ -182,7 +177,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             )}
             style={hanging ? { minWidth: hanging.width } : undefined}
           >
-            {/* Radix hides the list's scrollbar with an unlayered rule; the legacy list had a thin one. */}
+            {/* Radix hides the list's scrollbar with an unlayered rule; the list keeps a thin one. */}
             <SelectPrimitive.Viewport className="grid gap-px p-1 [scrollbar-width:thin]!">{children}</SelectPrimitive.Viewport>
           </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

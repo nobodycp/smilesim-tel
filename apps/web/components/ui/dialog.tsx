@@ -6,21 +6,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * A dialog over the page (Tailwind migration T2.5, ADR 0022), on Radix Dialog: the panel is `role="dialog"` named by
+ * A dialog over the page (ADR 0022), on Radix Dialog: the panel is `role="dialog"` named by
  * its title (`aria-labelledby`) and described by its lede when it has one (`aria-describedby`); it lives in a portal
  * on `<body>`; Tab and Shift+Tab wrap inside it (Radix FocusScope `loop`); Radix keeps the layers in order, so an
  * open list or menu inside it takes Escape and outside presses first. `components/dialog.tsx` composes these parts
  * into the one dialog the screens use.
  *
- * The look is the legacy dialog's (dialog.css `.dialog-scrim`, `.dialog*`, and graphite.css "Dialog: the crimson
- * thread on top", its motion line and `.dialog-mark`), in their cascade order:
+ * The look:
  * - the scrim: fixed over the whole window above every layer but the toasts (`--rd-z-dialog`), `--rd-scrim` with an
  *   8px backdrop blur, the panel centred in it with 16px around;
  * - the panel: a column, min(560px, 100%) wide (confirm 460px, wide 760px), at most min(720px, window less 48px)
- *   tall (the dynamic viewport height, so a phone's browser bars never hide its foot: Tailwind migration T6.2,
- *   audit 3.2-10), clipped, no border (graphite's `border: 0` over dialog.css's line), 6px corners (`--rd-radius-sm`), the
- *   surface fill, an inset 1px ink line at 11% under `--rd-shadow-pop`, and a 2px `--rd-accent` thread across its
- *   top (graphite `::before`); it drops in over 200ms (`rd-drop`, graphite.css) when motion is allowed;
+ *   tall (the dynamic viewport height, so a phone's browser bars never hide its foot: audit 3.2-10), clipped, no
+ *   border, 6px corners (`--rd-radius-sm`), the surface fill, an inset 1px ink line at 11% under `--rd-shadow-pop`,
+ *   and a 2px `--rd-accent` thread across its top; it drops in over 200ms (`rd-drop`) when motion is allowed;
  * - the head: a row, 12px between its parts, 16px on top and the sides and 14px below, a 1px `--rd-line` rule under
  *   it; the title is 16px bold at the reading start with no margin; the lede under it is 13px medium `--rd-muted`
  *   at line height 1.45, 4px below the title;
@@ -30,9 +28,9 @@ import { cn } from '../../lib/cn';
  * - the body: takes the room left and scrolls, 16px padding;
  * - the foot: a wrapping row of buttons at the reading end, 8px apart, 12px above and below and 16px at the sides,
  *   a 1px `--rd-line` rule above it, on `--rd-surface-2`.
- * Handles: `data-slot="dialog-scrim"`, `"dialog"` (with `data-size`), `"dialog-mark"`, `"dialog-body"`. The legacy
- * rules for the content of dialogs not yet ported (their fields, labels and touch heights) read the two last until
- * their screens move (T4) and the sheets go (T5).
+ * Handles: `data-slot="dialog-scrim"`, `"dialog"` (with `data-size`), `"dialog-mark"`, `"dialog-body"`. The base
+ * rules of app/tailwind.css style the dialogs' content (title, fields, labels, touch heights) through `"dialog"` and
+ * `"dialog-body"`.
  */
 
 export const Dialog = DialogPrimitive.Root;
@@ -67,7 +65,7 @@ export interface DialogContentProps
 
 /**
  * The scrim and the panel, in a portal. A click inside the panel stops there: it neither reaches the scrim nor a
- * React ancestor of the dialog (a clickable row or card that opened it), as the legacy panel did.
+ * React ancestor of the dialog (a clickable row or card that opened it).
  */
 export const DialogContent = React.forwardRef<React.ComponentRef<typeof DialogPrimitive.Content>, DialogContentProps>(
   ({ className, size, onScrimClick, onClick, ...props }, ref) => (

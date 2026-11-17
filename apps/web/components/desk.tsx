@@ -14,15 +14,14 @@ import { Segmented, SegmentedItem } from './ui/segmented';
 export { actionName, applyNote, layerName, lineStatus, taskName, taskStatus } from './names';
 
 /*
- * The desk frame (Tailwind migration T3.3, ADR 0022), ported from desk/frame.css, desk/pane.css, forms.css and
- * graphite.css in their cascade order:
+ * The desk frame (ADR 0022):
  * - the column: a flex column 14px apart that fills the canvas (`flex: 1`, full width, no minimum height); one that
- *   holds a `.stack` sizes to its content instead. It keeps the `desk` class: the screens' legacy rules (`.desk > .pane`,
- *   `.desk > .stack`, `.desk input`'s 34px / 44px, the filter panel's fields, the user terms' price fields) and the
- *   primitives (`[.desk>&]` in Alert, Tabs, TableSheet, DateField) read it as their context until those screens move;
+ *   holds a `.stack` sizes to its content instead. It keeps the `desk` class: base rules of app/tailwind.css
+ *   (`.desk > .pane`, `.desk > .stack`, `.desk input`'s 34px / 44px) and Alert, Tabs, TableSheet and DateField read it
+ *   as their context;
  * - the page head: one wrapping row, the title at the start and the action at the end, 8px apart, the lede on its own
- *   line under them; it rises in (8px, 420ms) when motion is allowed, as the canvas's page heads did;
- * - the title: the `h1` element rule (forms.css: no margin, bold, 1.25 line height) at 1.25rem with no letter
+ *   line under them; it rises in (8px, 420ms) when motion is allowed;
+ * - the title: no margin, bold, 1.25 line height, at 1.25rem with no letter
  *   spacing (`.canvas .page-head h1`);
  * - the lede: 13px `--rd-muted` at the reading start, 4px under the title.
  */
@@ -73,16 +72,14 @@ export function Desk({
 }
 
 /*
- * A pane: the card a desk's content sits in (legacy `.pane`, desk/pane.css with graphite.css, table.css and the desk
- * scroll model): clipped to 6px corners on `--rd-surface` with a 1px inset `--rd-line` edge and no border; inside the
+ * A pane: the card a desk's content sits in: clipped to 6px corners on `--rd-surface` with a 1px inset `--rd-line` edge and no border; inside the
  * canvas it never widens its column. As a direct child of the desk column it is a full-width flex column that keeps
  * its own height (graphite: a list's card ends with its content); in a `.stack` of the desk it is a block of its own
  * height. One that holds a table takes the card corners (8px) and the frame shadow instead of the edge; one right
  * after a filter bar (`[data-slot=filter-bar]`) tucks under it (its start corners square, pulled up by the gap and the
- * bar's edge), unless the bar stands loose on the page. `data-slot="pane"`: the legacy rules that style what sits in a
- * pane (`.pane label`, `.pane input`, `.pane .hint`, `.pane form`, its tabs, the empty line, drop zones, price fields)
- * read `:is(.pane, [data-slot='pane'])` until their screens move. The head and body inside stay `.pane-head` /
- * `.pane-body` until the first screen that ports them.
+ * bar's edge), unless the bar stands loose on the page. `data-slot="pane"`: the base rules of app/tailwind.css that
+ * style what sits in a pane (labels, fields, `.hint`, forms) read `:is(.pane, [data-slot='pane'])`. The head and body
+ * inside are the `.pane-head` / `.pane-body` classes.
  */
 const PANE = cn(
   'overflow-hidden rounded-sm border-0 bg-surface inset-ring inset-ring-line',
@@ -99,12 +96,12 @@ export function Pane({ className, ...props }: ComponentPropsWithoutRef<'section'
 }
 
 /*
- * A shekel figure (legacy `.money` / `.cur`, base.css, desk/table.css and graphite.css): bold tabular figures; a
+ * A shekel figure: bold tabular figures; a
  * negative one in `--rd-danger`, a signed positive one in `--rd-success` with its plus; `muted` (a reference figure, a
  * default beside a custom value) in `--rd-muted` at 600, also when negative. The shekel sign follows, 1px off, at
- * 0.8em and normal weight, `--rd-muted`, or the figure's own colour at 75% on a coloured one. The places that recolour
- * it keep doing so: a figure tile's success / danger value, a badge in a ledger's kind cell (its colour), a price
- * dialog's buy line (ink), a muted default beside a price field (12px). `data-slot="money"`: TCell reads it.
+ * 0.8em and normal weight, `--rd-muted`, or the figure's own colour at 75% on a coloured one. `MONEY_PLACES`
+ * recolours it under `.figure-tile-value.tone-*`, `.kind-cell [data-slot=badge]` and `.terms-price-form
+ * .terms-price-buy`; no markup writes those classes now. `data-slot="money"`: TCell reads it.
  */
 const MONEY_PLACES = [
   '[.figure-tile-value.tone-success_&]:text-success [.figure-tile-value.tone-danger_&]:text-danger',
@@ -138,15 +135,14 @@ export function Money({ value, muted, signed }: { value: number; muted?: boolean
 /*
  * The outcome pick (success / failure) with its name before it, 4px apart: a column in a dialog or a pane, one row
  * in a filter bar (its name 12px `--rd-muted` 600; spread to both ends in the phone's open filter drawer); in a pane
- * the name is 12px `--rd-muted` with no margin. The pick is the Segmented control (Tailwind migration T2.3), which
- * draws the legacy `.seg` look. `data-slot="outcome-pick"`: the canvas's `:has(.stack)` sizing rule (frame.css) reads
- * it, as it read the legacy `.stack` this was.
+ * the name is 12px `--rd-muted` with no margin. The pick is the Segmented control. `data-slot="outcome-pick"`:
+ * the canvas's content-sized rule in app/tailwind.css (`.canvas-inner.wide:has([data-slot='outcome-pick'])`) reads it.
  */
 const OUTCOME_PICK = cn(
   'grid content-start gap-1 *:min-w-0 [.canvas_&]:min-w-0 [.canvas_&]:max-w-full',
   '[[data-slot=filter-panel]>&]:inline-flex [[data-slot=filter-panel]>&]:flex-row [[data-slot=filter-panel]>&]:items-center',
   'max-md:[[data-slot=filter-bar][data-open]_[data-slot=filter-panel]>&]:justify-between',
-  // The number card's operations tab (legacy `.line-ops > .stack`, desk/numbers.css): as wide as its content.
+  // Inside a `.line-ops`: as wide as its content (no markup writes that class now).
   '[.line-ops>&]:w-max [.line-ops>&]:max-w-full [.line-ops>&]:justify-items-start',
 );
 const OUTCOME_NAME = cn(

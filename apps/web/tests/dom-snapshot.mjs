@@ -381,7 +381,7 @@ const cases = [
   ['wallet-agent', '/wallet', 'agent'],
   // The home page on a door other than the branch: the head actions and the top row (last operations, waiting tasks).
   ['home-main', '/', 'main'],
-  // The bare host: no door, so the layout draws the door chooser (components/doors.tsx, styles/doors.css).
+  // The bare host: no door, so the layout draws the door chooser (components/doors.tsx).
   ['doors', '/', 'bare', false, { wait: '.doors', dump: '.doors' }],
   ['users-dialog', '/users', 'branch', false, { steps: [{ click: '.page-head .ui-btn-primary, .page-head .ui-btn', wait: '.dialog' }] }],
   ['numbers-drawer', '/numbers', 'branch', false, { width: 390, steps: [{ click: '.filter-all', wait: '.filter-bar.drawer-open' }] }],

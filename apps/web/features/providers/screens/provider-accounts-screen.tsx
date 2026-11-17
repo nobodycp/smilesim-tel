@@ -13,8 +13,7 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 const BRANCH = ['branch'];
 
 /*
- * The look (Tailwind migration T4.8, ADR 0022): the list is `Pane`; a provider's link in the cell's text colour,
- * bold, not underlined (desk/table.css `.row-link`).
+ * The look (ADR 0022): the list is `Pane`; a provider's link in the cell's text colour, bold, not underlined.
  */
 const ROW_LINK = 'font-bold text-inherit no-underline';
 

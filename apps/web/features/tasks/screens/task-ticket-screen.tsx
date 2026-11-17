@@ -32,8 +32,7 @@ const glyph = { size: 14, strokeWidth: 1.95, 'aria-hidden': true as const };
 type CloseMode = null | 'complete' | 'reject';
 
 /*
- * The ticket (Tailwind migration T4.6, ADR 0022), ported from desk/tasks.css and graphite.css "Task ticket" in their
- * cascade order:
+ * The ticket (ADR 0022):
  * - the card: `Pane` with no fill, ring or shadow, a flex column that fills the desk (it grows, where a list's card
  *   keeps its height), clipped, and the `task-ticket` inline-size container the narrow rules below read;
  * - the board: two rows-high grid 14px apart, the details (16–20rem) before the log; from 900px the log first and the
@@ -41,7 +40,7 @@ type CloseMode = null | 'complete' | 'reject';
  *   most 40% of the board, and the log at its full length (at least 12rem) scrolling only sideways;
  * - the details and the log: each a column on `--rd-surface` with 6px corners and a 1px inset `--rd-line` edge, never
  *   wider than the board; the details 12px apart with 14px / 16px / 16px padding, scrolling;
- * - the head's actions: a wrapping row 8px apart (the page head's rule over tasks.css's);
+ * - the head's actions: a wrapping row 8px apart;
  * - the close forms: a column 10px apart; the SIM pair in columns of at least 16rem, 12px apart; a close row a column
  *   8px apart, its button at the reading start. Fields and labels are the pane's (34px, 13px on `--rd-surface`; 44px at
  *   720px and under), hints 12px `--rd-muted`;
@@ -281,8 +280,9 @@ export function TaskTicketScreen() {
                         <Input surface="surface" className={FIELD} value={closeIccid} inputMode="numeric" dir="ltr" onChange={(event) => setCloseIccid(event.target.value)} />
                         {hasSimRules(simRules) ? <span className={HINT}>{simHint(t, simRules)}</span> : null}
                       </Label>
-                      {/* A column 12px apart. It keeps the `stack` class only as the handle of frame.css's
-                          `.canvas-inner.wide:has(.stack)` sizing rule, which reads it while this form is open. */}
+                      {/* A column 12px apart. It keeps the `stack` class only as the handle of the
+                          `.canvas-inner.wide:has(.stack)` sizing rule (app/tailwind.css), which reads it while this
+                          form is open. */}
                       <div className="stack grid min-w-0 max-w-full content-start gap-3 *:min-w-0">
                         <span className={HINT}>{t.qrImage}</span>
                         <QrPicker value={closeQr} onChange={setCloseQr} />

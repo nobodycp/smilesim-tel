@@ -13,8 +13,7 @@ type Variant = 'tiles' | 'cards' | 'list';
 type Tone = 'good' | 'warn';
 
 /*
- * The look (Tailwind migration T3.3, ADR 0022), ported from desk/numbers.css `.detail-rows`, desk/users.css
- * `.fact-grid` / `.fact-card` / `.fact-mark`, desk/tasks.css `.task-facts` and graphite.css, in their cascade order:
+ * The look (ADR 0022):
  * - tiles: as many columns of at least 16rem (or the whole width) as fit, 8px apart; each fact a row at least 38px
  *   high clipped to 6px corners with a 1px `--rd-line-strong` edge: its name on `--rd-surface-2` (at least 7.5rem,
  *   12px sides, 12px `--rd-muted` 600, one line; 6.5rem and 10px sides at 420px and under), a `--rd-line-strong`

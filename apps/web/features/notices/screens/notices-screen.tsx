@@ -20,15 +20,15 @@ import { ReportFilters } from '../../reports/report-kit';
 const GROUPS = ['tasks', 'wallet', 'providers'] as const;
 
 /*
- * The notices as card rows (Tailwind migration T4.10), ported from graphite.css's notice rules:
+ * The notices as card rows:
  * - the list's pane hides its table head from the eye (readers keep it): out of the flow, 1px, clipped, one line;
  * - a card: one row 14px apart, the cell's whole width, 12px / 18px padding, no border, no fill, the text's own colour
  *   and type, at the reading start; `--rd-surface-2` under the pointer. Unread: `--rd-accent-soft`, and under the
- *   pointer that soft fill mixed 70% into `--rd-surface-2` (graphite's `color-mix`, drawn as the two fills stacked:
+ *   pointer that soft fill mixed 70% into `--rd-surface-2` (drawn as the two fills stacked:
  *   `--rd-surface-2` at 30% under `--rd-accent-soft` at 70%: the same colour to well under one RGB step);
  * - the group's mark: a 36px tile, 6px corners, `--rd-accent` on `--rd-accent-soft`, never shrinking;
- * - the title over its detail (12.5px muted) 2px apart, taking the room left. The title is 700 read or unread: graphite's
- *   600 for a read one lost to desk/table.css `[data-slot='table'] td strong` (700, more specific), so 700 is the look;
+ * - the title over its detail (12.5px muted) 2px apart, taking the room left. The title is 700 read or unread (the
+ *   `[data-slot='table'] td strong` rule of app/tailwind.css);
  * - the age: 11.5px muted on one line; the unread diamond: an 8px square turned 45deg, 1px corners, `--rd-accent`
  *   glowing 8px in it.
  */

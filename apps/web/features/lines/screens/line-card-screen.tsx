@@ -51,8 +51,7 @@ type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | 'ad
 const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
 /*
- * The look (Tailwind migration T4.5, ADR 0022), ported from desk/pane.css, desk/numbers.css, desk/packages.css,
- * dialog.css, responsive.css and graphite.css («Number card») in their cascade order:
+ * The look (ADR 0022):
  * - the column: the desk's stack (12px apart, its own height); it keeps the `stack` class as the handle the desk
  *   column, the canvas and `Pane` size by;
  * - the title: the number 26px bold, spaced 0.02em, tabular, then its status badge (13px) and what is left (13px),
@@ -74,7 +73,7 @@ const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
  * - the dialogs: a column 12px apart; fields are dialog labels and fields; a field's hint 12px 500; the eSIM box and an
  *   extra operation in a row 8px from its name, at least 36px high (44px at 720px and under), 13px ink 600; the extra
  *   operations one per row, the box, the name and the price, 6px above and below a 1px `--rd-line-soft` rule, 4px
- *   apart; a dialog's note a plain paragraph (no legacy rule reached a `.hint` paragraph in a dialog's body);
+ *   apart; a dialog's note a plain paragraph;
  * - the package picks: as many 8.5rem-or-wider columns as fit, 8px apart; a pick at least 132px high, a centred column
  *   6px apart with 14px / 10px padding, a 1px `--rd-line` border with 6px corners on `--rd-surface`, ink; the chosen
  *   one an ink border on `--rd-surface-2`; its mark 48px, 8px corners, on `--rd-surface-2` (a picture contained, a
@@ -237,7 +236,7 @@ export function LineCardScreen() {
       title={line ? (
         <span className="inline-flex flex-wrap items-center gap-3">
           <bdi dir="ltr" className="m-0 text-6xl font-bold tracking-head tabular-nums" data-testid="line-number">{line.msisdn}</bdi>
-          {/* 13px beside the number (the legacy `.line-hero-title .ui-badge` rule). */}
+          {/* 13px beside the number. */}
           <Badge className="text-md" variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
           {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
         </span>

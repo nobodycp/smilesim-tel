@@ -7,9 +7,9 @@ import { DataImage } from './data-image';
 /**
  * The live preview beside the identity form: a browser tab, the sidebar head, and the sign-in
  * lockup, drawn from the draft so a change shows before it is saved. Logo copies swap with the
- * theme: the light copy shows by default and the dark one under `.dark` (base.css `.brand-logo*`).
+ * theme: the light copy shows by default and the dark one under `.dark`.
  *
- * Its look (Tailwind migration T4.10), ported from desk/branding.css with base.css under it: a column 12px apart that
+ * Its look: a column 12px apart that
  * stays at the top while the page scrolls (not at 960px and under); its caption 12px semibold muted.
  * - The browser: clipped, a 1px `--rd-line` edge, 8px corners, `--rd-surface`, the card shadow. Its tab a row 8px
  *   apart, 8px / 12px padding, a hairline under it, `--rd-surface-2`, 12px: the 16px favicon (3px corners, cut to fill,

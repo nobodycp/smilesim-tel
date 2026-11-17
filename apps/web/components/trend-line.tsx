@@ -8,7 +8,7 @@ import { cn } from '../lib/cn';
  * glowing dot that breathes at the latest point, and the value of the nearest step on hover. SVG, no library; time
  * runs left to right in every language. Motion only under `prefers-reduced-motion: no-preference` (CSS).
  *
- * Look (Tailwind migration T3.3, ADR 0022), ported from graphite.css: a left-to-right box 52px high that sits at the
+ * Look (ADR 0022): a left-to-right box 52px high that sits at the
  * bottom of its card and reaches 4px past its sides (`large`: 200px, flush); inside a home period card
  * (`data-slot="pulse-tile"`) it lies along the card's lower 55%, under the words. The SVG fills it, not clipped, with a
  * crosshair; it is revealed left to right over 1100ms after 120ms. The area is a gradient of the tone (34% to 0),

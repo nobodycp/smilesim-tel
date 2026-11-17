@@ -5,20 +5,19 @@ import { Switch as SwitchPrimitive } from 'radix-ui';
 import { cn } from '../../lib/cn';
 
 /*
- * An on/off switch saved on change (Tailwind migration T2.3, ADR 0022), on Radix Switch: a `role="switch"` button
- * with `aria-checked`, `data-state="checked|unchecked"` on the button and its knob. Ported from the legacy
- * `.live-switch` rules of desk/components.css and graphite.css in their cascade order:
+ * An on/off switch saved on change (ADR 0022), on Radix Switch: a `role="switch"` button with `aria-checked`,
+ * `data-state="checked|unchecked"` on the button and its knob. The look:
  * - the button is the hit box: 36 × 32, no fill or border, the track centred in it; 44 × 44 at 720px and under (a
- *   finger needs 44px; the track stays small); at 45% with a not-allowed pointer when disabled; on keyboard focus no
+ *   finger needs 44px; the track stays small); at the one disabled strength (`opacity-disabled`, 45%) with a
+ *   not-allowed pointer when disabled; on keyboard focus no
  *   outline but the 3px `--rd-focus` ring on a pill;
- * - the track is 38 × 20 with 4px corners (graphite's square track): red (`--rd-danger`) when off, green
+ * - the track is 38 × 20 with 4px corners (a square track): red (`--rd-danger`) when off, green
  *   (`--rd-success`) when on, everywhere (owner, 2026-11-08);
  * - the knob is 14px with 2px corners in `--rd-on-mark`, 3px in from the start edge, and slides 18px to the end
  *   when on (a negative shift in RTL);
  * - colour and slide ease over `--rd-dur-fast`.
  * A Radix Switch inside a `<form>` also renders a hidden checkbox after the button so form events see the change.
- * Tailwind migration T6.2: disabled is the one disabled strength (`opacity-disabled`, the same 45%); `pending` is the
- * state of a switch whose change is being saved: `aria-busy="true"`, a progress pointer, and the track at the
+ * `pending` is the state of a switch whose change is being saved: `aria-busy="true"`, a progress pointer, and the track at the
  * disabled strength with its colour kept (the knob stays where it was pressed). It changes no behaviour: the caller
  * still decides whether a press is taken while it saves.
  */

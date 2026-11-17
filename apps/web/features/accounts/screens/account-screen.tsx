@@ -50,15 +50,13 @@ type Tab = 'packages' | 'ops' | 'numbers' | 'access';
 const TABS: readonly Tab[] = ['packages', 'ops', 'numbers', 'access'];
 
 /*
- * The user page's own parts (Tailwind migration T4.2, ADR 0022), ported from desk/frame.css, desk/pane.css,
- * desk/users.css and graphite.css in their cascade order:
+ * The user page's own parts (ADR 0022):
  * - the title: one wrapping row 12px apart — a 48px crimson mark (6px corners, a 20px bold `--rd-on-accent` letter on
  *   `--rd-accent-fill`, an 11px cut at the top inline end), the name, the layer tag and the state;
  * - the head's actions: one wrapping row 8px apart;
- * - the page column (legacy `.desk > .stack`): a column 12px apart at its own height that never widens the canvas, its
- *   children never wider than it. It keeps the `stack` class as a handle only: the desk column (`has-[>.stack]`,
- *   components/desk.tsx), the canvas (`:has(.stack)`, frame.css) and Pane (`[.desk>.stack>&]`) size to their content
- *   by it;
+ * - the page column: a column 12px apart at its own height that never widens the canvas, its children never wider
+ *   than it. It keeps the `stack` class as a handle only: the desk column (`has-[>.stack]`, components/desk.tsx), the
+ *   canvas (`:has(.stack)`, a base rule in app/tailwind.css) and Pane (`[.desk>.stack>&]`) size to their content by it;
  * - the access tab's body: a column 12px apart, 14px / 18px / 18px padding, scrolling inside its pane;
  * - the permissions fold: a 1px `--rd-line` box on `--rd-surface` with 6px corners; its summary a wrapping row
  *   (6px / 12px apart, 12px / 14px padding) of the name (13px ink bold) and the count (12px `--rd-muted`), with an 8px

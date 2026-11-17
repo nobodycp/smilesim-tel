@@ -6,7 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * Short messages that float over the page (Tailwind migration T2.6, ADR 0022), on Radix Toast: the viewport is a
+ * Short messages that float over the page (ADR 0022), on Radix Toast: the viewport is a
  * `role="region"` named by its `label` holding an ordered list; each toast is a list item drawn into it through a
  * portal, wherever in the tree it is rendered; Radix keeps the Tab order through the viewport and closes a toast from
  * its close button or from Escape while it is the top layer. `components/toast.tsx` composes these parts into the

@@ -12,8 +12,7 @@ import { api, type ProviderAccount } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
 /*
- * The look (Tailwind migration T4.8, ADR 0022), ported from desk/pane.css, responsive.css and graphite.css in their
- * cascade order:
+ * The look (ADR 0022):
  * - the pane: its head a row at least 52px high, 14px / 18px padding, the title at the start and the overdue badge at
  *   the end 8px apart, a 1px `--rd-line` rule under it; the title 14px bold ink; its body a grid 12px apart, 14px /
  *   18px / 18px padding, that scrolls inside the pane in the desk, its children never wider than it;

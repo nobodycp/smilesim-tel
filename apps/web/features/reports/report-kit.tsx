@@ -17,8 +17,8 @@ export function periodFrom(days: number): string {
 }
 
 /*
- * The period switch (Tailwind migration T4.9; on `SegmentedToggle` since T6.3, the look it was ported from graphite.css
- * `.period`): a row of `aria-pressed` buttons, the chosen one over the crimson thread (components/ui/segmented.tsx).
+ * The period switch, on `SegmentedToggle`: a row of `aria-pressed` buttons, the chosen one over the crimson thread
+ * (components/ui/segmented.tsx).
  * `data-slot="period"` is its handle.
  */
 /** The period switch of the Graphite report pages: today, 7 days, 30 days, 3 months. */
@@ -50,15 +50,14 @@ export function CsvLink({ href }: { href: string }) {
 }
 
 /*
- * The search chip of a report's filter row (Tailwind migration T4.9), a `FilterBar` child: the label stays a direct
- * `<label>` of the filter panel, so the chip rules of graphite.css (`[data-slot='filter-panel'] > label`) still draw
- * what it does not set, and FilterBar's clear still sees its field. Ported from graphite.css `label.filter-search` with
- * the chip rules it won over: 280px wide (never wider than the row), 36px high with a 36px line (44px / 42px in the
+ * The search chip of a report's filter row, a `FilterBar` child: the label stays a direct `<label>` of the filter
+ * panel, so the chip rules of app/tailwind.css (`[data-slot='filter-panel'] > label`) draw what it does not set, and
+ * FilterBar's clear still sees its field. Over those rules: 280px wide (never wider than the row), 36px high with a 36px line (44px / 42px in the
  * open «كل الفلاتر» drawer, whose rule won over it), 12px at the sides, 8px between the icon and the field, no border,
  * `--rd-sunken` with a 1px inset `--rd-line` ring that turns crimson while the field has the focus or a value, the text
  * `--rd-muted` either way. The icon keeps its size and sits in the middle. The field takes the rest of the chip
- * (`flex: 1`, no fixed width); its box is the chip field's (graphite.css), which won over the rest of the legacy rule.
- * `data-slot="search-chip"` is its handle. The wallets and audit screens still draw the legacy class until their slices.
+ * (`flex: 1`, no fixed width); its box is the chip field's (`[data-slot='filter-panel'] > label input`).
+ * `data-slot="search-chip"` is its handle.
  */
 const SEARCH_CHIP = cn(
   'h-9 w-70 max-w-full gap-2 border-0 bg-sunken px-3 leading-9 text-muted inset-ring inset-ring-line',
@@ -78,10 +77,9 @@ export function SearchChip({ label, value, onChange }: { label: string; value: s
 }
 
 /*
- * The row above a report's figures: the period, then the filter chips (Tailwind migration T4.9, ported from graphite.css
- * `.report-filters`): one wrapping row, centred, 10px apart, 14px above what follows; a loose FilterBar in it takes the
- * rest of the row and drops its own margin. `data-slot="report-filters"` is its handle. The notices screen still draws
- * the legacy class until T4.10.
+ * The row above a report's figures: the period, then the filter chips: one wrapping row, centred, 10px apart, 14px
+ * above what follows; a loose FilterBar in it takes the rest of the row and drops its own margin.
+ * `data-slot="report-filters"` is its handle.
  */
 export function ReportFilters({ children }: { children: ReactNode }) {
   return (

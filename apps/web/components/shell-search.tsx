@@ -121,7 +121,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
   const groups = [...new Set(shown.map((hit) => hit.group))];
   const showResults = open && needle.length >= 1 && (pageHits.length > 0 || needle.length >= 2);
 
-  // The look (Tailwind migration T3.1, from shell.css, graphite.css and responsive.css): a fixed width beside the
+  // The look: a fixed width beside the
   // wallet chip (200px, 260px from 1200px wide) so it never jumps while the window is resized. Once the topbar is
   // 720px wide or less, or the screen is under 768px, the field becomes the icon, which opens it in a panel under
   // the box; under 768px that panel is a sheet under the whole topbar, 8px from each screen edge (the box stops being

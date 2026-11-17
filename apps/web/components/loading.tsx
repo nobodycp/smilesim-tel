@@ -4,9 +4,8 @@ import { usePrefs } from '../lib/prefs';
 import { Skeleton } from './ui/skeleton';
 
 /*
- * The loading marks (Tailwind migration T2.7, ADR 0022), ported from the legacy desk/components.css and base.css
- * rules: the spinner is a block in ink that turns once every 0.7s when motion is allowed (its size is the global
- * `svg` rule's, base.css); a table skeleton row is a grid of equal cells 12px apart, 13px / 14px padding over a 1px
+ * The loading marks (ADR 0022): the spinner is a block in ink that turns once every 0.7s when motion is allowed (its size is the global
+ * `svg` rule's, app/tailwind.css); a table skeleton row is a grid of equal cells 12px apart, 13px / 14px padding over a 1px
  * `--rd-line` hairline, each cell a 12px bar; the page skeleton stacks its head, figures and pane 16px apart, the
  * title bar 168 by 22px, the lede bar min(440px, 72%) by 14px 10px under it, a figure 92px high with the card corners.
  */

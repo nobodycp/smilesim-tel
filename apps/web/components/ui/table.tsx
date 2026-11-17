@@ -5,8 +5,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 /*
- * The data table's parts (Tailwind migration T2.9, ADR 0022), ported from desk/table.css `.data` / `.col-sort` /
- * `.sheet` (pane.css) and the graphite.css table, sheet and phone-card rules over them, in their cascade order:
+ * The data table's parts (ADR 0022):
  * - `TableSheet`: the scroll box around a table; the table scrolls sideways inside it. In `.desk` it keeps its own
  *   height (no flex growth, no minimum height) and scrolls on both axes; on the canvas it is never wider than its
  *   column; on a phone it lets a table drawn as cards overflow (`:has(> table td[data-label])`).
@@ -21,7 +20,7 @@ import { cn } from '../../lib/cn';
  * - `TCell`: 46px, 8px / 14px padding (8px at the sides on the canvas up to 1100px wide), a 1px transparent rule under
  *   it except on the last row, centred but the first at the reading start, one line; even rows tinted
  *   (`--rd-surface-2` at 55%, unless `striped` is off), the row under the pointer `--rd-accent-soft`. A cell that
- *   holds money uses tabular figures. Tailwind migration T6.2 added two row states in the same tint: a selected row
+ *   holds money uses tabular figures. Two row states take the same tint: a selected row
  *   (`aria-selected="true"` on the `TRow`; a phone's card takes it on the whole card) and a row that holds the
  *   keyboard focus (its link, button or ⋯ under `:focus-visible`), so the row a keyboard user is on reads as the
  *   row under the pointer does.
@@ -36,7 +35,7 @@ import { cn } from '../../lib/cn';
  * the implicit ones.
  * Handles: `data-slot` `table-sheet`, `table` (with `data-cards` while a phone may draw cards), `table-head`,
  * `table-body`, `table-row`, `table-head-cell`, `table-cell`, `table-sort`; the cells carry `data-num`,
- * `data-actions`, `data-fit` and `data-kind` (tests and the remaining legacy content rules read them).
+ * `data-actions`, `data-fit` and `data-kind` (tests and the base content rules of app/tailwind.css read them).
  */
 
 type TableLook = { cards: boolean; striped: boolean };
@@ -45,7 +44,7 @@ const BodyContext = React.createContext(false);
 
 export type CellKind = 'msisdn' | 'when' | 'wrap' | 'block';
 
-// The canvas narrows every cell's sides to 8px up to 1100px wide (desk/table.css `@media (max-width: 1100px)`); a
+// The canvas narrows every cell's sides to 8px up to 1100px wide; a
 // phone's card has no cell padding at all, so in a card table the narrow sides start at 641px.
 const NARROW = 'max-xl:[.canvas_&]:px-2';
 const NARROW_ABOVE_CARDS = 'sm:max-xl:[.canvas_&]:px-2';
@@ -169,7 +168,7 @@ const KIND: Record<CellKind, string> = {
   block: 'p-0 whitespace-normal',
 };
 
-// A phone's card (graphite.css, spec 2026-11-11-ui-consistency-pass D7): every value a small grid under its name.
+// A phone's card (spec 2026-11-11-ui-consistency-pass D7): every value a small grid under its name.
 const CARD = [
   'max-sm:grid max-sm:h-auto max-sm:min-w-0 max-sm:content-start max-sm:justify-items-start max-sm:gap-0.75',
   'max-sm:border-0 max-sm:p-0 max-sm:text-start max-sm:whitespace-normal max-sm:wrap-anywhere max-sm:empty:hidden',

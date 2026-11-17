@@ -18,12 +18,11 @@ import { PANE_BODY, PANE_HEAD, PANE_HINT, PANE_TITLE } from './home-panes';
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
 // overview answered for this viewer: a layer without providers or main agents simply gets no such card or tab.
 
-// A card's tab strip in its head stays inside the card and scrolls sideways on phones too (the legacy
-// `.overview-card .pane-head > [role='tablist']` rule of desk/home.css, Tailwind migration T2.6).
+// A card's tab strip in its head stays inside the card and scrolls sideways on phones too.
 const CARD_TABS = 'max-sm:max-w-full max-sm:overflow-x-auto';
 
 /*
- * An overview card (legacy `.overview-card`, desk/home.css, Tailwind migration T4.1): a pane whose head wraps (the
+ * An overview card: a pane whose head wraps (the
  * title and its hint at the start, the tab strip at the end, 8px apart) and whose body is the positioning context of
  * what it draws. In the home page's narrow column it is the container its donut asks (screens/home-screen.tsx).
  */
@@ -43,7 +42,7 @@ function Card({ title, hint, action, children, testId = 'overview-card' }: { tit
 }
 
 /*
- * The meters (legacy `.overview-meters`, `.overview-rank`, `.overview-meter`, desk/home.css): a list of rows 4px
+ * The meters: a list of rows 4px
  * apart that start at the top of a stretched card; the bar 8px high, a pill of `--rd-surface-2` holding a pill of
  * its tone (`--rd-muted` unless success, warning or danger), which grows from the reading start over 700ms after
  * 150ms when motion is allowed.
@@ -187,7 +186,7 @@ export function TopCard({ data }: { data: OverviewPayload }) {
 }
 
 /*
- * «المستخدمون» (legacy `.users-*`, desk/home.css): a tile per layer in its colour (`--tone`), as many 96px-or-wider
+ * «المستخدمون»: a tile per layer in its colour (`--tone`), as many 96px-or-wider
  * columns as fit, 8px apart; each tile its mark and count over its name (6px / 8px apart), 10px / 12px padding, 6px
  * corners, the tone at 8% over the card's `--rd-surface` with a 1px inset edge of the tone at 18% (45% under the
  * pointer), a 2px outline of the tone 2px out on keyboard focus. The mark 28px, 6px corners, the tone on itself at

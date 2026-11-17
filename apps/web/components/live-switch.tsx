@@ -5,7 +5,7 @@ import { cn } from '../lib/cn';
 import { Switch } from './ui/switch';
 
 /**
- * A saved-on-change switch with its words (Tailwind migration T2.3): the `Switch` primitive (`role="switch"`, green
+ * A saved-on-change switch with its words: the `Switch` primitive (`role="switch"`, green
  * when on, red when off) after its children (a visible label or state text), side by side 8px apart.
  * `data-slot="live-switch"` is its handle; `className` lays it out in its context (a column on an operation card) and
  * comes last (`cn`).

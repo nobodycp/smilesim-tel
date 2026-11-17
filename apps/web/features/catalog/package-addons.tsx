@@ -18,7 +18,7 @@ import { useApiQuery } from '../../lib/use-api-query';
 import { paneHintClass } from './sim-fields';
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from pane.css, responsive.css and graphite.css: the tab's body
+ * The look (ADR 0022): the tab's body
  * is a pane body never wider than its column; the add form one wrapping row at the foot of its fields, 8px apart
  * (`.pane form`'s gap), each field a pane label growing from 16rem up to 22rem; under 768px a column, the fields across
  * it at their own height and the button at the start.

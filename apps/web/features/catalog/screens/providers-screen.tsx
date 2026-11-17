@@ -16,7 +16,7 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 const BRANCH = ['branch'];
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from table.css and graphite.css: a provider's name and its
+ * The look (ADR 0022): a provider's name and its
  * account figures are bold links; its companies `--rd-muted`; how its activations run a 22px tag (8px sides, 4px
  * corners, 11.5px bold, on one line) on the tone's soft fill in the tone's colour — automatic `--rd-success`, manual
  * `--rd-warning`, mixed `--rd-muted` on `--rd-surface-2`.

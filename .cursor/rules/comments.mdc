@@ -1,0 +1,11 @@
+---
+description: Code comments say what the code does now and why; history lives in git
+alwaysApply: true
+---
+
+# Comments
+
+- A comment says what the code does now and why: the rule, the constraint, the decision. Cite the ADR or the spec section that holds the business reason.
+- No history: not what the code used to be, which slice or phase moved it (`T5.1`, `R.3`, `M.6`), which file it came from, or "legacy", "was", "ported from", "until then". That is `git log` / `git blame`'s job.
+- No names of deleted files, classes or rules. A citation names something that exists in the tree: an ADR, a spec (with its section id), a file, a rule in `app/tailwind.css`. A finished plan is cited by its spec or ADR instead.
+- When a change makes a comment untrue, fix the comment in the same change; when all a comment said was where something used to live, delete it.

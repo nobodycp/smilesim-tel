@@ -21,19 +21,16 @@ function iso(date: Date) {
 }
 
 /*
- * The look (Tailwind migration T2.8) is graphite.css's DateField block, ported value for value:
+ * The look:
  * - the row: inline flex, stretched, 6px apart, no minimum width; in a filter chip (`[data-slot=filter-panel] > label`) no gap,
  *   the button being the chip's value end.
- * - the text field takes the look of the place it sits in (the global field rule, the desk, the filter chip, the
- *   dialog: their legacy rules, until those slices move them); here only what the block itself set and reached:
- *   no minimum width, tabular figures, 7.5rem in a desk's filter chip, and the rest of the row in a dialog. The
- *   block's own `inline-size: 8rem` never reached it (the global field rule's `width: 100%` outranked it) and is not
- *   carried.
+ * - the text field takes the look of the place it sits in (the field rules of app/tailwind.css, the desk, the
+ *   filter chip, the dialog); here only no minimum width, tabular figures, 7.5rem in a desk's filter chip, and the rest of the row in a dialog.
  * - the calendar button: a 34px-wide grid cell (40px under 641px) stretched to the field's height, a 1px
  *   `--rd-line` border, 6px corners, `--rd-surface-2`, `--rd-ink-2`, crimson under the pointer and while open; in a
  *   filter chip 30px square, no border but a 1px ink line at 11% at its start, square corners, `--rd-surface` (at
- *   every width); in a dialog 34px high; on the canvas at least 44px high at 720px and under (responsive.css's touch
- *   rule, made explicit).
+ *   every width); in a dialog 34px high; on the canvas at least 44px high at 720px and under (the touch
+ *   rule).
  * - the month (`PopoverContent`, components/ui/popover.tsx, the same panel): 280px wide; the head a row 8px apart
  *   with 8px under it, the 13px ink month name between two 30px steps (4px corners, `--rd-ink-2`, `--rd-surface-2`
  *   under the pointer); seven equal columns 2px apart; weekday names 26px high, 11px semibold `--rd-muted`; days
@@ -62,11 +59,11 @@ const LINK = 'h-7.5 cursor-pointer rounded-xs border-0 bg-transparent px-2.5 fon
  * surface — weekday names in the page's language, Latin digits, today ringed, the chosen day in crimson, «مسح».
  * `onChange` gets an ISO date or ''.
  *
- * The month is a `Popover` (Radix, Tailwind migration T2.8) anchored on the whole row: under it at its reading start,
+ * The month is a `Popover` (Radix) anchored on the whole row: under it at its reading start,
  * over it when the window has no room below, kept 8px inside the window. Radix gives the `role="dialog"` named
  * «اختيار التاريخ», `aria-expanded` / `aria-controls` on the button, the focus moved into the month on opening and
  * back to the button on closing (a picked day, Escape, the button again), and the close on a press or focus outside;
- * a press in the text field does not close it (as before). Handles: `data-slot="date-field"` on the row,
+ * a press in the text field does not close it. Handles: `data-slot="date-field"` on the row,
  * `"date-field-open"` on the button, `"popover"` on the month.
  */
 export function DateField({ value, onChange, label, className }: {

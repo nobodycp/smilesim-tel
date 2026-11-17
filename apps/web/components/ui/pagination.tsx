@@ -12,8 +12,7 @@ function formatInteger(value: number) {
 export const PAGE_SIZE_OPTIONS: PageSize[] = [...PAGE_SIZES, "all"];
 
 /*
- * The pager (Tailwind migration T2.7, ADR 0022), ported from the legacy `.ui-pager*` rules of ui.css and the
- * graphite.css overrides over them (and its phone block), in their cascade order:
+ * The pager (ADR 0022):
  * - the row: wrapping, items centred, the facts at the start and the page buttons at the end, 16px / 8px between
  *   them, 12px / 16px padding under a 1px `--rd-line` hairline, 12px `--rd-muted`;
  * - the facts: the status line, then the per-page field (its 11.5px label 6px before an 88px `Select place="pager"`);
@@ -21,9 +20,8 @@ export const PAGE_SIZE_OPTIONS: PageSize[] = [...PAGE_SIZES, "all"];
  *   face the reading direction;
  * - a page: 30px square at least, 8px sides, no border, 4px corners, no fill, 12.5px bold `--rd-ink-2`, the colour
  *   transition; hovered `--rd-surface-2`; the current one ink on the page colour; at least 44 × 44 at 720px and
- *   under (the touch rule; it was 40px under 641px, 44px high only through the legacy `.canvas button` rule); on
- *   keyboard focus the 2px `--rd-accent` outline drawn inside it (the focus mark of an item in a strip or a list;
- *   Tailwind migration T6.2);
+ *   under (the touch rule); on keyboard focus the 2px `--rd-accent` outline drawn inside it (the focus mark of an
+ *   item in a strip or a list);
  * - the gap: an ellipsis with 4px sides in `--rd-faint`.
  */
 const NAV_BUTTON = "h-7.5 bg-transparent text-ink-2 inset-ring-0 hover:bg-surface-2";

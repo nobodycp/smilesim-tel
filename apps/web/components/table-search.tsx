@@ -1,11 +1,10 @@
 'use client';
 
 /*
- * The search line above a table (Tailwind migration T2.2), ported from desk/filters.css `.table-search*` with the
- * filter panel's label rules it sits under (`[data-slot=filter-panel] label`: no minimum width, one line): a row with a soft
- * hairline under it; the label is a 28px box (16rem, never wider than the row) with a 1px `--rd-line` border, 4px
- * corners, the surface fill, the 14px icon, the name in 11px semibold `--rd-muted`, then the field: no box of its own
- * (no border, fill, ring or padding), 22px, 12px medium ink text, and no focus mark, as today.
+ * The search line above a table (under the filter panel's label rules, `[data-slot=filter-panel] label`: no minimum
+ * width, one line): a row with a soft hairline under it; the label is a 28px box (16rem, never wider than the row)
+ * with a 1px `--rd-line` border, 4px corners, the surface fill, the 14px icon, the name in 11px semibold `--rd-muted`,
+ * then the field: no box of its own (no border, fill, ring or padding), 22px, 12px medium ink text, and no focus mark.
  */
 export function TableSearch({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (

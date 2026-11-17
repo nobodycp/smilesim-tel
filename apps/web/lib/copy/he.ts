@@ -1110,7 +1110,7 @@ export const he: Copy = {
   esimPriceCompanyHint: 'בשקלים. נקודת המכירה משלמת אותו בהפעלת eSIM או בבקשה, אלא אם הספק או החבילה קובעים מחיר משלהם.',
   actProviderEsimPrice: 'מחיר eSIM לספק',
   noSwitchTargets: 'לחבילה הזו אין חבילות שאפשר לעבור אליהן',
-  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log (M.3).
+  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log.
   navDevSecurity: 'מפתחים ואבטחה',
   navRequestLog: 'יומן בקשות',
   reqLogLede: 'כל בקשה שהגיעה למערכת: מתי, כמה זמן נמשכה, והאם הצליחה, נדחתה או נכשלה.',
@@ -1304,7 +1304,7 @@ export const he: Copy = {
   reqLogAddressStarts: "הכתובת מתחילה ב־",
   reqLogUnmatched: "נתיבים לא מוכרים",
   reqLogRange: "מוצגות רק הבקשות מ־{from} עד {to}, בזמן ההתראה.",
-  // The versions page (spec 2026-11-17-system-monitor, section 5; M.12).
+  // The versions page (spec 2026-11-17-system-monitor, section 5).
   navVersions: "גרסאות",
   verLede: "על מה המערכת רצה והספריות שלה: הגרסה שבשימוש עכשיו והגרסה החדשה ביותר שפורסמה. הגרסה החדשה ביותר נבדקת פעם ביום.",
   verCheckNow: "בדיקה עכשיו",

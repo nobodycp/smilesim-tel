@@ -11,7 +11,7 @@ import { Button } from '../components/ui/button';
  * A page that threw while rendering. The shell stays (this boundary sits inside the root layout); the canvas shows
  * the shared empty state with a retry, which re-renders the page, and the way home.
  *
- * The way home is the legacy back link (desk/frame.css, Tailwind migration T3.3): 32px high (44px at 720px and under),
+ * The way home is a back link: 32px high (44px at 720px and under),
  * 10px sides, a 1px `--rd-line` edge with 6px corners on `--rd-surface` and the small shadow, 13px `--rd-ink-2` 600;
  * under the pointer `--rd-surface-2` and ink.
  */

@@ -6,15 +6,15 @@ import { Check } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 /*
- * One choice out of a few, each drawn as a card (Tailwind migration T6.2, ADR 0022), on Radix RadioGroup: the group
+ * One choice out of a few, each drawn as a card (ADR 0022), on Radix RadioGroup: the group
  * is `role="radiogroup"` (named by `aria-label` or `aria-labelledby`), each card a `role="radio"` button with
  * `aria-checked` and `data-state="checked|unchecked"`; Tab enters the group at the chosen card (or the first) and
  * leaves it, the arrow keys move between the cards and choose (mirrored in RTL through the app's DirectionProvider),
  * skipping a disabled one (audit 3.6-10, 3.10-31). The group sets no layout of its own: the caller lays the cards out
  * (a grid of them). Inside a `<form>` Radix adds a hidden radio input per card, so `name` and `required` reach it.
  *
- * The look is the hand-built pick cards' (features/catalog/add-steps.ts `pickCardClass` until T6.3, the two-step method cards
- * of features/auth/sign-in-methods.tsx; both draw this since T6.3), with the system's states:
+ * The pick cards of the add steps (features/catalog/add-steps.ts) and the two-step method cards
+ * (features/auth/sign-in-methods.tsx) draw it. The look, with the system's states:
  * - a card: a grid of rows 4px apart at the start, 12px by 14px inside, a 1px `--rd-line` border with 6px corners on
  *   `--rd-surface-2`, ink text; under the pointer (usable, not chosen) the border is `--rd-accent` at 45%;
  * - chosen: an `--rd-accent` border on `--rd-accent-soft`, and the 16px crimson tick 10px in from the top inline-end

@@ -22,10 +22,7 @@ import { MethodField, ModeSeg, savableMethod } from '../auth/two-factor-policy';
  * or the layer's), or optional; «إعادة تعيين» clears the account's enrolment so it enrols again.
  */
 /*
- * The look (Tailwind migration T4.2, ADR 0022), ported from graphite.css `.settings-block` / `.user-settings` /
- * `.two-factor-block` / `.tf-status`, desk/users.css `.access-tab > .settings-block` / `.access-tab .field-title` and
- * desk/pane.css `.pair` / `.form-save` / the pane's labels, fields and hints, in their cascade order. The block is the top
- * of the user page's access tab: a column 12px apart, ruled off from the permissions under it (12px, a 1px `--rd-line`
+ * The look (ADR 0022). The block is the top of the user page's access tab: a column 12px apart, ruled off from the permissions under it (12px, a 1px `--rd-line`
  * rule) with no other padding; its title 13.5px ink bold; its lede tucked 8px up under it, 12.5px `--rd-muted` 500 at
  * 1.55 line height (so is the two-step block's); every other hint 12px `--rd-muted`; the field pairs two equal columns
  * 8px apart (one under 768px); the two-step and session blocks columns 12px apart under a 12px ink-2 bold title; the

@@ -195,8 +195,7 @@ export function useAccountActions({
             </>
           )}
         >
-          {/* The form: a column 12px apart; the account it acts on 14px bold on one line (dialog.css `.dialog-form`,
-              `.dialog-who`; Tailwind migration T4.2). */}
+          {/* The form: a column 12px apart; the account it acts on 14px bold on one line. */}
           <div className="grid gap-3">
             <p className="m-0 text-base font-bold"><AccountName login={active.loginName} name={active.nickname} /></p>
             {op.kind === 'fund' || op.kind === 'deduct' ? (

@@ -2,8 +2,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
 /*
- * The parts the ledgers share (finance, wallet, provider operations, profits; Tailwind migration T4.7, ADR 0022),
- * ported from graphite.css, desk/table.css, desk/components.css and desk/frame.css in their cascade order.
+ * The parts the ledgers share (finance, wallet, provider operations, profits; ADR 0022).
  */
 
 /** The reason tag's tones: a sale green, money held amber, money given back red, funding violet, the rest muted. */
@@ -19,8 +18,8 @@ const REASON_TONE: Record<ReasonTone, string> = {
 };
 
 /*
- * A ledger row's reason (legacy `.reason` / `.r-*`, graphite.css): an inline row, items centred, 22px high, 8px at the
- * sides, 4px corners, 11.5px bold on one line, the tone's soft fill and text. `data-slot="reason-tag"`.
+ * A ledger row's reason: an inline row, items centred, 22px high, 8px at the sides, 4px corners, 11.5px bold on one
+ * line, the tone's soft fill and text. `data-slot="reason-tag"`.
  */
 export function ReasonTag({ tone, className, ...props }: ComponentPropsWithoutRef<'span'> & { tone: ReasonTone }) {
   return (
@@ -33,9 +32,8 @@ export function ReasonTag({ tone, className, ...props }: ComponentPropsWithoutRe
 }
 
 /*
- * The reason cell (legacy `.kind-cell`, desk/table.css): the tag and its badges in a wrapping inline row, 4px between
- * rows and 8px between items. A shekel figure in one of its badges is bold in the badge's colour (components/desk.tsx
- * read `.kind-cell [data-slot=badge]` for this).
+ * The reason cell: the tag and its badges in a wrapping inline row, 4px between rows and 8px between items. A shekel
+ * figure in one of its badges is bold in the badge's colour.
  */
 export const kindCellClass = cn(
   'inline-flex flex-wrap items-center gap-x-2 gap-y-1',
@@ -43,21 +41,20 @@ export const kindCellClass = cn(
 );
 
 /*
- * The second line of a table cell (legacy `[data-slot='table'] .sub`, graphite.css): its own line, 11.5px `--rd-muted`
- * at normal weight, 1.3 line height.
+ * The second line of a table cell: its own line, 11.5px `--rd-muted` at normal weight, 1.3 line height.
  */
 export const cellSubClass = 'block text-caption leading-1-3 font-normal text-muted';
 
 /*
- * The page head's actions (legacy `.page-actions`, desk/frame.css): a wrapping inline row, items centred, 8px apart.
+ * The page head's actions: a wrapping inline row, items centred, 8px apart.
  */
 export function PageActions({ children }: { children: ReactNode }) {
   return <div className="inline-flex flex-wrap items-center gap-2">{children}</div>;
 }
 
 /*
- * A section's head above its card (legacy `.section-head`, desk/components.css): one row, the title at the start,
- * 8px apart; the title with no margin, 15px (`--rd-text-lg`), extra bold.
+ * A section's head above its card: one row, the title at the start, 8px apart; the title with no margin, 15px
+ * (`--rd-text-lg`), extra bold.
  */
 export function SectionHead({ title }: { title: ReactNode }) {
   return (

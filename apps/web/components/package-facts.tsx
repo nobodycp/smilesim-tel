@@ -24,7 +24,7 @@ export function useFactLine() {
 }
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from desk/components.css: a grid 4px apart; the line 12px
+ * The look (ADR 0022): a grid 4px apart; the line 12px
  * `--rd-muted` 600; the extra text 12px ink with no margin, its line breaks kept. `data-slot="package-facts"` is its
  * handle.
  */

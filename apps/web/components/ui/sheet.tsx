@@ -6,7 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/cn';
 
 /*
- * A panel that slides in from the reading start of the window (Tailwind migration T2.5, ADR 0022), on Radix Dialog,
+ * A panel that slides in from the reading start of the window (ADR 0022), on Radix Dialog,
  * modal: the page behind it is hidden from assistive technology and does not scroll, the focus stays inside it,
  * Escape and a press outside close it (through `onOpenChange`), and the focus goes back where it was. The panel is
  * `role="dialog"`, named by a `SheetTitle` (or `aria-label`). One side, `start`, the shell drawer

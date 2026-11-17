@@ -5,10 +5,10 @@ import { DataImage } from './data-image';
 type MarkSize = 'sm' | 'lg';
 
 /*
- * A company's mark (Tailwind migration T4.3, ADR 0022), ported from graphite.css `.co-mark` and `.co-mark.big`: the
+ * A company's mark (ADR 0022): the
  * company's picture, or its letters (`markOf`) in white (`--rd-on-mark`) on the colour taken from its name
  * (`markColor`), centred in a tile that does not shrink, with 4px corners and the tag's cut corner at the top inline
- * end. sm (`.co-mark`) is 32px with 13px bold letters and a 7px cut; lg (`.co-mark.big`) is 46px with 18px letters and
+ * end. sm is 32px with 13px bold letters and a 7px cut; lg is 46px with 18px letters and
  * a 10px cut. A picture covers the tile. It is decoration: the caller names the company in text beside it. A caller's
  * `className` sizes it in its context (the company card under 641px, the settings' picture row) and comes last (`cn`).
  * `data-slot="company-mark"` is its handle.

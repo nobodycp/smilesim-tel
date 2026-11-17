@@ -12,8 +12,8 @@ export type PopoverOptions = {
 
 /**
  * One open/close engine for the popups next to a button that are not on Radix yet: the topbar menus, the wallet pop
- * and the language menu (the row menu is components/ui/dropdown-menu.tsx since Tailwind migration T2.4, the date
- * field's month components/ui/popover.tsx since T2.8). While open, a press outside `root` and `panel` closes it, and Escape closes it and gives the focus back to
+ * and the language menu (the row menu is components/ui/dropdown-menu.tsx, the date field's month
+ * components/ui/popover.tsx). While open, a press outside `root` and `panel` closes it, and Escape closes it and gives the focus back to
  * `trigger`. `panel` is only needed when the panel is not inside `root`; otherwise the panel is looked up inside
  * `root`.
  */

@@ -7,7 +7,7 @@ const admin = 'http://admin.localhost:3910';
 
 /**
  * How many of the cells match a column mark. DataTable writes its column kinds as data attributes (`data-num`,
- * `data-actions`, `data-kind="msisdn"`; components/ui/table.tsx since Tailwind migration T2.9), and these tests are
+ * `data-actions`, `data-kind="msisdn"`; components/ui/table.tsx), and these tests are
  * about exactly that, so they read the attribute; the cells themselves are found by test id.
  */
 const withMark = (cells: Locator, selector: string) => cells.evaluateAll((all, wanted) => all.filter((cell) => cell.matches(wanted)).length, selector);

@@ -72,14 +72,14 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     return parts.join(' · ');
   }
   if (row.kind === 'system.alert') {
-    // The alert's kind, then what it is about: an account, an address, a route or a part (system monitor M.6).
+    // The alert's kind, then what it is about: an account, an address, a route or a part.
     parts.push(alertKindName(t, String(p.alertKind ?? '')));
     const about = p.loginName || p.ip || (p.route ? `${p.method} ${p.route}`.trim() : '') || p.path || p.part;
     if (about) parts.push(about);
     return parts.join(' · ');
   }
   if (row.kind === 'system.update') {
-    // How many components have a newer version, then their names (system monitor M.11).
+    // How many components have a newer version, then their names.
     if (typeof p.count === 'number') parts.push(t.noticeSystemUpdateCount.replace('{n}', String(p.count)));
     if (Array.isArray(p.names)) parts.push(...p.names);
     return parts.join(' · ');
@@ -93,7 +93,7 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
   return row.actorName;
 }
 
-/** The name of an alert's kind (system monitor M.6); an unknown kind is shown as it came. */
+/** The name of an alert's kind; an unknown kind is shown as it came. */
 export function alertKindName(t: Copy, kind: string): string {
   switch (kind) {
     case 'password_cracking': return t.alertPasswordCracking;

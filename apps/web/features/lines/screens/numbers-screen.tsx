@@ -47,8 +47,7 @@ const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company', 'sim'] as con
 const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspended'];
 
 /*
- * The look (Tailwind migration T4.5, ADR 0022), ported from desk/table.css, desk/pane.css, dialog.css, responsive.css
- * and graphite.css in their cascade order:
+ * The look (ADR 0022):
  * - the number cell: one row 10px apart, the number's link 800 ink at the reading start, the SIM badge beside it;
  * - the package cell: one row 10px apart at the reading start, the company's mark (`CompanyMark`), the package's name
  *   600 over its company 11.5px `--rd-muted` 400 at 1.3;

@@ -138,8 +138,7 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
       ) : groups.length === 0 ? (
         <EmptyState icon="numbers">{t.linePricesEmpty}</EmptyState>
       ) : (
-        // The legacy `.dialog-form`: a grid 12px apart. The table is components/ui/table.tsx (Tailwind migration T2.9);
-        // its pane keeps the legacy frame class until T3.3.
+        // A grid 12px apart. The table is components/ui/table.tsx.
         <div className="grid gap-3">
           <div>
             <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={follow}>

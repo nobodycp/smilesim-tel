@@ -40,11 +40,10 @@ type PackageLine = {
 type CompanyLine = { code: string; name: string; packages: number; active: number; stopped: number };
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from pane.css, frame.css and graphite.css in their cascade
- * order:
- * - the run-mode tab drops the pane's card (graphite `.line-pane`): no fill, no edge, nothing clipped; its body has no
+ * The look (ADR 0022):
+ * - the run-mode tab drops the pane's card: no fill, no edge, nothing clipped; its body has no
  *   padding and is never wider than its column; the cards and the eSIM price sit on the page;
- * - the eSIM price (`PRICE_FORM`, graphite `.line-pane form.switch-row`): a card of its own 14px under the cards
+ * - the eSIM price (`PRICE_FORM`): a card of its own 14px under the cards
  *   (14px by 18px inside, 6px corners, `--rd-surface` with a 1px inset `--rd-line` edge), one wrapping row at the foot
  *   of its parts 8px apart (`.pane form`'s gap); the field a pane label growing from 16rem up to 22rem (across the
  *   card under 768px); under 721px a column, its parts across it;

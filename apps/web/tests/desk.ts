@@ -49,7 +49,7 @@ const accounts = {
 } as const;
 
 /**
- * Answers every /v1 call in the browser (slice R.11b: the web calls `/v1/…`). `routes` is keyed "METHOD /path" (the path after /v1);
+ * Answers every /v1 call in the browser (the web calls `/v1/…`). `routes` is keyed "METHOD /path" (the path after /v1);
  * a route answers with its body, an optional status, and an optional delay in milliseconds.
  * The account and the notices have defaults. The returned list records every call as "METHOD /path?query",
  * so a test can say which requests were made, and in what order.
@@ -141,7 +141,7 @@ export async function expectNames(field: Locator, names: string[]) {
 }
 
 /**
- * Select (components/ui/select.tsx, Radix since Tailwind migration T2.4): open its list and pick the option whose
+ * Select (components/ui/select.tsx, on Radix Select): open its list and pick the option whose
  * value is `value`, as a person would (the field is a combobox button, not a native `<select>`, so Playwright's
  * `selectOption` does not apply). The option's `data-value` is the caller's value, so the step does not depend on the
  * option's words.

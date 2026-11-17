@@ -6,7 +6,7 @@ import { cn } from '../../lib/cn';
 import { choiceBoxClass, choiceMarkClass } from './checkbox';
 
 /**
- * One choice out of a list, on Radix RadioGroup (Tailwind migration T2.3): the group is `role="radiogroup"`, each
+ * One choice out of a list, on Radix RadioGroup: the group is `role="radiogroup"`, each
  * item a `role="radio"` button with `aria-checked`; arrow keys move and choose (mirrored in RTL). The group sets no
  * layout of its own; the caller lays the items out. `data-slot="radio-group"` / `"radio"` are the handles.
  */
@@ -18,7 +18,7 @@ RadioGroup.displayName = 'RadioGroup';
 
 /**
  * A round box (the checkbox's look, see checkbox.tsx) with an 8px dot when chosen; `aria-invalid="true"` draws an
- * empty one's border in `--rd-danger` (Tailwind migration T6.2). A choice drawn as a card is `RadioCard`
+ * empty one's border in `--rd-danger`. A choice drawn as a card is `RadioCard`
  * (radio-card.tsx).
  */
 export const RadioGroupItem = React.forwardRef<

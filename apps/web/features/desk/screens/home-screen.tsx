@@ -23,13 +23,12 @@ import { riseInClass } from '../../../components/stat';
 import { cn } from '../../../lib/cn';
 
 /*
- * The home page's frame (Tailwind migration T4.1), ported from desk/home.css, desk/frame.css, forms.css and
- * graphite.css in their cascade order:
+ * The home page's frame:
  * - the page: a column 14px apart that fills the canvas; its parts rise in (8px, 420ms), the second to the fifth 40ms
  *   after the one before, when motion is allowed (`riseInClass`);
  * - the head: one wrapping row, the greeting and lede at the start and the actions at the end, 8px apart; the title
- *   1.25rem with no letter spacing (`.canvas .page-head h1`; the `h1` element rule gives it no margin, bold, 1.25 line
- *   height); the lede 13px `--rd-muted`, no margin, at most 36rem; the actions a wrapping row 8px apart;
+ *   1.25rem with no letter spacing (`.canvas .page-head h1` in app/tailwind.css; the `h1` element rule gives it no
+ *   margin, bold, 1.25 line height); the lede 13px `--rd-muted`, no margin, at most 36rem; the actions a wrapping row 8px apart;
  * - the top row (last operations, tasks waiting): one column, 12px apart, rows at the top; 1.6fr and 1fr from 1000px;
  * - the two columns below, 14px apart, at the top: one on a phone; from 1100px the wide one (1.65fr) at the reading
  *   start and the narrow one (at least 320px) at the end. Each stacks its cards 14px apart from the top, never wider

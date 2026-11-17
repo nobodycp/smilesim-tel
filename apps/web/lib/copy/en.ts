@@ -1110,7 +1110,7 @@ export const en: Copy = {
   esimPriceCompanyHint: 'In shekels. The point of sale pays it on an eSIM activation or request unless the provider or the package sets its own.',
   actProviderEsimPrice: 'Provider eSIM price',
   noSwitchTargets: 'This package has no packages it can switch to',
-  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log (M.3).
+  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log.
   navDevSecurity: 'Developers & security',
   navRequestLog: 'Request log',
   reqLogLede: 'Every request the system received: when, how long it took, and whether it succeeded, was refused or failed.',
@@ -1304,7 +1304,7 @@ export const en: Copy = {
   reqLogAddressStarts: "Address starts with",
   reqLogUnmatched: "Unknown paths",
   reqLogRange: "Showing only the requests from {from} to {to}, the alert's time.",
-  // The versions page (spec 2026-11-17-system-monitor, section 5; M.12).
+  // The versions page (spec 2026-11-17-system-monitor, section 5).
   navVersions: "Versions",
   verLede: "What the system and its libraries run on: the version in use now and the newest one published. The newest is checked once a day.",
   verCheckNow: "Check now",

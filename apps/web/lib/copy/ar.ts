@@ -1110,7 +1110,7 @@ export const ar = {
   esimPriceCompanyHint: 'بالشيكل. تخصمه نقطة البيع عند تفعيل eSIM أو طلبها، ما لم يحدده المزود أو الرزمة.',
   actProviderEsimPrice: 'سعر eSIM للمزود',
   noSwitchTargets: 'لا رزم مسموح التحويل إليها من هذه الرزمة',
-  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log (M.3).
+  // The system monitor (spec 2026-11-17-system-monitor): the sidebar section and the request log.
   navDevSecurity: 'المطورين والحماية',
   navRequestLog: 'سجل الطلبات',
   reqLogLede: 'كل طلب وصل إلى النظام: متى، وكم استغرق، وهل نجح أم رُفض أم فشل.',
@@ -1304,7 +1304,7 @@ export const ar = {
   reqLogAddressStarts: "العنوان يبدأ بـ",
   reqLogUnmatched: "مسارات غير معروفة",
   reqLogRange: "تُعرض الطلبات من {from} إلى {to} فقط، وقت الإنذار.",
-  // The versions page (spec 2026-11-17-system-monitor, section 5; M.12).
+  // The versions page (spec 2026-11-17-system-monitor, section 5).
   navVersions: "الإصدارات",
   verLede: "ما يعمل عليه النظام ومكتباته: الإصدار المستخدم الآن وأحدث إصدار منشور. يُفحص الأحدث مرة كل يوم.",
   verCheckNow: "فحص الآن",

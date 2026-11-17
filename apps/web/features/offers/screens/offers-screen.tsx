@@ -29,19 +29,18 @@ const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 const IMAGE_BYTES = 700 * 1024;
 
 /*
- * The page and its form (Tailwind migration T4.10), ported from desk/home.css, desk/frame.css, desk/pane.css,
- * dialog.css, responsive.css and graphite.css in their cascade order:
- * - an offer's picture (`.offer-thumb`): a block 64px wide at 2:1, cut to fill, 4px corners on `--rd-surface-2` (also
+ * The page and its form:
+ * - an offer's picture: a block 64px wide at 2:1, cut to fill, 4px corners on `--rd-surface-2` (also
  *   the empty frame when there is none); 200px wide in the form;
- * - the head's action (`.page-actions`): a wrapping inline row, items centred, 8px apart;
- * - the preview's caption (`.section-label`): 12px bold muted, 2px over and 8px under it;
- * - the form (`.dialog-form`): a column 12px apart; its captions are the dialog's (`Label tone="dialog"`); two fields
- *   side by side 8px apart (`.pair`), one column under 768px; a tick box in a row 8px from its name, at least 36px high
- *   (44px at 720px and under), 13px ink 600 (`.check`); the picture beside its buttons in a wrapping row 12px apart,
- *   at the top (`.offer-image-field`), the buttons a column 12px apart (`.stack`); the audience a borderless fieldset
- *   with no margin or padding, its boxes a wrapping row 12px apart, its legend bold 6px over them (`.offer-layers`);
+ * - the head's action: a wrapping inline row, items centred, 8px apart;
+ * - the preview's caption: 12px bold muted, 2px over and 8px under it;
+ * - the form: a column 12px apart; its captions are the dialog's (`Label tone="dialog"`); two fields side by side 8px
+ *   apart, one column under 768px; a tick box in a row 8px from its name, at least 36px high (44px at 720px and
+ *   under), 13px ink 600; the picture beside its buttons in a wrapping row 12px apart, at the top, the buttons a
+ *   column 12px apart; the audience a borderless fieldset with no margin or padding, its boxes a wrapping row 12px
+ *   apart, its legend bold 6px over them;
  * - the body's text area takes the dialog's field height (34px, 44px at 720px and under) with no padding above or under
- *   its text, as `[data-slot='dialog'] textarea` drew it over forms.css's `textarea` (its `rows` gave no height).
+ *   its text (the `[data-slot='dialog'] textarea` rule of app/tailwind.css; its `rows` gives no height).
  * The image hint under the buttons is a plain paragraph: no `.hint` rule reaches it in a dialog.
  */
 const THUMB = 'block w-16 aspect-2/1 rounded-xs bg-surface-2 object-cover';

@@ -91,16 +91,15 @@ const serverCollapsed = () => false;
 const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
 /*
- * The shell's look (Tailwind migration T3.1, ADR 0022), ported from shell.css with its graphite.css, base.css and
- * responsive.css takes, in cascade order. The page frame inside it (`main.canvas`, `.canvas-inner.wide`) stays on
- * desk/frame.css until T3.3: many sheets and primitives still read `.canvas` as their context.
+ * The shell's look is utilities (ADR 0022). The page frame inside it (`main.canvas`, `.canvas-inner.wide`) keeps its
+ * classes: the base rules of app/tailwind.css read `.canvas` as the context of the page's content.
  */
 
 // The crimson thread at the start of the current page (and of a folded group that holds it).
 const THREAD = "before:absolute before:inset-y-2.75 before:start-0 before:w-0.5 before:rounded-2xs before:bg-accent before:content-['']";
 
 /**
- * A sidebar or drawer line (legacy `.nav-link`): 40px, 12px at the sides, 12px between the 19px icon and the name,
+ * A sidebar or drawer line: 40px, 12px at the sides, 12px between the 19px icon and the name,
  * muted 13.5px semibold; under the pointer the raised fill and ink. `active`: ink on the raised fill with the thread,
  * the icon crimson; `holds` (a group head over the current page): ink, the icon crimson, the thread on the rail;
  * `nested`: 34px, 22px in, 13px medium, no thread; in the drawer 46px and 14.5px (nested 40px).
@@ -129,7 +128,7 @@ function navLinkClass({
   );
 }
 
-/** A name in the sidebar (legacy `.label`): one line; on the folded rail it fades and slides 8px towards the end. */
+/** A name in the sidebar: one line; on the folded rail it fades and slides 8px towards the end. */
 function labelClass(rail: boolean, sidebar: boolean) {
   return cn(
     'whitespace-nowrap',
@@ -186,7 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => wide.removeEventListener('change', onChange);
   }, [mobileOpen]);
 
-  // A new alert's notice (system monitor M.7) raises the sidebar's alert count: `me` is read again when it arrives.
+  // A new alert's notice raises the sidebar's alert count: `me` is read again when it arrives.
   const freshAlert = fresh?.kind === 'system.alert' ? fresh.id : '';
   useEffect(() => {
     if (freshAlert) void refreshMe();
@@ -480,7 +479,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {!mobile && (
           // The round handle on the sidebar's edge (Graphite): shows on hover or keyboard focus, folds the sidebar to
           // a rail of icons; «[» too. The hover is a plain :hover, not group-hover (which Tailwind wraps in
-          // @media (hover: hover)), so a tap on a touch-only wide screen reveals it as the legacy .sidebar:hover did.
+          // @media (hover: hover)), so a tap on a touch-only wide screen reveals it too.
           <button
             type="button"
             className={cn(

@@ -3,12 +3,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 
 /*
- * A field's label (Tailwind migration T2.2, ADR 0022), ported from the legacy label rules: a one-column grid, its
- * text at the reading start. It may wrap its control (the legacy pattern: the text, then the field) or name one by
- * `htmlFor` (`Field`). Tones, one per legacy context:
- * - page: forms.css `label` — 6px gap, 13px (`--rd-text-md`) semibold `--rd-ink-2`;
- * - pane: pane.css `.pane label` — 4px gap, 11px (`--rd-text-xs`) semibold `--rd-muted`;
- * - dialog: dialog.css `.dialog-body label:not(.check)` — 4px gap, 11px bold `--rd-muted`.
+ * A field's label (ADR 0022): a one-column grid, its text at the reading start. It may wrap its control (the text,
+ * then the field) or name one by `htmlFor` (`Field`). Tones, one per context:
+ * - page: 6px gap, 13px (`--rd-text-md`) semibold `--rd-ink-2`;
+ * - pane: 4px gap, 11px (`--rd-text-xs`) semibold `--rd-muted`;
+ * - dialog: 4px gap, 11px bold `--rd-muted`.
  */
 export const labelVariants = cva("grid text-start", {
   variants: {

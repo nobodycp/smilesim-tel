@@ -20,8 +20,7 @@ import { useApiQuery } from '../../lib/use-api-query';
 type Loaded = { fileName: string; content: string; preview: StatementPreview };
 
 /*
- * The look (Tailwind migration T4.8, ADR 0022), ported from desk/frame.css, desk/pane.css, desk/components.css,
- * dialog.css, graphite.css and ui.css in their cascade order:
+ * The look (ADR 0022):
  * - the column: the desk's stack, a column 12px apart at its own height, never wider than the canvas; it keeps the
  *   `stack` class as the handle the desk column (`has-[>.stack]`), the canvas (`:has(.stack)`) and `Pane`
  *   (`[.desk>.stack>&]`) size by;
@@ -31,10 +30,10 @@ type Loaded = { fileName: string; content: string; preview: StatementPreview };
  * - the file pick: a wrapping row 10px apart, items centred; the button over the hidden input has a pointer cursor and
  *   a 2px `--rd-accent` outline 2px off while the input has focus;
  * - the column choice: as many 10rem-or-wider columns as fit, 12px apart; each caption 12px `--rd-muted` 600, 4px
- *   above its pick (`.recon-map label` outranked `.pane label` by order);
+ *   above its pick;
  * - the sample: scrolls sideways inside a 1px `--rd-line` border with the card corners (8px);
  * - the earlier runs: a caption 12px `--rd-muted` 600, 4px above its pick, at most 32rem wide;
- * - «no run yet» outside a pane: a plain paragraph (no legacy rule reached a `.hint` there);
+ * - «no run yet» outside a pane: a plain paragraph;
  * - the dialog: a column 12px apart; the note is a dialog label and field.
  */
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';

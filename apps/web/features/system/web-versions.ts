@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { WebVersions } from './versions';
 
-// The web server's own versions (system monitor M.12), read on the web server only (app/system/versions/data):
-// the API cannot see what the web runs. Node imports: never import this file from a client component.
+// The web server's own versions (spec 2026-11-17-system-monitor, section 5), read on the web server only
+// (app/system/versions/data): the API cannot see what the web runs. Node imports: never import this file from a client component.
 
 /** The web's libraries the versions page lists (the API's `STACK` entries whose `where` is `web`). */
 const WEB_LIBRARIES = ['next', 'react', 'tailwindcss'] as const;

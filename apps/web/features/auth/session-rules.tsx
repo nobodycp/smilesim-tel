@@ -104,8 +104,7 @@ export function RuleSelects({
 }
 
 /*
- * The two session fields (Tailwind migration T3.2), ported from graphite.css's role dialog block; the same in the
- * role dialog, on the account page and in the layer pane. Two columns 16px apart (one under 641px); each a 4px grid:
+ * The two session fields, the same in the role dialog, on the account page and in the layer pane. Two columns 16px apart (one under 641px); each a 4px grid:
  * the name 12px bold muted, then a 34px field on `--rd-surface` (44px under 641px) inside a hairline at 70% of
  * `--rd-field`, its input bare (13px semibold, tabular, the placeholder muted) and the range 12px in `--rd-faint` at
  * the end; focus draws the crimson hairline and an 18% crimson ring. Out of range the hairline, the ring and the range

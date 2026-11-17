@@ -8,11 +8,9 @@ import { usePopover } from '../lib/use-popover';
 import { IconButton, iconButtonVariants } from './ui/icon-button';
 
 /**
- * Every topbar control's box (Tailwind migration T3.1; legacy shell.css `.shell-icon` under graphite.css
- * `.topbar .shell-icon`): 44px under 768px, 36px from 768px, 6px corners, no border or fill, `--rd-ink-2` with an 18px
+ * Every topbar control's box: 44px under 768px, 36px from 768px, 6px corners, no border or fill, `--rd-ink-2` with an 18px
  * icon; under the pointer or while its panel is open the raised fill and ink; the ink focus outline. The menu button,
- * the notices, the theme and the language use it. Since Tailwind migration T6.3 it is `IconButton`'s `topbar` size
- * and tone (one icon-button recipe, audit 3.5-16).
+ * the notices, the theme and the language use it. It is `IconButton`'s `topbar` size and tone (one icon-button recipe, audit 3.5-16).
  */
 export const topbarIcon = cn(iconButtonVariants({ size: 'topbar', tone: 'topbar' }));
 
@@ -40,8 +38,8 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
 }
 
 /**
- * The language. `shell`: one button that steps to the next language (no caller draws it today; it keeps the legacy
- * `.shell-icon` look outside the topbar: 40px, 44px under 768px, bordered on the surface). Otherwise the menu the
+ * The language. `shell`: one button that steps to the next language (no caller draws it today; outside the topbar it
+ * is 40px, 44px under 768px, bordered on the surface). Otherwise the menu the
  * login page uses — the current language (34px, bordered on the surface, 12px extra bold), a menu of the others;
  * `topbar` draws its trigger as a topbar control (spec 2026-11-09-admin-review, 2b). The menu: under the trigger at
  * its end, at least 148px, 6px padding, 8px corners, bordered on the surface with `--rd-shadow-pop`; its lines 36px,

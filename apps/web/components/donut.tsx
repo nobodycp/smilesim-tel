@@ -32,7 +32,7 @@ const GAP = 2.5;
  * the line (spec 2026-11-09-admin-review, 8.2). The ring draws in; the slice pointed
  * at thickens and the others dim (no motion with reduced motion).
  *
- * Look (Tailwind migration T3.3, ADR 0022), ported from desk/home.css and graphite.css: the ring and the legend in one
+ * Look (ADR 0022): the ring and the legend in one
  * wrapping row, centred on the cross axis, 16px apart; the ring 168px, butt ends, its track `--rd-surface-2`; a slice
  * is a pointer target that thickens to 28px when pointed at while the others dim to 35% (180ms), and draws in over
  * 700ms, each 70ms after the one before; the total 27px ink 800 tabular (22.5px for a share), the caption 11px

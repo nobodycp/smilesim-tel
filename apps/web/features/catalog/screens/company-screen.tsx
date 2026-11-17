@@ -36,9 +36,9 @@ const URL_KEYS = ['tab', 'provider'] as const;
 type Draft = { code: string; length: string; prefix: string; esim: boolean; esimPrice: string };
 
 /*
- * The settings tab (Tailwind migration T4.3, ADR 0022), ported from graphite.css and pane.css: two blocks in a pane
+ * The settings tab (ADR 0022): two blocks in a pane
  * body with no padding or gap of its own, each a grid with 16px padding, the second under a 1px `--rd-line` rule; the
- * picture block's rows 12px apart, the SIM form's 8px (`.pane form` outranked the block's 12px). A block's heading is
+ * picture block's rows 12px apart, the SIM form's 8px (`.pane form`'s gap). A block's heading is
  * 13.5px bold ink with no margin; a later heading inside a block sits 8px lower over a dashed `--rd-line` rule, 12px
  * inside it.
  */
@@ -155,7 +155,7 @@ export function CompanyScreen() {
   return (
     <Desk
       title={company ? (
-        // Graphite: the company's cut-corner mark beside its name, 12px apart, wrapping (legacy `.ticket-title`).
+        // Graphite: the company's cut-corner mark beside its name, 12px apart, wrapping.
         <span className="inline-flex flex-wrap items-center gap-3">
           <CompanyMark name={company.name} image={company.image} size="lg" />
           <span>{company.name}</span>
@@ -178,7 +178,7 @@ export function CompanyScreen() {
             <section className="grid gap-3 p-4">
               <h3 className={BLOCK_TITLE}>{t.companyImage}</h3>
               <div className="flex flex-wrap items-center gap-3">
-                {/* The picture shown whole on `--rd-surface-2`, 64px with 22px letters (legacy `.company-image-row`). */}
+                {/* The picture shown whole on `--rd-surface-2`, 64px with 22px letters. */}
                 <CompanyMark name={company?.name ?? '?'} image={company?.image} size="lg" className="size-16 bg-surface-2 object-contain text-4xl" />
                 {canEdit ? (
                   <div className="flex flex-wrap items-center gap-2">
@@ -220,7 +220,7 @@ export function CompanyScreen() {
                   <span className={paneHintClass}>{t.esimPriceCompanyHint}</span>
                 </Label>
               </SimFields>
-              {/* The save row (legacy `.form-save`): at the start, 4px lower, 12px inside a 1px `--rd-line` rule. */}
+              {/* The save row: at the start, 4px lower, 12px inside a 1px `--rd-line` rule. */}
               {canEdit && <div className="mt-1 flex justify-start border-t border-line pt-3"><Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button></div>}
             </form>
           </div>

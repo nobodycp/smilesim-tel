@@ -82,10 +82,9 @@ export function DecisionDialog({
     setError(apiText(result));
   };
 
-  // The look of the form is the legacy `.dialog-form` and graphite.css `.decision-*` rules: a grid 12px apart; a field's
-  // caption is the dialog label (11px bold `--rd-muted`, 4px above the field) and its hint 12px medium (dialog.css
-  // `.dialog-body label .hint`); the number and serial share a row while each has 13rem; the note is at least 5.5rem
-  // tall with no padding above or below (forms.css `padding: 0 12px`); the counter spreads its words and its figure,
+  // The look of the form: a grid 12px apart; a field's caption is the dialog label (11px bold `--rd-muted`, 4px above
+  // the field) and its hint 12px medium; the number and serial share a row while each has 13rem; the note is at least
+  // 5.5rem tall with no padding above or below; the counter spreads its words and its figure,
   // the figure in `--rd-success` once the note is long enough. Fields are 34px (44px at 720px and under).
   const hint = 'text-sm font-medium';
   return (

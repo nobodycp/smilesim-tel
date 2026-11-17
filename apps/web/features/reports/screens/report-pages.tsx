@@ -25,13 +25,13 @@ import { CsvLink, Period, ReportFilters, SearchChip, periodFrom, type PeriodDays
 const exportHref = (kind: string, query: Record<string, string>) => `/api/v1/reports/${kind}/export${queryString(query)}`;
 
 /*
- * The «السالب فقط» toggle chip (Tailwind migration T4.9): the filter panel's chip rules (graphite.css
- * `[data-slot='filter-panel'] > label:has(input[type='checkbox'])`) draw it; of the legacy `.check` it sat under only the
- * no-margin and the 36px minimum height (44px at 720px and under, responsive.css `.canvas .check`) won over them.
+ * The «السالب فقط» toggle chip: the filter panel's chip rules (app/tailwind.css
+ * `[data-slot='filter-panel'] > label:has(input[type='checkbox'])`) draw it; over them, no margin and a 36px minimum
+ * height (44px at 720px and under).
  */
 const TOGGLE_CHIP = 'm-0 min-h-9 max-touch:min-h-11';
 
-/* The top provider's name in its figure card (graphite.css `[data-slot='stat'] .stat-name`): smaller than a figure, wrapping. */
+/* The top provider's name in its figure card: smaller than a figure, wrapping. */
 const STAT_NAME = 'inline-block max-w-full text-2xl leading-1-35';
 
 /** Main agent, agent and the branch: the wallets under the account, now (no period). */

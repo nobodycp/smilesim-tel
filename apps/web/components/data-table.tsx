@@ -149,7 +149,7 @@ export function DataTable<Row>({
   const current = Math.min(stamp !== seen ? 1 : page, pageCount);
   const visible = paging ? ordered.slice((current - 1) * size, current * size) : ordered;
   // `data-label` names the value when a phone draws the row as a card (spec 2026-11-11-ui-consistency-pass, D7); the
-  // cards apply only while at least one row holds a named value (the legacy `:has(td[data-label])`).
+  // cards apply only while at least one row holds a named value.
   const labelOf = (item: Column<Row>) => (item.actions ? undefined : nodeText(item.header) || undefined);
   const carded = cards && visible.length > 0 && columns.some((item) => labelOf(item) !== undefined);
   const table = (

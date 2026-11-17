@@ -89,19 +89,18 @@ async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
 const MAX_LINE_PAGES = 100;
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022), ported from desk/packages.css, frame.css, pane.css, components.css,
- * table.css and graphite.css in their cascade order:
+ * The look (ADR 0022):
  * - the title: the company's cut-corner mark (`CompanyMark` lg) and the package's name in one wrapping row 12px apart;
  *   the states beside it in a row 10px apart;
  * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height; it keeps the `stack` class
  *   as the handle the desk column, the canvas and `Pane` size by;
  * - «نظرة عامة»: the two figures side by side 12px apart (one column under 721px), each a grid 4px apart, 14px inside,
- *   8px corners on `--rd-surface-2`, its name 12px bold `--rd-muted` and its figure 1.5rem bold (800 until T6.3, ADR 0021 D7), tabular, 1.1
+ *   8px corners on `--rd-surface-2`, its name 12px bold `--rd-muted` and its figure 1.5rem bold (weights capped at 700, ADR 0021 D7), tabular, 1.1
  *   high; the facts as rows at least 44px high over a 1px `--rd-line-soft` rule, 12px apart, the name 13px bold
  *   `--rd-muted` and the value 14px bold ink; the sale state at the start;
  * - the cards under the price chain (`FUND`): a one-column grid 10px apart at the foot, its heading 0.95rem bold ink,
  *   its fields pane labels in bold; the re-pricing card, the board's last, shares the board's row with the eSIM price
- *   card (graphite.css's `grid-column: auto` overrode packages.css's `1 / -1`) and lays out its field and its button
+ *   card and lays out its field and its button
  *   side by side from 721px with its heading across both;
  * - «التجديد» / «التبديل»: each package a pane label laid out as a row (the box, its name, its sale state) at least
  *   44px high over a 1px `--rd-line-soft` rule, 10px apart; the empty line 13px `--rd-muted`, 14px inside;
@@ -118,7 +117,7 @@ const STAT_VALUE = 'text-5xl leading-1-1 font-bold tabular-nums';
 const FUND = 'grid min-w-0 grid-cols-1 items-end gap-2.5';
 const FUND_LABEL = 'min-w-0 font-bold';
 const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
-/** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
+/** A phone's card (a table with `data-cards` whose cells carry their names): the price editor takes the card's whole row. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
 const PRICE_PAIR = cn(
   'inline-flex items-center justify-end gap-2.5',

@@ -2,8 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../lib/cn';
 
 /*
- * The look (Tailwind migration T2.7, ADR 0022), ported from the legacy forms.css `.error` / `.note` / `.banner`
- * rules and the placement rules that read them (desk/frame.css, desk/settings.css): no margin, 10px / 12px padding,
+ * The look (ADR 0022): no margin, 10px / 12px padding,
  * 6px corners, 13px semibold at the reading start; an error in `--rd-danger` on `--rd-danger-soft`, a success in
  * `--rd-success` on `--rd-success-soft`; a banner keeps 16px under it, except as a direct child of the `.desk` column
  * or the settings page, whose gap spaces it. Handles: `data-slot="alert"` with `data-tone` (the sign-in room's rule

@@ -46,10 +46,9 @@ type ModeChoice = 'auto' | 'manual' | 'off' | 'inherit';
 const shekels = shekelField;
 
 /*
- * The look (Tailwind migration T4.4, ADR 0022): the steps are «إضافة شركة»'s (features/catalog/add-steps.ts). What is
- * this screen's own, ported from graphite.css, pane.css and responsive.css:
+ * The look (ADR 0022): the steps are «إضافة شركة»'s (features/catalog/add-steps.ts). What is this screen's own:
  * - a product card's facts a pane note, its cost 12px `--rd-ink-2`;
- * - the details step's body (`STEP_BODY`, the legacy `.stack` in a pane body): never wider than its column; the name
+ * - the details step's body (`STEP_BODY`, a pane body): never wider than its column; the name
  *   and the months side by side 8px apart (one column under 768px);
  * - an add-on row: its box, its name, its price (8rem, 6rem under 768px) and its «×», 8px apart and centred; the box a
  *   pane label at least 36px high (44px under 721px);
@@ -164,7 +163,7 @@ export function AddPackageScreen() {
 
   return (
     <Desk title={t.addPackage} lede={company ? `${t.company}: ${company.name}` : ''} error={error} note="">
-      {/* Outside a pane no legacy rule reached this note: a plain paragraph. */}
+      {/* Outside a pane no base rule reaches this note: a plain paragraph. */}
       {!canEdit && me ? <p>{t.addNeedsEdit}</p> : null}
 
       <Pane>

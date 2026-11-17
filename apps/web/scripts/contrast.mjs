@@ -1,7 +1,7 @@
 // Fails (exit 1) when content on a crimson fill is not legible in either theme (ADR 0021 D1, UI maintenance P0.9).
 //
-// It reads the tokens in app/tailwind.css (`:root` is light, `.dark` is dark on top of it; the one stylesheet since
-// Tailwind migration T5.1, which deleted app/styles/ and app/globals.css), then scans that sheet's rules (the global
+// It reads the tokens in app/tailwind.css (`:root` is light, `.dark` is dark on top of it; the app's one stylesheet),
+// then scans that sheet's rules (the global
 // rules in its `@layer base`) for rules whose `background` / `background-color` paints a crimson fill
 // colour — the value's colour component, whatever else the shorthand holds (`var(--rd-accent) no-repeat` counts;
 // gradients and `url()` layers are set aside, so a crimson glow inside a gradient is not a fill):
@@ -21,12 +21,12 @@
 // A crimson fill whose content still cannot be found fails unless it is on the ALLOWLIST. It then checks
 // the WCAG ratio in both themes: text ≥ 4.5:1, glyph-only content (an svg stroke, a ::before mark, the selectors in
 // GLYPH) ≥ 3:1. A translucent content colour is composited over the fill before the ratio is taken. Text drawn by
-// other elements over a fill (OVERLAY; the sign-in art's tag until T3.2, now only in the self-test) is checked the
+// other elements over a fill (OVERLAY; empty in the app, exercised by the self-test) is checked the
 // same way, over the fill composited at the rule's `opacity` on each backdrop listed. It also fails on a bare
 // `var(--rd-accent)` fill (the thread colour, not the fill token) that is not on the ALLOWLIST below: content on
 // crimson uses `--rd-accent-fill`, and decoration (a crimson fill with nothing drawn on it) is listed with its reason.
 //
-// Run: node scripts/contrast.mjs            (CHK-LOCAL from P0.9; P6.4 puts it inside npm run lint)
+// Run: node scripts/contrast.mjs            (a local check; not part of npm run lint)
 //      node scripts/contrast.mjs --self-test (eighteen must-fail / must-pass cases)
 
 import { readFileSync } from 'node:fs';
@@ -36,19 +36,19 @@ import { fileURLToPath } from 'node:url';
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SHEET = join(web, 'app', 'tailwind.css');
 
-// Glyph-only content drawn with `color` (the svg uses currentColor): ≥ 3:1 suffices. Empty since T3.2: the sign-in
-// mark it named (.gauth-mark) is a utility class list (markClass) in components/auth-art.tsx, which this sheet reader
-// cannot see.
+// Glyph-only content drawn with `color` (the svg uses currentColor): ≥ 3:1 suffices. Empty: the sign-in mark is a
+// utility class list (markClass) in components/auth-art.tsx, which this sheet reader cannot see.
 const GLYPH = new Set();
 
 // Fills whose content is drawn by other elements on top of them (siblings painted above, not the rule's own color).
 // Each lists the backdrops the fill is composited on at its `opacity` (the lightest one decides) and the content
-// selectors, each with the selectors its `color` falls back to (inheritance), in order. Empty since T3.2: the sign-in
-// art tag it named (.gauth-art-tag under .gauth-art h2 / p) is a utility class list in components/auth-art.tsx
-// (bg-accent-fill at opacity-88 under text-login-ink). The self-test keeps that legacy shape as ART_OVERLAY.
+// selectors, each with the selectors its `color` falls back to (inheritance), in order. Empty: the sign-in art's
+// tag is a utility class list in components/auth-art.tsx (bg-accent-fill at opacity-88 under text-login-ink), which
+// this sheet reader cannot see. ART_OVERLAY below is a sample entry of that shape for the self-test.
 const OVERLAY = new Map();
 
-// The legacy sign-in art overlay, kept for the self-test cases that exercise the OVERLAY path.
+// A sample overlay (a sign-in art tag under its heading and line) for the self-test cases that exercise the OVERLAY
+// path.
 const ART_OVERLAY = new Map([
   ['.gauth-art-tag', {
     why: 'self-test: the art heading and line drawn over the tag (h2, p: position relative, same corner)',

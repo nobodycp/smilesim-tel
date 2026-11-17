@@ -12,11 +12,10 @@ import { daysLeft } from '../../lib/days-left';
 import { usePrefs } from '../../lib/prefs';
 
 /*
- * The look (Tailwind migration T4.5, ADR 0022), ported from desk/pane.css, desk/numbers.css and graphite.css in their
- * cascade order:
+ * The look (ADR 0022):
  * - the tab's body: a grid of sections with no gap, 14px / 18px / 18px padding, 6px corners on `--rd-surface` with a 1px
- *   inset `--rd-line` edge (the number card's pane is bare: `.line-pane .line-details`); in the desk it scrolls inside
- *   the pane (`.desk .pane > .pane-body`); each section 16px / 20px inside (14px under 641px), a 1px `--rd-line` rule
+ *   inset `--rd-line` edge (the number card's pane around it is bare); in the desk it scrolls inside the pane; each
+ *   section 16px / 20px inside (14px under 641px), a 1px `--rd-line` rule
  *   between them;
  * - a section's title: 13px ink bold with its glyph in `--rd-accent`, 8px apart; a section head spreads the title and
  *   what is beside it to both ends, 6px by 12px apart when it wraps;

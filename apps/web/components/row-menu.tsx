@@ -38,10 +38,10 @@ function Glyph({ name }: { name: RowIcon }) {
 }
 
 /*
- * The row's actions behind ⋯ (or a labelled trigger), on DropdownMenu (components/ui/dropdown-menu.tsx; Radix since
- * Tailwind migration T2.4). It opens from the trigger's inline end, into the table, on its first item; a destructive
+ * The row's actions behind ⋯ (or a labelled trigger), on DropdownMenu (components/ui/dropdown-menu.tsx, on Radix).
+ * It opens from the trigger's inline end, into the table, on its first item; a destructive
  * action comes after a rule. The trigger and the items keep a press inside them from reaching the row (a row can be a
- * link). The ⋯ trigger (legacy `.row-menu-btn`, dialog.css and graphite.css): 28px, no border or fill, 6px corners,
+ * link). The ⋯ trigger: 28px, no border or fill, 6px corners,
  * `--rd-faint`, weight 400; `--rd-surface-3` and ink under the pointer and while open. `boxed` (a page head, beside
  * other buttons): 34px, the soft track (`--rd-surface-2`, an inset 1px ink line at 11%) in ink, `--rd-surface-3` under
  * the pointer.
@@ -62,7 +62,7 @@ const triggerClass = (boxed: boolean) =>
 export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className?: string; content: ReactNode; iconOnly?: boolean } }) {
   // The menu opens on its first item, from the pointer too: Radix focuses the panel itself when the pointer opened
   // it, and that first focus is handed on. Closing because an item was picked leaves the focus where the action puts
-  // it (a dialog's field), as before; Escape gives it back to the trigger.
+  // it (a dialog's field); Escape gives it back to the trigger.
   const opening = useRef(false);
   const picked = useRef(false);
 

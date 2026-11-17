@@ -36,7 +36,7 @@ const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as 
 const TASK_STATUSES = ['working', 'done', 'cancelled'];
 
 /*
- * The tasks list as card rows (Tailwind migration T4.6, ADR 0022), ported from graphite.css "Tasks as card rows":
+ * The tasks list as card rows (ADR 0022):
  * - the list's card: `Pane`; its table head is for screen readers only (taken out of the flow, 1px, clipped, one line);
  * - a row's card (the link): a row 14px apart, the text's own colour, no underline; under the pointer the operation's
  *   name turns `--rd-accent`;
