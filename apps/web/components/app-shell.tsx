@@ -18,6 +18,7 @@ import {
   Megaphone,
   Menu,
   Package,
+  PackageCheck,
   Palette,
   Truck,
   Phone,
@@ -346,6 +347,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         { label: t.navAlerts, href: '/system/alerts', icon: ShieldAlert, layers: ['branch'], owner: true, count: me?.openAlerts ?? 0 },
         { label: t.navRequestLog, href: '/system/requests', icon: ScrollText, layers: ['branch'], owner: true },
         { label: t.navErrors, href: '/system/errors', icon: Bug, layers: ['branch'], owner: true },
+        { label: t.navVersions, href: '/system/versions', icon: PackageCheck, layers: ['branch'], owner: true },
       ],
     },
   ];
