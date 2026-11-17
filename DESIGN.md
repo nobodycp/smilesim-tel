@@ -3,7 +3,7 @@
 **Graphite is the system's one visual identity (owner, 2026-11-15).** There is no second look and no new identity:
 the separate identity session and `docs/design/identity-2026-11-15/` were cancelled and are not used. Work on the UI
 ports this look faithfully, folds a random one-off into the system, and fills a gap in the same style (Tailwind
-migration T6, `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md`); it never redesigns. A change that
+migration T6, ADR 0022, spec `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md`); it never redesigns. A change that
 would alter the look needs its own spec and the owner's choice (`.cursor/rules/work-plan.mdc`).
 
 This file is the visual source of truth. `.cursor/rules/smilesim-ui.mdc` points here. Origin: spec
@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-17 (clean-up CL.3: `Sparkline`, `Tooltip`, `Field`, the unused Radix re-exports and the `end` and `bottom` sheets removed; CL.2: the unread `--rd-space-6` removed; before it, the sidebar foot: signing out as an icon beside the account; before it, system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
+Last verified: 2026-11-17 (clean-up CL.6: the plan pointers checked). The history of each change is in git.
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and

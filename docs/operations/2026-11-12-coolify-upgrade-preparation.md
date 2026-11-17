@@ -148,7 +148,7 @@ keep and disables the rest. Until then the site should be treated as a trial sit
 
 - The API answers `GET /health` (200 in 1 ms, checked from inside the container). The web answers `/login`
   (200). The worker has no port: its health is "the process is running".
-- **Trap:** the images are `node:24-bookworm-slim` and contain neither `curl` nor `wget` (checked in the running
+- **Trap:** the images are `node:26-bookworm-slim` (`node:24` when this was checked) and contain neither `curl` nor `wget` (checked in the running
   containers). The check Coolify builds from a path and a port calls one of them (Coolify's documented
   requirement; not tried here), so switching it on as it is would mark a healthy container unhealthy. The check must use `node`:
   - API: `node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"`

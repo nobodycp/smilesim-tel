@@ -3,7 +3,7 @@ import { basename, join, relative } from 'node:path';
 import { DEPENDS_ON, MODULES, OWNERS, allowedFor, catchAllModules, crossModuleCycles, importEdges, layeringViolations, mutualModules, ownerOf, surfaceViolations, type Edge, type ModuleName, type SourceFile, type Violation } from './architecture-map.fixture';
 
 // The boundaries of the modular monolith (ADR 0020), measured on the source as it is today, wherever a file
-// lives. Slice R.0 of the plan `2026-11-13-office-retirement`: it moves nothing; it counts.
+// lives (it moves nothing; it counts).
 //
 // The same ratchet as `architecture.spec.ts`: each rule's count is in `architecture.baseline.json`, and may only
 // go down. A rule here never names a folder: who owns a file is `architecture-map.fixture.ts`, and

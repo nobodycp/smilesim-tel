@@ -2,8 +2,8 @@
 
 - **Date:** 2026-11-13
 - **Base commit:** `626f61b5b0b6b14ccd5093bcff91f777d9b64420`
-- **Status:** the design is accepted by the owner (2026-11-13; ADR 0020). Slice R.0 is built. Each later slice
-  still needs the owner's word before it starts. Checklist: `docs/superpowers/plans/2026-11-13-office-retirement.md`.
+- **Status:** the design is accepted by the owner (2026-11-13; ADR 0020). Every slice is built and pushed
+  (finished 2026-11-16); ADR 0020 keeps the decision.
 - **Owner's decisions (2026-11-13):** a modular monolith, no services; removing `office` covers the internal
   structure, the web **and the HTTP paths**; `/office/*` stays served during the move and its final removal is a
   required end, after the clients and the upgrade are proved safe; the slices run before the first provider

@@ -9,7 +9,7 @@ Wholesale SIM-card office, RTL-first (ar / en / he). Four layers ("doors"), reso
 | Backend modules, endpoints, patterns, data model | `docs/architecture/backend.md` |
 | Frontend routes, data flow, components, known defects | `docs/architecture/frontend.md` |
 | Visual system (tokens, stylesheets, components) | `DESIGN.md` |
-| Current refactor plan and its status | `docs/superpowers/plans/2026-11-08-architecture-refactor.md` |
+| Current work and its status | `docs/superpowers/plans/2026-11-17-{cleanup,database-scale,speed}.md` (spec `docs/superpowers/specs/2026-11-17-scale-speed-cleanup.md`); the open backlog `docs/superpowers/plans/2026-11-10-open-items.md` |
 | Decisions and why | `docs/architecture/decisions/` |
 | Work rules (spec → plan → slice, language, push, UI) | `.cursor/rules/*.mdc` — they apply to Claude too |
 | Operations: backup, restore, the upgrade plan | `docs/operations/`, scripts in `scripts/backup/` |
@@ -43,11 +43,11 @@ A change is not done until the matching doc says what the code now does:
 ## Commands (repo root)
 
 ```
-npm run lint          npm run typecheck      npm run check:copy
+npm run lint          npm run typecheck      npm run check:copy     npm run check:styles
 npm run test:api      npm run test:e2e       npm run build
 docker compose up --build    # web :3000, api :3001, worker, postgres, redis
 ```
-CI (`.github/workflows/ci.yml`) runs lint, check:copy, typecheck, test:api, build.
+CI (`.github/workflows/ci.yml`) runs lint, check:copy, check:styles, typecheck, test:api, build, and a `db` job with the `*.db.spec.ts` files on PostgreSQL.
 
 **Machine limits (owner, `.cursor/rules/machine-limits.mdc`):** **one** running copy of the app, always on port
 **3000** (`.claude/launch.json` → `smilesim` = `npm run dev:local`); keep it running and check every change on it; an

@@ -26,20 +26,22 @@ docker compose up --build
 
 يرفع web على 3000 وapi على 3001 وworker وpostgres وredis، ويطبّق الهجرات عند إقلاع الـ api. `docker-compose.override.yml` يُحمَّل تلقائياً محلياً ويفعّل حسابات التجربة `branch` و`main` و`agent` و`pos` بكلمة السر `123456` (للتطوير فقط، انظر `.env.example`). لا حاجة لملف `.env`؛ انسخ `.env.example` إلى `.env` فقط لتغيير قيمة.
 
-بلا docker: شغّل postgres وredis، ثم من الجذر `npm ci` و`npm run prisma:generate`، ثم `npm run build --workspace api` و`npm run start --workspace api` و`npm run dev --workspace web`. المطلوب Node 24 أو أحدث (`.nvmrc`).
+بلا docker: شغّل postgres وredis، ثم من الجذر `npm ci` و`npm run prisma:generate`، ثم `npm run build --workspace api` و`npm run start --workspace api` و`npm run dev --workspace web`. المطلوب Node 26 (`.nvmrc`).
 
 ## السكربتات (من الجذر)
 
 | الأمر | ما يفعله |
 |---|---|
-| `npm run lint` | eslint للحزمتين، ثم في الواجهة حارس CSS (`apps/web/scripts/check-css.mjs`): يفشل إذا ارتفع أيّ عدد فوق خط الأساس `apps/web/scripts/css-baseline.json` ويطبع الإصابات الجديدة |
+| `npm run lint` | eslint للحزمتين |
+| `npm run check:copy` | يفحص نصوص الواجهة بالعربية والإنجليزية والعبرية (`apps/web/scripts/check-copy.mjs`) |
+| `npm run check:styles` | حارس الأنماط في الواجهة (`apps/web/scripts/check-styles.mjs`) |
 | `npm run typecheck` | `tsc --noEmit` للـ api وللـ web |
 | `npm test` | اختبارات jest للـ api (بلا قاعدة بيانات) |
 | `npm run test:e2e` | اختبارات Playwright للـ web على api وهمي (`npx playwright install chromium` أولاً) |
 | `npm run build` | بناء الحزمتين. بناء web يكتب في `.next`؛ لا تشغّله بينما خادم التطوير يعمل، أو استعمل `NEXT_DIST_DIR=.next-build` |
 | `npm run prisma:generate` | يولّد عميل Prisma من المخطط |
 
-يعمل `.github/workflows/ci.yml` عند كل push وpull request: lint وtypecheck واختبارات api وبناء الحزمتين. اختبارات Playwright في job منفصل `e2e` لا يمنع الدمج حالياً.
+يعمل `.github/workflows/ci.yml` عند كل push وpull request: `next typegen` وlint و`check:copy` و`check:styles` وtypecheck واختبارات api وبناء الحزمتين، وفي job منفصل `db` مواصفات `*.db.spec.ts` على PostgreSQL بعد تطبيق الهجرات. اختبارات Playwright في job منفصل `e2e` لا يمنع الدمج حالياً.
 
 ## بنية المجلدات
 
@@ -49,11 +51,11 @@ apps/api/        الـ API
   src/modules/<وحدة>/   وحدة لكل مجال: sales (الأرقام)، catalog (الرزم)، wallets (المحافظ)، tasks (المهام) وغيرها
   prisma/               المخطط والهجرات
 apps/web/        الواجهة
-  app/                  الصفحات و globals.css
+  app/                  الصفحات و tailwind.css (ملف الأنماط الوحيد)
   components/           الهيكل والجداول والحوارات المشتركة
   lib/                  العميل api.ts والنصوص والأبواب
   tests/                Playwright
-docs/            الخطة والمواصفات: project-plan.md وsuperpowers/specs وplans وgates
+docs/            الخطة والمواصفات: project-plan.md وsuperpowers/specs وplans وaudits
 DESIGN.md        نظام التصميم، مصدر الحقيقة البصري
 .cursor/rules/   قواعد العمل والواجهة
 ```
