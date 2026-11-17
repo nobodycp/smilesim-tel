@@ -39,7 +39,7 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   probe with a time limit of its own, so that a part that hangs shows `متوقف` and the others still answer;
   thresholds in `monitoring/thresholds.ts`. `GET /v1/system/status`. Web: `app/system/page.tsx`, cards, 15 s.
   Specs: each probe's three states on stand-ins; a hanging probe does not hold the answer.
-- [ ] **M.6 Alerts.** `Alert` (kind, key, subject fields, count, firstAt, lastAt, state, seenAt, seenBy) with a
+- [x] **M.6 Alerts.** (API `fa15ad8c`; web pending) `Alert` (kind, key, subject fields, count, firstAt, lastAt, state, seenAt, seenBy) with a
   unique open alert a (kind, key), and its migration. `monitoring/alert-rules.ts` (pure: the ten rules over
   counted rows, tested alone), `monitoring/alert-pass.ts` run every 30 s by the worker (`WORKER_MONEY_PATH` is
   not touched: its own small composition). A new alert writes one notice to the branch owner (`system.alert`, a
