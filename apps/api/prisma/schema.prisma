@@ -186,6 +186,15 @@ model WalletEntry {
    * `WalletEntry_chainMainAgent_createdAt` are raw SQL (migrations `20261117230000_stored_margins`,
    * `20261117230100_stored_margins_indexes`, `20261117230200_stored_margins_validate`).
    */
+  /**
+   * Why an operation the provider was paid for charged the point of sale nothing (ADR 0025, answer 4; spec DB.5 P.7):
+   * `given_back` (the provider succeeded, the money was given back: `release-after-success`) or `priced_zero` (an
+   * activation or renewal sold at 0). Null on every other row. Such a row moves 0, keeps its provider and cost, and
+   * stores `branchMargin` = − `providerCost` (the branch's loss), no other margin. The CHECK `WalletEntry_provider_loss`
+   * and the partial index `WalletEntry_provider_loss` (`providerId`, `createdAt` DESC, `id` DESC) WHERE `providerLoss`
+   * IS NOT NULL are raw SQL (migration `20261117240000_provider_loss`).
+   */
+  providerLoss String?
   chainPosId       String?
   chainAgentId     String?
   chainMainAgentId String?
