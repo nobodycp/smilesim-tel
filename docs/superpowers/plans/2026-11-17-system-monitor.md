@@ -48,10 +48,16 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   Specs: each rule opens at its threshold and not under it, closes after 30 quiet minutes, one notice an alert.
 - [x] **M.7 Web: alerts.** (`6f02cf71`, `a13f1ace`, `4be8a28d`, `44ae729a`, `618f19ec`; map `354c0e00`) `app/system/alerts/page.tsx`: open and past alerts, each with its link to the request
   rows; the count on the sidebar section; the notice opens the alert.
-- [ ] **M.8 Retention and handover.** The worker's daily purge deletes request rows and errors older than 14
+- [x] **M.8 Retention and handover.** (API `e3cd5c5c`; handover `2d4db8fc`) The worker's daily purge deletes request rows and errors older than 14
   days and closed alerts older than 90. `docs/handover/` (Arabic): what the section shows, what is stored and for
   how long, what the clear button does, what each alert means and what to do. `docs/architecture/backend.md`,
   `frontend.md`, `DESIGN.md` if a new primitive was needed.
+
+**Closing note (2026-11-17).** Every slice, M.0–M.8, is built and committed; nothing of it is deployed yet. Left on
+purpose: the worker-down alert raised by the API itself (a stopped worker warns of nothing, itself included; the
+status page still shows it), tuning the thresholds after a week on the trial server, alerts outside the app (SMS,
+e-mail, WhatsApp wait for the messaging feature), and the Hebrew texts of the section, not yet read by a native
+speaker.
 
 ## Order and what each slice leaves working
 
