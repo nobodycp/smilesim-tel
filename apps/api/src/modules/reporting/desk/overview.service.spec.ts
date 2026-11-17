@@ -31,6 +31,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     package: { findMany: async () => [{ suspendAfterDays: 90 }] },
     line: {
       count: async ({ where }: { where: { status?: string; AND?: unknown[] } }) => (where.status ? lineCounts[where.status] : JSON.stringify(where).includes('suspendAfterDays') ? 1 : 2),
+      groupBy: async () => Object.entries(lineCounts).map(([status, count]) => ({ status, _count: { _all: count } })),
       findMany: async () => [
         { id: 'l1', package: { provider: { code: 'sky', name: 'سكاي' } } },
         { id: 'l2', package: { provider: { code: 'lian', name: 'ليان' } } },
@@ -49,6 +50,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     wallet: { findMany: async () => [{ userId: 'pos', balance: -2000, ceiling: 5000 }, { userId: 'pos2', balance: 700, ceiling: 1000 }, { userId: 'agent', balance: -500, ceiling: 300 }] },
     task: {
       count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'working' ? 4 : 1),
+      groupBy: async () => ['working', 'done', 'rejected', 'cancelled'].map((status) => ({ status, _count: { _all: status === 'working' ? 4 : 1 } })),
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
   } as unknown as ServiceGraph['prismaClient'];

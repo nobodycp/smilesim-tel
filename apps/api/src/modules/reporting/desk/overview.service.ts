@@ -104,13 +104,15 @@ export class OverviewService {
     const scope: Prisma.LineWhereInput = posIds ? { posId: { in: posIds } } : {};
     const periods = (await this.repo.suspendPeriods()).map((row) => row.suspendAfterDays);
     const suspendedScope = { AND: [scope, suspendedWhere(periods, now)] };
-    const [active, expiring, frozen, disconnected, suspended] = await Promise.all([
-      this.repo.lineCountInStatus(posIds, 'active'),
+    // The stored statuses in one grouped read (database plan DB.11). Expiring and suspended are windows on the end
+    // date, not statuses: each keeps its count, built from the same rule the numbers list filters by.
+    const [stored, expiring, suspended] = await Promise.all([
+      this.repo.lineCountsByStatus(scope),
       this.repo.lineCount({ AND: [scope, expiringWhere(now)] }),
-      this.repo.lineCountInStatus(posIds, 'frozen'),
-      this.repo.lineCountInStatus(posIds, 'disconnected'),
       this.repo.lineCount(suspendedScope),
     ]);
+    const inStatus = (status: string) => stored.find((row) => row.status === status)?._count._all ?? 0;
+    const [active, frozen, disconnected] = [inStatus('active'), inStatus('frozen'), inStatus('disconnected')];
     // A suspended line is still stored as active: it leaves the active slice, and so does an expiring one.
     return { active: Math.max(0, active - expiring - suspended), expiring, frozen, disconnected, suspended };
   }
@@ -259,10 +261,10 @@ export class OverviewService {
   /** Tasks the viewer may see, by status, and how long the oldest open one has waited. */
   private async tasks(actor: Actor, accounts: Awaited<ReturnType<AccountTree['accounts']>>, now: Date) {
     const where = taskWhereFor(actor, accounts);
-    const counts = await Promise.all(TASK_STATUSES.map((status) => this.repo.taskCountInStatus(where, status)));
-    const oldest = await this.repo.oldestOpenTask(where);
+    // One grouped read for every status (database plan DB.11); a status with no task counts zero.
+    const [counts, oldest] = await Promise.all([this.repo.taskCountsByStatus(where), this.repo.oldestOpenTask(where)]);
     return {
-      ...Object.fromEntries(TASK_STATUSES.map((status, index) => [status, counts[index]])),
+      ...Object.fromEntries(TASK_STATUSES.map((status) => [status, counts.find((row) => row.status === status)?._count._all ?? 0])),
       oldestOpenMinutes: oldest ? Math.max(0, Math.round((now.getTime() - oldest.createdAt.getTime()) / 60_000)) : null,
     } as Record<(typeof TASK_STATUSES)[number], number> & { oldestOpenMinutes: number | null };
   }

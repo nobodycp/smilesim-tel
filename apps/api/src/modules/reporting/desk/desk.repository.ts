@@ -32,6 +32,11 @@ export class DeskRepository {
     return this.uow.prisma.line.count({ where: { ...(posIds ? { posId: { in: posIds } } : {}), status } });
   }
 
+  /** How many lines under `scope` are stored in each status, in one read (database plan DB.11). */
+  lineCountsByStatus(scope: Prisma.LineWhereInput) {
+    return this.uow.prisma.line.groupBy({ by: ['status'], where: scope, _count: { _all: true } });
+  }
+
   lineCount(where: Prisma.LineWhereInput) {
     return this.uow.prisma.line.count({ where });
   }
@@ -95,9 +100,9 @@ export class DeskRepository {
     return this.uow.prisma.wallet.findMany({ where: { userId: { in: userIds } }, select: { userId: true, balance: true, ceiling: true } });
   }
 
-  /** How many of the tasks under `where` are in this status. */
-  taskCountInStatus(where: Prisma.TaskWhereInput, status: string) {
-    return this.uow.prisma.task.count({ where: { AND: [where, { status }] } });
+  /** How many of the tasks under `where` are in each status, in one read (database plan DB.11). */
+  taskCountsByStatus(where: Prisma.TaskWhereInput) {
+    return this.uow.prisma.task.groupBy({ by: ['status'], where, _count: { _all: true } });
   }
 
   /** When the oldest working task under `where` was created. */
