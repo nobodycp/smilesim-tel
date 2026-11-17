@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Lock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { TableSheet } from '../../../components/ui/table';
@@ -19,6 +20,7 @@ import { NameField } from '../../../components/name-field';
 import { api, type UserPackageRow } from '../../../lib/api';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
 import { termsTone } from '../../../lib/status-tone';
@@ -97,6 +99,10 @@ export function UserPackagesTab({
   setNote: (text: string) => void;
 }) {
   const { t, apiText } = usePrefs();
+  // The package's own page (durations, special prices, the excluded accounts) is the branch's; the row leads there.
+  const router = useRouter();
+  const { me } = useDesk();
+  const opensPackage = me?.layer === 'branch';
   const [needle, setNeedle] = useState('');
   const [company, setCompany] = useState('');
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
@@ -199,6 +205,9 @@ export function UserPackagesTab({
             : []),
           // Numbers that already renewed under another price change only here, never by writing a price above.
           ...(canEdit && row.lines > 0 ? [{ label: t.linePricesMenu, icon: 'receipt' as const, onClick: () => setPricing(row) }] : []),
+          ...(opensPackage && row.companyCode
+            ? [{ label: t.openPackagePage, icon: 'enter' as const, onClick: () => router.push(`/companies/${encodeURIComponent(row.companyCode)}/packages/${encodeURIComponent(row.code)}`) }]
+            : []),
         ];
         return <RowMenu label={`${t.rowActions} ${row.name}`} items={items} />;
       },

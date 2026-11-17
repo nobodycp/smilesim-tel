@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
@@ -35,6 +36,7 @@ import { PackageAddons } from '../package-addons';
 import { PackageDurations } from '../package-durations';
 import { PackageEsim } from '../package-esim';
 import { PackageLineAccounts } from '../package-line-accounts';
+import { PackageExcluded } from '../package-excluded';
 import { PackageOffer } from '../package-offer';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
@@ -47,7 +49,7 @@ import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
-type Tab = 'overview' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'accounts' | 'offers';
+type Tab = 'overview' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'accounts' | 'offers' | 'excluded';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 const EMPTY_PRICES: Record<PriceKey, string> = {
   branchCost: '',
@@ -301,7 +303,16 @@ export function PackageSheetScreen() {
   }
 
   const offerColumns: Column<CustomPriceRow>[] = [
-    { key: 'account', header: t.accountName, render: (offer) => <AccountName login={offer.loginName} name={offer.nickname} /> },
+    {
+      key: 'account',
+      header: t.accountName,
+      // The same price shows on the account's own «الرزم والأسعار»; the name leads there.
+      render: (offer) => (
+        <Link className="font-semibold text-accent no-underline hover:underline" href={`/users/${encodeURIComponent(offer.loginName)}#packages`}>
+          <AccountName login={offer.loginName} name={offer.nickname} />
+        </Link>
+      ),
+    },
     { key: 'layer', header: t.layer, fit: true, render: (offer) => layerName(t, offer.layer) },
     { key: 'parent', header: t.parent, fit: true, render: (offer) => <bdi dir="ltr">{offer.parentLoginName ?? '—'}</bdi> },
     {
@@ -422,6 +433,7 @@ export function PackageSheetScreen() {
     { key: 'numbers', label: t.numbersTab },
     { key: 'accounts', label: t.lineAccountsTab },
     { key: 'offers', label: t.offersTab },
+    { key: 'excluded', label: t.excludedTab },
   ];
   function targetList(kind: 'renewals' | 'switches', packages: ShelfPackage[]) {
     const selected = kind === 'renewals' ? renewals : switches;
@@ -552,6 +564,7 @@ export function PackageSheetScreen() {
                 </TableSheet>
               )}
               {tab === 'accounts' && <PackageLineAccounts code={sheet.code} onReprice={(scope) => setPricing({ scope })} />}
+              {tab === 'excluded' && <PackageExcluded code={sheet.code} users={users} setError={setError} setNote={setNote} />}
               {tab === 'offers' && (
                 <div className="pane-body">
                   <div

@@ -45,6 +45,8 @@ export type CustomPriceRow = {
   price: number | null;
   renewalPrice: number | null;
 };
+/** An account this package is hidden from by its own row; `below` counts the accounts under it, hidden with it. */
+export type HiddenAccountRow = { loginName: string; nickname: string; layer: string; parentLoginName: string; below: number };
 /** What a line-prices request covers: the whole system, or one account and everything under it. */
 type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: string; layer: string };
 /** What happens to one number: a flat price, or what a new activation would carry now. */
@@ -188,9 +190,31 @@ export class TermsService {
   }
 
   /**
-   * The renewable numbers of a package in a scope, grouped by the renewal price each one carries, and
-   * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
+   * The accounts this package is hidden from by a row of their own (spec 2026-11-16-package-page, P.9): the
+   * package page's «المستثنون». Everyone under such an account loses the package with it, so `below` says how
+   * many. An account hidden only through one above it is not listed: its row is the one above. Branch only;
+   * the switch itself is written by `setUserPackage`, the same writer the account's own page uses.
    */
+  async hiddenAccounts(actor: Actor, code: string): Promise<{ accounts: HiddenAccountRow[] }> {
+    assertBranch(actor);
+    const pkg = await this.repo.packageByCode(code);
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const [accounts, { terms }] = await Promise.all([this.tree.accounts(), this.ladder.termsFor(pkg.id)]);
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    const children = new Map<string, string[]>();
+    for (const account of accounts) {
+      if (account.parentId) children.set(account.parentId, [...(children.get(account.parentId) ?? []), account.id]);
+    }
+    const below = (id: string): number => (children.get(id) ?? []).reduce((sum, child) => sum + 1 + below(child), 0);
+    const rows = terms.flatMap((term): HiddenAccountRow[] => {
+      const account = term.hidden ? byId.get(term.userId) : undefined;
+      if (!account) return [];
+      const parent = account.parentId ? byId.get(account.parentId) : undefined;
+      return [{ loginName: account.loginName, nickname: account.nickname, layer: account.layer, parentLoginName: parent?.loginName ?? '', below: below(account.id) }];
+    });
+    return { accounts: rows.sort((a, b) => a.loginName.localeCompare(b.loginName)) };
+  }
+
   /**
    * The points of sale that hold numbers on this package (spec 2026-11-16-package-page, P.3): how many each holds,
    * how many of them are active, and the renewal price it would pay today. The branch's table for re-pricing the
@@ -223,6 +247,10 @@ export class TermsService {
     return { accounts: [...rows.values()].sort((a, b) => b.lines - a.lines || a.loginName.localeCompare(b.loginName)) };
   }
 
+  /**
+   * The renewable numbers of a package in a scope, grouped by the renewal price each one carries, and
+   * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
+   */
   async linePrices(actor: Actor, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
     const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, query.scope);

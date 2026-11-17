@@ -65,6 +65,7 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/v1/packages/CODE1/custom-prices', null],
   ['DELETE', '/v1/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],
   ['PUT', '/v1/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],
+  ['GET', '/v1/packages/CODE1/hidden-accounts', null],
   ['GET', '/v1/packages/CODE1/line-accounts', null],
   ['GET', '/v1/packages/CODE1/line-prices', null],
   ['PUT', '/v1/packages/CODE1/line-prices', ['package_reprice', 'package', 'CODE1']],

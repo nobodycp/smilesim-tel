@@ -247,6 +247,21 @@ describe('writing user terms', () => {
     expect(b).toMatchObject({ code: 'alloha-400', hidden: false, hiddenAbove: 'ma1', lines: 0 });
   });
 
+  // Spec 2026-11-16-package-page, P.9.
+  it('lists the accounts a package is hidden from by their own row, with how many sit under each', async () => {
+    const { service, gates, userPackages } = await withNumbers();
+    userPackages.push({ id: 'h1', packageId: 'pa', userId: 'ma1', hidden: true, price: null, renewalPrice: null });
+    userPackages.push({ id: 'h2', packageId: 'pa', userId: 'pos2', hidden: false, price: null, renewalPrice: 4700 });
+    const { accounts } = await service.hiddenAccounts(gates.branch, 'alloha-150');
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({ loginName: 'ma1', layer: 'main_agent' });
+    expect(accounts[0].below).toBeGreaterThan(0);
+    expect(Object.keys(accounts[0]).sort()).toEqual(['below', 'layer', 'loginName', 'nickname', 'parentLoginName']);
+    expect(await service.hiddenAccounts(gates.branch, 'alloha-400')).toEqual({ accounts: [] });
+    await expect(service.hiddenAccounts(gates.ma1, 'alloha-150')).rejects.toMatchObject({ status: 403 });
+    await expect(service.hiddenAccounts(gates.branch, 'nope')).rejects.toMatchObject({ status: 404 });
+  });
+
   // Spec 2026-11-16-package-page, P.3.
   it('lists the points of sale that hold numbers on a package: how many, how many active, their price today', async () => {
     const { service, gates, lines, line, userPackages } = await withNumbers();

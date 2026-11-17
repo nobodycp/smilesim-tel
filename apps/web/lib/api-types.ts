@@ -313,6 +313,8 @@ export type PackageSheet = {
   inheritedModes?: string[];
   providerModes?: Record<string, 'auto' | 'manual' | 'off'>;
 };
+/** An account a package is hidden from by its own switch; `below` counts the accounts under it, hidden with it. */
+export type HiddenAccountRow = { loginName: string; nickname: string; layer: string; parentLoginName: string; below: number };
 /** A point of sale that holds numbers on a package: how many, how many active, and its renewal price today. */
 export type LineAccountRow = {
   loginName: string;

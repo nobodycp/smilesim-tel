@@ -52,6 +52,14 @@ export class TermsController {
     return this.termDesk.clearCustomPrice(actor, code, loginName);
   }
 
+  @Get('packages/:code/hidden-accounts')
+  @ApiOperation({ summary: 'The accounts this package is hidden from by their own row, each with how many accounts sit under it (branch)' })
+  @ApiParam({ name: 'code' })
+  @ApiErrorResponse(401, 403, 404)
+  hiddenAccounts(@Actor() actor: ActorShape, @Param('code') code: string) {
+    return this.termDesk.hiddenAccounts(actor, code);
+  }
+
   @Get('packages/:code/line-accounts')
   @ApiOperation({ summary: 'The points of sale that hold numbers on this package: how many, how many active, and their renewal price today (branch)' })
   @ApiParam({ name: 'code' })

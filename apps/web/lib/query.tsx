@@ -82,6 +82,7 @@ export const packageKeys = {
   sheet: (code: string) => ['api', 'package', code, 'sheet'] as const,
   lines: (code: string) => ['api', 'package', code, 'lines'] as const,
   customPrices: (code: string) => ['api', 'package', code, 'custom-prices'] as const,
+  hiddenAccounts: (code: string) => ['api', 'package', code, 'hidden-accounts'] as const,
   linePrices: (code: string, scope: string) => ['api', 'package', code, 'line-prices', scope] as const,
   all: (code: string) => ['api', 'package', code] as const,
 };

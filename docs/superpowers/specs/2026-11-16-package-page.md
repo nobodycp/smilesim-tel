@@ -119,6 +119,27 @@ Owner, 2026-11-16: «لما تكون الرزمة عرض اعمل تأثيرات
   takes a click. At rest the card is still. A touch screen has no pointer, so a phone shows the gold card alone.
 - With less motion asked for by the system, nothing moves.
 
+### P.9 «المستثنون»: the accounts a package is hidden from, on the package
+
+Owner, 2026-11-17: «وين الاستثناءات اللي اتفقنا عليها إنها تبين على الرزمة نفسها… وداخل اليوزر يكون مبين السعر
+المخصص… لتكون الأماكن مترابطة». Section 5 of `2026-11-15-package-durations-and-deals` put the exceptions on the
+package page; its slice D.5 waits for the provider integration because it re-keys prices by duration. Hiding does
+not depend on durations, so it is built now on the existing `UserPackage.hidden`.
+
+- A tab «المستثنون» on the package page: name an account and «استثناء»; the table lists the accounts hidden by
+  their own row with their layer, parent, how many accounts sit under them (all hidden with them) and «إعادة
+  الإظهار». An account hidden only through one above it is not listed.
+- What hiding does is unchanged and already enforced by the API for the account and everyone under it: the package
+  leaves the shelf (`GET packages`), a new activation and a switch to it are refused (`PACKAGE_HIDDEN`), and it is
+  no switch target. Numbers already on it stay and renew.
+- One writer: the tab writes through `PUT /v1/users/:login/packages/:code` (`hidden`), the route the account's own
+  «الرزم والأسعار» uses, so the two places always agree.
+- API: `GET /v1/packages/:code/hidden-accounts` (branch only): `{ accounts: [{ loginName, nickname, layer,
+  parentLoginName, below }] }`.
+- Linked places: each account name in «المستثنون» and in «تخصيص سعر» opens that account's «الرزم والأسعار»
+  (`/users/:login#packages`); there, for the branch, each package's row menu has «صفحة الرزمة». A price typed on the
+  package page is the same row the account's page shows as «سعر خاص».
+
 ## Non-goals
 
 - No change to prices, to the line-prices dialog's rules, or to what an eSIM costs.

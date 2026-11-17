@@ -31,3 +31,9 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   customer field, no numbering), `components/ui/checkbox.tsx`.
 - [x] **P.8 An offer's card stands out** (`e7490a70`). `apps/web/features/catalog/screens/packages-screen.tsx` (`OFFER_CARD`,
   `OfferShow`, `GbRing` gold), keyframes in `apps/web/app/tailwind.css`.
+- [x] **P.9 «المستثنون» on the package page, the two places linked.** API `GET /v1/packages/:code/hidden-accounts`
+  (`pricing/terms.service.ts` `hiddenAccounts`, `terms.controller.ts`, `testing/routes.ts`, permissions, facade,
+  `pricing/user-terms-service.spec.ts`). Web: `features/catalog/package-excluded.tsx`, the tab in
+  `package-sheet-screen.tsx`, account names there and in «تخصيص سعر» link to the account's page;
+  `features/accounts/screens/packages-terms.tsx` row menu «صفحة الرزمة»; copy ar, en, he. Checked on port 3000:
+  excluded an agent, its point of sale's `GET packages` lost the package, shown again.
