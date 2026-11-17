@@ -183,7 +183,7 @@ the expression index `Notice_kind_taskId` on `(kind, payload->>'taskId')`, which
 
 ## Tests
 
-155 spec files beside what they test. Service specs run on `testing/tree.fixture.ts` through
+156 spec files beside what they test. Service specs run on `testing/tree.fixture.ts` through
 `testing/api-facade.ts`; HTTP specs through `testing/api-test-app.ts` (or `Test.createTestingModule`
 with `API_PROVIDERS`). 33 `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
 one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec file at a time with
