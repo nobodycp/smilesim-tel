@@ -701,11 +701,22 @@ model RequestLog {
   bytesIn        Int      @default(0)
   bytesOut       Int      @default(0)
 
+  // Which read each index serves (database scale DB.14, migration `20261117180000_request_log_indexes`):
+  // a time window (the lists, the summary, the status's last 15 minutes, the alert rules' windows, the purge).
   @@index([at])
+  // A status or class of answers, in the filters and the alert rules (429, 401/404, 403, 5xx).
   @@index([status, at])
+  // A route, exact: the filter a route of the summary's lists opens.
   @@index([route, at])
+  // The account filter, one index a branch: the account by login name, by id, and (below) as the one who entered.
+  @@index([actorLoginName, at])
   @@index([actorId, at])
-  @@index([ip, at])
+  // Two indexes are raw SQL in that migration, which the schema cannot state and `prisma migrate diff` does not see:
+  // - the account filter's third branch, `RequestLog_operatorId_at_idx` on (operatorId, at) WHERE operatorId IS NOT
+  //   NULL (entered sessions only);
+  // - the start of an address (`LIKE 'x%'`), `RequestLog_ip_pattern_at_idx` on (ip text_pattern_ops, at) WHERE ip IS
+  //   NOT NULL: the database's collation cannot serve a prefix from a plain btree; Prisma cannot read a btree's
+  //   operator class back, so the predicate (true of every row) keeps it out of the schema's diff.
 }
 
 /// A request that ended in a server error (5xx), beside its row in `RequestLog` (the same `requestId`; system

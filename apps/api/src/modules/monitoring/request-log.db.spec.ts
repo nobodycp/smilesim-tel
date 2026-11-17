@@ -13,6 +13,7 @@ import { API_PROVIDERS } from '../platform/api-providers';
 import { fail } from '../platform/api-failure';
 import { NOTICE_WRITER } from '../platform/notices';
 import { UnitOfWork } from '../platform/unit-of-work';
+import { after } from '../platform/paging';
 import { PrismaService } from '../platform/prisma.service';
 import { RequestLogController } from './request-log.controller';
 import { RequestLogRepository } from './request-log.repository';
@@ -43,6 +44,7 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
   let service: RequestLogService;
   let writer: RequestLogWriter;
   let uow: UnitOfWork;
+  let repo: RequestLogRepository;
 
   const owner = (): Actor => ({ id: ownerId, loginName: login('owner'), nickname: 'owner', layer: 'branch', isBranchOwner: true, grants: [], operatorId: ownerId, impersonating: false });
   const entered = (): Actor => ({ id: posId, loginName: login('pos'), nickname: 'pos', layer: 'pos', isBranchOwner: false, grants: [], operatorId: ownerId, impersonating: true });
@@ -106,6 +108,7 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     service = moduleRef.get(RequestLogService);
     writer = moduleRef.get(RequestLogWriter);
     uow = moduleRef.get(UnitOfWork);
+    repo = moduleRef.get(RequestLogRepository);
     await clearOwnDay();
   });
 
@@ -243,6 +246,106 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     expect({ count: failing.count, failed: failing.failed, errorRate: failing.errorRate, routes: failing.busiest.length }).toEqual({ count: 1, failed: 1, errorRate: 1, routes: 1 });
     const none = await service.summary(owner(), { ...ownDay, ip: '192.0.2.1' });
     expect(none).toEqual({ count: 0, refused: 0, failed: 0, errorRate: 0, slowest: [], busiest: [] });
+  });
+
+  it('reads an account as three indexed branches: the same rows in the same order as the one OR it replaced (DB.14)', async () => {
+    // The point of sale of this file: the service finds its id by its login name, so it reads all three branches.
+    const a = { loginName: login('pos'), id: posId };
+    const someoneElse = randomUUID();
+    // 30 rows a minute, random ids: pages of 80 end among rows sharing one time, where only the id orders them.
+    const kinds = [
+      { actorLoginName: a.loginName, actorId: a.id }, // the account itself
+      { actorLoginName: a.loginName, actorId: someoneElse }, // an earlier account of that name, since deleted
+      { actorLoginName: login('other'), actorId: a.id }, // its id under another name (the writer never does this)
+      { actorLoginName: login('other'), actorId: someoneElse, operatorId: a.id }, // it entered another account
+      { actorLoginName: a.loginName, actorId: a.id, operatorId: a.id }, // in all three branches at once
+      { actorLoginName: login('other'), actorId: someoneElse }, // not the account's
+      {}, // no account
+    ];
+    const rows = Array.from({ length: 420 }, (_, n) => row(Math.floor(n / 30), { ...kinds[n % kinds.length], status: n % 3 === 0 ? 404 : 200 }));
+    await prisma.requestLog.createMany({ data: rows });
+    // The query this slice replaced, kept as the oracle: the three branches as one OR.
+    const oracle = (filter: { account: { loginName: string; id: string | null }; status?: { gte: number; lte: number } }, position: Parameters<typeof repo.rows>[1], take: number) =>
+      prisma.requestLog.findMany({
+        where: {
+          AND: [
+            ...(filter.status ? [{ status: filter.status }] : []),
+            { OR: [{ actorLoginName: filter.account.loginName }, ...(filter.account.id ? [{ actorId: filter.account.id }, { operatorId: filter.account.id }] : [])] },
+            dayWhere,
+            ...after(position, 'at'),
+          ],
+        },
+        orderBy: [{ at: 'desc' }, { id: 'desc' }],
+        take,
+      });
+    const own = { from: dayWhere.at.gte, to: dayWhere.at.lte };
+    const filters = [{ account: a }, { account: a, status: { gte: 404, lte: 404 } }, { account: { loginName: a.loginName, id: null } }, { account: { loginName: login('nobody'), id: randomUUID() } }];
+    for (const filter of filters) {
+      let position: Parameters<typeof repo.rows>[1];
+      for (let pages = 0; pages < 20; pages += 1) {
+        const [served, expected] = await Promise.all([repo.rows({ ...own, ...filter }, position, 81), oracle(filter, position, 81)]);
+        expect(served).toEqual(expected);
+        const last = served[79];
+        if (served.length < 81 || !last) break;
+        position = { at: last.at, id: last.id };
+      }
+    }
+    // And through the service: the count and the summary read the same rows as the pages.
+    const listed = await service.list(owner(), { ...ownDay, account: a.loginName });
+    const all = await oracle({ account: a }, undefined, 1_000);
+    // Five kinds of seven are the account's: four pages of 80 rows.
+    expect(all).toHaveLength(300);
+    expect(listed.total).toBe(all.length);
+    expect(listed.items.map((item) => item.id)).toEqual(all.slice(0, 80).map((item) => item.id));
+  });
+
+  it('works out the median and the 95th percentile from a count of each duration, bit for bit percentile_cont over every row (DB.14)', async () => {
+    // Routes of many sizes and spreads, and a tie: 51 rows whose 95th percentile falls half-way between 3 and 4,
+    // where a fused multiply-add in PostgreSQL's own C moves the last bit (3.499999999999998 on arm64, rounded to 3;
+    // the plain arithmetic gives 3.5, rounded to 4).
+    let seed = 7;
+    const next = () => (seed = (seed * 48_271) % 2_147_483_647) / 2_147_483_647;
+    const tie = [0, 0, 0, 0, 0, 0, ...Array<number>(14).fill(1), ...Array<number>(11).fill(2), ...Array<number>(17).fill(3), 4, 4, 4];
+    const routes: { route: string; durations: number[] }[] = [
+      { route: `/t-${tag}/tie`, durations: tie },
+      ...[1, 2, 3, 4, 7, 20, 21, 39, 40, 41, 100, 101, 257].flatMap((size) => [3, 300, 90_000].map((spread) => ({ route: `/t-${tag}/s${size}-${spread}`, durations: Array.from({ length: size }, () => Math.floor(next() * spread)) }))),
+    ];
+    let minute = 0;
+    await prisma.requestLog.createMany({ data: routes.flatMap(({ route, durations }) => durations.map((durationMs) => row((minute += 1) % 600, { route, path: route, durationMs }))) });
+    const own = { from: dayWhere.at.gte, to: dayWhere.at.lte };
+    // The query this slice replaced, kept as the oracle.
+    const oracle = (route: string) => prisma.$queryRaw<{ method: string; route: string; calls: number; medianMs: number; p95Ms: number }[]>`
+      SELECT "method", "route", count(*)::int AS "calls",
+             round(percentile_cont(0.5) WITHIN GROUP (ORDER BY "durationMs"))::int AS "medianMs",
+             round(percentile_cont(0.95) WITHIN GROUP (ORDER BY "durationMs"))::int AS "p95Ms"
+      FROM "RequestLog" WHERE "route" = ${route} AND "at" >= ${own.from} AND "at" <= ${own.to}
+      GROUP BY "method", "route"`;
+    for (const { route } of routes) {
+      const [figures, expected] = await Promise.all([repo.routeFigures({ ...own, route }), oracle(route)]);
+      expect(figures.slowest).toEqual(expected);
+      expect(figures.busiest).toEqual(expected);
+    }
+    // The tie itself, unrounded: the two-row step is PostgreSQL's arithmetic, whatever the platform makes of it.
+    const [exact] = await prisma.$queryRaw<{ expected: number; stepped: number }[]>`
+      SELECT (SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY v) FROM unnest(${tie}::int[]) AS v) AS "expected",
+             (SELECT percentile_cont((SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY v) FROM (VALUES (-47::float8), (3::float8)) AS f(v))) WITHIN GROUP (ORDER BY v)
+                FROM (VALUES (3::float8), (4::float8)) AS x(v)) AS "stepped"`;
+    expect(exact?.stepped).toBe(exact?.expected);
+    // Every route at once, ranked: the old query whole.
+    const everyRoute = await repo.routeFigures(own);
+    const ranked = await prisma.$queryRaw<{ list: string; method: string; route: string; calls: number; medianMs: number; p95Ms: number }[]>`
+      WITH "figures" AS (
+        SELECT "method", "route", count(*)::int AS "calls",
+               round(percentile_cont(0.5) WITHIN GROUP (ORDER BY "durationMs"))::int AS "medianMs",
+               round(percentile_cont(0.95) WITHIN GROUP (ORDER BY "durationMs"))::int AS "p95Ms"
+        FROM "RequestLog" WHERE "at" >= ${own.from} AND "at" <= ${own.to}
+        GROUP BY "method", "route"
+      )
+      (SELECT 'slowest' AS "list", * FROM "figures" ORDER BY "p95Ms" DESC, "medianMs" DESC, "calls" DESC, "route", "method" LIMIT 5)
+      UNION ALL
+      (SELECT 'busiest' AS "list", * FROM "figures" ORDER BY "calls" DESC, "p95Ms" DESC, "route", "method" LIMIT 5)`;
+    const listOf = (list: string) => ranked.filter((item) => item.list === list).map(({ method, route, calls, medianMs, p95Ms }) => ({ method, route, calls, medianMs, p95Ms }));
+    expect(everyRoute).toEqual({ slowest: listOf('slowest'), busiest: listOf('busiest') });
   });
 
   it('names the account of a session the handlers did not resolve, and both accounts of an entered one', async () => {

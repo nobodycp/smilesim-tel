@@ -155,6 +155,24 @@ Provider API integration (to be discussed again with the providers' documents), 
 proof, customers, a maximum sell price, WhatsApp and email notifications, package offers and details (long
 discussion pending), automated backups, add-ons (today a manual line task; later a priced task charged on completion).
 
+## Later: an hourly rollup for the request log's route figures (recorded 2026-11-17, database scale DB.14)
+
+- **What:** a table of one row an hour, a method and a route: the calls and a count of each duration (or fixed
+  duration buckets), written by the worker for each hour that has ended and purged with the log at 14 days. The
+  summary would read those rows for the whole hours of its range and the log itself only for the two part-hours at
+  its ends.
+- **Why:** `GET system/requests/summary` (`routeFigures`, and `totals` beside it) reads every row of the range it
+  shows, and the screen opens on the whole 14 days. DB.14 made the figures a count of each duration instead of a sort
+  of every row (no spill to disk; the same numbers as `percentile_cont`, pinned by `request-log.db.spec.ts`): about
+  3–5 times cheaper on 0.6–1 M rows (1.0–1.2 s → 0.2–0.4 s), but still a scan of the window, so it grows with the
+  traffic (an estimated 0.6–1 s at the audit's 3 M rows, which took 5.6–6.4 s before).
+- **Cost:** a new stored table with its own writer, retention and catch-up after downtime; exact figures need the
+  duration counts, a cheaper bucketed form gives approximate percentiles (a [CONTRACT] question for the owner). The
+  free-text filters (a part of the path, the start of an address, an account) cannot be served by it and would keep
+  reading the log.
+- **When it is worth it:** when the summary over 14 days passes about 2 s in production, or the log passes about
+  10 M rows (around 700 k requests a day), whichever comes first. Measure on the server's own copy then.
+
 ## Settled on 2026-11-10
 
 - «سكاي» is both a provider and a network (a company) of the same name: the seed is right as it is.
