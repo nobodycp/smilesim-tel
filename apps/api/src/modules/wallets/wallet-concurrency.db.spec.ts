@@ -8,7 +8,7 @@ import { ApiFacade } from '../testing/api-facade';
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.
 // The compose postgres does not publish a host port, so use a throwaway one:
 //   docker run -d --name smilesim-wallet-test-pg -e POSTGRES_USER=smilesim -e POSTGRES_PASSWORD=smilesim \
-//     -e POSTGRES_DB=smilesim_test -p 55432:5432 postgres:16
+//     -e POSTGRES_DB=smilesim_test -p 55432:5432 postgres:18
 //   DATABASE_URL=postgresql://smilesim:smilesim@localhost:55432/smilesim_test npx prisma migrate deploy
 //   TEST_DATABASE_URL=postgresql://smilesim:smilesim@localhost:55432/smilesim_test npm test -- wallet-concurrency
 const url = process.env.TEST_DATABASE_URL;

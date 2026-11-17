@@ -72,19 +72,23 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16
+    image: postgres:18
     environment:
       POSTGRES_USER: smilesim
       POSTGRES_PASSWORD: smilesim
       POSTGRES_DB: smilesim
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # The image of PostgreSQL 18 keeps its data under /var/lib/postgresql/<major>/docker, so the volume is
+      # mounted one level up (it was /var/lib/postgresql/data until 16). A volume of its own: a major version does
+      # not open another's files, and the data comes over by dump and restore. The volume of PostgreSQL 16
+      # (`postgres-data`) is no longer mounted; it stays on the machine until it is removed by hand.
+      - postgres18-data:/var/lib/postgresql
 
   redis:
-    image: redis:7
+    image: redis:8
     volumes:
       - redis-data:/data
 
 volumes:
-  postgres-data:
+  postgres18-data:
   redis-data:

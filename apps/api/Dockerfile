@@ -1,5 +1,5 @@
 # Build context is the repository root (npm workspaces share one lockfile).
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/package.json
@@ -9,7 +9,7 @@ COPY apps/api apps/api
 RUN npm run prisma:generate --workspace api
 RUN npm run build --workspace api
 
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json package-lock.json ./

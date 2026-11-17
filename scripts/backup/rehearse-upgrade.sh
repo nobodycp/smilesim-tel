@@ -77,7 +77,7 @@ check "reservation indexes" "select count(*) from pg_indexes where indexname in 
 say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes and reservation indexes as expected"
 
 # 3. The new API on the copy. A key and a Redis that exist for this run only.
-docker run -d --name "$redis" -p "127.0.0.1:$((port + 1)):6379" redis:7 >/dev/null || die "the throwaway Redis could not be started"
+docker run -d --name "$redis" -p "127.0.0.1:$((port + 1)):6379" redis:8 >/dev/null || die "the throwaway Redis could not be started"
 key=$(node -e 'console.log(require("crypto").randomBytes(32).toString("base64"))')
 (
   cd "$api"
