@@ -1,4 +1,6 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { Injectable } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { fail, UnitOfWork, type Db } from '../platform';
 import { visibleAccountIds } from './account-visibility';
 import type { PathNode, Account, Actor } from './types';
@@ -13,13 +15,56 @@ export function accountsById<T extends { id: string }>(accounts: T[]): Map<strin
   return new Map(accounts.map((account) => [account.id, account]));
 }
 
+/** One request's read of the tree, while the request is open. */
+type TreeRead = { open: boolean; accounts?: Promise<Account[]> };
+
+const requestTree = new AsyncLocalStorage<TreeRead>();
+
+/**
+ * Runs a read request's handler with one read of the tree shared by every `accounts()` it makes (plan
+ * 2026-11-17-speed, PF.9). The read belongs to this request alone and ends with it: a timer or a stream the handler
+ * leaves running reads afresh. ActorInterceptor uses it for GET only: a GET writes nothing (ADR 0015), so no account
+ * can change under it by its own hand, and a route that writes reads the tree afresh after its write, as before.
+ */
+export function withRequestTree<T>(handle: () => Observable<T>): Observable<T> {
+  return new Observable<T>((subscriber) => {
+    const read: TreeRead = { open: true };
+    const subscription = requestTree.run(read, () => handle().subscribe(subscriber));
+    return () => {
+      read.open = false;
+      read.accounts = undefined;
+      subscription.unsubscribe();
+    };
+  });
+}
+
 /** The accounts as a tree: who is above whom, and what an account may see. */
 @Injectable()
 export class AccountTree {
   constructor(private readonly uow: UnitOfWork) {}
 
-  /** Every account, as the tree is walked. Inside a transaction pass its client (rule 1.3). */
+  /**
+   * Every account, as the tree is walked. Inside a transaction pass its client (rule 1.3): that read goes through the
+   * transaction, every time. Without one, a GET request's calls share one read (`withRequestTree`).
+   */
   async accounts(db: Db = this.uow.prisma): Promise<Account[]> {
+    const shared = db === this.uow.prisma ? requestTree.getStore() : undefined;
+    if (!shared?.open) return this.read(db);
+    let read = shared.accounts;
+    if (!read) {
+      const first = this.read(db);
+      shared.accounts = first;
+      read = first;
+      // A failed read is not shared: the next call reads again.
+      first.catch(() => {
+        if (shared.accounts === first) shared.accounts = undefined;
+      });
+    }
+    // Each caller gets its own list; the rows are shared and read only.
+    return [...(await read)];
+  }
+
+  private async read(db: Db): Promise<Account[]> {
     return db.user.findMany({
       select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, deniedOps: true, disabledAt: true },
       orderBy: { loginName: 'asc' },
