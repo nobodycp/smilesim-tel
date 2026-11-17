@@ -26,11 +26,16 @@ const sans = Noto_Kufi_Arabic({
   display: 'swap',
 });
 
+// Not preloaded (speed plan PF.13): `preload` is decided per layout file, not per request, so a root-layout font is
+// preloaded on every page in every language; the Arabic and English pages would fetch four Hebrew files they never
+// draw. Its `@font-face` rules keep their `unicode-range`, so the browser fetches the face the moment Hebrew text is
+// on the page (the Hebrew locale, a Hebrew name), drawn in its fallback face until then (`display: swap`).
 const hebrew = IBM_Plex_Sans_Hebrew({
   subsets: ['hebrew'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-he',
   display: 'swap',
+  preload: false,
 });
 
 // The `<title>` is rendered by the shell (section · brand) or, off the office, below; it is not

@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (Tailwind migration T6.1; removed 2026-11-17, in git history) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-17 (clean-up CL.6: the plan pointers checked). The history of each change is in git.
+Last verified: 2026-11-17 (clean-up CL.6: the plan pointers checked; speed PF.13: the Hebrew face not preloaded). The history of each change is in git.
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
@@ -208,7 +208,8 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
 
 - Arabic and Latin text: **Noto Kufi Arabic** (`--font-sans`, variable, so 500 and 600 are real weights) — angular like a
   stamp, clear at small sizes.
-- Hebrew: **IBM Plex Sans Hebrew** (`--font-he`, weights 400 to 700).
+- Hebrew: **IBM Plex Sans Hebrew** (`--font-he`, weights 400 to 700). Not preloaded (speed PF.13): its `unicode-range`
+  fetches it when Hebrew text is on the page; Noto Kufi Arabic's two files are the only font preloads.
 - Stack: `var(--font-sans), var(--font-he), Tahoma, sans-serif`. Headings use the same stack at weight 700, the
   heaviest weight (800 is gone, ADR 0021 D7 a).
 - Code (the stack frames on `/system/errors`): `font-mono`, the system's own monospace stack (`ui-monospace,

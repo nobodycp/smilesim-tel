@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { api, type Directory, type DeskMe } from './api';
 import { directoryNames } from './directory';
 import { useConnection } from './connection';
@@ -125,23 +125,17 @@ export function DeskSession({
     await client.invalidateQueries({ queryKey: queryKeys.me });
   }, [client]);
 
-  return (
-    <DeskContext.Provider
-      value={{
-        ready: skip || ready,
-        failed: !skip && failed,
-        retrying: !skip && failed && session.isFetching,
-        retry,
-        refresh,
-        me: session.data ?? null,
-        names: directory.data?.names ?? NO_NAMES,
-        initialName,
-        initialBalance,
-      }}
-    >
-      {children}
-    </DeskContext.Provider>
+  // One value while nothing in it changes: this provider renders again on every navigation (`usePathname`), and a
+  // new object each time would render every `useDesk()` reader with it (speed plan PF.13, audit F10).
+  const me = session.data ?? null;
+  const names = directory.data?.names ?? NO_NAMES;
+  const retrying = !skip && failed && session.isFetching;
+  const value = useMemo<DeskSessionValue>(
+    () => ({ ready: skip || ready, failed: !skip && failed, retrying, retry, refresh, me, names, initialName, initialBalance }),
+    [skip, ready, failed, retrying, retry, refresh, me, names, initialName, initialBalance],
   );
+
+  return <DeskContext.Provider value={value}>{children}</DeskContext.Provider>;
 }
 
 export function useDesk() {
