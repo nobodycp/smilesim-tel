@@ -134,6 +134,64 @@ already filters by package code and already answers the rows the tab shows. The 
 numbers: opening it reads no line. «تحديد الكل» picks the numbers read so far. An action on the sheet asks for the
 tab's pages again with the sheet's other reads. The rows are the same as before, in the list's order (newest first).
 
+## A request's sign-in cost (PF.9)
+
+Until PF.9 a signed-in request sent 8–9 SQL statements before its handler ran, one of them an `UPDATE` of the
+session on every GET, and a handler that asked for the account tree more than once read every account each time
+(performance audit F4, S9; database audit §5, D.9). As built:
+
+1. **The session's last-activity time is written at most once a minute** (decision 13). Every request still runs
+   the whole live check against the stored row (`liveSession`): the Redis live key, the row's revocation and expiry,
+   and the idle check `lastSeenAt + idle limit ≤ now`. The touch that follows (`touchSession`) still renews the Redis
+   key by the idle limit on every request; it writes the row's `lastSeenAt` and `expiresAt` only when the stored
+   `lastSeenAt` is 60 s old or older (`SESSION_TOUCH_SECONDS`, `activityDue` in `auth/sessions.ts`). The stored time
+   is then always within the minute before the last request, so **with an idle limit of N minutes a session ends
+   more than N − 1 and at most N minutes after its last request** — never later than before. Requests closer than
+   N − 1 minutes apart always keep it open (the smallest limit is 15 minutes, so a tab's 30 s rhythm never ends it).
+   Unchanged: a revoked session is refused at its next request (its key and row are ended at once); the sessions
+   allowed are counted at sign-in from the rows and their live keys; an entered (impersonation) session goes the
+   same way; the notices stream checks its session every 15 s as before and never wrote it. There is no absolute
+   server lifetime to keep: the cookie lives 30 days and the server decides by the idle limit. The sessions list's
+   "last seen" is exact to a minute.
+2. **The layers' session rules are kept a minute in the process for the idle check.** `liveSession` reads the
+   sessions allowed and idle minutes of the layers at most once a minute per process (`SESSION_RULES_CACHE_MS`);
+   every write of the policy rows in that process drops them at once. Another API process follows within the
+   minute: there a lowered idle limit closes an idle session up to a minute later, which is the precision decision
+   13 already gives. Nothing the screens promise is weakened: the screens and their answers read afresh, so "In
+   effect" is what was saved; the immediate security response, ending sessions (the two-step policy's "on save,
+   the sessions … are ended", a password reset, a revocation), deletes the live keys and is refused everywhere at
+   the next request. **Kept uncached:** the two-step policy (required, method), read at sign-in, enrolment and when
+   two-step is turned off, never on an ordinary request: kept, a sign-in on another process could skip an enrolment
+   just required. Sign-in's own rules (the sessions allowed, the new session's idle time) are also read afresh. An
+   account's own values are on its row, read with the session on every request.
+3. **The account and what decides its grants are read in one round trip.** The branch owner holds every grant, so
+   its row is read once more without its roles (1 statement instead of 4; should the row no longer say owner, it is
+   read whole). Any other account is read with its role and staff roles in one Prisma call, and the layer's role
+   is read beside it rather than after it. The data and the `Actor` are the same. One SQL statement is not reached:
+   Prisma 7 sends one statement per relation without the `relationJoins` preview (a schema change), and raw SQL
+   would step around the in-memory tables the HTTP specs check grants on.
+4. **The account tree is read once a GET request.** `ActorInterceptor` runs a GET's handler inside
+   `withRequestTree` (`access/account-tree.ts`): every `AccountTree.accounts()` without a transaction client in that
+   request shares one read, each caller with its own list. It is not a process cache: the read belongs to the one
+   request, is never shared with another, and ends when the handler's answer is done, so a timer or a stream it
+   leaves running reads afresh. A call that passes a transaction client (`accounts(tx)`) reads through that
+   transaction every time, as before; the money paths' reads under the wallet lock (D.9's `saleLadder` and the
+   rest) are not part of this slice and do not change. A route that writes (create, freeze, transfer, a role) is
+   not a GET, so it reads the tree afresh after its write, as before; a GET writes nothing (ADR 0015,
+   `get-writes-nothing.http.spec.ts`).
+
+Measured with Prisma's query log over PostgreSQL (`access/sign-in-cost.db.spec.ts`, which pins the "after"):
+
+| Request | Before (all / sign-in) | After (all / sign-in) |
+|---|---|---|
+| `GET /v1/me`, point of sale | 11 / 9 | 9 / 7 |
+| `GET /v1/lines`, point of sale | 16 / 9 | 14 / 7 |
+| `GET /v1/me`, branch owner | 11 / 8 | 6 / 3 |
+| `GET /v1/lines`, branch owner | 15 / 8 | 10 / 3 |
+
+Once a minute a session's request sends one more statement, its `UPDATE`. Not counted: the door check in front
+of the routes (`door.middleware.ts`), which reads the session once more when the request names its door.
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked
