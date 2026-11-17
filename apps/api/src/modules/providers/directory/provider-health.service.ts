@@ -14,6 +14,9 @@ const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: SYSTEM_SEND
 
 export type ProviderHealthRow = Health & { code: string; name: string; failures: number; available: number; alertFloor: number };
 
+/** What the health rule reads of a provider's summary (`ProviderAccountsService.summaries`). */
+export type HealthSummary = { code: string; name: string; available: number };
+
 /**
  * Watches the providers (spec 2026-11-08-overview-and-reports-nav, G): every HEALTH_CHECK_SECONDS it reads each
  * provider's health, and when one changes from working to problem (or back) it stores the new status and tells
@@ -24,6 +27,14 @@ export type ProviderHealthRow = Health & { code: string; name: string; failures:
 @Injectable()
 export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
+  /**
+   * The summaries the watch last worked out in this process, and when (database plan DB.4). `summaries()` reads
+   * every operation entry ever, so the health view is worked out at most once a HEALTH_CHECK_SECONDS: the watch's
+   * own `check` works it out afresh, and `current()` without summaries of its own (the system monitor's providers
+   * part) reuses it within that window. A screen that shows a provider's balance never reads it: the overview
+   * hands its own exact summaries to `current` (spec decision 12).
+   */
+  private watched: { at: number; summaries: Promise<HealthSummary[]> } | null = null;
 
   constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService, private readonly repo: ProvidersRepository) {}
 
@@ -36,15 +47,35 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
 
-  /** Each provider's health now: the overview reads it, and `check` compares it with the stored one. */
-  async current(now: Date = new Date()): Promise<ProviderHealthRow[]> {
-    const [summaries, providers, failed] = await Promise.all([
-      this.accounts.summaries(),
+  /**
+   * The watch's summaries: worked out afresh when `fresh` (the timer's `check`), else the ones worked out within the
+   * last HEALTH_CHECK_SECONDS when there are some. Readers at the same time share one read; a failed read is not kept.
+   */
+  private watchedSummaries(fresh: boolean): Promise<HealthSummary[]> {
+    const clock = Date.now();
+    if (!fresh && this.watched && clock - this.watched.at < HEALTH_CHECK_SECONDS * 1000) return this.watched.summaries;
+    const entry = { at: clock, summaries: this.accounts.summaries() };
+    this.watched = entry;
+    entry.summaries.catch(() => {
+      if (this.watched === entry) this.watched = null;
+    });
+    return entry.summaries;
+  }
+
+  /**
+   * Each provider's health now: `check` compares it with the stored one, the system monitor shows it, and the
+   * overview reads it with the summaries it has just worked out (`summaries`), so its health and its balances come
+   * from one exact read. Without them the watch's summaries are used (`watchedSummaries`). Failures are counted at
+   * each call.
+   */
+  async current(now: Date = new Date(), summaries?: HealthSummary[], fresh = false): Promise<ProviderHealthRow[]> {
+    const [rows, providers, failed] = await Promise.all([
+      summaries ?? this.watchedSummaries(fresh),
       this.repo.providerFloorsAndPackages(),
       this.repo.tasksNotedSince(PROVIDER_FAILED_NOTE, new Date(now.getTime() - FAILURE_WINDOW_MINUTES * 60_000)),
     ]);
     const byCode = new Map(providers.map((row) => [row.code, row]));
-    return summaries.map((summary) => {
+    return rows.map((summary) => {
       const provider = byCode.get(summary.code);
       const packageIds = new Set(provider?.packages.map((row) => row.id) ?? []);
       const failures = failed.filter((task) => packageIds.has(task.packageId)).length;
@@ -80,7 +111,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   /** Stores every change and writes its notice once. Answers the providers that changed. */
   async check(now: Date = new Date()): Promise<ProviderHealthRow[]> {
-    const rows = await this.current(now);
+    const rows = await this.current(now, undefined, true);
     const changed: ProviderHealthRow[] = [];
     for (const row of rows) {
       const stored = row.status === 'problem' ? 'working' : 'problem';

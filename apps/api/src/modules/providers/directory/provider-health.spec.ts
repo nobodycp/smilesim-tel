@@ -2,7 +2,7 @@ import { ProvidersRepository } from '../providers.repository';
 import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { PROVIDER_FAILED_NOTE } from '../../platform/stored-text';
-import { FAILURE_THRESHOLD, healthOf } from './provider-health';
+import { FAILURE_THRESHOLD, HEALTH_CHECK_SECONDS, healthOf } from './provider-health';
 import { ProviderHealthService } from './provider-health.service';
 
 // Provider health and alerts (spec 2026-11-08-overview-and-reports-nav, G).
@@ -50,9 +50,58 @@ describe('provider health', () => {
       },
       publish: async () => undefined,
     };
-    const accounts = { summaries: async () => [{ code: 'sky', name: 'سكاي', available: available.sky }, { code: 'lian', name: 'ليان', available: available.lian }] };
-    return { service: new ProviderHealthService(kernel.uow, accounts as never, new ProvidersRepository(kernel.uow)), notices };
+    const reads = { count: 0, fail: false };
+    const accounts = {
+      summaries: async () => {
+        reads.count += 1;
+        if (reads.fail) throw new Error('read failed');
+        return [{ code: 'sky', name: 'سكاي', available: available.sky }, { code: 'lian', name: 'ليان', available: available.lian }];
+      },
+    };
+    return { service: new ProviderHealthService(kernel.uow, accounts as never, new ProvidersRepository(kernel.uow)), notices, reads };
   }
+
+  // Database plan DB.4: the summaries read every operation entry ever, so the health view is worked out at most once a
+  // HEALTH_CHECK_SECONDS a process. The watch's `check` works it out afresh; a reader that only shows the health view
+  // (the system monitor) reuses it; the overview brings its own exact summaries and reads none.
+  describe('the health view, worked out once a HEALTH_CHECK_SECONDS', () => {
+    afterEach(() => jest.useRealTimers());
+
+    it('two readers within the window cause one computation, and the next window a new one', async () => {
+      jest.useFakeTimers({ now: new Date('2026-11-17T10:00:00.000Z'), doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+      const { service, reads } = setup({ sky: 'working', lian: 'working' }, 0, { sky: 50000, lian: 5000 });
+      const [first, second] = await Promise.all([service.current(), service.current()]);
+      expect(reads.count).toBe(1);
+      expect(second).toEqual(first);
+      jest.setSystemTime(new Date(Date.now() + (HEALTH_CHECK_SECONDS - 1) * 1000));
+      await service.current();
+      expect(reads.count).toBe(1);
+      jest.setSystemTime(new Date(Date.now() + 1000));
+      await service.current();
+      expect(reads.count).toBe(2);
+    });
+
+    it('the watch\'s check works it out afresh and the readers after it reuse that one', async () => {
+      const { service, reads } = setup({ sky: 'working', lian: 'working' }, 0, { sky: 50000, lian: 5000 });
+      await service.current();
+      await service.check();
+      expect(reads.count).toBe(2);
+      await service.current();
+      expect(reads.count).toBe(2);
+    });
+
+    it('reads no summaries when the caller brings its own, and keeps no failed read', async () => {
+      const { service, reads } = setup({ sky: 'working', lian: 'working' }, 0, { sky: 50000, lian: 5000 });
+      const rows = await service.current(new Date(), [{ code: 'sky', name: 'سكاي', available: 100 }]);
+      expect(reads.count).toBe(0);
+      expect(rows.map((row) => [row.code, row.available, row.status])).toEqual([['sky', 100, 'working']]);
+      reads.fail = true;
+      await expect(service.current()).rejects.toThrow('read failed');
+      reads.fail = false;
+      await expect(service.current()).resolves.toHaveLength(2);
+      expect(reads.count).toBe(2);
+    });
+  });
 
   it('writes one notice to the owner and the editors when a provider turns to a problem, and none while it stays', async () => {
     const stored = { sky: 'working', lian: 'working' };

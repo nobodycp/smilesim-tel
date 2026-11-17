@@ -23,7 +23,7 @@ const entries = [
   { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: { ...ladder('pos'), share: -0.5 }, createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerCost: 0 },
 ];
 
-function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = []) {
+function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = [], providers: { accounts: unknown; insights: unknown; health: unknown } = { accounts: {}, insights: {}, health: {} }) {
   const kernel = new ServiceGraph(new MemoryAuthStore());
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
@@ -53,7 +53,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     },
   } as unknown as ServiceGraph['prismaClient'];
   const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
-  return new OverviewService(kernel.tree, wallets, {} as never, {} as never, {} as never, new DeskRepository(kernel.uow));
+  return new OverviewService(kernel.tree, wallets, providers.insights as never, providers.accounts as never, providers.health as never, new DeskRepository(kernel.uow));
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: false, grants: [], operatorId: id, impersonating: false });
@@ -120,6 +120,26 @@ describe('OverviewService', () => {
     expect(result.pulse.current).toMatchObject({ count: 3, amount: 11400, activations: 2 });
     expect(result.pulse.previous).toBeNull();
     expect(result.pulse.trend.find((point) => point.at.startsWith('2026-11') && point.count > 0)).toMatchObject({ count: 3, activations: 2 });
+  });
+
+  it('reads the provider books once: the health is worked out from the summaries the balances show (database plan DB.4)', async () => {
+    const rows = [{ code: 'sky', name: 'سكاي', balance: -100, creditLimit: 0, available: -100 }];
+    const calls = { list: 0, health: [] as unknown[] };
+    const providers = {
+      accounts: { list: async () => { calls.list += 1; return { rows }; } },
+      insights: { supply: async () => ({ rows: [{ providerCode: 'sky', operations: 2, cost: 5000, profit: 700 }] }) },
+      health: {
+        current: async (_now: Date, summaries?: unknown) => {
+          calls.health.push(summaries);
+          return [{ code: 'sky', name: 'سكاي', failures: 0, available: -100, alertFloor: 0, status: 'problem', reason: 'balance' }];
+        },
+      },
+    };
+    const branch = { ...actor('branch', 'branch'), isBranchOwner: true, grants: ['reports'] };
+    const result = await service([], providers).overview(branch, {});
+    expect(calls.list).toBe(1);
+    expect(calls.health).toEqual([rows]);
+    expect(result.providers).toEqual([{ code: 'sky', name: 'سكاي', operations: 2, cost: 5000, profit: 700, balance: -100, creditLimit: 0, available: -100, status: 'problem', problem: 'balance', failures: 0, alertFloor: 0 }]);
   });
 
   it('compares today with the same span of yesterday', async () => {

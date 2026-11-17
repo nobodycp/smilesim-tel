@@ -39,8 +39,13 @@ export class ProviderAccountsService {
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
     const needle = (query.q ?? '').replace(/\s/g, '');
     const { from, to } = dayRange(query.from, query.to);
+    const now = new Date();
+    // Only the rows a figure below reads (database plan DB.4): from the earlier of `from` and the first of this month
+    // (server time, as `monthCost` counts it). No upper bound: `monthCost` reads this month whatever `to` is.
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const since = from ? new Date(Math.min(from.getTime(), monthStart.getTime())) : undefined;
     const [resolved, providers] = await Promise.all([
-      this.wallets.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
+      this.wallets.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined, from: since }),
       this.repo.providersByName(),
     ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
@@ -59,7 +64,6 @@ export class ProviderAccountsService {
     const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
       ? dated.filter((row) => matches.get(row.id)?.state === query.match)
       : dated;
-    const now = new Date();
     const monthCost = chosen
       .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
       .reduce((sum, row) => sum + row.cost, 0);
@@ -302,8 +306,9 @@ export class ProviderAccountsService {
     const times = lines.map((line) => line.at.getTime());
     const from = new Date(Math.min(...times) - 86_400_000);
     const to = new Date(Math.max(...times) + 86_400_000);
-    const ours = (await this.wallets.pricedOperations())
-      .filter((op) => op.providerCode === code && op.cost !== 0 && op.at >= from && op.at <= to)
+    // The statement's dates (± one day) are read in the database (database plan DB.4); the provider is worked out per row.
+    const ours = (await this.wallets.pricedOperations({ from, to }))
+      .filter((op) => op.providerCode === code && op.cost !== 0)
       .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
     const result = reconcile(lines, ours);
     // The unit of work's transaction (slice R.7; before it, the root client's own): the same two writes, in order.

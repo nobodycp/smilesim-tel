@@ -262,13 +262,16 @@ export class OverviewService {
     } as Record<(typeof TASK_STATUSES)[number], number> & { oldestOpenMinutes: number | null };
   }
 
-  /** The branch's providers: the period's operations and cost, the balance with them, and a status. */
+  /**
+   * The branch's providers: the period's operations and cost, the balance with them, and a status. The books are read
+   * once (database plan DB.4): the health is worked out from the same exact summaries the balances show.
+   */
   private async providers(actor: Actor, from: Date | null) {
-    const [accounts, supply, health] = await Promise.all([
+    const [accounts, supply] = await Promise.all([
       this.providerAccounts.list(actor),
       this.insights.supply(actor, from ? { from: from.toISOString() } : {}),
-      this.health.current(),
     ]);
+    const health = await this.health.current(new Date(), accounts.rows);
     const used = new Map(supply.rows.map((row) => [row.providerCode, row]));
     const healthOf = new Map(health.map((row) => [row.code, row]));
     return accounts.rows.map((row) => {

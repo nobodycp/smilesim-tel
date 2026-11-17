@@ -130,11 +130,15 @@ export class WalletsService {
   /**
    * Every line operation with what it cost at its provider (provider-cost.ts `pricedOp`, or the cost kept on the
    * entry), newest first. Shared by the provider-operations report and the provider accounts (roadmap N7).
+   * The filter runs in the database: the kind, a part of the number, and the entry's time (`from` and `to`
+   * inclusive), so a caller that needs a window reads only that window (database plan DB.4). The provider is not
+   * a filter: it is worked out here from the package name, else the line's package (`pricedOp`).
    */
-  async pricedOperations(filter: { kind?: string; msisdn?: string } = {}) {
+  async pricedOperations(filter: { kind?: string; msisdn?: string; from?: Date; to?: Date } = {}) {
     const rows = await this.repo.operationEntries({
       kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
       ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
+      ...(filter.from || filter.to ? { createdAt: { ...(filter.from ? { gte: filter.from } : {}), ...(filter.to ? { lte: filter.to } : {}) } } : {}),
     });
     const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
     const [lines, packages] = await Promise.all([
