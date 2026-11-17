@@ -83,22 +83,26 @@ export class InsightsService {
     }).filter((row) => !isOn(query.negative) || row.balance < 0);
   }
 
-  /** Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's profit. */
+  /**
+   * Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's
+   * profit. The provider and the cost are the ones each operation stored when it was written, as in the provider
+   * books (ADR 0025 rule 5: one definition of cost).
+   */
   async supply(actor: Actor, input: PeriodQuery = {}) {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const query = parseInput(PeriodQuery, input);
     const createdAt = dateRange(query);
-    const rows = await this.repo.providerOperations(PROVIDER_OPERATION_KINDS, createdAt, REPORT_LIMIT);
-    const lines = await this.repo.providersOfLines([...new Set(rows.map((row) => row.lineId).filter((id): id is string => Boolean(id)))]);
-    const providerOf = new Map(lines.map((line) => [line.id, line.package.provider]));
+    const [rows, providers] = await Promise.all([this.repo.providerOperations(PROVIDER_OPERATION_KINDS, createdAt, REPORT_LIMIT), this.repo.providerNames()]);
+    const providerOf = new Map(providers.map((provider) => [provider.id, provider]));
     const margins = await this.wallets.marginsFor(actor, rows.filter((row) => SALE_KINDS[row.kind] || REFUND_KINDS.has(row.kind)));
     const groups = new Map<string, { providerCode: string; providerName: string; operations: number; cost: number; profit: number }>();
     for (const row of rows) {
-      const provider = row.lineId ? providerOf.get(row.lineId) : undefined;
+      const provider = row.providerId ? providerOf.get(row.providerId) : undefined;
       if (!provider) continue;
       const group = groups.get(provider.code) ?? { providerCode: provider.code, providerName: provider.name, operations: 0, cost: 0, profit: 0 };
       group.operations += 1;
+      // Never null on an operation entry (the CHECK `WalletEntry_operation_priced`).
       group.cost += row.providerCost ?? 0;
       group.profit += margins.get(row.id) ?? 0;
       groups.set(provider.code, group);

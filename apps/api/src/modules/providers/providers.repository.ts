@@ -100,15 +100,25 @@ export class ProvidersRepository {
 
   // ── Our account with each provider ─────────────────────────────────────────────────────────────────────────
 
-  /** Every payment and settlement, newest first. */
   /** What each provider was paid and settled, summed by the database: one row per provider and kind. */
   entrySums() {
     return this.uow.prisma.providerEntry.groupBy({ by: ['providerId', 'kind'], _sum: { amount: true } });
   }
 
-  /** One provider's payments and settlements, newest first: its ledger page reads the rows. */
-  entriesOf(providerId: string) {
-    return this.uow.prisma.providerEntry.findMany({ where: { providerId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
+  /** One provider's payments and settlements between two instants (inclusive, either may be open), newest first, at most `take`: its ledger page. */
+  entriesOf(providerId: string, from: Date | null, to: Date | null, take: number) {
+    const createdAt = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+    return this.uow.prisma.providerEntry.findMany({
+      where: { providerId, ...(from || to ? { createdAt } : {}) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take,
+    });
+  }
+
+  /** The sum of one provider's payments and settlements up to an instant (inclusive), or ever when there is none. */
+  async entryTotalUpTo(providerId: string, to: Date | null): Promise<number> {
+    const sum = await this.uow.prisma.providerEntry.aggregate({ where: { providerId, ...(to ? { createdAt: { lte: to } } : {}) }, _sum: { amount: true } });
+    return sum._sum.amount ?? 0;
   }
 
   /** The action and package of every task in these statuses: what open tasks are about to cost. */

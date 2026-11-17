@@ -1,8 +1,7 @@
-import type { Prisma } from '../../generated/prisma/client';
-import { costsAtProvider, providerBranchCost } from '../pricing';
+import { costsAtProvider } from '../pricing';
 import type { Sale } from './sale';
 
-// What an operation in the ledger cost the branch at the provider, for the provider-operations report.
+// The provider and the cost every operation's wallet entry stores (ADR 0025); the provider books are sums of them.
 
 // The kinds are also listed in the CHECK `WalletEntry_operation_priced` (migration 20261117210000_provider_ledger_stored);
 // provider-priced-entries.db.spec.ts compares the two lists.
@@ -27,48 +26,4 @@ export function operationColumns(kind: string, sale: Sale | undefined, recorded:
   if (sale.providerCost !== undefined) return { providerId: sale.providerId, providerCost: sale.providerCost };
   if (!recorded && costsAtProvider(kind)) throw new Error(`a ${kind} entry is written without its provider cost (ADR 0025)`);
   return { providerId: sale.providerId, providerCost: 0 };
-}
-
-export type PricedPackage = {
-  id: string;
-  name: string;
-  dataGb: number | null;
-  months: number;
-  branchCost: number;
-  renewalBranchCost: number;
-  provider: { code: string; name: string };
-  company: { name: string } | null;
-};
-
-function packageLabel(item: { name: string; dataGb: number | null; months: number }): string {
-  if (item.dataGb == null) return item.name;
-  return item.months === 1 ? `${item.dataGb} جيجا` : `${item.dataGb} جيجا · ${item.months} أشهر`;
-}
-
-function samePackage(item: PricedPackage, packageName: string, companyName: string): boolean {
-  if ((item.company?.name ?? '') !== companyName) return false;
-  return item.name === packageName || packageLabel(item) === packageName;
-}
-
-function savedTerms(value: Prisma.JsonValue | null | undefined) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as { subscription?: { branchCost?: number }; renewal?: { branchCost?: number } };
-}
-
-export function pricedOp(
-  kind: string,
-  packageName: string,
-  companyName: string,
-  line: { terms: Prisma.JsonValue; package: PricedPackage } | undefined,
-  packages: PricedPackage[],
-) {
-  const named = packages.find((item) => samePackage(item, packageName, companyName));
-  const current = line?.package;
-  const chosen = named ?? current ?? null;
-  const same = chosen != null && current != null && chosen.id === current.id;
-  return {
-    cost: providerBranchCost(kind, same ? savedTerms(line?.terms) : null, chosen),
-    providerCode: chosen?.provider.code ?? '',
-    providerName: chosen?.provider.name ?? '',
-  };
 }

@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
-import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
+import { PROVIDER_OPERATION_KINDS } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 
 const FINANCE_CSV_LIMIT = 10_000;
@@ -128,39 +128,45 @@ export class WalletsService {
     };
   }
 
+  /** Each provider's purchases by provider id: what its operation entries stored as cost (ADR 0025 rule 5). */
+  async providerPurchases(): Promise<Map<string, number>> {
+    const sums = await this.repo.providerPurchases();
+    return new Map(sums.flatMap((row) => (row.providerId ? [[row.providerId, row._sum.providerCost ?? 0] as const] : [])));
+  }
+
+  /** What one provider's operation entries stored as cost up to `to` (inclusive), or ever without it. */
+  async providerCostUpTo(providerId: string, to: Date | null): Promise<number> {
+    return (await this.repo.providerCostUpTo(providerId, to))._sum.providerCost ?? 0;
+  }
+
   /**
-   * Every line operation with what it cost at its provider (provider-cost.ts `pricedOp`, or the cost kept on the
-   * entry), newest first. Shared by the provider-operations report and the provider accounts (roadmap N7).
-   * The filter runs in the database: the kind, a part of the number, and the entry's time (`from` and `to`
-   * inclusive), so a caller that needs a window reads only that window (database plan DB.4). The provider is not
-   * a filter: it is worked out here from the package name, else the line's package (`pricedOp`).
+   * The line operations with the provider and the cost each stored when it was written (ADR 0025), newest first.
+   * Every filter runs in the database: the provider, the kind, a part of the number, the entry's time (`from` and
+   * `to` inclusive), `priced` (a cost other than 0: what a provider's ledger and a statement list), and `take`.
+   * An operation entry always carries both columns (the CHECK `WalletEntry_operation_priced`).
    */
-  async pricedOperations(filter: { kind?: string; msisdn?: string; from?: Date; to?: Date } = {}) {
-    const rows = await this.repo.operationEntries({
-      kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
-      ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
-      ...(filter.from || filter.to ? { createdAt: { ...(filter.from ? { gte: filter.from } : {}), ...(filter.to ? { lte: filter.to } : {}) } } : {}),
-    });
-    const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
-    const [lines, packages] = await Promise.all([
-      lineIds.length ? this.repo.linesWithPackage(lineIds) : [],
-      this.repo.packagesWithProvider(),
-    ]);
-    const lineById = new Map(lines.map((line) => [line.id, line]));
-    return rows.map((row) => {
-      const priced = pricedOp(row.kind, row.packageName ?? '', row.companyName ?? '', row.lineId ? lineById.get(row.lineId) : undefined, packages);
-      return {
-        id: row.id,
-        at: row.createdAt,
-        kind: row.kind,
-        msisdn: row.msisdn ?? '',
-        companyName: row.companyName ?? '',
-        packageName: row.packageName ?? '',
-        ...priced,
-        cost: row.providerCost ?? priced.cost,
-        esimPrice: row.esimPrice ?? null,
-      };
-    });
+  async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; take?: number } = {}) {
+    const rows = await this.repo.operationsAtProviders(
+      {
+        kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
+        ...(filter.providerId ? { providerId: filter.providerId } : {}),
+        ...(filter.priced ? { providerCost: { not: 0 } } : {}),
+        ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
+        ...(filter.from || filter.to ? { createdAt: { ...(filter.from ? { gte: filter.from } : {}), ...(filter.to ? { lte: filter.to } : {}) } } : {}),
+      },
+      filter.take,
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      at: row.createdAt,
+      kind: row.kind,
+      msisdn: row.msisdn ?? '',
+      companyName: row.companyName ?? '',
+      packageName: row.packageName ?? '',
+      providerId: row.providerId ?? '',
+      cost: row.providerCost ?? 0,
+      esimPrice: row.esimPrice ?? null,
+    }));
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */

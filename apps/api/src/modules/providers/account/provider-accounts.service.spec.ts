@@ -8,8 +8,21 @@ import { ProviderAccountsService } from './provider-accounts.service';
 const owner: Actor = { id: 'branch', loginName: 'branch', nickname: 'فرع', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'branch', impersonating: false };
 const staff = (grants: string[]): Actor => ({ ...owner, id: 'clerk', loginName: 'clerk', isBranchOwner: false, grants, operatorId: 'clerk' });
 
+type Window = { gte?: Date; lte?: Date } | undefined;
+const within = (at: Date, window: Window) => (!window?.gte || at >= window.gte) && (!window?.lte || at <= window.lte);
+
 function service() {
   const created: unknown[] = [];
+  const entries = [
+    { id: 'x2', providerId: 'p1', kind: 'settlement', amount: -500, note: 'فرق', actorLoginName: 'branch', createdAt: new Date('2026-11-05T00:00:00Z') },
+    { id: 'x1', providerId: 'p1', kind: 'payment', amount: 20000, note: 'دفعة', actorLoginName: 'branch', createdAt: new Date('2026-11-02T00:00:00Z') },
+  ];
+  // What the operations' entries stored (ADR 0025): the provider and the cost.
+  const operations = [
+    { id: 'o2', at: new Date('2026-11-04T00:00:00Z'), kind: 'charge', msisdn: '055', packageName: '400', providerId: 'p1', cost: 3000 },
+    { id: 'o1', at: new Date('2026-11-01T00:00:00Z'), kind: 'activate', msisdn: '055', packageName: '400', providerId: 'p1', cost: 3500 },
+    { id: 'o3', at: new Date('2026-11-03T00:00:00Z'), kind: 'activate', msisdn: '056', packageName: '150', providerId: 'p2', cost: 2000 },
+  ];
   const updated: unknown[] = [];
   const kernel = {
     prisma: {
@@ -19,10 +32,11 @@ function service() {
         update: async (args: unknown) => void updated.push(args),
       },
       providerEntry: {
-        findMany: async ({ where }: { where: { providerId: string } }) => [
-          { id: 'x2', providerId: 'p1', kind: 'settlement', amount: -500, note: 'فرق', actorLoginName: 'branch', createdAt: new Date('2026-11-05T00:00:00Z') },
-          { id: 'x1', providerId: 'p1', kind: 'payment', amount: 20000, note: 'دفعة', actorLoginName: 'branch', createdAt: new Date('2026-11-02T00:00:00Z') },
-        ].filter((row) => row.providerId === where.providerId),
+        findMany: async ({ where, take }: { where: { providerId: string; createdAt?: Window }; take: number }) =>
+          entries.filter((row) => row.providerId === where.providerId && within(row.createdAt, where.createdAt)).slice(0, take),
+        aggregate: async ({ where }: { where: { providerId: string; createdAt?: Window } }) => ({
+          _sum: { amount: entries.filter((row) => row.providerId === where.providerId && within(row.createdAt, where.createdAt)).reduce((sum, row) => sum + row.amount, 0) },
+        }),
         // The list reads sums, never the rows.
         groupBy: async () => [
           { providerId: 'p1', kind: 'settlement', _sum: { amount: -500 } },
@@ -35,11 +49,12 @@ function service() {
     },
   } as never;
   const wallets = {
-    pricedOperations: async () => [
-      { id: 'o2', at: new Date('2026-11-04T00:00:00Z'), kind: 'charge', msisdn: '055', packageName: '400', providerCode: 'sky', cost: 3000 },
-      { id: 'o1', at: new Date('2026-11-01T00:00:00Z'), kind: 'activate', msisdn: '055', packageName: '400', providerCode: 'sky', cost: 3500 },
-      { id: 'o3', at: new Date('2026-11-03T00:00:00Z'), kind: 'activate', msisdn: '056', packageName: '150', providerCode: 'lian', cost: 2000 },
-    ],
+    providerPurchases: async () => new Map(['p1', 'p2'].map((id) => [id, operations.filter((row) => row.providerId === id).reduce((sum, row) => sum + row.cost, 0)])),
+    providerCostUpTo: async (providerId: string, to: Date | null) => operations.filter((row) => row.providerId === providerId && within(row.at, to ? { lte: to } : undefined)).reduce((sum, row) => sum + row.cost, 0),
+    providerOperations: async (filter: { providerId?: string; from?: Date | null; to?: Date | null; priced?: boolean; take?: number }) =>
+      operations
+        .filter((row) => (!filter.providerId || row.providerId === filter.providerId) && (!filter.priced || row.cost !== 0) && within(row.at, { gte: filter.from ?? undefined, lte: filter.to ?? undefined }))
+        .slice(0, filter.take),
   } as unknown as WalletsService;
   return { accounts: new ProviderAccountsService(kernel, wallets, new ProvidersRepository(kernel)), created, updated };
 }

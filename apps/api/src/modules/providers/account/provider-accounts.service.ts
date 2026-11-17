@@ -28,9 +28,9 @@ export class ProviderAccountsService {
   ) {}
 
   /**
-   * The branch's line operations by provider with their match state (`GET provider-operations`). Slice R.7: from
-   * `WalletsService`, text unchanged but for whom it reads through: the priced operations are still the wallets'
-   * (`pricedOperations`); the providers and the match are the provider accounts'.
+   * The branch's line operations by provider with their match state (`GET provider-operations`): the provider and
+   * the cost each operation stored (ADR 0025), read through `WalletsService.providerOperations` with the provider,
+   * the kind, the number and the window in SQL; the match is the provider accounts'.
    */
   async providerOperations(actor: Actor, input: ProviderOperationsQuery = {}) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
@@ -44,22 +44,19 @@ export class ProviderAccountsService {
     // (server time, as `monthCost` counts it). No upper bound: `monthCost` reads this month whatever `to` is.
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const since = from ? new Date(Math.min(from.getTime(), monthStart.getTime())) : undefined;
-    const [resolved, providers] = await Promise.all([
-      this.wallets.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined, from: since }),
-      this.repo.providersByName(),
-    ]);
-    const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
-    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
+    const providers = await this.repo.providersByName();
     const providerByCode = new Map(providers.map((item) => [item.code, item]));
+    const providerById = new Map(providers.map((item) => [item.id, item]));
+    const named = query.provider ? providerByCode.get(query.provider) : undefined;
+    // A provider code that names no provider has no operations.
+    const read = query.provider && !named ? [] : await this.wallets.providerOperations({ providerId: named?.id, kind: kind || undefined, msisdn: needle || undefined, from: since });
+    const chosen = read.map((row) => ({ ...row, providerCode: providerById.get(row.providerId)?.code ?? '', providerName: providerById.get(row.providerId)?.name ?? '' }));
+    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
     const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
       const provider = providerByCode.get(row.providerCode);
       return matchOf(row, { matchSource: provider?.matchSource ?? 'statement', lastMatchedAt: provider?.lastMatchedAt ?? null });
     };
-    const dated = chosen.filter((row) => {
-      if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
-      if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
-      return true;
-    });
+    const dated = chosen.filter((row) => (!from || row.at >= from) && (!to || row.at <= to));
     const matches = new Map(dated.map((row) => [row.id, matchFor(row)]));
     const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
       ? dated.filter((row) => matches.get(row.id)?.state === query.match)
@@ -110,11 +107,14 @@ export class ProviderAccountsService {
     requireAnyGrant(actor, write ? ['accounting'] : ['accounting', 'reports']);
   }
 
-  /** Purchases, entries and open-task cost of every provider, from one read of each. */
+  /**
+   * Purchases, entries and open-task cost of every provider, from one read of each. Purchases, payments and
+   * settlements are sums in the database: purchases of the cost each operation stored (ADR 0025 rule 5).
+   */
   private async books() {
-    const [providers, operations, sums, tasks, packages] = await Promise.all([
+    const [providers, purchases, sums, tasks, packages] = await Promise.all([
       this.repo.providersByName(),
-      this.wallets.pricedOperations(),
+      this.wallets.providerPurchases(),
       this.repo.entrySums(),
       this.repo.tasksInStatuses(OPEN_TASKS),
       this.repo.packagesWithProvider(),
@@ -126,10 +126,22 @@ export class ProviderAccountsService {
       if (!pkg) continue;
       held.set(pkg.provider.code, (held.get(pkg.provider.code) ?? 0) + providerBranchCost(task.action, null, pkg));
     }
-    // Payments and settlements are summed in the database. Purchases are still added here: an operation's cost
-    // falls back to the package's price when its row stored none, which a query cannot do.
     const paid = new Map(sums.map((row) => [`${row.providerId}:${row.kind}`, row._sum.amount ?? 0]));
-    return { providers, operations, paid, held };
+    return { providers, purchases, paid, held };
+  }
+
+  /**
+   * A provider's open differences, simulated (spec E, `matchOf`): its operations a match covers whose «charged»
+   * amount differs. Only an operation with a cost can differ (`simulatedCharge` of 0 is 0), and a statement
+   * provider's match covers the operations up to `lastMatchedAt` only, so those alone are read. Counted for the
+   * list and the detail screens, not for `summaries()` (ADR 0025 rule 5); over an `api` provider it still reads
+   * every priced operation of the provider, until a real reconciliation stores its items.
+   */
+  private async openDifferences(provider: { id: string; matchSource: string; lastMatchedAt: Date | null }): Promise<number> {
+    if (provider.matchSource !== 'api' && !provider.lastMatchedAt) return 0;
+    const upTo = provider.matchSource === 'api' ? null : provider.lastMatchedAt;
+    const rows = await this.wallets.providerOperations({ providerId: provider.id, to: upTo, priced: true });
+    return rows.filter((row) => matchOf(row, provider).state === 'difference').length;
   }
 
   private summaryOf(provider: { id: string; code: string; name: string; creditLimit: number; matchSource?: string; matchEveryDays?: number; lastMatchedAt?: Date | null }, books: Awaited<ReturnType<ProviderAccountsService['books']>>) {
@@ -138,9 +150,7 @@ export class ProviderAccountsService {
       matchEveryDays: provider.matchEveryDays ?? 7,
       lastMatchedAt: provider.lastMatchedAt ?? null,
     };
-    // Open differences (simulated matching, spec E): this provider's operations whose «charged» amount differs.
-    const openDifferences = books.operations.filter((row) => row.providerCode === provider.code && matchOf(row, matching).state === 'difference').length;
-    const purchases = books.operations.filter((row) => row.providerCode === provider.code).reduce((sum, row) => sum + row.cost, 0);
+    const purchases = books.purchases.get(provider.id) ?? 0;
     const payments = books.paid.get(`${provider.id}:payment`) ?? 0;
     const settlements = books.paid.get(`${provider.id}:settlement`) ?? 0;
     const balance = payments + settlements - purchases;
@@ -160,7 +170,6 @@ export class ProviderAccountsService {
       matchEveryDays: matching.matchEveryDays,
       lastMatchedAt: matching.lastMatchedAt?.toISOString() ?? null,
       matchOverdue: matchOverdue(matching),
-      openDifferences,
     };
   }
 
@@ -173,7 +182,7 @@ export class ProviderAccountsService {
   async list(actor: Actor) {
     this.gate(actor, false);
     const books = await this.books();
-    const rows = books.providers.map((provider) => this.summaryOf(provider, books));
+    const rows = await Promise.all(books.providers.map(async (provider) => ({ ...this.summaryOf(provider, books), openDifferences: await this.openDifferences(provider) })));
     return {
       rows,
       totals: {
@@ -184,35 +193,44 @@ export class ProviderAccountsService {
     };
   }
 
-  /** One provider: its summary and its ledger (purchases and entries, newest first, each with the balance after it). */
+  /**
+   * One provider: its summary and its ledger page — its operations with a cost and its payments and settlements,
+   * newest first, in the dates asked, at most LEDGER_LIMIT rows (`capped` past it). Read by keyset from the newest
+   * (ADR 0025 rule 5): each source gives at most LEDGER_LIMIT + 1 rows; the newest row's balance after it is the
+   * balance up to `to` (a sum in the database), and each older row's is the one after it less its amount.
+   */
   async detail(actor: Actor, code: string, input: PeriodQuery = {}) {
     this.gate(actor, false);
     const query = parseInput(PeriodQuery, input);
     const books = await this.books();
     const provider = books.providers.find((row) => row.code === code);
     if (!provider) fail(404, 'NOT_FOUND');
-    const entries = await this.repo.entriesOf(provider.id);
+    const { from, to } = dayRange(query.from, query.to);
+    const [operations, entries, cost, paid, openDifferences] = await Promise.all([
+      this.wallets.providerOperations({ providerId: provider.id, from, to, priced: true, take: LEDGER_LIMIT + 1 }),
+      this.repo.entriesOf(provider.id, from, to, LEDGER_LIMIT + 1),
+      this.wallets.providerCostUpTo(provider.id, to),
+      this.repo.entryTotalUpTo(provider.id, to),
+      this.openDifferences(provider),
+    ]);
     const rows: LedgerRow[] = [
-      ...books.operations.filter((row) => row.providerCode === code && row.cost !== 0).map((row) => ({
+      ...operations.map((row) => ({
         id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLoginName: '',
       })),
       ...entries.map((row) => ({
         id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLoginName: row.actorLoginName,
       })),
-    ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
-    let running = 0;
-    const withBalance = rows.map((row) => {
-      running += row.amount;
-      return { ...row, balanceAfter: running };
+    ].sort((a, b) => b.at.getTime() - a.at.getTime() || b.id.localeCompare(a.id));
+    let balance = paid - cost;
+    const ledger = rows.slice(0, LEDGER_LIMIT).map((row) => {
+      const balanceAfter = balance;
+      balance -= row.amount;
+      return { ...row, at: row.at.toISOString(), balanceAfter };
     });
-    const { from, to } = dayRange(query.from, query.to);
-    const ranged = withBalance
-      .filter((row) => (!from || Number.isNaN(from.getTime()) || row.at >= from) && (!to || Number.isNaN(to.getTime()) || row.at <= to))
-      .reverse();
     return {
-      summary: this.summaryOf(provider, books),
-      ledger: ranged.slice(0, LEDGER_LIMIT).map((row) => ({ ...row, at: row.at.toISOString() })),
-      capped: ranged.length > LEDGER_LIMIT,
+      summary: { ...this.summaryOf(provider, books), openDifferences },
+      ledger,
+      capped: rows.length > LEDGER_LIMIT,
     };
   }
 
@@ -306,9 +324,8 @@ export class ProviderAccountsService {
     const times = lines.map((line) => line.at.getTime());
     const from = new Date(Math.min(...times) - 86_400_000);
     const to = new Date(Math.max(...times) + 86_400_000);
-    // The statement's dates (± one day) are read in the database (database plan DB.4); the provider is worked out per row.
-    const ours = (await this.wallets.pricedOperations({ from, to }))
-      .filter((op) => op.providerCode === code && op.cost !== 0)
+    // This provider's operations with a cost over the statement's dates (± one day), read in the database.
+    const ours = (await this.wallets.providerOperations({ providerId: provider.id, from, to, priced: true }))
       .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
     const result = reconcile(lines, ours);
     // The unit of work's transaction (slice R.7; before it, the root client's own): the same two writes, in order.

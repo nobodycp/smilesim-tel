@@ -10,8 +10,7 @@
     "lint": "eslint . --max-warnings 0",
     "seal-secrets": "node dist/cli/seal-secrets.js",
     "reservation-conflicts": "node dist/cli/reservation-conflicts.js",
-    "two-factor-methods": "node dist/cli/two-factor-methods.js",
-    "provider-ledger-backfill": "node dist/cli/provider-ledger-backfill.js"
+    "two-factor-methods": "node dist/cli/two-factor-methods.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.5.1",

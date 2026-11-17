@@ -9,27 +9,6 @@ import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLad
 
 const log = logger('WalletLedger');
 
-/** An operation entry written before the provider ledger's first release, and the provider and cost to store on it. */
-export type UnpricedEntry = { id: string; providerId: string; cost: number };
-
-/**
- * The provider ledger's backfill (ADR 0025, slice P.2; `cli/provider-ledger-backfill.ts`): the one write to an entry
- * after it was written. It stores the provider and the cost of operation entries that carry no provider yet, in
- * the caller's transaction; an entry that has one is left as it is (`"providerId" IS NULL` in the `WHERE`), so an
- * entry's provider and cost, once stored, are never rewritten. No money moves. Answers how many rows it wrote.
- */
-export async function fillOperationColumns(tx: Prisma.TransactionClient, rows: UnpricedEntry[]): Promise<number> {
-  let filled = 0;
-  for (let at = 0; at < rows.length; at += 1000) {
-    const batch = rows.slice(at, at + 1000);
-    filled += await tx.$executeRaw`
-      UPDATE "WalletEntry" AS entry SET "providerId" = given.provider, "providerCost" = given.cost
-      FROM unnest(${batch.map((row) => row.id)}::text[], ${batch.map((row) => row.providerId)}::text[], ${batch.map((row) => row.cost)}::int[]) AS given(id, provider, cost)
-      WHERE entry."id" = given.id AND entry."providerId" IS NULL`;
-  }
-  return filled;
-}
-
 /** A wallet as `post` needs it: the row, and of its owner what a notice names. */
 type PostedWallet = { userId: string; balance: number; ceiling: number; layer: string; parentId: string | null; loginName: string };
 

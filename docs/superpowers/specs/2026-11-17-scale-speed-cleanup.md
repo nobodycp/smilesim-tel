@@ -319,11 +319,34 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.1 | `WalletEntry.providerId` (no foreign key) and the CHECK `WalletEntry_operation_priced`, `NOT VALID` (migration `20261117210000_provider_ledger_stored`); `Sale.providerId`; every writer of an operation kind passes the provider and the cost (below). Reads unchanged. | done |
 | P.2 | The backfill command `provider-ledger-backfill` (`cli/`) with its built-in proof. | done |
 | P.3 | The partial index `WalletEntry_provider_createdAt_id` (migration `20261117220000_provider_ledger_index`, a plain `CREATE INDEX` by the rule below, not `CONCURRENTLY`) and `VALIDATE CONSTRAINT` (`20261117220100_provider_ledger_validate`: only when no stored row breaks the CHECK, else a `WARNING` and it stays `NOT VALID`), in the release after the backfill ran. | done |
-| P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. | next |
+| P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. The backfill command is deleted with it (it froze the read-time pricing): it exists in release 1 only. | done |
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. Example: a 30 ₪ period, the number worked 10 days: the disconnect stores −19.5 ₪, so the line's net cost is 10.5 ₪. Today (kept by P.1 and the backfill, so the proof is equal) the disconnect stores *used share + fee* as a further purchase, 40.5 ₪ in all. Its own spec section first; the stored history is corrected by a settlement entry or a migration the owner chooses. | after P.4 |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Its own spec first. | after P.4 |
 
-P.5 (closed monthly totals) only if P.4 measures over budget.
+P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
+(the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
+(46 entries) the planner scans the table, and with sequential scans off it reads the sum from the partial index
+alone (an index-only scan, no heap fetch).
+
+**The reads (P.4).** Purchases: `SUM("providerCost") … WHERE "providerId" IS NOT NULL GROUP BY "providerId"`
+(`WalletsService.providerPurchases`). A provider's ledger page: at most `LEDGER_LIMIT` + 1 of its operations with a
+cost and of its `ProviderEntry` rows, newest first in the dates asked; the newest row's balance after it is the
+balance up to the page's end date (two sums), each older row's worked back. `GET provider-operations` and the
+reconciliation filter the provider in SQL. The providers report (`supply`) groups by the stored provider and adds the
+stored cost. `openDifferences` (simulated) is counted for the list and the detail screens over the priced
+operations a match covers, not by `summaries()`.
+
+Before the old reads were deleted, both were run on the local dev database (read-only) and compared: the list with
+its totals, `summaries()`, every provider's detail over six date ranges, the reconciliation window, and
+`GET provider-operations` over 28 queries, every page: all equal. Per provider (purchases, balance, available,
+operations): sky 63288, −63288, −63288, 27; lian 8500, −8500, −8500, 4; aren 0, 0, −3000, 0; quickline 0, 0, 0, 0;
+alloha 22000, 8000, 99000, 15 — the same in both. The providers report moved on purpose (ADR 0025 rule 5, the
+owner's answers 2 and 5): it took the provider from the line's current package and skipped an entry without a line;
+it now counts the stored provider. On the dev data four entries whose package name and company («500 جيجا», ويكوم)
+exist under three providers moved from aren (2 entries, 5000) and alloha (2, 3500) to lian (4, 8500): the old books'
+name matching, frozen by the backfill, gave them to lian, while their lines hold aren's and alloha's package and
+never switched. **Open, for the owner, before the backfill runs on a server:** an entry whose package name and
+company match packages of several providers is attributed to the first one found, not to its line's package.
 
 **What each writer stores (P.1).** The provider is the one of the package the entry names (`Package.providerId` of
 the row the caller already read: no read is added); the cost is the one of that moment.
@@ -343,7 +366,7 @@ kind without a provider, or a priced kind that moves money without its cost, thr
 refuses it in the database. No statement, lock or foreign key is added under the wallet lock:
 `sale-lock-tree.db.spec.ts` still counts 11 statements for an activation and 12 for an extension.
 
-**The backfill (P.2).** One transaction on the `tool` client, with `WalletEntry` locked against writes. It reads
+**The backfill (P.2; release 1 only, deleted by P.4).** One transaction on the `tool` client, with `WalletEntry` locked against writes. It reads
 today's books through the services the screens use (`WalletsService.pricedOperations`,
 `ProviderAccountsService.summaries` and `detail`), writes `providerId` and `providerCost` on every operation entry
 that has no provider, then compares, inside the same transaction: each entry's stored provider and cost with what

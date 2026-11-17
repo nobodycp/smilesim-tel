@@ -7,16 +7,18 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ServiceGraph } from '../../testing/service-graph';
 import { WalletsRepository } from '../../wallets/wallets.repository';
 import { WalletsService } from '../../wallets/wallets.service';
-import { entriesStoredBeforeTheCheck, theCheckValidatedAgain } from '../../wallets/testing/entries-before-the-check';
+import { InsightsService } from '../../reporting/reports/insights.service';
+import { ReportsRepository } from '../../reporting/reports/reports.repository';
 import { ProvidersRepository } from '../providers.repository';
 import { ProviderHealthService } from '../directory/provider-health.service';
 import { ProviderAccountsService } from './provider-accounts.service';
 
-// PostgreSQL only (TEST_DATABASE_URL). Database plan DB.4: the provider books read the same rows and give the same
-// numbers once the callers push their window into SQL. Totals are pinned on a seeded set (a cost kept on the entry,
-// one taken from the line's saved terms, one from the package's price, one with no line, operations that cost
-// nothing, payments, a settlement, open and closed tasks), and each windowed read is compared with the read it
-// replaced: every operation ever, filtered in Node (the oracle).
+// PostgreSQL only (TEST_DATABASE_URL). The provider books are sums of what each operation's entry stored (ADR 0025,
+// slice P.4). Totals are pinned on a seeded set, stored as the backfill of release 1 left it (a cost kept on the
+// entry, one the old reads took from the line's saved terms, one from the package's price, one with no line,
+// operations that cost nothing, an entry that is not an operation, payments, a settlement, open and closed tasks):
+// the same answers the read-time fallback gave before. Each windowed read is compared with every operation read
+// and filtered in Node (the oracle).
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
@@ -34,9 +36,10 @@ suite('the provider books (PostgreSQL)', () => {
   let prisma: PrismaClient;
   let wallets: WalletsService;
   let accounts: ProviderAccountsService;
-  /** The same service reading as before DB.4: every operation ever, whatever window the caller asked for. */
+  /** The same service over every operation ever, filtered in Node: whatever provider and window the caller asked for. */
   let oracle: ProviderAccountsService;
   let health: ProviderHealthService;
+  let insights: InsightsService;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = url;
@@ -46,9 +49,13 @@ suite('the provider books (PostgreSQL)', () => {
     const repo = new ProvidersRepository(graph.uow);
     wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, graph.ladder, new WalletsRepository(graph.uow));
     accounts = new ProviderAccountsService(graph.uow, wallets, repo);
-    const unwindowed = { pricedOperations: (filter: { kind?: string; msisdn?: string } = {}) => wallets.pricedOperations({ kind: filter.kind, msisdn: filter.msisdn }) };
+    const unwindowed = {
+      providerOperations: async (filter: { providerId?: string; kind?: string; msisdn?: string } = {}) =>
+        (await wallets.providerOperations({ kind: filter.kind, msisdn: filter.msisdn })).filter((row) => !filter.providerId || row.providerId === filter.providerId),
+    };
     oracle = new ProviderAccountsService(graph.uow, unwindowed as unknown as WalletsService, repo);
     health = new ProviderHealthService(graph.uow, accounts, repo);
+    insights = new InsightsService(graph.tree, wallets, new ReportsRepository(graph.uow));
 
     const user = (id: string, layer: string, parentId: string | null) => ({ id, loginName: `bk-${tag}-${layer}`, nickname: layer, passwordHash: 'x', layer, parentId, isBranchOwner: layer === 'branch' });
     await prisma.user.create({ data: user(ids.owner, 'branch', null) });
@@ -66,21 +73,23 @@ suite('the provider books (PostgreSQL)', () => {
     const msisdn = (n: number) => `05${tag.replace(/\D/g, '0').slice(0, 6)}${n}`.slice(0, 12);
     await prisma.line.create({ data: { id: ids.lineA, msisdn: msisdn(1), status: 'active', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgA, posId: ids.pos, terms: { subscription: { branchCost: 2100 }, renewal: { branchCost: 1700 } } } });
     await prisma.line.create({ data: { id: ids.lineB, msisdn: msisdn(2), status: 'disconnected', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgB, posId: ids.pos, terms: {} } });
-    const entry = (id: string, kind: string, lineId: string | null, pkg: string, providerCost: number | null, at: string, number: string) => ({
+    const entry = (id: string, kind: string, lineId: string | null, pkg: string, providerId: string | null, providerCost: number | null, at: string, number: string) => ({
       id: `${tag}-${id}`, userId: ids.pos, actorId: ids.owner, amount: 0, balanceAfter: 0, kind, lineId, msisdn: number,
-      packageName: pkg, companyName: `bk-${tag}-co`, providerCost, createdAt: new Date(at),
+      packageName: pkg, companyName: `bk-${tag}-co`, providerId, providerCost, createdAt: new Date(at),
     });
-    // Rows as stored before the provider ledger's first release (ADR 0025): the read-time fallback is what is pinned here.
-    await entriesStoredBeforeTheCheck(prisma, [
-      entry('a1', 'activate', ids.lineA, `bk-${tag}-A1`, 2100, '2026-10-05T10:00:00.000Z', msisdn(1)), // kept on the entry
-      entry('a2', 'charge', ids.lineA, `bk-${tag}-A1`, null, '2026-11-02T00:00:00.000Z', msisdn(1)), // the line's saved terms: 1700
-      entry('a3', 'freeze', ids.lineA, `bk-${tag}-A1`, null, '2026-11-03T12:00:00.000Z', msisdn(1)), // costs nothing
-      entry('a4', 'extend', ids.lineA, `bk-${tag}-A1`, 1600, '2026-11-10T09:00:00.000Z', msisdn(1)),
-      entry('b1', 'activate', ids.lineB, `bk-${tag}-B1`, null, '2026-09-20T08:00:00.000Z', msisdn(2)), // the package's price: 3000 (no saved terms)
-      entry('b2', 'disconnect', ids.lineB, `bk-${tag}-B1`, null, '2026-11-04T23:59:59.999Z', msisdn(2)), // costs nothing
-      entry('b3', 'charge', null, `bk-${tag}-B1`, null, '2026-11-05T00:00:00.000Z', msisdn(2)), // no line: the package's renewal price, 2500
-      entry('f1', 'fund', null, '', null, '2026-11-03T00:00:00.000Z', ''), // not an operation
-    ]);
+    // The comments name where the read-time fallback took each cost before the backfill stored it.
+    await prisma.walletEntry.createMany({
+      data: [
+        entry('a1', 'activate', ids.lineA, `bk-${tag}-A1`, ids.providerA, 2100, '2026-10-05T10:00:00.000Z', msisdn(1)), // kept on the entry
+        entry('a2', 'charge', ids.lineA, `bk-${tag}-A1`, ids.providerA, 1700, '2026-11-02T00:00:00.000Z', msisdn(1)), // the line's saved terms
+        entry('a3', 'freeze', ids.lineA, `bk-${tag}-A1`, ids.providerA, 0, '2026-11-03T12:00:00.000Z', msisdn(1)), // costs nothing
+        entry('a4', 'extend', ids.lineA, `bk-${tag}-A1`, ids.providerA, 1600, '2026-11-10T09:00:00.000Z', msisdn(1)),
+        entry('b1', 'activate', ids.lineB, `bk-${tag}-B1`, ids.providerB, 3000, '2026-09-20T08:00:00.000Z', msisdn(2)), // a plain activation: the package's price (no saved terms)
+        entry('b2', 'disconnect', ids.lineB, `bk-${tag}-B1`, ids.providerB, 0, '2026-11-04T23:59:59.999Z', msisdn(2)), // costs nothing
+        entry('b3', 'charge', null, `bk-${tag}-B1`, ids.providerB, 2500, '2026-11-05T00:00:00.000Z', msisdn(2)), // no line: the package's renewal price
+        entry('f1', 'fund', null, '', null, null, '2026-11-03T00:00:00.000Z', ''), // not an operation
+      ],
+    });
     await prisma.providerEntry.createMany({
       data: [
         { providerId: ids.providerA, kind: 'payment', amount: 10_000, note: 'p', actorLoginName: owner.loginName },
@@ -101,7 +110,6 @@ suite('the provider books (PostgreSQL)', () => {
     await prisma.company.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.providerA, ids.providerB] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.owner] } } });
-    await theCheckValidatedAgain(prisma);
     await prisma.$disconnect();
     process.env.DATABASE_URL = previousUrl;
   });
@@ -115,8 +123,9 @@ suite('the provider books (PostgreSQL)', () => {
       { code: codeA, name: `bk-${tag}-A`, purchases: 2100 + 1700 + 1600, payments: 10_000, settlements: -500, balance: 4100, creditLimit: 50_000, alertFloor: 0, held: 2000 + 1800, available: 4100 + 50_000 - 3800, ...matching },
       { code: codeB, name: `bk-${tag}-B`, purchases: 3000 + 2500, payments: 2_000, settlements: 0, balance: -3500, creditLimit: 0, alertFloor: 0, held: 0, available: -3500, ...matching },
     ]);
-    // The health watch's summaries are the list's rows, and the health worked out from them names B's balance.
-    expect(ours(await accounts.summaries())).toEqual(ours(rows));
+    // The health watch's summaries are the list's rows but for the simulated match count (ADR 0025 rule 5), and the
+    // health worked out from them names B's balance.
+    expect(ours(await accounts.summaries())).toEqual(ours(rows).map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'openDifferences'))));
     const view = await health.current(new Date(), rows);
     expect(ours(view).map((row) => [row.code, row.available, row.status, row.reason])).toEqual([[codeA, 50_300, 'working', null], [codeB, -3500, 'problem', 'balance']]);
     // One provider's page: the same summary, and its ledger with the running balance over all its history.
@@ -127,17 +136,52 @@ suite('the provider books (PostgreSQL)', () => {
     ]);
   });
 
-  it('reads a time window in the database with exactly the rows the old read kept in Node', async () => {
+  it('each provider\'s purchases are the SQL sum of the costs its entries stored (ADR 0025, the invariant)', async () => {
+    for (const row of ours(await accounts.summaries())) {
+      const providerId = row.code === codeA ? ids.providerA : ids.providerB;
+      const [sum] = await prisma.$queryRaw<{ purchases: bigint }[]>`SELECT coalesce(sum("providerCost"), 0) AS purchases FROM "WalletEntry" WHERE "providerId" = ${providerId}`;
+      expect(row.purchases).toBe(Number(sum.purchases));
+    }
+    // The health watch's summaries carry no simulated match count; the list and the detail screens do.
+    expect(ours(await accounts.summaries()).map((row) => 'openDifferences' in row)).toEqual([false, false]);
+  });
+
+  it('pages a provider\'s ledger from the newest, each row with the balance after it over all history', async () => {
+    const operationsOf = (ledger: { id: string; amount: number; balanceAfter: number }[]) => ledger.filter((row) => row.id.startsWith(tag)).map((row) => [row.id, row.amount, row.balanceAfter]);
+    const whole = await accounts.detail(owner, codeA);
+    // Oldest first: a1 −2100, a2 −1700, a4 −1600 (a3 costs nothing and is not a row), then today's payment and settlement.
+    expect(whole.ledger[0].balanceAfter).toBe(4100);
+    expect(operationsOf(whole.ledger)).toEqual([[`${tag}-a4`, -1600, -5400], [`${tag}-a2`, -1700, -3800], [`${tag}-a1`, -2100, -2100]]);
+    expect(whole.capped).toBe(false);
+    const ranged = await accounts.detail(owner, codeA, { from: '2026-11-02', to: '2026-11-04' });
+    expect(ranged.ledger.map((row) => [row.id, row.amount, row.balanceAfter])).toEqual([[`${tag}-a2`, -1700, -3800]]);
+    expect(ranged.summary).toEqual(whole.summary);
+    expect((await accounts.detail(owner, codeA, { to: '2026-10-31' })).ledger.map((row) => [row.id, row.balanceAfter])).toEqual([[`${tag}-a1`, -2100]]);
+  });
+
+  it('reads a time window and a provider in the database with exactly the rows every operation filtered in Node gives', async () => {
     const from = new Date('2026-11-02T00:00:00.000Z');
     const to = new Date('2026-11-04T23:59:59.999Z');
-    const every = await wallets.pricedOperations();
-    const windowed = await wallets.pricedOperations({ from, to });
+    const every = await wallets.providerOperations();
+    const windowed = await wallets.providerOperations({ from, to });
     expect(windowed).toEqual(every.filter((row) => row.at >= from && row.at <= to));
-    expect(windowed.filter((row) => row.id.startsWith(tag)).map((row) => [row.id, row.providerCode, row.cost])).toEqual([
-      [`${tag}-b2`, codeB, 0], [`${tag}-a3`, codeA, 0], [`${tag}-a2`, codeA, 1700],
+    expect(windowed.filter((row) => row.id.startsWith(tag)).map((row) => [row.id, row.providerId, row.cost])).toEqual([
+      [`${tag}-b2`, ids.providerB, 0], [`${tag}-a3`, ids.providerA, 0], [`${tag}-a2`, ids.providerA, 1700],
     ]);
-    expect(await wallets.pricedOperations({ from })).toEqual(every.filter((row) => row.at >= from));
-    expect(await wallets.pricedOperations({ to })).toEqual(every.filter((row) => row.at <= to));
+    expect(await wallets.providerOperations({ from })).toEqual(every.filter((row) => row.at >= from));
+    expect(await wallets.providerOperations({ to })).toEqual(every.filter((row) => row.at <= to));
+    expect(await wallets.providerOperations({ providerId: ids.providerB, priced: true })).toEqual(every.filter((row) => row.providerId === ids.providerB && row.cost !== 0));
+  });
+
+  it('the providers report counts the provider and the cost each operation stored (ADR 0025, owner\'s answer 5)', async () => {
+    // Before slice P.4 this report took the provider from the line's current package, skipped an entry without a
+    // line, and added `providerCost ?? 0`: on these rows as stored before release 1 it gave A 4 operations costing
+    // 3700 (a2 stored no cost) and B 2 operations costing 0 (b1, a plain activation, stored none; b3 has no line).
+    // One definition of cost now: the books' own figures.
+    const report = await insights.supply(owner);
+    expect(report.rows.filter((row) => row.providerCode === codeA || row.providerCode === codeB).map((row) => [row.providerCode, row.operations, row.cost])).toEqual([
+      [codeA, 4, 2100 + 1700 + 0 + 1600], [codeB, 3, 3000 + 0 + 2500],
+    ]);
   });
 
   it('answers the provider-operations report as before, whatever the window, provider, kind and number', async () => {

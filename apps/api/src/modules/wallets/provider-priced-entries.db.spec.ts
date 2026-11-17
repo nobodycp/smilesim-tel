@@ -25,8 +25,8 @@ import { WalletsService } from './wallets.service';
 // provider of the package the operation was carried out on and its provider cost, in the entry's own INSERT. Each
 // writer is driven through the service as the office runs it (now, by a branch task, by the provider's
 // confirmation), and each entry is checked twice: against the figure worked out by hand from the package's prices,
-// and against the provider and cost today's books give the same row (`WalletsService.pricedOperations`), so the
-// stored figures are the figures the screens show on the day.
+// and as the provider books read it (`WalletsService.providerOperations`, filtered by the provider in SQL), so the
+// screens show the stored figures.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
@@ -66,14 +66,12 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
   /** The newest entry of `kind` on the point of sale's wallets (both points of sale: a transfer is written on the first). */
   const last = (kind: string) => prisma.walletEntry.findFirstOrThrow({ where: { userId: { in: [ids.pos, ids.pos2] }, kind }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
 
-  /**
-   * The entry carries `provider` and `cost`, and today's books, reading the same row, give the same: the provider
-   * found from the entry's package name (or the line's package) and the cost the entry stores.
-   */
+  /** The entry carries `provider` and `cost`, and the provider books, asked for that provider's operations, read the same row with that cost. */
   const expectPriced = async (entry: WalletEntry, provider: 'A' | 'B', cost: number) => {
-    expect({ kind: entry.kind, providerId: entry.providerId, providerCost: entry.providerCost }).toEqual({ kind: entry.kind, providerId: provider === 'A' ? ids.providerA : ids.providerB, providerCost: cost });
-    const read = (await books.pricedOperations({ kind: entry.kind, msisdn: entry.msisdn ?? undefined })).find((row) => row.id === entry.id);
-    expect(read && { providerCode: read.providerCode, cost: read.cost }).toEqual({ providerCode: provider === 'A' ? code('A') : code('B'), cost });
+    const providerId = provider === 'A' ? ids.providerA : ids.providerB;
+    expect({ kind: entry.kind, providerId: entry.providerId, providerCost: entry.providerCost }).toEqual({ kind: entry.kind, providerId, providerCost: cost });
+    const read = (await books.providerOperations({ providerId, kind: entry.kind, msisdn: entry.msisdn ?? undefined })).find((row) => row.id === entry.id);
+    expect(read && { providerId: read.providerId, cost: read.cost }).toEqual({ providerId, cost });
   };
   /** Puts a line's paid period back by `days`, as if it had been sold that many days ago. */
   const aged = async (lineId: string, days: number) => {

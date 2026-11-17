@@ -31,16 +31,27 @@ export class WalletsRepository {
     return this.uow.prisma.walletEntry.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
-  /** Every entry the filter keeps, newest first, as the provider-operations report prices them. */
-  operationEntries(where: Prisma.WalletEntryWhereInput) {
-    return this.uow.prisma.walletEntry.findMany({ where, orderBy: [...NEWEST_FIRST] });
+  /**
+   * Each provider's purchases: the sum of the cost its operation entries stored, by provider (ADR 0025 rule 5).
+   * Only operation entries carry a provider (`operationColumns`), so the filter is the partial index's predicate and
+   * the sum is read from `WalletEntry_provider_createdAt_id` alone.
+   */
+  providerPurchases() {
+    return this.uow.prisma.walletEntry.groupBy({ by: ['providerId'], where: { providerId: { not: null } }, _sum: { providerCost: true } });
   }
 
-  /** These numbers with their package, its provider and its company. */
-  linesWithPackage(ids: string[]) {
-    return this.uow.prisma.line.findMany({
-      where: { id: { in: ids } },
-      include: { package: { include: { provider: true, company: true } } },
+  /** What one provider's operation entries stored as cost, up to an instant (inclusive), or ever when there is none. */
+  providerCostUpTo(providerId: string, to: Date | null) {
+    return this.uow.prisma.walletEntry.aggregate({ where: { providerId, ...(to ? { createdAt: { lte: to } } : {}) }, _sum: { providerCost: true } });
+  }
+
+  /** The operation entries the filter keeps with the provider and the cost they stored, newest first, at most `take`. */
+  operationsAtProviders(where: Prisma.WalletEntryWhereInput, take: number | undefined) {
+    return this.uow.prisma.walletEntry.findMany({
+      where,
+      select: { id: true, createdAt: true, kind: true, msisdn: true, companyName: true, packageName: true, providerId: true, providerCost: true, esimPrice: true },
+      orderBy: [...NEWEST_FIRST],
+      ...(take === undefined ? {} : { take }),
     });
   }
 
@@ -55,11 +66,6 @@ export class WalletsRepository {
       this.uow.prisma.company.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
     ]);
     return { packageNamed: pkg !== null, companyNamed: company !== null };
-  }
-
-  /** Every package with its provider and its company. */
-  packagesWithProvider() {
-    return this.uow.prisma.package.findMany({ include: { provider: true, company: true } });
   }
 
   /** The terms these numbers carry (the package code a sale without a kept ladder is priced from). */

@@ -49,17 +49,14 @@ export class ReportsRepository {
   providerOperations(kinds: string[], createdAt: Prisma.DateTimeFilter | undefined, take: number) {
     return this.uow.prisma.walletEntry.findMany({
       where: { kind: { in: kinds }, ...(createdAt ? { createdAt } : {}) },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, providerCost: true },
+      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, providerId: true, providerCost: true },
       orderBy: [...NEWEST_FIRST],
       take,
     });
   }
 
-  /** The provider behind each of these lines. */
-  providersOfLines(ids: string[]) {
-    return this.uow.prisma.line.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } },
-    });
+  /** Every provider's id, code and name: the providers report names the provider each operation stored. */
+  providerNames() {
+    return this.uow.prisma.provider.findMany({ select: { id: true, code: true, name: true } });
   }
 }
