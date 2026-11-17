@@ -8,11 +8,11 @@ updates `docs/architecture/backend.md` / `frontend.md`, `testing/response-shape.
 `testing/permissions.http.spec.ts` and `apps/web/lib/api-types.ts` when a route or a shape is added. Paths are
 under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
 
-- [ ] **M.0 The module.** ADR 0020 amended: `monitoring`, the thirteenth module, depends on `platform`,
+- [x] **M.0 The module.** (`cff5f200`) ADR 0020 amended: `monitoring`, the thirteenth module, depends on `platform`,
   `identity`, `access`, `notifications`, `providers`; nothing depends on it. `architecture-map.fixture.ts`
   (`MODULES`, `OWNERS`, `DEPENDS_ON`), `monitoring/index.ts`, `MonitoringModule` in `registry.ts`. The policy:
   `requireOwner` on every route of the module (D1). No behaviour yet.
-- [ ] **M.1 The request log is written.** `prisma/schema.prisma` `RequestLog` (id, at, durationMs, method,
+- [x] **M.1 The request log is written.** (`7a701a4b`) `prisma/schema.prisma` `RequestLog` (id, at, durationMs, method,
   route, path, status, code, actorId, actorLoginName, operatorId, layer, ip, userAgent, requestId, bytesIn,
   bytesOut; indexes on `at`, `(status, at)`, `(route, at)`, `(actorId, at)`, `(ip, at)`) and its migration.
   `src/request-log.middleware.ts` (composition root, first in `app.module.ts`): sets `X-Request-Id`, on the
@@ -22,7 +22,7 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
   Specs: no body, cookie, query or header value in a row (a request that carries each); a refused request
   (`401`, `403`, `429`, `404`) is written; a failing database loses rows and fails no request; `http-security-contract.spec.ts`
   pins the middleware's place.
-- [ ] **M.2 Reading and clearing.** `GET /v1/system/requests` (cursor list; filters `status`, `code`, `route`,
+- [x] **M.2 Reading and clearing.** (`8aeb170e`; open: `check:copy` needs `request_log_clear` in `apps/web/components/names.ts` and the audit filter, left for the web) `GET /v1/system/requests` (cursor list; filters `status`, `code`, `route`,
   `account`, `ip`, `slowerThan`, `from`, `to`; through a zod query), `GET /v1/system/requests/summary` (count,
   error rate, five slowest and five most called routes with median and p95, in SQL), `DELETE /v1/system/requests`
   (`@Activity('request_log_clear')`, the count in the record). Specs: owner only (permission matrix), the filters,
