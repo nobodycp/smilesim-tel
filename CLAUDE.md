@@ -34,7 +34,7 @@ A knowledge graph of the code (`apps/`) and the core docs lives in `graphify-out
 A change is not done until the matching doc says what the code now does:
 
 - New/removed/renamed module, endpoint group, model, guard, or shared helper → `docs/architecture/backend.md`.
-- New/removed route, shared component, hook, context, or data-flow change → `docs/architecture/frontend.md` (and the Excalidraw boards via `node docs/architecture/generate.mjs` when file roles change).
+- New/removed route, shared component, hook, context, or data-flow change → `docs/architecture/frontend.md`.
 - New token, stylesheet, or primitive → `DESIGN.md`.
 - A refactor slice finished → tick it in the plan file with the commit hash.
 - A choice between real alternatives → a short ADR in `docs/architecture/decisions/NNNN-<slug>.md`.

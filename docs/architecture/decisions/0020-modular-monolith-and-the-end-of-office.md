@@ -1,8 +1,8 @@
 # 0020 — A modular monolith of twelve modules; `office` is retired
 
-Date: 2026-11-13. Status: accepted (owner, 2026-11-13). Audit and plan:
-`docs/architecture/2026-11-13-backend-audit-and-office-refactor-plan.md`; the plan `2026-11-13-office-retirement`
-is finished (removed 2026-11-17; in git history).
+Date: 2026-11-13. Status: accepted (owner, 2026-11-13). The audit
+(`docs/architecture/2026-11-13-backend-audit-and-office-refactor-plan.md`), its running log and the plan
+`2026-11-13-office-retirement` are finished and were removed on 2026-11-17 (in git history); this ADR keeps the decision.
 
 ## Context
 

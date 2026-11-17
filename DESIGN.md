@@ -11,7 +11,7 @@ This file is the visual source of truth. `.cursor/rules/smilesim-ui.mdc` points 
 ADR 0021 (D1–D28) and ADR 0022 (Tailwind v4 and owned Radix components). The operations desk after hours: neutral
 graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin digits.
 
-The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
+The gap inventory that completed it (Tailwind migration T6.1; removed 2026-11-17, in git history) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
 Last verified: 2026-11-17 (clean-up CL.6: the plan pointers checked). The history of each change is in git.
@@ -996,7 +996,7 @@ Graphite page details, matched to the prototype page by page (2026-11-09).
 
 ## Known gaps
 
-The gap inventory (`docs/design/current-identity-gaps.md`) is closed (Tailwind migration T6.4). What it found and the
+The gap inventory (removed 2026-11-17, in git history) is closed (Tailwind migration T6.4). What it found and the
 slices did not close is listed here; each item keeps today's look until its own slice (and, where it changes the look,
 the owner's choice).
 

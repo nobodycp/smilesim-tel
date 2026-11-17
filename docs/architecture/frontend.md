@@ -1,6 +1,6 @@
 # Frontend codemap — `apps/web`
 
-Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
+Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current").
 
 Last verified: 2026-11-17 (clean-up CL.6: the known defects and the target shape checked against the tree). The history of each change is in git.
 
