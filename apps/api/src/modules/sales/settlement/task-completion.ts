@@ -40,8 +40,13 @@ export type Completion = {
   posPath?: PathNode[];
 };
 
-/** What a handler did: the sale to record, whether it already wrote its wallet entry, and the amount it moved. */
-type Applied = { sale?: Sale; posted?: boolean; amount?: number };
+/**
+ * What a handler did: the sale to record, whether it already wrote its wallet entry, and the amount it moved.
+ * `postedCost`: the provider cost of a sale that names none, when the task's charge posts it (a plain activation:
+ * the subscription's branch cost on the line's new terms). Recorded without money, such a sale stores 0, as it
+ * always has (ADR 0025, P.1: today's books kept as they are).
+ */
+type Applied = { sale?: Sale; posted?: boolean; amount?: number; postedCost?: number };
 
 /**
  * Closing a branch task applies the operation it deferred. One handler per action; each runs inside the
@@ -132,7 +137,8 @@ export class TaskCompletion {
     const { tx, task, actor, note, handed } = job;
     const applied = await this.handlers[task.action as Action](job);
     const sale = applied.sale ?? (await this.plainSale(job));
-    const posted = (await this.charge(job, sale)) || applied.posted === true;
+    const charged = sale && sale.providerCost === undefined && applied.postedCost !== undefined ? { ...sale, providerCost: applied.postedCost } : sale;
+    const posted = (await this.charge(job, charged)) || applied.posted === true;
     if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
     await this.repo.recordTaskResult(tx, task.id, {
       resultNote: note || null,
@@ -227,12 +233,14 @@ export class TaskCompletion {
         companyName: pkg.company?.name ?? '',
         packageName: pkg.name,
         packagePrice,
+        providerId: pkg.providerId,
         providerCost: activationProviderCost(pkgTerms.subscription.branchCost, task.esim, esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price),
         // The fee folded into the task's debit when it was opened: what the row's amount holds beyond the package price.
         ...(task.esim ? { esimPrice: Math.max(0, -task.posDelta - packagePrice) } : {}),
         period: periodOf(daysOf(pkg.months), created.endsAt),
         periodCost: pkgTerms.subscription.branchCost,
       },
+      postedCost: providerBranchCost('activate', terms, pkg),
     };
   }
 
@@ -247,6 +255,7 @@ export class TaskCompletion {
       companyName: line.package.company?.name ?? '',
       packageName: line.package.name,
       packagePrice: settled.posPrice,
+      providerId: line.package.providerId,
       providerCost: settled.providerCost,
     };
     // The task may have waited until the unused days are worth no more than the fee. The number is disconnected
@@ -316,6 +325,7 @@ export class TaskCompletion {
       companyName: target.company?.name ?? '',
       packageName: target.name,
       packagePrice: quote.newPrice,
+      providerId: target.providerId,
       providerCost: quote.providerCost,
       period: periodOf(daysOf(target.months), null),
       periodCost: quote.periodCost,

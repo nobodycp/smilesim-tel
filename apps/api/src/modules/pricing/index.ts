@@ -7,7 +7,7 @@ export { PRICE_COLUMNS, PriceLadder } from './price-ladder';
 export { RENEWABLE_STATUSES } from './rules/line-prices';
 export { packageTermsOf } from './rules/package-terms';
 export type { PackagePriceRow } from './rules/package-terms';
-export { DISCONNECT_FEE, activationProviderCost, captureTerms, providerBranchCost } from './rules/prices';
+export { DISCONNECT_FEE, activationProviderCost, captureTerms, costsAtProvider, providerBranchCost } from './rules/prices';
 export type { LineTerms, PackageTerms } from './rules/prices';
 export { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder } from './rules/profit-ladder';
 export type { Ladder } from './rules/profit-ladder';

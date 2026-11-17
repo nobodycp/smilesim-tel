@@ -7,6 +7,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ServiceGraph } from '../../testing/service-graph';
 import { WalletsRepository } from '../../wallets/wallets.repository';
 import { WalletsService } from '../../wallets/wallets.service';
+import { entriesStoredBeforeTheCheck } from '../../wallets/testing/entries-before-the-check';
 import { ProvidersRepository } from '../providers.repository';
 import { ProviderHealthService } from '../directory/provider-health.service';
 import { ProviderAccountsService } from './provider-accounts.service';
@@ -69,18 +70,17 @@ suite('the provider books (PostgreSQL)', () => {
       id: `${tag}-${id}`, userId: ids.pos, actorId: ids.owner, amount: 0, balanceAfter: 0, kind, lineId, msisdn: number,
       packageName: pkg, companyName: `bk-${tag}-co`, providerCost, createdAt: new Date(at),
     });
-    await prisma.walletEntry.createMany({
-      data: [
-        entry('a1', 'activate', ids.lineA, `bk-${tag}-A1`, 2100, '2026-10-05T10:00:00.000Z', msisdn(1)), // kept on the entry
-        entry('a2', 'charge', ids.lineA, `bk-${tag}-A1`, null, '2026-11-02T00:00:00.000Z', msisdn(1)), // the line's saved terms: 1700
-        entry('a3', 'freeze', ids.lineA, `bk-${tag}-A1`, null, '2026-11-03T12:00:00.000Z', msisdn(1)), // costs nothing
-        entry('a4', 'extend', ids.lineA, `bk-${tag}-A1`, 1600, '2026-11-10T09:00:00.000Z', msisdn(1)),
-        entry('b1', 'activate', ids.lineB, `bk-${tag}-B1`, null, '2026-09-20T08:00:00.000Z', msisdn(2)), // the package's price: 3000 (no saved terms)
-        entry('b2', 'disconnect', ids.lineB, `bk-${tag}-B1`, null, '2026-11-04T23:59:59.999Z', msisdn(2)), // costs nothing
-        entry('b3', 'charge', null, `bk-${tag}-B1`, null, '2026-11-05T00:00:00.000Z', msisdn(2)), // no line: the package's renewal price, 2500
-        entry('f1', 'fund', null, '', null, '2026-11-03T00:00:00.000Z', ''), // not an operation
-      ],
-    });
+    // Rows as stored before the provider ledger's first release (ADR 0025): the read-time fallback is what is pinned here.
+    await entriesStoredBeforeTheCheck(prisma, [
+      entry('a1', 'activate', ids.lineA, `bk-${tag}-A1`, 2100, '2026-10-05T10:00:00.000Z', msisdn(1)), // kept on the entry
+      entry('a2', 'charge', ids.lineA, `bk-${tag}-A1`, null, '2026-11-02T00:00:00.000Z', msisdn(1)), // the line's saved terms: 1700
+      entry('a3', 'freeze', ids.lineA, `bk-${tag}-A1`, null, '2026-11-03T12:00:00.000Z', msisdn(1)), // costs nothing
+      entry('a4', 'extend', ids.lineA, `bk-${tag}-A1`, 1600, '2026-11-10T09:00:00.000Z', msisdn(1)),
+      entry('b1', 'activate', ids.lineB, `bk-${tag}-B1`, null, '2026-09-20T08:00:00.000Z', msisdn(2)), // the package's price: 3000 (no saved terms)
+      entry('b2', 'disconnect', ids.lineB, `bk-${tag}-B1`, null, '2026-11-04T23:59:59.999Z', msisdn(2)), // costs nothing
+      entry('b3', 'charge', null, `bk-${tag}-B1`, null, '2026-11-05T00:00:00.000Z', msisdn(2)), // no line: the package's renewal price, 2500
+      entry('f1', 'fund', null, '', null, '2026-11-03T00:00:00.000Z', ''), // not an operation
+    ]);
     await prisma.providerEntry.createMany({
       data: [
         { providerId: ids.providerA, kind: 'payment', amount: 10_000, note: 'p', actorLoginName: owner.loginName },

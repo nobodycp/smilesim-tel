@@ -84,7 +84,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     });
     await prisma.task.createMany({ data: tasks });
     await prisma.taskNote.createMany({ data: tasks.slice(0, 4).map((row) => ({ id: randomUUID(), taskId: row.id, authorId: row.posId, body: 'a note' })) });
-    await prisma.walletEntry.createMany({ data: ids.poses.map((userId, at) => ({ id: randomUUID(), userId, actorId: userId, kind: 'activate', amount: -3500, balanceAfter: 46_500, lineId: lines[at * 12].id })) });
+    await prisma.walletEntry.createMany({ data: ids.poses.map((userId, at) => ({ id: randomUUID(), userId, actorId: userId, kind: 'activate', providerId: ids.provider, providerCost: 0, amount: -3500, balanceAfter: 46_500, lineId: lines[at * 12].id })) });
     return { clearLines: 8 * ids.poses.length, clearTasks: 5 * ids.poses.length, lines: lines.length, tasks: tasks.length };
   };
 

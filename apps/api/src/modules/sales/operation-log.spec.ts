@@ -44,6 +44,7 @@ const pkg = {
   subscriberPrice: 3000,
   companyId: 'co',
   company: { name: 'الوها' },
+  providerId: 'sky-id',
   provider: { code: 'sky', name: 'سكاي' },
 };
 

@@ -54,6 +54,11 @@ export function captureTerms(pkg: PackageTerms, targets: PackageTerms[]): LineTe
 const RENEWAL_COST_KINDS = new Set(['charge', 'extend', 'reactivate']);
 const SUBSCRIPTION_COST_KINDS = new Set(['activate', 'switch']);
 
+/** Whether an operation of this kind is priced at the provider (`providerBranchCost`); every other kind costs nothing. */
+export function costsAtProvider(kind: string): boolean {
+  return RENEWAL_COST_KINDS.has(kind) || SUBSCRIPTION_COST_KINDS.has(kind);
+}
+
 /** What the branch pays the provider for one line operation. Other kinds cost nothing. */
 export function providerBranchCost(
   kind: string,

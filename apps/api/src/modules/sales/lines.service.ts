@@ -172,7 +172,10 @@ export class LinesService {
         companyName: pkg.company.name,
         packageName: pkg.name,
         packagePrice: unit,
-        providerCost: activationProviderCost(pkgTerms.subscription.branchCost, esim, esimFee),
+        providerId: pkg.providerId,
+        // An eSIM's cost includes its fee; a plain activation's is the subscription's branch cost on the terms the
+        // line is stamped with here, as the books read it on the day (ADR 0025).
+        providerCost: activationProviderCost(pkgTerms.subscription.branchCost, esim, esimFee) ?? providerBranchCost('activate', terms, pkg),
         ...(esim ? { esimPrice: esimFee } : {}),
         period: periodOf(daysOf(pkg.months), line.endsAt),
         periodCost: pkgTerms.subscription.branchCost,
@@ -298,6 +301,7 @@ export class LinesService {
         companyName: line.package.company?.name ?? '',
         packageName: line.package.name,
         packagePrice: settled?.posPrice ?? line.package.posPrice,
+        providerId: line.package.providerId,
         providerCost: settled?.providerCost,
       };
       await moveLineStatus(tx, line.id, ['active'], 'disconnected');

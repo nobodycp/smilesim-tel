@@ -108,7 +108,7 @@ suite('search: digits and names (PostgreSQL)', () => {
     await task('0541001234');
     await task('0559876543');
     const entry = (userId: string, data: Partial<Prisma.WalletEntryUncheckedCreateInput>) =>
-      tx.walletEntry.create({ data: { userId, actorId: owner.id, amount: 0, balanceAfter: 0, kind: 'activate', ...data } });
+      tx.walletEntry.create({ data: { userId, actorId: owner.id, amount: 0, balanceAfter: 0, kind: 'activate', ...(data.kind ? {} : { providerId: provider.id, providerCost: 0 }), ...data } });
     await entry(pos.id, { msisdn: '0541001234', packageName: '100 جيجا بحث', companyName: 'سلكوم-بحث' });
     await entry(pos.id, { kind: 'fund', note: 'حوالة 1234' });
     await entry(pos2.id, { kind: 'fund' });

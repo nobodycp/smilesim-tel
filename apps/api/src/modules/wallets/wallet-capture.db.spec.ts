@@ -45,6 +45,8 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   const entryRows = () => prisma.walletEntry.findMany({ where: { userId: ids.pos } });
   const kinds = async () => (await entryRows()).map((row) => row.kind).sort();
   const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
+  /** A switch's entry with no line: it carries a provider and a cost as every operation's does (ADR 0025); no ladder is read. */
+  const bare = (amount: number): Sale => ({ msisdn: '', lineId: '', companyName: '', packageName: '', packagePrice: -amount, providerId: ids.provider, providerCost: 0 });
 
   const outcomes = async (runs: Promise<unknown>[]) => {
     const settled = await Promise.allSettled(runs);
@@ -173,7 +175,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
 
   it('takes a debit and a hold of any two sizes: covered up to the hold, the excess checked, the surplus given back', async () => {
     await setWallet({ held: 5000 });
-    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', ''));
+    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', '', bare(amount)));
     // Not a debit, not whole numbers, a negative hold: refused, nothing changed.
     for (const [held, amount] of [[100, 0], [100, 100], [-100, -100], [100.5, -100], [100, -99.5]]) {
       expect([held, amount, (await outcomes([capture(held, amount)])).refused]).toEqual([held, amount, ['400 INVALID']]);
@@ -196,7 +198,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   });
 
   it('checks only the excess over the hold against the ceiling, with the hold still counted as held', async () => {
-    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', ''));
+    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', '', bare(amount)));
     // 1,000 in the wallet, 800 of it held for this task, no credit.
     await setWallet({ balance: 1000, held: 800, ceiling: 0 });
     // 200 more than the hold fits exactly: 1,000 − 800 held = 200 spendable.
@@ -270,7 +272,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await setWallet({ balance: START, held: 0 });
     const line = await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } });
-    const sale: Sale = { msisdn: line.msisdn, lineId: line.id, companyName: 'capt', packageName: 'capt', packagePrice: RENEWAL, providerCost: 1800, period: { days: 30, endsAt: new Date('2026-12-10T00:00:00Z') } };
+    const sale: Sale = { msisdn: line.msisdn, lineId: line.id, companyName: 'capt', packageName: 'capt', packagePrice: RENEWAL, providerId: ids.provider, providerCost: 1800, period: { days: 30, endsAt: new Date('2026-12-10T00:00:00Z') } };
     const ROLLBACK = new Error('rolled back on purpose');
     /** Holds, settles one way or the other, and answers what the transaction would have left; then rolls it back. */
     const rowsOf = async (settle: (tx: Prisma.TransactionClient) => Promise<void>) => {

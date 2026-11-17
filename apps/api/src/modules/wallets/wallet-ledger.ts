@@ -3,6 +3,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import { logger, fail, UnitOfWork, type Db } from '../platform';
 import { AccountTree } from '../access';
 import type { Sale } from './sale';
+import { operationColumns } from './provider-cost';
 import { uncoveredDebit, withinCeiling } from './ceiling';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../pricing';
 
@@ -43,7 +44,7 @@ export class WalletLedger {
    * Holds `amount` on a wallet for an open task (roadmap N6): refused like a debit when the money the account may
    * spend (balance − held + ceiling) does not cover it. Writes a `hold` entry that moves no money.
    */
-  async hold(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, note: string, sale?: Sale) {
+  async hold(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, note: string, sale?: Pick<Sale, 'msisdn' | 'lineId' | 'companyName' | 'packageName' | 'packagePrice'>) {
     if (amount <= 0) return 0;
     await tx.$queryRaw`SELECT "userId" FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
     const wallet = await tx.wallet.findUnique({ where: { userId } });
@@ -173,7 +174,8 @@ export class WalletLedger {
         companyName: sale?.companyName,
         packageName: sale?.packageName,
         packagePrice: sale?.packagePrice,
-        providerCost: sale?.providerCost ?? null,
+        // An operation's provider and cost, fixed now (ADR 0025): part of this INSERT, no statement of their own.
+        ...operationColumns(kind, sale, false),
         esimPrice: sale?.esimPrice ?? null,
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
@@ -242,7 +244,7 @@ export class WalletLedger {
         companyName: sale.companyName,
         packageName: sale.packageName,
         packagePrice: sale.packagePrice,
-        providerCost: sale.providerCost ?? 0,
+        ...operationColumns(kind, sale, true),
         periodDays: sale.period?.days ?? null,
         periodEndsAt: sale.period?.endsAt ?? null,
         periodCost: sale.periodCost ?? null,

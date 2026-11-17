@@ -135,6 +135,8 @@ model Wallet {
 }
 
 // Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_analyze_scale_factor 0.02.
+// The CHECK `WalletEntry_operation_priced` (migration 20261117210000_provider_ledger_stored, NOT VALID until the
+// provider ledger's backfill has run, ADR 0025): an operation kind's entry carries `providerId` and `providerCost`.
 model WalletEntry {
   id           String    @id @default(uuid())
   userId       String
@@ -151,7 +153,13 @@ model WalletEntry {
   companyName  String?
   packageName  String?
   packagePrice Int?
+  /** What this operation adds to what the branch owes the provider, signed agorot, fixed at the write (ADR 0025). */
   providerCost Int?
+  /**
+   * The provider of the package the operation was carried out on, fixed at the write (ADR 0025). No relation and
+   * no foreign key on purpose: the key's lock on the provider's row would wait on the send gate under the wallet lock.
+   */
+  providerId   String?
   /** The eSIM fee folded into `amount`, when this entry sold or issued one. */
   esimPrice    Int?
   periodDays   Int?

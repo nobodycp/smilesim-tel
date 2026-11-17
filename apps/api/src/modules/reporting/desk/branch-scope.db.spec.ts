@@ -73,7 +73,7 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
     });
     const seeded = await prisma.line.findMany({ where: { packageId: ids.pkg }, select: { id: true, posId: true } });
     await prisma.walletEntry.createMany({
-      data: seeded.map((row, index) => ({ userId: row.posId, actorId: row.posId, amount: 0, balanceAfter: 0, kind: 'freeze', lineId: row.id, createdAt: new Date(Date.now() + 60_000 + index) })),
+      data: seeded.map((row, index) => ({ userId: row.posId, actorId: row.posId, amount: 0, balanceAfter: 0, kind: 'freeze', providerId: ids.provider, providerCost: 0, lineId: row.id, createdAt: new Date(Date.now() + 60_000 + index) })),
     });
   });
 

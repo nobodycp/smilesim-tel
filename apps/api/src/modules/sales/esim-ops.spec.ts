@@ -337,8 +337,10 @@ describe('immediate eSIM activation', () => {
     const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: false, iccid: '8997202000000000777', outcome: 'success' });
     expect(answer.line).toMatchObject({ esim: false, iccid: '8997202000000000777', esimQr: null });
     expect(otherLines[0]).toMatchObject({ esim: false, esimQr: null });
-    // No eSIM: the provider cost stays unset and provider operations fall back to the package cost.
-    expect(entries[0].providerCost).toBeNull();
+    // No eSIM: the provider cost is the subscription's branch cost on the line's terms, the figure the provider
+    // operations read on the day, stored with the sale and fixed from then on (ADR 0025, slice P.1; until P.1 it was
+    // left unset and read back at today's prices).
+    expect(entries[0].providerCost).toBe(2000);
   });
 
   it('carries the eSIM fee into the provider cost when the branch closes the activation task', async () => {

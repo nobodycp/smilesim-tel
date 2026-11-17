@@ -4,6 +4,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { createPrismaClient } from '../../db';
 import type { NoticeService } from '../notifications/notice.service';
 import { ApiFacade } from '../testing/api-facade';
+import type { Sale } from './sale';
 
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.
 // The compose postgres does not publish a host port, so use a throwaway one:
@@ -14,7 +15,7 @@ import { ApiFacade } from '../testing/api-facade';
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
-type Move = (tx: unknown, userId: string, amount: number, actorId: string, kind: string, note: string) => Promise<void>;
+type Move = (tx: unknown, userId: string, amount: number, actorId: string, kind: string, note: string, sale: Sale) => Promise<void>;
 type Internals = { runTx: <T>(fn: (tx: unknown) => Promise<T>) => Promise<T>; move: Move };
 
 suite('wallet moves under concurrency (PostgreSQL)', () => {
@@ -52,7 +53,9 @@ suite('wallet moves under concurrency (PostgreSQL)', () => {
 
   const debit = (amount: number) => {
     const inner = service as unknown as Internals;
-    return inner.runTx((tx) => inner.move(tx, posId, -amount, posId, 'charge', ''));
+    // A charge is an operation: its entry carries a provider and a cost (ADR 0025). No line, so no price ladder is read.
+    const sale: Sale = { msisdn: '', lineId: '', companyName: '', packageName: '', packagePrice: amount, providerId: 'race', providerCost: amount };
+    return inner.runTx((tx) => inner.move(tx, posId, -amount, posId, 'charge', '', sale));
   };
 
   it('keeps every concurrent debit: no update is lost', async () => {
