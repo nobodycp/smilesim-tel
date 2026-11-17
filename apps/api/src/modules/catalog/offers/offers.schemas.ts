@@ -6,8 +6,11 @@ import { z } from 'zod';
 /** The layers an offer may be shown to. */
 export const OFFER_LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 
-/** A data URL of about 700 KB of picture is about 950,000 characters of base64. */
-export const OFFER_IMAGE_LIMIT = 950_000;
+/**
+ * Decoded bytes an offer picture may have (decision 11, speed plan PF.6): the web shrinks it to WebP, 1600 px on
+ * its longest side, under this. A picture already stored is left alone when an edit sends it back unchanged.
+ */
+export const OFFER_IMAGE_BYTES = 300_000;
 
 /** The request body limit (main.ts, 1 MB): no text arrives longer than this. */
 const BODY_CHARS = 1_048_576;
@@ -33,8 +36,9 @@ const href = z
   .refine((value) => !value || /^\/(?!\/)/.test(value) || /^https:\/\//.test(value));
 
 /**
- * PATCH offers/:id — any of an offer's fields. The picture is deliberately wide here: one over `OFFER_IMAGE_LIMIT`
- * answers `IMAGE_TOO_LARGE` and one that is not a picture answers `INVALID`, both from the service.
+ * PATCH offers/:id — any of an offer's fields. The picture is deliberately wide here: one that is not a PNG, JPEG
+ * or WebP data URL answers `INVALID` and a new one over `OFFER_IMAGE_BYTES` answers `IMAGE_TOO_LARGE`, both from
+ * the service.
  */
 export const OfferUpdateBody = z.object({
   title: z.string().trim().min(1).max(80).optional(),

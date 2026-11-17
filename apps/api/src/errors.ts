@@ -49,7 +49,7 @@ export const ERROR_MESSAGES = {
   SIM_PREFIX: 'رقم الشريحة لا يبدأ بمقدّمة الشركة',
   ESIM_UNSUPPORTED: 'الشركة لا تدعم eSIM',
   QR_INVALID: 'صورة رمز QR غير صالحة',
-  IMAGE_TOO_LARGE: 'الصورة أكبر من المسموح (700 كيلوبايت)',
+  IMAGE_TOO_LARGE: 'الصورة أكبر من المسموح (300 كيلوبايت)',
   ESIM_PACKAGE_OFF: 'الرزمة غير متاحة كـ eSIM',
   ESIM_CODE_UNSEALABLE: 'تعذّر حفظ رمز eSIM بأمان، ولم يُنفَّذ شيء. تواصل مع الدعم',
   ESIM_CODE_UNREADABLE: 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم',

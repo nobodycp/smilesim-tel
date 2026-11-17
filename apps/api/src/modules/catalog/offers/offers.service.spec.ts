@@ -3,7 +3,7 @@ import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ApiFailure } from '../../platform/api-failure';
-import { OffersService, offerShows } from './offers.service';
+import { OFFER_IMAGE_BYTES, OffersService, decodedBytes, offerShows } from './offers.service';
 
 // Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1).
 type Row = Record<string, unknown> & { id: string; position: number };
@@ -51,6 +51,32 @@ describe('offers', () => {
     await expect(service.save(owner, { title: 't', seconds: 2 })).rejects.toBeInstanceOf(ApiFailure);
     await expect(service.save(owner, { title: 't', layers: ['staff'] })).rejects.toBeInstanceOf(ApiFailure);
     await expect(service.save(owner, { title: '' })).rejects.toBeInstanceOf(ApiFailure);
+  });
+
+  it('takes a WebP picture up to 300 KB and refuses a new one over it (decision 11)', async () => {
+    const { service, rows } = setup();
+    const of = (type: string, bytes: number) => `data:image/${type};base64,${Buffer.alloc(bytes, 7).toString('base64')}`;
+    expect(decodedBytes(of('webp', OFFER_IMAGE_BYTES))).toBe(300_000);
+    await service.save(owner, { title: 'webp', image: of('webp', OFFER_IMAGE_BYTES) });
+    expect(rows[0].image).toBe(of('webp', OFFER_IMAGE_BYTES));
+    await expect(service.save(owner, { title: 'big', image: of('webp', OFFER_IMAGE_BYTES + 1) })).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' });
+    await expect(service.save(owner, { title: 'big', image: of('jpeg', OFFER_IMAGE_BYTES + 1) })).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' });
+    await expect(service.save(owner, { title: 'gif', image: of('gif', 64) })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.save(owner, { title: 'jpeg', image: of('jpeg', 64) })).resolves.toBeDefined();
+    expect(rows).toHaveLength(2);
+  });
+
+  it('keeps a picture stored before the cap when an edit sends it back, and refuses a new oversized one on edit', async () => {
+    const { service, rows } = setup();
+    await service.save(owner, { title: 'old' });
+    // As the old 950,000-character cap allowed: about 700 KB of picture.
+    const stored = `data:image/png;base64,${Buffer.alloc(700_000, 3).toString('base64')}`;
+    rows[0].image = stored;
+    await service.save(owner, { title: 'renamed', image: stored }, rows[0].id);
+    expect(rows[0]).toMatchObject({ title: 'renamed', image: stored });
+    const other = `data:image/png;base64,${Buffer.alloc(700_000, 4).toString('base64')}`;
+    await expect(service.save(owner, { image: other }, rows[0].id)).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' });
+    expect(rows[0].image).toBe(stored);
   });
 
   it('shows each layer only the live offers meant for it, inside their dates, in order', async () => {

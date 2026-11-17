@@ -4,12 +4,19 @@ import { refuseEntered, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Offer } from '../../../generated/prisma/client';
 import type { Actor } from '../../access';
-import { OFFER_IMAGE_LIMIT, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
+import { OFFER_IMAGE_BYTES, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 
 // Offers (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): picture-and-text announcements on the home hero,
 // managed by the branch owner and staff with the edit grant, shown to the layers each one names.
-export { OFFER_IMAGE_LIMIT, OFFER_LAYERS } from './offers.schemas';
+export { OFFER_IMAGE_BYTES, OFFER_LAYERS } from './offers.schemas';
 const IMAGE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
+/** The bytes a base64 data URL decodes to, without decoding it. */
+export function decodedBytes(dataUrl: string): number {
+  const payload = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+  return Math.floor((payload.length * 3) / 4) - padding;
+}
 
 export type OfferView = {
   id: string; title: string; body: string; image: string | null; actionLabel: string | null; actionHref: string | null;
@@ -70,8 +77,11 @@ export class OffersService {
     if (id) {
       const found = await this.repo.offerById(id);
       if (!found) fail(404, 'NOT_FOUND');
+      // The picture stored before the cap (a save that sends it back as it was) keeps working.
+      if (data.image !== found.image) this.assertImageSize(data.image);
       await this.repo.updateOffer(id, data);
     } else {
+      this.assertImageSize(data.image);
       const count = await this.repo.offerCount();
       await this.repo.addOffer({ title: data.title as string, ...data, position: data.position ?? count });
     }
@@ -104,13 +114,15 @@ export class OffersService {
     return this.list(actor);
   }
 
+  /** A new picture is at most `OFFER_IMAGE_BYTES` decoded (decision 11). */
+  private assertImageSize(image: string | null | undefined) {
+    if (typeof image === 'string' && decodedBytes(image) > OFFER_IMAGE_BYTES) fail(400, 'IMAGE_TOO_LARGE');
+  }
+
   private parse(body: unknown, creating: boolean) {
     const input = parseInput(creating ? OfferBody : OfferUpdateBody, body);
     const { image, startsAt, endsAt } = input;
-    if (typeof image === 'string') {
-      if (image.length > OFFER_IMAGE_LIMIT) fail(400, 'IMAGE_TOO_LARGE');
-      if (!IMAGE.test(image)) fail(400, 'INVALID');
-    }
+    if (typeof image === 'string' && !IMAGE.test(image)) fail(400, 'INVALID');
     if (startsAt && endsAt && endsAt < startsAt) fail(400, 'INVALID');
     const layers = input.layers === undefined ? undefined : [...new Set(input.layers)].join(',');
     return {

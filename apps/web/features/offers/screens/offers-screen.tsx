@@ -17,6 +17,7 @@ import { Label } from '../../../components/ui/label';
 import { Textarea } from '../../../components/ui/textarea';
 import { RowMenu } from '../../../components/row-menu';
 import { api, type Offer, type OfferInput } from '../../../lib/api';
+import { shrinkImage } from '../../../lib/branding-image';
 import { cn } from '../../../lib/cn';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
@@ -26,7 +27,12 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 /** About 700 KB of picture; the API refuses more. */
-const IMAGE_BYTES = 700 * 1024;
+// Decision 11 (speed plan PF.6): an offer picture is stored as WebP, 1600 px on its longest side at most (the hero
+// is a 2:1 tile at most ~60% of the page wide), and at most 300 KB — the API's `OFFER_IMAGE_BYTES`.
+const OFFER_SIDE = 1600;
+const OFFER_IMAGE_BYTES = 300_000;
+const OFFER_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const OFFER_QUALITIES = [0.85, 0.75, 0.6];
 
 /*
  * The page and its form:
@@ -73,15 +79,16 @@ export function OffersScreen() {
     } : { ...empty });
   }
 
-  function pickImage(event: ChangeEvent<HTMLInputElement>) {
+  async function pickImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file || !draft) return;
-    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { setError(t.offerImageType); return; }
-    if (file.size > IMAGE_BYTES) { setError(apiText({ message: '', code: 'IMAGE_TOO_LARGE' })); return; }
-    const reader = new FileReader();
-    reader.onload = () => setDraft((current) => (current ? { ...current, image: String(reader.result) } : current));
-    reader.readAsDataURL(file);
+    if (!OFFER_TYPES.includes(file.type)) { setError(t.offerImageType); return; }
+    // Shrunk in the browser, the way the logo is (lib/branding-image.ts): the API stores what it is sent.
+    const image = await shrinkImage(file, OFFER_SIDE, { types: OFFER_TYPES, limit: OFFER_IMAGE_BYTES, qualities: OFFER_QUALITIES });
+    if (!image) { setError(apiText({ message: '', code: 'IMAGE_TOO_LARGE' })); return; }
+    setError('');
+    setDraft((current) => (current ? { ...current, image } : current));
   }
 
   async function save() {
@@ -189,7 +196,7 @@ export function OffersScreen() {
                 <Button asChild variant="secondary" size="sm" className="grid cursor-pointer gap-1 text-start text-xs font-bold text-muted">
                   <label>
                     {t.offerImage}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickImage} />
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => void pickImage(event)} />
                   </label>
                 </Button>
                 {draft.image ? <Button type="button" variant="secondary" size="sm" onClick={() => setDraft({ ...draft, image: null })}>{t.offerImageRemove}</Button> : null}

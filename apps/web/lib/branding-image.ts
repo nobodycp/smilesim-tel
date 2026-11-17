@@ -23,12 +23,26 @@ function canvasOf(width: number, height: number): [HTMLCanvasElement, CanvasRend
   return ctx ? [canvas, ctx] : null;
 }
 
+export type ShrinkOptions = {
+  /** The picked file's types it accepts; PNG and WebP by default (the office identity). */
+  types?: readonly string[];
+  /** Decoded bytes the result may have; `IMAGE_LIMIT` by default. */
+  limit?: number;
+  /** WebP qualities tried in order until the result fits `limit`; 0.9 alone by default. */
+  qualities?: readonly number[];
+};
+
 /**
  * A picked file as a webp data URL at most `maxSide` on its longest side. Empty when the file is
- * not PNG or WebP, cannot be decoded, or is still over the byte limit after shrinking.
+ * not one of `types`, cannot be decoded, or is still over `limit` at the lowest quality. The office
+ * identity and the offer pictures (speed plan PF.6) are shrunk here.
  */
-export async function shrinkImage(file: File, maxSide: number): Promise<string> {
-  if (!IMAGE_TYPES.includes(file.type)) return '';
+export async function shrinkImage(
+  file: File,
+  maxSide: number,
+  { types = IMAGE_TYPES, limit = IMAGE_LIMIT, qualities = [0.9] }: ShrinkOptions = {},
+): Promise<string> {
+  if (!types.includes(file.type)) return '';
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return '';
   const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
@@ -36,8 +50,11 @@ export async function shrinkImage(file: File, maxSide: number): Promise<string> 
   if (!drawn) return '';
   const [canvas, ctx] = drawn;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const image = canvas.toDataURL('image/webp', 0.9);
-  return decodedBytes(image) <= IMAGE_LIMIT ? image : '';
+  for (const quality of qualities) {
+    const image = canvas.toDataURL('image/webp', quality);
+    if (decodedBytes(image) <= limit) return image;
+  }
+  return '';
 }
 
 /**
