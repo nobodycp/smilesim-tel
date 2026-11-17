@@ -202,6 +202,23 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     expect(second.nextCursor).toBeNull();
   });
 
+  it('walks every row once, in order, across pages that end among rows sharing one time', async () => {
+    // 250 rows, 30 to a minute, random ids: every page of 80 ends inside a minute, where only the id orders rows.
+    const rows = Array.from({ length: 250 }, (_, n) => row(Math.floor(n / 30)));
+    await prisma.requestLog.createMany({ data: rows });
+    const expected = [...rows].sort((a, b) => b.at.getTime() - a.at.getTime() || (a.id < b.id ? 1 : -1)).map((item) => item.requestId);
+    const served: string[] = [];
+    let cursor: string | undefined;
+    for (let pages = 0; pages < 10; pages += 1) {
+      const listed = await service.list(owner(), { ...ownDay, ...(cursor ? { cursor } : {}) });
+      expect(listed.total).toBe(250);
+      served.push(...listed.items.map((item) => item.requestId));
+      cursor = listed.nextCursor ?? undefined;
+      if (!cursor) break;
+    }
+    expect(served).toEqual(expected);
+  });
+
   it('sums up in the database: count, refused, failed, error rate, and the slowest and busiest routes with median and p95', async () => {
     const slow = `/t-${tag}/slow`;
     const busy = `/t-${tag}/busy`;

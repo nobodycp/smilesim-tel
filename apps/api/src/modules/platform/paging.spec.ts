@@ -20,10 +20,34 @@ describe('the list cursor', () => {
     expect(cursorPosition(undefined)).toBeUndefined();
   });
 
-  it('asks for rows strictly older than the position, the id breaking a tie', () => {
+  it('asks for rows strictly older than the position, the id breaking a tie, with a bound the index can start from', () => {
     expect(after(undefined)).toEqual([]);
-    expect(after({ at: at(5), id: 'm' })).toEqual([{ OR: [{ createdAt: { lt: at(5) } }, { createdAt: at(5), id: { lt: 'm' } }] }]);
-    expect(after({ at: at(5), id: 'm' }, 'at')).toEqual([{ OR: [{ at: { lt: at(5) } }, { at: at(5), id: { lt: 'm' } }] }]);
+    expect(after({ at: at(5), id: 'm' })).toEqual([{ createdAt: { lte: at(5) } }, { OR: [{ createdAt: { lt: at(5) } }, { id: { lt: 'm' } }] }]);
+    expect(after({ at: at(5), id: 'm' }, 'at')).toEqual([{ at: { lte: at(5) } }, { OR: [{ at: { lt: at(5) } }, { id: { lt: 'm' } }] }]);
+  });
+
+  it('walks every row once, in order, page after page, rows sharing one time included', () => {
+    // 23 rows over 5 seconds: most seconds hold several rows, so pages end inside a shared time.
+    const rows = Array.from({ length: 23 }, (_, n) => row(`r-${String((n * 7) % 23).padStart(2, '0')}`, Math.floor(n / 5)));
+    const newestFirst = [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1));
+    // What the database answers for `AND: after(position)` under NEWEST_FIRST, evaluated on plain rows.
+    const left = (position: ReturnType<typeof cursorPosition>) => {
+      const condition = after(position);
+      if (condition.length === 0) return newestFirst;
+      const [bound, { OR: [older, tie] }] = condition;
+      return newestFirst.filter((item) => item.createdAt <= bound.createdAt.lte && (item.createdAt < older.createdAt.lt || item.id < tie.id.lt));
+    };
+    for (const size of [1, 2, 3, 4, 5, 7, 23]) {
+      const served: string[] = [];
+      let cursor: string | null = null;
+      for (let pages = 0; pages < 30; pages += 1) {
+        const listed: ReturnType<typeof page<(typeof rows)[number]>> = page(left(cursorPosition(cursor ?? undefined)).slice(0, size + 1), size);
+        served.push(...listed.items.map((item) => item.id));
+        cursor = listed.nextCursor;
+        if (!cursor) break;
+      }
+      expect([size, served]).toEqual([size, newestFirst.map((item) => item.id)]);
+    }
   });
 });
 

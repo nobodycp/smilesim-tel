@@ -86,7 +86,7 @@ describe('notices over HTTP', () => {
     expect(response.status).toBe(200);
     const where = (calls.findMany[0] as { where: Record<string, unknown> }).where;
     expect(where).toMatchObject({ userId: 'pos1', readAt: null, kind: { in: expect.arrayContaining(['task.opened']) } });
-    expect(where.AND).toEqual([{ OR: [{ createdAt: { lt: at(2) } }, { createdAt: at(2), id: { lt: 'n2' } }] }]);
+    expect(where.AND).toEqual([{ createdAt: { lte: at(2) } }, { OR: [{ createdAt: { lt: at(2) } }, { id: { lt: 'n2' } }] }]);
   });
 
   it('refuses a cursor it did not issue with 400 INVALID', async () => {

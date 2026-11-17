@@ -42,11 +42,17 @@ export function cursorPosition(raw: string | undefined): Position | undefined {
   return position;
 }
 
-/** Rows strictly after the cursor under NEWEST_FIRST, for Prisma's `AND`. `column` is the row's time column. */
+/**
+ * Rows strictly after the cursor under NEWEST_FIRST, for Prisma's `AND`. `column` is the row's time column.
+ * Written `column <= X AND (column < X OR id < Y)`, the same rows as `column < X OR (column = X AND id < Y)`: the
+ * first condition gives the index on (column DESC, id DESC) a bound to start from, which the `OR` alone does not
+ * (audit 2026-11-17, section 4.3: a deep page 2.96 s → 0.06 ms).
+ */
 export function after<Column extends string = 'createdAt'>(position: Position | undefined, column: Column = 'createdAt' as Column) {
   if (!position) return [];
-  return [{ OR: [{ [column]: { lt: position.at } }, { [column]: position.at, id: { lt: position.id } }] }] as [
-    { OR: [Record<Column, { lt: Date }>, Record<Column, Date> & { id: { lt: string } }] },
+  return [{ [column]: { lte: position.at } }, { OR: [{ [column]: { lt: position.at } }, { id: { lt: position.id } }] }] as [
+    Record<Column, { lte: Date }>,
+    { OR: [Record<Column, { lt: Date }>, { id: { lt: string } }] },
   ];
 }
 

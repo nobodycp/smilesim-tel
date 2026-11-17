@@ -162,7 +162,7 @@ describe('numbers list paging', () => {
     // The one cursor: a condition in the query, never Prisma's row cursor (platform/paging.ts).
     expect(calls.every((call) => call.cursor === undefined && call.skip === undefined)).toBe(true);
     const last = lines.find((line) => line.id === pages[0][29])!;
-    expect(JSON.stringify(calls[1].where)).toContain(JSON.stringify({ createdAt: last.createdAt, id: { lt: last.id } }));
+    expect(JSON.stringify(calls[1].where)).toContain(JSON.stringify([{ createdAt: { lte: last.createdAt } }, { OR: [{ createdAt: { lt: last.createdAt } }, { id: { lt: last.id } }] }]));
   });
 
   it('sends no next cursor when the last page is exactly full', async () => {
