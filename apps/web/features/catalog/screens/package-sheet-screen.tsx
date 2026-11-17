@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
-import { DataTable, type Column } from '../../../components/data-table';
+import { DataTable, PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, Pane, layerName, lineStatus } from '../../../components/desk';
 import { LinePricesDialog } from '../../../components/line-prices-dialog';
 import { usePageTitle } from '../../../lib/page-title';
@@ -18,7 +18,8 @@ import { everyAccount } from '../../../lib/directory';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { type Fetched } from '../../../lib/fetched';
+import { pick } from '../../../lib/fetched';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';
@@ -71,22 +72,6 @@ function follow<T>(current: T, seeded: T | undefined, next: T): T {
   if (seeded === undefined) return next;
   return JSON.stringify(current) === JSON.stringify(seeded) ? next : current;
 }
-
-// Every line on the package, across all cursor pages: the operations tab selects among all of them.
-async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
-  const rows: LineRow[] = [];
-  let cursor: string | null = null;
-  for (let page = 0; page < MAX_LINE_PAGES; page += 1) {
-    const result = await api.lines({ packageCode, cursor });
-    if (!result.ok) return result;
-    rows.push(...result.data.items);
-    cursor = result.data.nextCursor;
-    if (!cursor) break;
-  }
-  return { ok: true, data: rows };
-}
-
-const MAX_LINE_PAGES = 100;
 
 /*
  * The look (ADR 0022):
@@ -147,34 +132,37 @@ export function PackageSheetScreen() {
   // The owner and staff with the edit grant change the extra operations; other branch staff read them.
   const { me } = useDesk();
   const canEditAddons = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')));
-  // Five reads, cached apart (ADR 0001). The sheet, its numbers and its custom prices belong to this package and are
-  // asked again after an action here; the companies shelf and the accounts are shared with other screens and stay.
+  // Four reads, cached apart (ADR 0001). The sheet and its custom prices belong to this package and are asked again
+  // after an action here; the companies shelf and the accounts are shared with other screens and stay.
   const code = params.packageCode;
   const sheetRead = useApiQuery(packageKeys.sheet(code), () => api.packageSheet(code), { enabled: allowed });
-  const linesRead = useApiQuery(packageKeys.lines(code), () => packageLines(code), { enabled: allowed });
+  // The numbers tab: the package's numbers as the numbers list answers them, one page at a time like every list
+  // (speed plan PF.8), read when the tab first opens. Never every page in a row.
+  const linesList = usePaged<LineRow>(`package:${code}`, async (cursor) => pick(await api.lines({ packageCode: code, cursor }), pageRows), {
+    enabled: allowed && tab === 'numbers',
+  });
   const pricesRead = useApiQuery(packageKeys.customPrices(code), () => api.customPrices(code), { enabled: allowed });
   const shelfRead = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
   const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: allowed });
   const cardData = useMemo(
     () =>
-      sheetRead.data && shelfRead.data && linesRead.data
+      sheetRead.data && shelfRead.data
         ? {
             sheet: sheetRead.data,
             shelf: shelfRead.data,
-            lines: linesRead.data.filter((line) => line.packageCode === code),
             users: (usersRead.data?.users ?? []).filter((row) => row.layer !== 'branch'),
             customPrices: pricesRead.data ?? [],
           }
         : null,
-    [sheetRead.data, shelfRead.data, linesRead.data, usersRead.data, pricesRead.data, code],
+    [sheetRead.data, shelfRead.data, usersRead.data, pricesRead.data],
   );
   const client = useQueryClient();
   const card = {
-    loaded: sheetRead.loaded && linesRead.loaded && shelfRead.loaded && pricesRead.loaded && usersRead.loaded,
+    loaded: sheetRead.loaded && shelfRead.loaded && pricesRead.loaded && usersRead.loaded,
     // The custom prices and the accounts are helpers: without them the sheet still shows.
-    error: sheetRead.error || shelfRead.error || linesRead.error,
+    error: sheetRead.error || shelfRead.error,
     data: cardData,
-    reload: () => client.invalidateQueries({ queryKey: packageKeys.all(code) }),
+    reload: () => Promise.all([client.invalidateQueries({ queryKey: packageKeys.all(code) }), linesList.reload()]),
   };
   const sheet = card.data?.sheet ?? null;
   usePageTitle(sheet ? `${sheet.companyName} · ${sheet.name}` : '');
@@ -193,7 +181,7 @@ export function PackageSheetScreen() {
     if (pickedLayer === 'agent') return kind === 'subscription' ? sheet.agentPrice : sheet.renewalAgentPrice;
     return kind === 'subscription' ? sheet.posPrice : sheet.renewalPosPrice;
   };
-  const lines = card.data?.lines ?? [];
+  const lines = linesList.all;
   const customPrices = card.data?.customPrices ?? [];
   const company = card.data?.shelf.companies.find((item) => item.code === sheet?.companyCode);
   const provider = company?.providers.find((item) => item.code === sheet?.providerCode);
@@ -551,16 +539,7 @@ export function PackageSheetScreen() {
               {tab === 'renewals' && targetList('renewals', targetPackages)}
               {tab === 'switches' && targetList('switches', targetPackages)}
               {tab === 'numbers' && (
-                <TableSheet>
-                  <DataTable
-                    bare
-                    columns={lineColumns}
-                    rows={lines}
-                    rowKey={(line) => line.id}
-                    empty={t.noLines}
-                    keepHead
-                  />
-                </TableSheet>
+                <PagedTable list={linesList} columns={lineColumns} rowKey={(line) => line.id} empty={t.noLines} keepHead />
               )}
               {tab === 'accounts' && <PackageLineAccounts code={sheet.code} onReprice={(scope) => setPricing({ scope })} />}
               {tab === 'excluded' && <PackageExcluded code={sheet.code} users={users} setError={setError} setNote={setNote} />}

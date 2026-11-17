@@ -120,6 +120,20 @@ at most 50 KB decoded (`lib/branding-image.ts` `shrinkImage`); the API refuses a
 with `400 INVALID` ("بيانات غير صالحة", as any refused mark). Offers stay at 1600 px and 300 KB (PF.6). Pictures
 already stored are served as they are; nothing is migrated.
 
+## Package sheet's operations (PF.8)
+
+The package sheet's numbers tab («الأرقام»; the audit's "operations tab", F6) shows the package's numbers: a box to
+pick each, the number and its status. Until PF.8 the sheet read every number of the package before it showed at all,
+one `GET /v1/lines?packageCode=` page of 30 after another (up to 100 in a row), and filtered them again by package
+code in the browser. The picked boxes drive no action.
+
+Now the tab reads the numbers list it already used, `GET /v1/lines?packageCode=<code>`, as every list does
+(`usePaged`, `PagedTable`): one request for the first page when the tab first opens, the next page only when the
+table's pager asks for it, the server's `total` counting the pages. No filter is added to any route: the lines list
+already filters by package code and already answers the rows the tab shows. The sheet itself no longer waits for the
+numbers: opening it reads no line. «تحديد الكل» picks the numbers read so far. An action on the sheet asks for the
+tab's pages again with the sheet's other reads. The rows are the same as before, in the list's order (newest first).
+
 ## Rules that hold for every slice
 
 - Refactor slices keep behaviour: same paths, same response shapes, same screens, unless the slice is marked
