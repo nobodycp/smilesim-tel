@@ -183,11 +183,13 @@ suite('paid at the provider, not charged to the point of sale (PostgreSQL)', () 
     await expect(service.finance(pos, { loss: 'any' })).rejects.toMatchObject({ status: 403 } as Partial<ApiFailure>);
   });
 
-  it('not a sale in the counts: the profit report and the finance summary leave the marked rows out', async () => {
+  it('not a sale in the counts: the branch\'s profit report counts the marked rows as losses, net of the profit (P.8)', async () => {
     const report = await books.profitReport(ownerActor, {});
-    const sold = report.packages.find((row) => row.packageName === code('z'));
-    // Every Z operation was sold at 0: none is a sale, so the package is not in the report.
-    expect(sold).toBeUndefined();
+    const marked = await prisma.walletEntry.findMany({ where: { packageName: code('z'), providerLoss: { not: null } }, select: { providerCost: true } });
+    const cost = marked.reduce((sum, row) => sum + (row.providerCost ?? 0), 0);
+    // Every Z operation was sold at 0: none is a sale; the package is a row for its losses alone (spec DB.5 P.8).
+    expect(marked.length).toBeGreaterThan(0);
+    expect(report.packages.find((row) => row.packageName === code('z'))).toEqual({ packageName: code('z'), companyName: code('co'), sales: 0, refunds: 0, profit: -cost, losses: marked.length, lossAmount: cost });
     expect(report.packages.find((row) => row.packageName === code('p'))).toMatchObject({ sales: 1 });
   });
 

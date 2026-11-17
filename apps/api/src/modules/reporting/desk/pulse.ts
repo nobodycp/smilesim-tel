@@ -4,10 +4,11 @@
 
 import type { OverviewPeriod } from './overview.service';
 
-export type PulseTotals = { count: number; amount: number; activations: number; profit: number };
+/** `profit` is net of the branch's losses and `losses` what they cost, positive agorot (spec DB.5 P.8; 0 for another layer). */
+export type PulseTotals = { count: number; amount: number; activations: number; profit: number; losses: number };
 export type PulsePoint = PulseTotals & { at: string };
 
-export const emptyTotals = (): PulseTotals => ({ count: 0, amount: 0, activations: 0, profit: 0 });
+export const emptyTotals = (): PulseTotals => ({ count: 0, amount: 0, activations: 0, profit: 0, losses: 0 });
 
 const DAY = 86_400_000;
 

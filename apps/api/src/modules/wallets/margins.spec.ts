@@ -72,10 +72,10 @@ describe('WalletsService.profitReport', () => {
     const report = await wallets.profitReport(actor('agent', 'agent'));
     expect(report).toEqual({
       packages: [
-        { packageName: '400 جيجا', companyName: 'سلكوم', sales: 1, refunds: 0, profit: 400 },
-        { packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 1, profit: 450 },
+        { packageName: '400 جيجا', companyName: 'سلكوم', sales: 1, refunds: 0, profit: 400, losses: 0, lossAmount: 0 },
+        { packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 1, profit: 450, losses: 0, lossAmount: 0 },
       ],
-      totals: { sales: 3, refunds: 1, profit: 850 },
+      totals: { sales: 3, refunds: 1, profit: 850, losses: 0, lossAmount: 0 },
     });
     // The agent's own column, over the chains it was in at the time: no list of the accounts under it now.
     expect(seen.sum).toEqual({ agentMargin: true });

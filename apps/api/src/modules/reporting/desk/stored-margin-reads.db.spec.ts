@@ -93,7 +93,7 @@ suite('the profit figures read from the stored margins (PostgreSQL)', () => {
     const result = await overview.overview(actor(u.agent), {});
     expect(result.period).toBe('month');
     // The agent earns 300 on each sale and gives back 150 on the refund.
-    expect(result.sales).toEqual({ count: 3, amount: 11400, refunds: 1, refundAmount: 1900, net: 9500, profit: 3 * 300 - 150, activations: 2, trend: [{ day: at.toISOString().slice(0, 10), amount: 11400, profit: 750, count: 3 }] });
+    expect(result.sales).toEqual({ count: 3, amount: 11400, refunds: 1, refundAmount: 1900, net: 9500, profit: 3 * 300 - 150, activations: 2, trend: [{ day: at.toISOString().slice(0, 10), amount: 11400, profit: 750, count: 3 }], losses: null });
     expect(result.top.packages.map((row) => [row.label, row.count, row.amount, row.profit])).toEqual([['400', 2, 7600, 600], ['100', 1, 3800, 300]]);
     expect(result.top.companies.map((row) => [row.label, row.profit])).toEqual([[name('cellcom'), 600], [name('wecom'), 300]]);
     expect(result.top.providers).toEqual([]);
@@ -114,7 +114,7 @@ suite('the profit figures read from the stored margins (PostgreSQL)', () => {
 
   it('gives the period cards and a trend whose buckets are the axis\'s, and nothing to compare over all time', async () => {
     const all = await overview.overview(actor(u.agent), { period: 'all' });
-    expect(all.pulse.current).toEqual({ count: 3, amount: 11400, activations: 2, profit: 750 });
+    expect(all.pulse.current).toEqual({ count: 3, amount: 11400, activations: 2, profit: 750, losses: 0 });
     expect(all.pulse.previous).toBeNull();
     // A short history is drawn by the hour; the SQL bucket of the sales is the axis's own key.
     expect(all.pulse.trend.find((point) => point.at === bucketOf('hour', at))).toMatchObject({ count: 3, amount: 11400, activations: 2, profit: 750 });
@@ -128,8 +128,8 @@ suite('the profit figures read from the stored margins (PostgreSQL)', () => {
     await prisma.walletEntry.create({ data: entry('s0', u.pos, 'activate', -3800, ladder(u.pos), '400', p.sky, yesterday) });
     try {
       const day = await overview.overview(actor(u.agent), { period: 'day' });
-      expect(day.pulse.previous).toEqual({ count: 1, amount: 3800, activations: 1, profit: 300 });
-      expect(day.pulse.current).toEqual({ count: 3, amount: 11400, activations: 2, profit: 750 });
+      expect(day.pulse.previous).toEqual({ count: 1, amount: 3800, activations: 1, profit: 300, losses: 0 });
+      expect(day.pulse.current).toEqual({ count: 3, amount: 11400, activations: 2, profit: 750, losses: 0 });
     } finally {
       await prisma.walletEntry.delete({ where: { id: `${tag}-s0` } });
     }
@@ -155,16 +155,16 @@ suite('the profit figures read from the stored margins (PostgreSQL)', () => {
     const report = await wallets.profitReport(actor(u.agent), {});
     expect(report).toEqual({
       packages: [
-        { packageName: '400', companyName: name('cellcom'), sales: 2, refunds: 1, profit: 450 },
-        { packageName: '100', companyName: name('wecom'), sales: 1, refunds: 0, profit: 300 },
+        { packageName: '400', companyName: name('cellcom'), sales: 2, refunds: 1, profit: 450, losses: 0, lossAmount: 0 },
+        { packageName: '100', companyName: name('wecom'), sales: 1, refunds: 0, profit: 300, losses: 0, lossAmount: 0 },
       ],
-      totals: { sales: 3, refunds: 1, profit: 750 },
+      totals: { sales: 3, refunds: 1, profit: 750, losses: 0, lossAmount: 0 },
     });
     expect((await wallets.profitCsv(actor(u.agent), {})).split('\r\n').slice(1, 4)).toEqual([`${name('cellcom')},400,2,1,4.50`, `${name('wecom')},100,1,0,3.00`, ',TOTAL,3,1,7.50']);
     // The point of sale reads its own: 700 a sale, −350 the refund; the moved one keeps its sale.
-    expect((await wallets.profitReport(actor(u.pos), {})).totals).toEqual({ sales: 2, refunds: 1, profit: 1050 });
-    expect((await wallets.profitReport(actor(u.pos2), {})).totals).toEqual({ sales: 1, refunds: 0, profit: 700 });
-    expect((await wallets.profitReport(actor(u.agent2), {})).totals).toEqual({ sales: 0, refunds: 0, profit: 0 });
+    expect((await wallets.profitReport(actor(u.pos), {})).totals).toEqual({ sales: 2, refunds: 1, profit: 1050, losses: 0, lossAmount: 0 });
+    expect((await wallets.profitReport(actor(u.pos2), {})).totals).toEqual({ sales: 1, refunds: 0, profit: 700, losses: 0, lossAmount: 0 });
+    expect((await wallets.profitReport(actor(u.agent2), {})).totals).toEqual({ sales: 0, refunds: 0, profit: 0, losses: 0, lossAmount: 0 });
     expect(await wallets.financeSummary(actor(u.agent), { days: '7' })).toMatchObject({ profit: 750, sales: 3 });
     expect(await wallets.financeSummary(actor(u.agent2), { days: '7' })).toMatchObject({ profit: 0, sales: 0 });
   });

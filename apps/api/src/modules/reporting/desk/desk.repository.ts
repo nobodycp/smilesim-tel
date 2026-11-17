@@ -16,6 +16,13 @@ export type SalesBucket = { at: string; count: number; amount: number; activatio
 /** One ranked group of the period's sales: how many, their volume, the viewer's profit on them, and the newest. */
 export type SalesGroup = { key: string | null; count: number; amount: number; profit: number; newest: Date };
 
+/**
+ * The branch's operations marked as its loss (spec DB.5 P.8), added up per bucket of their time and what they were for:
+ * how many, and the sum of the `branchMargin` each stores (− its provider cost, P.7). Not a sale: no count, volume or
+ * activation of the sales reads holds them.
+ */
+export type LossGroup = { at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: number; margin: number };
+
 /** The chain columns by layer, and each layer's margin (ADR 0026): the "most active" cards group by them. */
 const CHAIN_OF = {
   main_agent: { chain: 'chainMainAgentId', margin: 'mainAgentMargin' },
@@ -140,6 +147,33 @@ export class DeskRepository {
       refundAmount: asNumber(row.refundAmount as bigint),
       profit: asNumber(row.profit as bigint),
     }));
+  }
+
+  /**
+   * When the branch's oldest marked operation in the period was made, or null: over all time the trend starts at the
+   * older of it and the first sale, so every loss is on the axis (spec DB.5 P.8).
+   */
+  async firstLoss(from: Date | null): Promise<Date | null> {
+    const [row] = await this.uow.prisma.$queryRaw<{ first: Date | null }[]>`
+      SELECT min("createdAt") AS first FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL ${from ? Prisma.sql`AND "createdAt" >= ${from}` : Prisma.empty}`;
+    return row?.first ?? null;
+  }
+
+  /**
+   * The branch's marked operations between the instants (`to` inclusive), grouped by the bucket of their time and the
+   * package, company and provider each row stores (spec DB.5 P.8). A second read beside the sales read, so that one
+   * keeps its predicate and its partial index; this one is served by `WalletEntry_loss_createdAt` (migration
+   * 20261118000000_provider_loss_created_at). For the branch only: a marked row has no chain ids.
+   */
+  async lossesByBucket(from: Date | null, to: Date | null, format: BucketFormat): Promise<LossGroup[]> {
+    const rows = await this.uow.prisma.$queryRaw<{ at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: bigint; margin: bigint | null }[]>`
+      SELECT to_char("createdAt", ${format}) AS at, "packageName", "companyName", "providerId", count(*) AS count, sum("branchMargin") AS margin
+      FROM "WalletEntry"
+      WHERE "providerLoss" IS NOT NULL
+        ${from ? Prisma.sql`AND "createdAt" >= ${from}` : Prisma.empty}
+        ${to ? Prisma.sql`AND "createdAt" <= ${to}` : Prisma.empty}
+      GROUP BY 1, 2, 3, 4`;
+    return rows.map((row) => ({ at: String(row.at), packageName: row.packageName, companyName: row.companyName, providerId: row.providerId, count: asNumber(row.count), margin: asNumber(row.margin) }));
   }
 
   /** The scope's sales (not refunds) grouped by what they sold: the package's name, the company's, or the provider. */

@@ -92,7 +92,10 @@ export type DeskMe = {
 };
 /** One ranked row of the overview: a package, company, provider or account, by count or profit. */
 export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
-export type PulseTotals = { count: number; amount: number; activations: number; profit: number };
+/** `profit` is net of the branch's losses; `losses` what they cost, positive agorot, 0 for another layer (spec DB.5 P.8). */
+export type PulseTotals = { count: number; amount: number; activations: number; profit: number; losses: number };
+/** The operations marked as the branch's loss over a period, and what they cost (positive agorot; spec DB.5 P.8). */
+export type LossTotals = { count: number; amount: number };
 /** `GET /v1/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
 export type OverviewPayload = {
   period: 'day' | 'month' | 'all';
@@ -100,7 +103,8 @@ export type OverviewPayload = {
   lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
   /** Each slice's change over the period (spec 2026-11-09-admin-review, 6.4); null before the first earlier snapshot. */
   lineChange?: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number } | null;
-  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[] };
+  /** `profit` and the trend's are net of the branch's losses; `losses` null for any layer but the branch (spec DB.5 P.8). */
+  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[]; losses: LossTotals | null };
   top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
   users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
@@ -807,9 +811,11 @@ export type FinanceSummary = {
   moneyIn: number;
   moneyOut: number;
   count: number;
-  /** What the signed-in account earned on the sales in its chain over the 30 days, and how many sales. */
+  /** What the signed-in account earned on the sales in its chain over the window (the branch's net of its losses), and how many sales. */
   profit: number;
   sales: number;
+  /** The branch's operations marked as its loss in the window; null for another layer (spec DB.5 P.8). */
+  losses: LossTotals | null;
   /** Movements made by hand (funding, taking back) in the window, and the window in days. */
   manual?: number;
   days?: number;
@@ -817,8 +823,9 @@ export type FinanceSummary = {
 };
 
 /** The signed-in account's profit by package over a period (`GET /v1/finance/profits`): exact sums of the margins each sale stored (ADR 0026). */
-export type ProfitRow = { packageName: string; companyName: string; sales: number; refunds: number; profit: number };
-export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number } };
+/** For the branch `profit` is net of its losses, `losses` their count and `lossAmount` their cost (positive); 0 for another layer (spec DB.5 P.8). */
+export type ProfitRow = { packageName: string; companyName: string; sales: number; refunds: number; profit: number; losses: number; lossAmount: number };
+export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number; losses: number; lossAmount: number } };
 
 /** Rows of the «التقارير» page (`GET /v1/reports/{sales,orders,balances,supply}`). */
 export type BalanceReportRow = {

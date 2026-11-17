@@ -1,6 +1,6 @@
 import { OverviewQuery } from './desk.schemas';
 import { parseInput } from '../../platform';
-import { DeskRepository, type BucketFormat, type SalesBucket, type SalesGroup, type SalesScope } from './desk.repository';
+import { DeskRepository, type BucketFormat, type LossGroup, type SalesBucket, type SalesGroup, type SalesScope } from './desk.repository';
 import { AccountTree, holdsAny, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
@@ -14,7 +14,8 @@ import { axis, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseT
 
 // The home page's full picture (spec 2026-11-08-overview-and-reports-nav, F): every card of one viewer in one read,
 // scoped to its chain and its grants, over a period (today, this month, all time). Line counts are "now". The money
-// figures are SQL sums of the margins each sale stored (ADR 0026): exact over any period, no row loaded.
+// figures are SQL sums of the margins each sale stored (ADR 0026): exact over any period, no row loaded. The branch's
+// profit is net of the operations marked as its loss (spec DB.5 P.8), read beside the sales and added in Node.
 export type OverviewPeriod = 'day' | 'month' | 'all';
 const TOP = 5;
 const TASK_STATUSES = ['working', 'done', 'rejected', 'cancelled'] as const;
@@ -51,9 +52,37 @@ function merged(groups: SalesGroup[], keyOf: (group: SalesGroup) => { key: strin
 
 const FORMAT: Record<Step, BucketFormat> = { hour: 'YYYY-MM-DD"T"HH24', day: 'YYYY-MM-DD', month: 'YYYY-MM' };
 
+/** A bucket of the sales with the branch's losses of the same bucket: `profit` net of them, `losses` what they cost. */
+type Bucket = SalesBucket & { losses: number };
+
 /** The buckets' figures added up: the period's cards. */
-function totalsOf(buckets: SalesBucket[]): PulseTotals {
-  return buckets.reduce((sum, row) => ({ count: sum.count + row.count, amount: sum.amount + row.amount, activations: sum.activations + row.activations, profit: sum.profit + row.profit }), emptyTotals());
+function totalsOf(buckets: Bucket[]): PulseTotals {
+  return buckets.reduce((sum, row) => ({ count: sum.count + row.count, amount: sum.amount + row.amount, activations: sum.activations + row.activations, profit: sum.profit + row.profit, losses: sum.losses + row.losses }), emptyTotals());
+}
+
+/**
+ * The sales buckets with the losses folded in (spec DB.5 P.8): each loss joins the bucket `keyOf` names for it, its
+ * margin (− its cost) added to the profit and its cost to `losses`; a bucket with losses and no sale is added with no
+ * sale in it. The counts, volumes, activations and refunds are the sales' alone.
+ */
+function withLosses(buckets: SalesBucket[], losses: LossGroup[], keyOf: (at: string) => string): Bucket[] {
+  const rows = new Map<string, Bucket>(buckets.map((row) => [row.at, { ...row, losses: 0 }]));
+  for (const loss of losses) {
+    const at = keyOf(loss.at);
+    const row = rows.get(at) ?? { at, count: 0, amount: 0, activations: 0, refunds: 0, refundAmount: 0, profit: 0, losses: 0 };
+    row.profit += loss.margin;
+    row.losses -= loss.margin;
+    rows.set(at, row);
+  }
+  return [...rows.values()];
+}
+
+/**
+ * The losses as groups beside the sales of one key (spec DB.5 P.8): count and volume 0 (a loss is not a sale), the
+ * profit its margin. Dated at the epoch, so a group's newest sale, not a loss, orders the ranking's ties.
+ */
+function lossGroups(losses: LossGroup[], key: 'packageName' | 'companyName' | 'providerId'): SalesGroup[] {
+  return losses.map((loss) => ({ key: loss[key], count: 0, amount: 0, profit: loss.margin, newest: new Date(0) }));
 }
 
 @Injectable()
@@ -136,9 +165,15 @@ export class OverviewService {
   private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<AccountTree['accounts']>>, period: OverviewPeriod, now: Date) {
     const scope: SalesScope = { view: marginViewOf(actor), from, to: null };
     const isBranch = actor.layer === 'branch';
-    const first = period === 'all' ? await this.repo.firstSale(scope) : null;
+    // Over all time the trend starts at the first sale, or at the branch's first loss when that is older.
+    const [firstSale, firstLoss] = period === 'all' ? await Promise.all([this.repo.firstSale(scope), isBranch ? this.repo.firstLoss(null) : null]) : [null, null];
+    const first = firstSale && firstLoss ? new Date(Math.min(firstSale.getTime(), firstLoss.getTime())) : (firstSale ?? firstLoss);
     const step = stepOf(period, now, first);
     const window = previousWindow(period, now);
+    // The branch's losses (spec DB.5 P.8), read for the branch only: by the hour when the trend's step is the hour,
+    // else by the day (a month is the day's prefix), with the package, company and provider each row stores.
+    const fine: BucketFormat = step === 'hour' ? FORMAT.hour : FORMAT.day;
+    const noLosses = Promise.resolve([] as LossGroup[]);
     const byId = new Map(accounts.map((account) => [account.id, account]));
     // Every account of the sale's chain under the viewer did this sale: the most active accounts per layer.
     const activeOf = async (layer: 'main_agent' | 'agent' | 'pos') =>
@@ -149,26 +184,34 @@ export class OverviewService {
         }),
         'count',
       ).map((row) => ({ ...row, nickname: byId.get(row.key)?.nickname ?? '' }));
-    const [steps, days, packages, companies, providers, previous, mainAgents, agents, poses] = await Promise.all([
+    const [stepSales, daySales, packages, companies, providers, previousSales, mainAgents, agents, poses, losses, previousLosses] = await Promise.all([
       this.repo.salesByBucket(scope, FORMAT[step]),
       step === 'day' ? null : this.repo.salesByBucket(scope, FORMAT.day),
       this.repo.salesBy(scope, 'packageName'),
       this.repo.salesBy(scope, 'companyName'),
       isBranch ? this.repo.salesBy(scope, 'providerId') : [],
-      window ? this.repo.salesByBucket({ ...scope, from: window.from, to: window.to }, FORMAT.month).then(totalsOf) : null,
+      window ? this.repo.salesByBucket({ ...scope, from: window.from, to: window.to }, FORMAT.month) : null,
       isBranch ? activeOf('main_agent') : [],
       isBranch || actor.layer === 'main_agent' ? activeOf('agent') : [],
       actor.layer === 'pos' ? [] : activeOf('pos'),
+      isBranch ? this.repo.lossesByBucket(from, null, fine) : noLosses,
+      isBranch && window ? this.repo.lossesByBucket(window.from, window.to, FORMAT.month) : noLosses,
     ]);
+    // A loss's fine bucket (an hour or a day) is the step's own key, or its month's prefix; the days of the daily
+    // trend are its first ten characters.
+    const steps = withLosses(stepSales, losses, (at) => (step === 'month' ? at.slice(0, 7) : at));
+    const days = daySales && withLosses(daySales, losses, (at) => at.slice(0, 10));
+    const previous = previousSales && totalsOf(withLosses(previousSales, previousLosses, (at) => at));
+    const lost = losses.reduce((sum, loss) => ({ count: sum.count + loss.count, amount: sum.amount - loss.margin }), { count: 0, amount: 0 });
     // The providers each sale stored (ADR 0025), named only when there is one to name.
-    const providerOf = providers.some((group) => group.key) ? new Map((await this.repo.providerNames()).map((row) => [row.id, row])) : new Map<string, { code: string; name: string }>();
+    const providerOf = providers.some((group) => group.key) || losses.some((loss) => loss.providerId) ? new Map((await this.repo.providerNames()).map((row) => [row.id, row])) : new Map<string, { code: string; name: string }>();
     const daily = days ?? steps;
     const current = totalsOf(steps);
     const refunds = daily.reduce((sum, row) => ({ refunds: sum.refunds + row.refunds, refundAmount: sum.refundAmount + row.refundAmount }), { refunds: 0, refundAmount: 0 });
     const byStep = new Map(steps.map((row) => [row.at, row]));
     const trend: PulsePoint[] = axis(period, now, first).map((at) => {
       const row = byStep.get(at);
-      return { at, ...(row ? { count: row.count, amount: row.amount, activations: row.activations, profit: row.profit } : emptyTotals()) };
+      return { at, ...(row ? { count: row.count, amount: row.amount, activations: row.activations, profit: row.profit, losses: row.losses } : emptyTotals()) };
     });
     const named = (group: SalesGroup) => ({ key: group.key ?? '', label: group.key ?? '—' });
     return {
@@ -180,14 +223,16 @@ export class OverviewService {
         net: current.amount - refunds.refundAmount,
         activations: current.activations,
         trend: daily.map((row) => ({ day: row.at, amount: row.amount, profit: row.profit, count: row.count })).sort((a, b) => (a.day < b.day ? -1 : 1)),
+        // The period's operations marked as the branch's loss and what they cost (spec DB.5 P.8); not told below it.
+        losses: isBranch ? lost : null,
       },
       // The home's period cards: this period, the same span before it (null over all time), and the trend.
       pulse: { current, previous, trend },
       top: {
-        packages: rank(merged(packages, named), 'count'),
-        companies: rank(merged(companies, named), 'profit'),
+        packages: rank(merged([...packages, ...lossGroups(losses, 'packageName')], named), 'count'),
+        companies: rank(merged([...companies, ...lossGroups(losses, 'companyName')], named), 'profit'),
         providers: isBranch
-          ? rank(merged(providers, (group) => {
+          ? rank(merged([...providers, ...lossGroups(losses, 'providerId')], (group) => {
               const provider = group.key ? providerOf.get(group.key) : undefined;
               return provider ? { key: provider.code, label: provider.name } : null;
             }), 'profit')

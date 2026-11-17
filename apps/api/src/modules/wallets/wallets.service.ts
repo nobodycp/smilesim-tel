@@ -230,33 +230,56 @@ export class WalletsService {
   /**
    * The signed-in account's profit by package over a period (roadmap N4): sales, refunds and net profit for each
    * package sold in its chain, newest package first, with the totals. Same filters as the ledger (`from`, `to`, `q`).
+   * For the branch each package's profit is net of the operations marked as its loss (spec DB.5 P.8), which each row
+   * and the totals count (`losses`) and price (`lossAmount`, positive); a package with losses and no sale is a row.
+   * For another layer both are 0 and nothing more is read.
    */
   async profitReport(actor: Actor, input: ProfitsQuery = {}) {
     const query = parseInput(ProfitsQuery, input);
     const view = marginViewOf(actor);
     // Exact over any period (ADR 0026, the owner's answer 3): one grouped sum of the stored margins, no rows loaded.
-    const groups = await this.repo.profitGroups({ AND: [await this.marginEntries(view, query), { [view.margin]: { not: null } }] }, view.margin);
-    const packages = new Map<string, { packageName: string; companyName: string; sales: number; refunds: number; profit: number; newest: number }>();
-    for (const row of groups) {
+    // The branch's losses are a second read with the same filter, so the sales read keeps its partial index.
+    const [groups, losses] = await Promise.all([
+      this.repo.profitGroups({ AND: [await this.marginEntries(view, query), { [view.margin]: { not: null } }] }, view.margin),
+      view.layer === 'branch' ? this.tree.accounts().then((accounts) => this.entryFilter(query, accounts)).then((where) => this.repo.lossGroups(where)) : [],
+    ]);
+    type Row = { packageName: string; companyName: string; sales: number; refunds: number; profit: number; losses: number; lossAmount: number; newest: number };
+    const packages = new Map<string, Row>();
+    const groupOf = (row: { companyName: string | null; packageName: string | null }) => {
       const key = `${row.companyName ?? ''}\n${row.packageName ?? ''}`;
-      const group = packages.get(key) ?? { packageName: row.packageName ?? '', companyName: row.companyName ?? '', sales: 0, refunds: 0, profit: 0, newest: 0 };
+      const group = packages.get(key) ?? { packageName: row.packageName ?? '', companyName: row.companyName ?? '', sales: 0, refunds: 0, profit: 0, losses: 0, lossAmount: 0, newest: 0 };
+      packages.set(key, group);
+      return group;
+    };
+    for (const row of groups) {
+      const group = groupOf(row);
       if (SALE_KINDS[row.kind]) group.sales += row._count._all;
       else group.refunds += row._count._all;
       group.profit += (row._sum as Record<string, number | null>)[view.margin] ?? 0;
       group.newest = Math.max(group.newest, row._max.createdAt?.getTime() ?? 0);
-      packages.set(key, group);
     }
-    // The package sold or given back most recently first.
-    const list = [...packages.values()].sort((a, b) => b.newest - a.newest).map(({ packageName, companyName, sales, refunds, profit }) => ({ packageName, companyName, sales, refunds, profit }));
-    const totals = list.reduce((sum, row) => ({ sales: sum.sales + row.sales, refunds: sum.refunds + row.refunds, profit: sum.profit + row.profit }), { sales: 0, refunds: 0, profit: 0 });
+    for (const row of losses) {
+      const group = groupOf(row);
+      const margin = row._sum.branchMargin ?? 0;
+      group.losses += row._count._all;
+      group.lossAmount -= margin;
+      group.profit += margin;
+      group.newest = Math.max(group.newest, row._max.createdAt?.getTime() ?? 0);
+    }
+    // The package sold, given back or lost most recently first.
+    const list = [...packages.values()].sort((a, b) => b.newest - a.newest).map(({ newest: _newest, ...row }) => row);
+    const totals = list.reduce(
+      (sum, row) => ({ sales: sum.sales + row.sales, refunds: sum.refunds + row.refunds, profit: sum.profit + row.profit, losses: sum.losses + row.losses, lossAmount: sum.lossAmount + row.lossAmount }),
+      { sales: 0, refunds: 0, profit: 0, losses: 0, lossAmount: 0 },
+    );
     return { packages: list, totals };
   }
 
-  /** The profit report as a CSV (BOM, shekels). */
+  /** The profit report as a CSV (BOM, shekels); the losses' two columns for the branch only (spec DB.5 P.8). */
   async profitCsv(actor: Actor, input: ProfitsQuery = {}) {
     const query = parseInput(ProfitsQuery, input);
     const { packages, totals } = await this.profitReport(actor, query);
-    return profitCsv([...packages, { packageName: 'TOTAL', companyName: '', ...totals }]);
+    return profitCsv([...packages, { packageName: 'TOTAL', companyName: '', ...totals }], actor.layer === 'branch');
   }
 
   /** The signed-in account's own wallet over the last `days` (7, 30 or 90): the finance page's cards and chart. */
@@ -268,11 +291,16 @@ export class WalletsService {
     ]);
     const balance = wallet?.balance ?? 0;
     // What this account earned over the same window on the sales of the chains it was in (ADR 0026), and how many.
+    // The branch's profit is net of the operations marked as its loss in the window (spec DB.5 P.8), read beside it.
     const view = marginViewOf(actor);
-    const byKind = await this.repo.marginsByKind({ AND: [marginWhere(view), saleOrRefundWhere(), { createdAt: { gte: windowStart(now, days) } }] }, view.margin);
-    const profit = byKind.reduce((sum, row) => sum + ((row._sum as Record<string, number | null>)[view.margin] ?? 0), 0);
+    const [byKind, lost] = await Promise.all([
+      this.repo.marginsByKind({ AND: [marginWhere(view), saleOrRefundWhere(), { createdAt: { gte: windowStart(now, days) } }] }, view.margin),
+      view.layer === 'branch' ? this.repo.lossTotal(windowStart(now, days)) : null,
+    ]);
+    const losses = lost ? { count: lost._count._all, amount: -(lost._sum.branchMargin ?? 0) } : null;
+    const profit = byKind.reduce((sum, row) => sum + ((row._sum as Record<string, number | null>)[view.margin] ?? 0), 0) - (losses?.amount ?? 0);
     const sales = byKind.filter((row) => SALE_KINDS[row.kind]).reduce((sum, row) => sum + row._count._all, 0);
-    return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now, days) };
+    return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, losses, ...walletSummary(entries, balance, now, days) };
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */

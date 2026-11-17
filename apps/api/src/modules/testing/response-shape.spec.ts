@@ -731,6 +731,17 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toMatch(/export type ProviderOpStats = \{[^}]*\blosses\?: number[^}]*\};/);
   });
 
+  // Spec DB.5 P.8: the branch's losses in its profit figures (`reporting/desk/branch-losses.db.spec.ts` pins what the
+  // API answers, for the branch and for every lower layer).
+  it('the branch\'s losses: LossTotals, PulseTotals, the overview\'s sales, ProfitRow, ProfitReport and FinanceSummary', () => {
+    expect(source).toMatch(/export type LossTotals = \{ count: number; amount: number \};/);
+    expect(source).toMatch(/export type PulseTotals = \{ count: number; amount: number; activations: number; profit: number; losses: number \};/);
+    expect(typeBody(source, 'OverviewPayload')).toMatch(/\n {2}sales: \{[^\n]*; losses: LossTotals \| null \};/);
+    expect(source).toMatch(/export type ProfitRow = \{[^}]*\bprofit: number; losses: number; lossAmount: number \};/);
+    expect(source).toMatch(/export type ProfitReport = \{ packages: ProfitRow\[\]; totals: \{ sales: number; refunds: number; profit: number; losses: number; lossAmount: number \} \};/);
+    expect(typeBody(source, 'FinanceSummary')).toMatch(/\n {2}losses: LossTotals \| null;/);
+  });
+
   it('the request log: RequestLogRow, RouteFigures, RequestLogSummary and the list envelope', () => {
     expect(declared(typeBody(source, 'RequestLogRow'))).toEqual({ required: sorted(REQUEST_ROW_KEYS), optional: [] });
     expect(declared(typeBody(source, 'RouteFigures'))).toEqual({ required: sorted(ROUTE_FIGURES_KEYS), optional: [] });

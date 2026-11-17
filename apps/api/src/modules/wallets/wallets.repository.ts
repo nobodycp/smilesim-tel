@@ -91,6 +91,25 @@ export class WalletsRepository {
     });
   }
 
+  /**
+   * The operations marked as the branch's loss the filter keeps (spec DB.5 P.8), by company and package: how many,
+   * the `branchMargin` they store (− their cost) and the newest. Served by `WalletEntry_loss_createdAt`.
+   */
+  lossGroups(where: Prisma.WalletEntryWhereInput) {
+    return this.uow.prisma.walletEntry.groupBy({
+      by: ['companyName', 'packageName'],
+      where: { AND: [{ providerLoss: { not: null } }, where] },
+      _count: { _all: true },
+      _sum: { branchMargin: true },
+      _max: { createdAt: true },
+    });
+  }
+
+  /** The operations marked as the branch's loss since a moment: how many and the `branchMargin` they store (spec DB.5 P.8). */
+  lossTotal(since: Date) {
+    return this.uow.prisma.walletEntry.aggregate({ where: { providerLoss: { not: null }, createdAt: { gte: since } }, _count: { _all: true }, _sum: { branchMargin: true } });
+  }
+
   /** The sales and refunds the filter keeps, by kind: how many and the viewer's stored margin (`margin`). */
   marginsByKind(where: Prisma.WalletEntryWhereInput, margin: MarginView['margin']) {
     return this.uow.prisma.walletEntry.groupBy({ by: ['kind'], where, _count: { _all: true }, _sum: { [margin]: true } as Prisma.WalletEntrySumAggregateInputType });

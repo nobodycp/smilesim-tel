@@ -64,6 +64,8 @@ export function ledgerCsv(rows: {
 }
 
 /** The profit report as a CSV with a BOM: one line per package, amounts in shekels. */
-export function profitCsv(rows: { packageName: string; companyName: string; sales: number; refunds: number; profit: number }[]): string {
+export function profitCsv(rows: { packageName: string; companyName: string; sales: number; refunds: number; profit: number; losses?: number; lossAmount?: number }[], withLosses = false): string {
+  // The branch's losses (spec DB.5 P.8): how many and what they cost, after the profit they are taken from.
+  if (withLosses) return csvDocument(['company', 'package', 'sales', 'refunds', 'profit', 'losses', 'lossAmount'], rows.map((row) => [row.companyName, row.packageName, row.sales, row.refunds, shekels(row.profit), row.losses ?? 0, shekels(row.lossAmount ?? 0)]));
   return csvDocument(['company', 'package', 'sales', 'refunds', 'profit'], rows.map((row) => [row.companyName, row.packageName, row.sales, row.refunds, shekels(row.profit)]));
 }
