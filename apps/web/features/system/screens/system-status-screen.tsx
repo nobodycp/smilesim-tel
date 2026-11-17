@@ -45,7 +45,7 @@ const NOTE_TONE: Record<StatusState, string> = {
 };
 
 /*
- * The cards: one column on a phone, two from 768px, three from 1280px (three rows of three), 12px apart; each card a
+ * The cards: one column on a phone, two from 768px, three from 1100px (three rows of three), 12px apart; each card a
  * Pane with the home panes' head (the part and its state badge) and a ruled fact list under the reason line. Cards in
  * one row share its height; in two columns an odd last card takes the whole row, as the figure row does (owner
  * 2026-11-11: no card left alone). In the desk column the grid keeps its own height.

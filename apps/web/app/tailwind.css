@@ -207,9 +207,11 @@
 
   /* next/font sets --font-sans (Noto Kufi Arabic) and --font-he (IBM Plex Sans Hebrew) on <html> (app/layout.tsx);
      the default `--font-sans` is cleared so Tailwind never declares a variable of that name. `font-body` is the
-     body stack (the `body` rule below). */
+     body stack (the `body` rule below). `font-mono` is the system's own monospace for code (a stack trace on the
+     errors page); no family is loaded for it. */
   --font-*: initial;
   --font-body: var(--font-sans), var(--font-he), Tahoma, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* The width scale (DESIGN.md): max 640 / 720 / 767 / 899 / 1099, min 641 / 721 / 768 / 900 / 1100.
      `sm:` = min-width 641px, `max-sm:` = under 641px (max 640), and so on. `max-touch:` = 720px and under, where every

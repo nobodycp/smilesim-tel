@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-16 (Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
+Last verified: 2026-11-17 (system monitor M.4: the `font-mono` token, the system monospace for code, Type; before it, 2026-11-16, Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
@@ -211,6 +211,9 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
 - Hebrew: **IBM Plex Sans Hebrew** (`--font-he`, weights 400 to 700).
 - Stack: `var(--font-sans), var(--font-he), Tahoma, sans-serif`. Headings use the same stack at weight 700, the
   heaviest weight (800 is gone, ADR 0021 D7 a).
+- Code (the stack frames on `/system/errors`): `font-mono`, the system's own monospace stack (`ui-monospace,
+  SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`), left to right in a `dir="ltr"` block. No family is
+  loaded for it; it is for code only, never for interface text or figures.
 - Numbers, money, dates, phone numbers: **Latin digits only** (dates use `ar-u-nu-latn`), in that same face with
   `font-variant-numeric: tabular-nums` (`tabular-nums`: `Money`, a table's numeric columns, dates, line numbers).
   Identifiers that are Latin digits stay in `<bdi dir="ltr">`.

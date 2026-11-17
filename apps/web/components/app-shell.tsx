@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
   Bell,
+  Bug,
   ChevronDown,
   ChevronLeft,
   ClipboardList,
@@ -336,6 +337,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       items: [
         { label: t.navSystemStatus, href: '/system', icon: Gauge, layers: ['branch'], owner: true },
         { label: t.navRequestLog, href: '/system/requests', icon: ScrollText, layers: ['branch'], owner: true },
+        { label: t.navErrors, href: '/system/errors', icon: Bug, layers: ['branch'], owner: true },
       ],
     },
   ];

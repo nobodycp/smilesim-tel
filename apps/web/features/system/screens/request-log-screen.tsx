@@ -1,8 +1,7 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { DataTable, PagedTable, type Column } from '../../../components/data-table';
 import { DateField } from '../../../components/date-field';
@@ -16,18 +15,18 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { api, type RequestLogRow, type RouteFigures } from '../../../lib/api';
-import { useDesk } from '../../../lib/desk-session';
 import { pick } from '../../../lib/fetched';
 import { usePrefs } from '../../../lib/prefs';
 import { requestTone } from '../../../lib/status-tone';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { pageRows, usePaged } from '../../../lib/use-paged';
-import { useRequireLayer } from '../../../lib/use-require-layer';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { CopyValue } from '../../lines/line-details';
 import { ReportFilters } from '../../reports/report-kit';
 import type { RequestLogFilters } from '../api';
+import { CELL_SUB, PANE_HEAD, PANE_TITLE } from '../kit';
+import { useSystemOwner } from '../use-system-owner';
 
 // The filters in the address (`?status=5xx&route=/v1/lines/:id`). `status` is a class of answers here; the API also
 // takes one status (`404`), which a link may carry and the menu then shows as its own choice.
@@ -43,10 +42,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * under it, 12px apart, each its own Pane with the home panes' head. The panes keep their own height (`items-start`):
  * stretched, the empty and failed blocks' `min-height: 100%` would resolve against the row and overflow the pane.
  */
-const CELL_SUB = 'block text-caption leading-1-3 font-normal text-muted';
 const ROUTE_GRID = 'grid items-start gap-3 xl:grid-cols-2 [.desk_&]:flex-none';
-const PANE_HEAD = 'flex min-h-13 items-center justify-between gap-2 border-b border-line bg-transparent px-4.5 py-3.5';
-const PANE_TITLE = 'm-0 inline-flex items-center gap-2 text-base font-bold text-ink';
 
 function ms(value: number) {
   return <bdi dir="ltr">{value.toLocaleString('en')} ms</bdi>;
@@ -65,16 +61,7 @@ function address(ip: string) {
  * sent home, as `/roles` does, instead of drawing the page and failing on its 403.
  */
 export function RequestLogScreen() {
-  const router = useRouter();
-  const { me } = useDesk();
-  const allowed = useRequireLayer(['branch']);
-  const owner = allowed && Boolean(me?.isBranchOwner);
-
-  useEffect(() => {
-    if (me && !me.isBranchOwner) router.replace('/');
-  }, [me, router]);
-
-  return owner ? <RequestLogDesk /> : null;
+  return useSystemOwner() ? <RequestLogDesk /> : null;
 }
 
 function RequestLogDesk() {
@@ -111,7 +98,7 @@ function RequestLogDesk() {
 
   function clearLog() {
     void run(() => api.clearRequestLog(), {
-      note: (answer) => t.reqLogCleared.replace('{n}', answer.removed.toLocaleString('en')),
+      note: (answer) => t.reqLogCleared.replace('{n}', answer.removed.toLocaleString('en')).replace('{e}', answer.errorsRemoved.toLocaleString('en')),
       then: () => setClearing(false),
     });
   }
