@@ -17,7 +17,7 @@ export const LEDGER_LIMIT = 1_000;
 // to `working`; the `Task_status_known` CHECK refuses the value).
 const OPEN_TASKS = ['working'];
 
-type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLoginName: string };
+type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLoginName: string; loss: string | null };
 
 @Injectable()
 export class ProviderAccountsService {
@@ -49,7 +49,7 @@ export class ProviderAccountsService {
     const providerById = new Map(providers.map((item) => [item.id, item]));
     const named = query.provider ? providerByCode.get(query.provider) : undefined;
     // A provider code that names no provider has no operations.
-    const read = query.provider && !named ? [] : await this.wallets.providerOperations({ providerId: named?.id, kind: kind || undefined, msisdn: needle || undefined, from: since });
+    const read = query.provider && !named ? [] : await this.wallets.providerOperations({ providerId: named?.id, kind: kind || undefined, msisdn: needle || undefined, from: since, loss: query.loss });
     const chosen = read.map((row) => ({ ...row, providerCode: providerById.get(row.providerId)?.code ?? '', providerName: providerById.get(row.providerId)?.name ?? '' }));
     // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
     const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
@@ -81,6 +81,8 @@ export class ProviderAccountsService {
         packageName: row.packageName,
         cost: row.cost,
         esimPrice: row.esimPrice,
+        /** Why the provider was paid and the point of sale charged nothing (spec DB.5 P.7), or null. */
+        loss: row.loss,
         matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
         matchState: matches.get(row.id)?.state ?? 'pending',
         providerAmount: matches.get(row.id)?.providerAmount ?? null,
@@ -96,6 +98,8 @@ export class ProviderAccountsService {
         differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
         pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
         differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
+        /** The window's operations the provider was paid for and the point of sale was not charged for (P.7). */
+        losses: ranged.filter((row) => row.loss !== null).length,
       },
       providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
     };
@@ -112,9 +116,10 @@ export class ProviderAccountsService {
    * settlements are sums in the database: purchases of the cost each operation stored (ADR 0025 rule 5).
    */
   private async books() {
-    const [providers, purchases, sums, tasks, packages] = await Promise.all([
+    const [providers, purchases, losses, sums, tasks, packages] = await Promise.all([
       this.repo.providersByName(),
       this.wallets.providerPurchases(),
+      this.wallets.providerLosses(),
       this.repo.entrySums(),
       this.repo.tasksInStatuses(OPEN_TASKS),
       this.repo.packagesWithProvider(),
@@ -127,7 +132,7 @@ export class ProviderAccountsService {
       held.set(pkg.provider.code, (held.get(pkg.provider.code) ?? 0) + providerBranchCost(task.action, null, pkg));
     }
     const paid = new Map(sums.map((row) => [`${row.providerId}:${row.kind}`, row._sum.amount ?? 0]));
-    return { providers, purchases, paid, held };
+    return { providers, purchases, losses, paid, held };
   }
 
   /**
@@ -170,6 +175,8 @@ export class ProviderAccountsService {
       matchEveryDays: matching.matchEveryDays,
       lastMatchedAt: matching.lastMatchedAt?.toISOString() ?? null,
       matchOverdue: matchOverdue(matching),
+      /** Its operations it was paid for and the point of sale was not charged for, ever (spec DB.5 P.7): the office looks at each. */
+      losses: books.losses.get(provider.id) ?? 0,
     };
   }
 
@@ -215,10 +222,10 @@ export class ProviderAccountsService {
     ]);
     const rows: LedgerRow[] = [
       ...operations.map((row) => ({
-        id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLoginName: '',
+        id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLoginName: '', loss: row.loss,
       })),
       ...entries.map((row) => ({
-        id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLoginName: row.actorLoginName,
+        id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLoginName: row.actorLoginName, loss: null,
       })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime() || b.id.localeCompare(a.id));
     let balance = paid - cost;

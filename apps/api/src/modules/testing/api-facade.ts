@@ -217,12 +217,12 @@ export class ApiFacade {
     return this.walletDesk.ledger(await this.actor(gate), query);
   }
 
-  async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
+  async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string; loss?: string } = {}) {
     // Slice R.7: the read moved to the provider accounts, which read the priced operations through the wallets.
     return new ProviderAccountsService(this.graph.uow, this.walletDesk, new ProvidersRepository(this.graph.uow)).providerOperations(await this.actor(gate), query);
   }
 
-  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
+  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string; loss?: string } = {}) {
     return this.walletDesk.finance(await this.actor(gate), query);
   }
 

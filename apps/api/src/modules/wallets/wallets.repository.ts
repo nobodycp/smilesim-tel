@@ -41,6 +41,14 @@ export class WalletsRepository {
     return this.uow.prisma.walletEntry.groupBy({ by: ['providerId'], where: { providerId: { not: null } }, _sum: { providerCost: true } });
   }
 
+  /**
+   * How many operations each provider was paid for and the point of sale was not charged for (spec DB.5 P.7): the
+   * marked entries, by provider, read from the partial index `WalletEntry_provider_loss`.
+   */
+  providerLosses() {
+    return this.uow.prisma.walletEntry.groupBy({ by: ['providerId'], where: { providerLoss: { not: null } }, _count: { _all: true } });
+  }
+
   /** What one provider's operation entries stored as cost, up to an instant (inclusive), or ever when there is none. */
   providerCostUpTo(providerId: string, to: Date | null) {
     return this.uow.prisma.walletEntry.aggregate({ where: { providerId, ...(to ? { createdAt: { lte: to } } : {}) }, _sum: { providerCost: true } });
@@ -50,7 +58,7 @@ export class WalletsRepository {
   operationsAtProviders(where: Prisma.WalletEntryWhereInput, take: number | undefined) {
     return this.uow.prisma.walletEntry.findMany({
       where,
-      select: { id: true, createdAt: true, kind: true, msisdn: true, companyName: true, packageName: true, providerId: true, providerCost: true, esimPrice: true },
+      select: { id: true, createdAt: true, kind: true, msisdn: true, companyName: true, packageName: true, providerId: true, providerCost: true, esimPrice: true, providerLoss: true },
       orderBy: [...NEWEST_FIRST],
       ...(take === undefined ? {} : { take }),
     });

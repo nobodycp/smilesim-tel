@@ -3,11 +3,13 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { DISCONNECT_FEE, lineTermsOf, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
+import { DISCONNECT_FEE, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
+import { esimPriceOf } from '../modules/catalog';
+import { PROVIDER_RELEASED_NOTE } from '../modules/platform/stored-text';
 import { PREPAID_KINDS } from '../modules/sales/line-pricing';
 import { daysOf, periodsAt, periodsCost, settleDisconnect, windowMonthsOf, type OpenPeriod, type PrepaidRow } from '../modules/sales/rules/periods';
 import { PROVIDER_OPERATION_KINDS } from '../modules/wallets/provider-cost';
-import { rewriteOperationColumns, type RepricedEntry } from '../modules/wallets/wallet-ledger';
+import { markProviderLosses, rewriteOperationColumns, writeGivenBack, type MarkedEntry, type RepricedEntry } from '../modules/wallets/wallet-ledger';
 
 // The provider ledger's backfill (ADR 0025, "Amendment"; plan 2026-11-17-database-scale, DB.5, slice P.4b). Run once
 // by hand on the deployed release, after its migrations, with writes stopped (docs/handover/technical-operations-ar.md
@@ -33,6 +35,15 @@ import { rewriteOperationColumns, type RepricedEntry } from '../modules/wallets/
 // This rewrites stored ledger columns of old rows. That is allowed only because the system runs on trial data before
 // launch and the owner's standing rule keeps nothing in an old form (ADR 0025, amendment; financial-invariants.md).
 // After launch an entry's provider and cost are never updated, and this command is not run again.
+//
+// P.7 (spec "Paid at the provider, not charged to the point of sale (DB.5 P.7)"): in the same transaction, after the
+// above, every old operation the provider was paid for and the point of sale was not charged for is marked:
+//
+// - an activation or renewal that moved 0 (sold at 0): an activation that stored cost 0 is re-priced by the activation
+//   rule of `costOf`; each one whose cost is then above 0 is marked `priced_zero`, its branch margin minus the cost;
+// - an approved `release-after-success` (found from its decision event, its operation and its task) that has no
+//   entry gets one, dated at the approval: an activation moving 0 on the point of sale's wallet, the package's cost
+//   now (no older figure is kept), marked `given_back`.
 //
 // One transaction on the tool client (no statement limit), with the wallet entries locked against writes (SHARE ROW
 // EXCLUSIVE: reads go on). An entry it cannot resolve is listed and the run stops before writing, unless
@@ -68,6 +79,11 @@ export type BackfillRun = {
   /** Unresolved entries and no `--leave-unresolved`: nothing was written. */
   stopped: boolean;
   written: number;
+  /** P.7: entries marked as the branch's loss (priced 0), and the given-back activations written. */
+  losses: LossChange[];
+  givenBack: GivenBack[];
+  /** P.7: operations sold at 0 whose cost cannot be found: left unmarked. */
+  lossesLeft: { id: string; kind: string; reason: string }[];
   /** Per provider code: purchases before and after. */
   purchases: { code: string; before: number; after: number }[];
   /** After the writes, in the whole table: operation entries without a provider or a cost. */
@@ -75,6 +91,11 @@ export type BackfillRun = {
   validated: boolean;
   committed: boolean;
 };
+
+/** An entry marked `priced_zero` by the P.7 pass. */
+export type LossChange = { id: string; kind: string; provider: string; from: number | null; cost: number; source: string };
+/** A given-back activation the P.7 pass wrote. */
+export type GivenBack = { id: string; taskId: string; provider: string; cost: number; at: Date };
 
 /** Thrown inside the transaction to roll it back once the run is written down. */
 class RolledBack extends Error {}
@@ -190,7 +211,7 @@ async function purchasesByProvider(tx: Prisma.TransactionClient, scope: Backfill
 /** Writes the provider and cost of every operation entry (in `scope`), validates the CHECK when it holds, and commits unless asked not to. */
 export async function backfillProviderLedger(prisma: PrismaClient, options: BackfillOptions = {}): Promise<BackfillRun> {
   const scope = options.scope;
-  const run: BackfillRun = { dryRun: Boolean(options.dryRun), entries: 0, attributed: [], moved: [], priced: [], unresolved: [], stopped: false, written: 0, purchases: [], breaking: 0, validated: false, committed: false };
+  const run: BackfillRun = { dryRun: Boolean(options.dryRun), entries: 0, attributed: [], moved: [], priced: [], unresolved: [], stopped: false, written: 0, losses: [], givenBack: [], lossesLeft: [], purchases: [], breaking: 0, validated: false, committed: false };
   try {
     await transaction(
       prisma,
@@ -242,6 +263,8 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
         }
 
         run.written = await rewriteOperationColumns(tx, writes);
+        run.written += await markOldLosses(tx, scope, code, run);
+        run.written += await writeOldGivenBack(tx, scope, code, run);
         const after = await purchasesByProvider(tx, scope);
         run.purchases = [...new Set([...before.keys(), ...after.keys()])]
           .map((id) => ({ code: code(id) as string, before: before.get(id) ?? 0, after: after.get(id) ?? 0 }))
@@ -265,6 +288,64 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
   return run;
 }
 
+/** The kinds a sale at 0 is marked on (`operationColumns`): an activation and the renewals, never a switch. */
+const PRICED_ZERO_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
+
+/** P.7: the operations sold at 0, re-priced where an activation stored 0, and marked `priced_zero` when they cost more than 0. */
+async function markOldLosses(tx: Prisma.TransactionClient, scope: BackfillScope | undefined, code: (id: string | null) => string | null, run: BackfillRun): Promise<number> {
+  const rows: (Entry & { amount: number })[] = await tx.walletEntry.findMany({
+    where: { kind: { in: PRICED_ZERO_KINDS }, amount: 0, providerLoss: null, providerId: { not: null }, ...(scope ? { userId: { in: scope.userIds } } : {}) },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true, kind: true, amount: true, lineId: true, providerId: true, providerCost: true, periodCost: true, esimPrice: true, ladder: true, createdAt: true,
+      line: { select: { id: true, endsAt: true, terms: true, package: { include: { company: { select: { code: true } }, provider: { select: { code: true } } } } } },
+    },
+  });
+  const marks: MarkedEntry[] = [];
+  for (const row of rows) {
+    const priced = row.kind === 'activate' && (row.providerCost ?? 0) === 0 ? costOf({ ...row, providerCost: null }, []) : { cost: row.providerCost ?? 0, source: 'kept' };
+    if ('reason' in priced) {
+      run.lossesLeft.push({ id: row.id, kind: row.kind, reason: priced.reason });
+      continue;
+    }
+    if (priced.cost <= 0) continue;
+    marks.push({ id: row.id, cost: priced.cost, loss: 'priced_zero' });
+    run.losses.push({ id: row.id, kind: row.kind, provider: code(row.providerId) as string, from: row.providerCost, cost: priced.cost, source: priced.source });
+  }
+  return markProviderLosses(tx, marks);
+}
+
+/** P.7: the approved releases after the provider's success that wrote no entry, written now, dated at the approval. */
+async function writeOldGivenBack(tx: Prisma.TransactionClient, scope: BackfillScope | undefined, code: (id: string | null) => string | null, run: BackfillRun): Promise<number> {
+  const approvals = await tx.providerDecisionEvent.findMany({
+    where: { type: 'approved', decision: 'release-after-success', operation: { task: scope ? { posId: { in: scope.userIds } } : { isNot: null } } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { accountId: true, createdAt: true, operation: { select: { resultMsisdn: true, task: { select: { id: true, posId: true, packageId: true, esim: true, msisdn: true, unitPrice: true } } } } },
+  });
+  let written = 0;
+  for (const approval of approvals) {
+    const task = approval.operation.task;
+    if (!task) continue;
+    const pkg = await tx.package.findUniqueOrThrow({ where: { id: task.packageId }, include: { company: true, provider: true } });
+    const msisdn = approval.operation.resultMsisdn ?? task.msisdn ?? '';
+    // Already recorded (by the approval since P.7, or by an earlier run): a number given back once for that package.
+    const recorded = await tx.walletEntry.findFirst({ where: { userId: task.posId, kind: 'activate', providerLoss: 'given_back', msisdn, packageName: pkg.name }, select: { id: true } });
+    if (recorded) continue;
+    const before = await tx.walletEntry.findFirst({ where: { userId: task.posId, createdAt: { lte: approval.createdAt } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { balanceAfter: true } });
+    const after = before ? null : await tx.walletEntry.findFirst({ where: { userId: task.posId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { balanceAfter: true, amount: true } });
+    const wallet = before || after ? null : await tx.wallet.findUnique({ where: { userId: task.posId }, select: { balance: true } });
+    const balanceAfter = before?.balanceAfter ?? (after ? after.balanceAfter - after.amount : wallet?.balance ?? 0);
+    const cost = packageActivationCost(pkg.branchCost, task.esim, esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company ?? undefined }).price);
+    const id = await writeGivenBack(tx, {
+      userId: task.posId, actorId: approval.accountId, at: approval.createdAt, balanceAfter, note: PROVIDER_RELEASED_NOTE,
+      sale: { msisdn, lineId: '', companyName: pkg.company?.name ?? '', packageName: pkg.name, packagePrice: task.unitPrice ?? pkg.posPrice, providerId: pkg.providerId, providerCost: cost, providerLoss: 'given_back' },
+    });
+    run.givenBack.push({ id, taskId: task.id, provider: code(pkg.providerId) as string, cost, at: approval.createdAt });
+    written += 1;
+  }
+  return written;
+}
+
 const money = (value: number | null) => (value === null ? 'none' : String(value));
 
 /** The run in lines for the log. */
@@ -279,6 +360,10 @@ export function backfillLines(run: BackfillRun): string[] {
   for (const row of run.moved) lines.push(`moved: entry ${row.id} (${row.kind}) ${row.from.provider} -> ${row.to.provider}`);
   for (const row of run.attributed) lines.push(`provider filled: entry ${row.id} (${row.kind}) ${row.to.provider}`);
   for (const row of run.priced) lines.push(`cost: entry ${row.id} (${row.kind}, ${row.to.provider}) ${money(row.from.cost)} -> ${row.to.cost} (${row.source})`);
+  lines.push(`P.7: marked priced_zero ${run.losses.length}; given back written ${run.givenBack.length}; sold at 0 left unmarked ${run.lossesLeft.length}`);
+  for (const row of run.losses) lines.push(`priced_zero: entry ${row.id} (${row.kind}, ${row.provider}) cost ${money(row.from)} -> ${row.cost} (${row.source})`);
+  for (const row of run.givenBack) lines.push(`given_back: entry ${row.id} for task ${row.taskId} (${row.provider}) cost ${row.cost} at ${row.at.toISOString()} (the package's cost now)`);
+  for (const row of run.lossesLeft) lines.push(`sold at 0, left unmarked: entry ${row.id} (${row.kind}): ${row.reason}`);
   for (const row of run.purchases) lines.push(`provider ${row.code}: purchases ${row.before} -> ${row.after}`);
   lines.push(
     run.validated

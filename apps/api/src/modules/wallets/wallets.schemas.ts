@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MAX_AGOROT, agorot, positiveAgorot, queryCursor, queryDay, queryOneOf, queryText, LAYER_ORDER } from '../platform';
 import { SUMMARY_WINDOWS } from './finance-summary';
-import { PROVIDER_OPERATION_KINDS } from './provider-cost';
+import { LOSS_FILTERS, PROVIDER_OPERATION_KINDS } from './provider-cost';
 
 /** A positive whole amount in agorot. */
 export const amount = positiveAgorot;
@@ -44,6 +44,8 @@ export const FinanceQuery = z.object({
   from: queryDay,
   to: queryDay,
   scope: queryOneOf(['money', 'operations']),
+  /** The operations marked as the branch's loss (spec DB.5 P.7): the branch only; another layer is refused. */
+  loss: queryOneOf(LOSS_FILTERS),
 });
 export type FinanceQuery = z.input<typeof FinanceQuery>;
 /** The finance filters once parsed: what `financeWhere` reads. */

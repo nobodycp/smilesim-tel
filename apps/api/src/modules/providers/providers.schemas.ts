@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MAX_AGOROT, agorot, code, optionalText, queryCursor, queryDay, queryOneOf, queryText } from '../platform';
 import { simLength, simPrefix, ACTION_KEYS, type ActionKey } from '../catalog';
-import { ceilingValue, PROVIDER_OPERATION_KINDS } from '../wallets';
+import { ceilingValue, LOSS_FILTERS, PROVIDER_OPERATION_KINDS } from '../wallets';
 
 // The bodies of the provider routes (backend-engineering.mdc 4.1): provider settings, adding to the catalog from
 // the provider, and our account with each provider. The services parse them with `parseInput` after their
@@ -128,5 +128,7 @@ export const ProviderOperationsQuery = z.object({
   from: queryDay,
   to: queryDay,
   match: queryOneOf(['matched', 'difference', 'pending']),
+  /** The operations marked as the branch's loss (spec DB.5 P.7): all of them, or one reason. */
+  loss: queryOneOf(LOSS_FILTERS),
 });
 export type ProviderOperationsQuery = z.input<typeof ProviderOperationsQuery>;

@@ -49,6 +49,8 @@ function service() {
     },
   } as never;
   const wallets = {
+    // Two of sky's operations were paid at the provider and not charged to the point of sale (DB.5 P.7).
+    providerLosses: async () => new Map([['p1', 2]]),
     providerPurchases: async () => new Map(['p1', 'p2'].map((id) => [id, operations.filter((row) => row.providerId === id).reduce((sum, row) => sum + row.cost, 0)])),
     providerCostUpTo: async (providerId: string, to: Date | null) => operations.filter((row) => row.providerId === providerId && within(row.at, to ? { lte: to } : undefined)).reduce((sum, row) => sum + row.cost, 0),
     providerOperations: async (filter: { providerId?: string; from?: Date | null; to?: Date | null; priced?: boolean; take?: number }) =>
@@ -62,8 +64,8 @@ function service() {
 describe('ProviderAccountsService', () => {
   it('sums each provider: payments + settlements − purchases, credit, held for open tasks, available', async () => {
     const { rows, totals } = await service().accounts.list(owner);
-    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, alertFloor: 0, held: 3500, available: 59500, matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdue: true, openDifferences: 0 });
-    expect(rows[1]).toMatchObject({ code: 'lian', balance: -2000, available: -2000 });
+    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, alertFloor: 0, held: 3500, available: 59500, matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdue: true, openDifferences: 0, losses: 2 });
+    expect(rows[1]).toMatchObject({ code: 'lian', balance: -2000, available: -2000, losses: 0 });
     expect(totals).toEqual({ balance: 11000, held: 3500, owed: 2000 });
   });
 

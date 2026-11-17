@@ -25,8 +25,10 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
   const entryId = (name: string) => `${tag}-${name}`;
   const A1 = `pl-${tag}-A1`;
 
+  // A sale moves money (an activation or renewal that moved 0 is a sale at 0, which the P.7 pass marks: spec DB.5 P.7).
+  const SALES = ['activate', 'charge', 'extend', 'reactivate'];
   const entry = (name: string, kind: string, lineId: string | null, providerCost: number | null, at: string, extra: Record<string, unknown> = {}) => ({
-    id: entryId(name), userId: ids.pos, actorId: ids.owner, amount: 0, balanceAfter: 0, kind, lineId, msisdn: `05${tag.replace(/\D/g, '1').slice(0, 7)}${name.length}`,
+    id: entryId(name), userId: ids.pos, actorId: ids.owner, amount: SALES.includes(kind) ? -3500 : 0, balanceAfter: 0, kind, lineId, msisdn: `05${tag.replace(/\D/g, '1').slice(0, 7)}${name.length}`,
     packageName: A1, companyName: `pl-${tag}-co`, providerCost, createdAt: new Date(at), ...extra,
   });
   const stored = async () =>

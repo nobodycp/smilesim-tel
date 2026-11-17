@@ -115,7 +115,8 @@ suite('the provider books (PostgreSQL)', () => {
   });
 
   const ours = <T extends { code: string }>(rows: T[]) => rows.filter((row) => row.code === codeA || row.code === codeB);
-  const matching = { matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdue: true, openDifferences: 0 };
+  // `losses`: no operation of this fixture was paid at the provider and not charged to the point of sale (DB.5 P.7).
+  const matching = { matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdue: true, openDifferences: 0, losses: 0 };
 
   it('sums each provider as before: purchases, payments, settlements, balance, held and available', async () => {
     const { rows } = await accounts.list(owner);

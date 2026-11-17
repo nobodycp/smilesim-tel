@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
-import { PROVIDER_OPERATION_KINDS } from './provider-cost';
+import { PROVIDER_OPERATION_KINDS, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
 
@@ -134,6 +134,12 @@ export class WalletsService {
     return new Map(sums.flatMap((row) => (row.providerId ? [[row.providerId, row._sum.providerCost ?? 0] as const] : [])));
   }
 
+  /** How many marked operations (spec DB.5 P.7) each provider has, by provider id. */
+  async providerLosses(): Promise<Map<string, number>> {
+    const counts = await this.repo.providerLosses();
+    return new Map(counts.flatMap((row) => (row.providerId ? [[row.providerId, row._count._all] as const] : [])));
+  }
+
   /** What one provider's operation entries stored as cost up to `to` (inclusive), or ever without it. */
   async providerCostUpTo(providerId: string, to: Date | null): Promise<number> {
     return (await this.repo.providerCostUpTo(providerId, to))._sum.providerCost ?? 0;
@@ -142,15 +148,17 @@ export class WalletsService {
   /**
    * The line operations with the provider and the cost each stored when it was written (ADR 0025), newest first.
    * Every filter runs in the database: the provider, the kind, a part of the number, the entry's time (`from` and
-   * `to` inclusive), `priced` (a cost other than 0: what a provider's ledger and a statement list), and `take`.
+   * `to` inclusive), `priced` (a cost other than 0: what a provider's ledger and a statement list), `loss` (the
+   * operations marked as the branch's loss, spec DB.5 P.7), and `take`.
    * An operation entry always carries both columns (the CHECK `WalletEntry_operation_priced`).
    */
-  async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; take?: number } = {}) {
+  async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; loss?: LossFilter; take?: number } = {}) {
     const rows = await this.repo.operationsAtProviders(
       {
         kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
         ...(filter.providerId ? { providerId: filter.providerId } : {}),
         ...(filter.priced ? { providerCost: { not: 0 } } : {}),
+        ...lossWhere(filter.loss),
         ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
         ...(filter.from || filter.to ? { createdAt: { ...(filter.from ? { gte: filter.from } : {}), ...(filter.to ? { lte: filter.to } : {}) } } : {}),
       },
@@ -166,12 +174,16 @@ export class WalletsService {
       providerId: row.providerId ?? '',
       cost: row.providerCost ?? 0,
       esimPrice: row.esimPrice ?? null,
+      loss: (row.providerLoss ?? null) as ProviderLoss | null,
     }));
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
   /** Public for the reports, which read the same entries. */
   async financeWhere(actor: Actor, query: FinanceFilter): Promise<Prisma.WalletEntryWhereInput> {
+    // The loss mark tells what the provider was paid (spec DB.5 P.7): the branch's alone, so no other layer may find
+    // the marked rows by filtering on it.
+    if (query.loss && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const accounts = await this.tree.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
     return {
@@ -199,6 +211,7 @@ export class WalletsService {
       // `scope=operations` keeps the line operations only (spec 2026-11-09-admin-review, 1): what «العمليات» listed.
       ...(query.scope === 'operations' ? { AND: [{ kind: { in: PROVIDER_OPERATION_KINDS } }] } : {}),
       ...(query.kind ? { kind: query.kind } : {}),
+      ...lossWhere(query.loss),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
       ...search,
@@ -322,6 +335,8 @@ export class WalletsService {
         packageName: row.packageName ?? '',
         packagePrice: row.packagePrice,
         esimPrice: row.esimPrice ?? null,
+        /** Why the provider was paid and the point of sale charged nothing (spec DB.5 P.7); the branch's alone, null for any other viewer. */
+        loss: actor.layer === 'branch' ? ((row.providerLoss ?? null) as ProviderLoss | null) : null,
         note: row.note ?? '',
       })),
       nextCursor,
