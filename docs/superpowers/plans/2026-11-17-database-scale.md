@@ -17,7 +17,7 @@ First, no money writes:
 
 Then, each with the owner's values or word:
 
-- [ ] **DB.8 Capped counts** [CONTRACT].
+- [x] **DB.8 Capped counts** [CONTRACT]: `total` up to 10,000 with `totalCapped`, `countUpTo` in `platform/paging.ts`; the numbers list and card read the point of sale's login only. (ccdf1fa3, fa431b04)
 - [ ] **DB.9 The tree read once a request and kept out of transactions** [LOCK].
 - [ ] **DB.13 Retention** [UNIQUE for the outbox].
 - [x] **DB.14 Request-log indexes**; the route figures from duration counts; the rollup is an open item. (78bb02a9)
