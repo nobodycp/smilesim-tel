@@ -1,7 +1,7 @@
 // What a person typed into a list's search box, read once for every list that searches (plan
 // 2026-11-17-database-scale, DB.6; the rule is the spec's section "Search (DB.6)"). Pure: no database, no Nest.
 
-const ARABIC_INDIC = /[٠-٩۰-۹]/g;
+const ARABIC_INDIC = /[\u0660-\u0669\u06f0-\u06f9]/g;
 
 /** Arabic-Indic (٠-٩, U+0660–U+0669) and Eastern Arabic-Indic (۰-۹, U+06F0–U+06F9) digits written as ASCII digits. */
 export function asciiDigits(text: string): string {
@@ -10,7 +10,7 @@ export function asciiDigits(text: string): string {
 }
 
 /** What is dropped from a typed number: spaces and dashes (ASCII, the Unicode hyphens and dashes, the minus sign). */
-const NUMBER_PUNCTUATION = /[\s\-‐-―−]/g;
+const NUMBER_PUNCTUATION = /[\s\-\u2010-\u2015\u2212]/g;
 
 export type SearchTerms = {
   /** What was typed, trimmed. */
