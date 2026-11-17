@@ -46,7 +46,7 @@ export function ProfitsScreen() {
   const periodMeta = t.lastDaysMeta.replace('{n}', String(days));
   const lossesMeta = data && branch
     ? <>{periodMeta} · {data.totals.losses
-      ? <span className="font-bold text-danger" data-testid="profit-losses">{t.homeLossesMeta.replace('{n}', String(data.totals.losses)).replace('{amount}', formatShekel(data.totals.lossAmount))}</span>
+      ? <span className="font-bold whitespace-nowrap text-danger" data-testid="profit-losses">{t.homeLossesMeta.replace('{n}', String(data.totals.losses)).replace('{amount}', formatShekel(data.totals.lossAmount))}</span>
       : t.homeNoLosses}</>
     : periodMeta;
 
@@ -65,7 +65,7 @@ export function ProfitsScreen() {
       <StatRow>
         <Stat label={t.yourProfit} value={data ? <Money value={data.totals.profit} signed /> : '—'} meta={lossesMeta} highlight />
         <Stat label={t.salesTitle} value={data ? data.totals.sales : '—'} meta={t.refundsMeta.replace('{n}', String(data?.totals.refunds ?? 0))} />
-        <Stat label={t.topPackage} value={best ? <bdi className="inline-block max-w-full text-2xl leading-1-35">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', `${formatShekel(perSale(best))} ₪`) : '—'} />
+        <Stat label={t.topPackage} value={best ? <bdi className="inline-block max-w-full text-2xl leading-1-35">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', formatShekel(perSale(best))) : '—'} />
       </StatRow>
       <Pane>
         <DataTable

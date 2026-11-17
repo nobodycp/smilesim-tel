@@ -132,7 +132,7 @@ export function WalletHead() {
             size="large"
             values={summary.series.map((point) => point.balance)}
             labels={summary.series.map((point) => point.day.slice(5))}
-            format={(value) => `${formatShekel(value)} ₪`}
+            format={(value) => formatShekel(value)}
             label={t.balanceOverTime}
           />
         </div>

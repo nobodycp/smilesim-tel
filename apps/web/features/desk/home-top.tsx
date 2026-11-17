@@ -111,8 +111,8 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
   const share = summary && !summary.unlimited && summary.ceiling > 0 ? Math.min(1, used / summary.ceiling) : 0;
   const ticks = Math.round(share * 20);
   const ceilingMeta = summary && !summary.unlimited && summary.ceiling > 0
-    ? t.ceilingShareMeta.replace('{n}', String(Math.round(share * 100))).replace('{held}', `${formatShekel(held)} ₪`)
-    : t.heldMeta.replace('{held}', `${formatShekel(held)} ₪`);
+    ? t.ceilingShareMeta.replace('{n}', String(Math.round(share * 100))).replace('{held}', formatShekel(held))
+    : t.heldMeta.replace('{held}', formatShekel(held));
   const pulse = overview?.pulse;
   const now: PulseTotals | undefined = pulse?.current;
   const before = pulse?.previous;
@@ -123,7 +123,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
     <TrendLine
       values={pulse.trend.map(pick)}
       labels={labels}
-      format={(value) => (money ? `${formatShekel(value)} ₪` : String(value))}
+      format={(value) => (money ? formatShekel(value) : String(value))}
       label={`${name} · ${periodName}`}
       tone={tone}
     />
