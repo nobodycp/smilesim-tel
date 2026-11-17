@@ -85,7 +85,7 @@ export function TasksCard({ data }: { data: OverviewPayload }) {
   const { tasks } = data;
   const rows: { key: string; label: string; value: number; tone: 'warning' | 'info' | 'success' | 'danger' | 'muted'; href: string }[] = [
     // Three statuses (spec 2026-11-09, 2): in progress, closed, done.
-    { key: 'working', label: t.working, value: tasks.pending + tasks.working, tone: 'warning', href: '/tasks?status=working' },
+    { key: 'working', label: t.working, value: tasks.working, tone: 'warning', href: '/tasks?status=working' },
     { key: 'closed', label: t.taskClosed, value: tasks.rejected + tasks.cancelled, tone: 'muted', href: '/tasks?status=cancelled' },
     { key: 'done', label: t.done, value: tasks.done, tone: 'success', href: '/tasks?status=done' },
   ];

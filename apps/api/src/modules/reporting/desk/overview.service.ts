@@ -18,7 +18,7 @@ export type OverviewPeriod = 'day' | 'month' | 'all';
 /** The most sale entries one overview reads; `capped` says when there were more. */
 const OVERVIEW_LIMIT = 20_000;
 const TOP = 5;
-const TASK_STATUSES = ['pending', 'working', 'done', 'rejected', 'cancelled'] as const;
+const TASK_STATUSES = ['working', 'done', 'rejected', 'cancelled'] as const;
 
 /** The first instant of the period, in UTC days like the rest of the money views; null for all time. */
 export function periodStart(period: OverviewPeriod, now: Date = new Date()): Date | null {

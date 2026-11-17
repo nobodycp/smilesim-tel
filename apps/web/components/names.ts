@@ -112,7 +112,7 @@ export function lineStatus(t: Copy, status: string): string {
 
 /** Three words (spec 2026-11-09, 2): in progress, closed (rejected or cancelled), done. */
 export function taskStatus(t: Copy, status: string): string {
-  if (status === 'pending' || status === 'working') return t.working;
+  if (status === 'working') return t.working;
   if (status === 'done') return t.done;
   if (status === 'cancelled' || status === 'rejected') return t.taskClosed;
   return status;

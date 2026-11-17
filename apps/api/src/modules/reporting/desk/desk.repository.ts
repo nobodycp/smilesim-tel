@@ -100,8 +100,8 @@ export class DeskRepository {
     return this.uow.prisma.task.count({ where: { AND: [where, { status }] } });
   }
 
-  /** When the oldest pending or working task under `where` was created. */
+  /** When the oldest working task under `where` was created. */
   oldestOpenTask(where: Prisma.TaskWhereInput) {
-    return this.uow.prisma.task.findFirst({ where: { AND: [where, { status: { in: ['pending', 'working'] } }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
+    return this.uow.prisma.task.findFirst({ where: { AND: [where, { status: 'working' }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
   }
 }

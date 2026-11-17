@@ -113,7 +113,7 @@ export function TasksScreen() {
   const counts = useApiQuery(sharedKeys.overview('all'), () => api.overview('all')).data?.tasks;
   const tabs: { key: string; label: string; count?: number }[] = [
     { key: '', label: t.tasksAllTab },
-    { key: 'working', label: taskStatus(t, 'working'), count: counts ? counts.pending + counts.working : undefined },
+    { key: 'working', label: taskStatus(t, 'working'), count: counts ? counts.working : undefined },
     { key: 'done', label: taskStatus(t, 'done'), count: counts?.done },
     { key: 'cancelled', label: taskStatus(t, 'cancelled'), count: counts ? counts.rejected + counts.cancelled : undefined },
   ];

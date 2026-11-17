@@ -104,7 +104,7 @@ export type OverviewPayload = {
   top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
   users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
-  tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
+  tasks: { working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
   /** The home's period cards: this period, the same span of the one before (null over all time), and the trend. */
   pulse: { current: PulseTotals; previous: PulseTotals | null; trend: (PulseTotals & { at: string })[] };
   providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;

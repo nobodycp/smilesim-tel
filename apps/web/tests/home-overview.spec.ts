@@ -27,7 +27,7 @@ const overview = (period: string, withProviders: boolean) => ({
   },
   active: { main_agent: withProviders ? [ranked('main', 12, 3600, 'الرئيسي')] : [], agent: [ranked('agent', 12, 3600, 'الوكيل')], pos: [ranked('pos', 8, 2400, 'المحل')] },
   users: { counts: { main_agent: 1, agent: 2, pos: 5 }, frozen: 1, debtors: 2, debt: 7000, ceilings: 50000, used: 7000 },
-  tasks: { pending: 3, working: 1, done: 20, rejected: 2, cancelled: 1, oldestOpenMinutes: 130 },
+  tasks: { working: 4, done: 20, rejected: 2, cancelled: 1, oldestOpenMinutes: 130 },
   providers: withProviders
     ? [
         { code: 'sky', name: 'سكاي', operations: 12, cost: 30000, profit: 3600, balance: -40000, creditLimit: 100000, available: 60000, status: 'working', problem: null },

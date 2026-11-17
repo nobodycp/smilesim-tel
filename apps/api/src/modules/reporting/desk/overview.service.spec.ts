@@ -48,7 +48,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     },
     wallet: { findMany: async () => [{ userId: 'pos', balance: -2000, ceiling: 5000 }, { userId: 'pos2', balance: 700, ceiling: 1000 }, { userId: 'agent', balance: -500, ceiling: 300 }] },
     task: {
-      count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'pending' ? 4 : 1),
+      count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'working' ? 4 : 1),
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
   } as unknown as ServiceGraph['prismaClient'];
@@ -111,7 +111,7 @@ describe('OverviewService', () => {
   it('counts the accounts below, what they owe, the ceilings, and the tasks', async () => {
     const result = await service().overview(actor('main', 'main_agent'), {});
     expect(result.users).toEqual({ counts: { main_agent: 0, agent: 1, pos: 2 }, frozen: 1, debtors: 2, debt: 2500, ceilings: 6300, used: 2300 });
-    expect(result.tasks).toMatchObject({ pending: 4, working: 1, done: 1, oldestOpenMinutes: 90 });
+    expect(result.tasks).toMatchObject({ working: 4, done: 1, oldestOpenMinutes: 90 });
     expect(result.providers).toBeNull();
   });
 

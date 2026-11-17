@@ -12,7 +12,7 @@ const overview = {
   sales: { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0, trend: [], capped: false },
   top: { packages: [], companies: [], providers: [] }, active: { main_agent: [], agent: [], pos: [] },
   users: { counts: { main_agent: 0, agent: 0, pos: 0 }, frozen: 0, debtors: 0, debt: 0, ceilings: 0, used: 0 },
-  tasks: { pending: 1, working: 0, done: 0, rejected: 0, cancelled: 0, oldestOpenMinutes: 5 }, providers: null,
+  tasks: { working: 1, done: 0, rejected: 0, cancelled: 0, oldestOpenMinutes: 5 }, providers: null,
 };
 
 // «ينتهي قريباً» (roadmap N2): days left on every active number, a warning when three or fewer, a filter, and a home card.
