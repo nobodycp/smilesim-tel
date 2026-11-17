@@ -321,7 +321,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.3 | The partial index `WalletEntry_provider_createdAt_id` (migration `20261117220000_provider_ledger_index`, a plain `CREATE INDEX` by the rule below, not `CONCURRENTLY`) and `VALIDATE CONSTRAINT` (`20261117220100_provider_ledger_validate`: only when no stored row breaks the CHECK, else a `WARNING` and it stays `NOT VALID`). | done |
 | P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. P.2's command is deleted with it. | done |
 | P.4b | **The backfill at HEAD** (`cli/provider-ledger-backfill.ts`, ADR 0025 amendment): the server deploys `main` once, so the command must exist in the release it runs on. It gives every operation entry its line's package's provider (moving the ones P.2's name matching gave to another provider), fills a missing cost by today's writer rule, and validates the CHECK. The overview's top providers read the stored provider. | done |
-| P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. Example: a 30 ₪ period, the number worked 10 days: the disconnect stores −19.5 ₪, so the line's net cost is 10.5 ₪. Today (kept by P.1 and the backfill, so the proof is equal) the disconnect stores *used share + fee* as a further purchase, 40.5 ₪ in all. Its own spec section first; the stored history is corrected by a settlement entry or a migration the owner chooses. | after P.4 |
+| P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Its own spec first. | after P.4 |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
@@ -356,7 +356,7 @@ the row the caller already read: no read is added); the cost is the one of that 
 | task completion and the provider's settlement (`TaskCompletion.applyClaimed`) | `activate` | the package's | the same; a task that charges nothing records 0, as it always has |
 | renewal now and by task | `extend`, `charge`, `reactivate` | the renewal target's, else the line's | the renewal branch cost on the new terms (as before) |
 | switch now and by task, debit, credit or even | `switch` | the new package's | the quoted difference (as before; may be negative) |
-| disconnect now and by task | `disconnect` | the line's | used share + 0.5 ₪ fee (as before; P.6) |
+| disconnect now and by task | `disconnect` | the line's | minus what the provider gives back: used share + 0.5 ₪ fee − the open periods' cost (P.6) |
 | eSIM issue (task) | `esim` | the line's | the fee (as before) |
 | freeze, unfreeze, refresh, rename, SIM, transfer (now and by task) | those | the line's | 0 |
 
@@ -398,6 +398,57 @@ aren 0 → 5000, lian 8500 → 0, sky 63288 → 63288; the CHECK validated; a se
 
 This updates stored ledger columns of old rows: allowed only because the system runs on trial data before launch and
 the owner's standing rule keeps nothing in an old form. After launch an entry's provider and cost are never updated.
+
+## A disconnect lowers the purchases (DB.5 P.6)
+
+The owner (ADR 0025, answer 3): when a number is disconnected before its period ends, the provider gives back the
+price of the unused days less the disconnect fee, 0.5 ₪ (`DISCONNECT_FEE`, 50 agorot). A 30 ₪ period, the number
+worked 10 days: the provider gives back 19.5 ₪, and the office's cost of that line is 10.5 ₪. Until P.6 the books
+counted the full 30 ₪ at the sale and a further 10.5 ₪ at the disconnect (40.5 ₪).
+
+**The rule, in agorot** (`settleDisconnect`, `sales/rules/periods.ts`; one rounding, the one it already had):
+
+- The periods are the ones the disconnect has always read (`LinePricing.disconnectSettlementFor` → `periodsAt`): the
+  line's prepaid entries newest first back to the activation, charge or reactivation that started the current run,
+  each still open at the disconnect; for rows written before periods were kept, the line's last window.
+- **A period's cost** is what the branch paid the provider for it: the cost kept on the entry that bought it
+  (`periodCost`, written by the sale or renewal; a switch reprices the older periods to the cost it kept, as before),
+  else, for rows written before the cost was kept, the line's terms (`subscription` or `renewal` `branchCost`).
+- **used** = round(running period's cost × used days ÷ period days), exactly as before (a started day counts as used).
+  The running period is the oldest open one; the others have not started and none of their days is used.
+- **What the provider gives back** = Σ open periods' cost − used − fee. **The disconnect entry's `providerCost`** is
+  minus that: `used + fee − Σ cost`. The owner's example: 1000 + 50 − 3000 = **−1950**; the books count
+  3000 − 1950 = 1050 for the line.
+- **Stacked periods:** a period bought ahead (an extension not yet started) is unused in full: its whole cost comes
+  back, as the point of sale's refund already gives back its whole value.
+- **The last day**, or any disconnect where the unused cost is under the fee: the formula is not clamped. On the last
+  day used = the period's cost, so the entry stores **+50**: the provider gives back nothing and the fee is still owed.
+  Under the fee in between, the entry stores fee − unused cost (> 0). There is no second rule and no second rounding.
+- **No open period** (the subscription lapsed): not a disconnect settlement; recorded with cost 0, as before.
+
+**The customer's side is unchanged.** The point of sale's refund (`amount` = the unused days at the point of sale's
+price, less the fee; refused when not above the fee, `NOTHING_TO_REFUND`), the ladder kept on the refund, the
+quote, and the task that moves no money once nothing is left are exactly as they were: P.6 changes only the
+`providerCost` that `settleDisconnect` answers, and only the disconnect entry stores it. Verified by the existing
+specs of the refund (`execution-date-settlement.db.spec.ts`, `prices-and-periods.spec.ts`), whose `amount`
+expectations do not move.
+
+**Writers:** the disconnect now (`LinesService.disconnectNow`) and by task (`TaskCompletion.disconnect`) both store
+`settled.providerCost`; nothing else changes. **Stored rows:** the P.4b command corrects the disconnects already
+stored in the old form (trial data before launch, ADR 0025 amendment): an old row stores used + fee > fee, a new row
+stores ≤ fee (used never exceeds the running period's cost), so the form is told by the value; an old row becomes
+`stored − Σ cost` of the periods open at its own time (`periodsAt` at its `createdAt`, from the prepaid entries
+written before it), each printed. One that has no open period to find, or whose used share would exceed the periods'
+cost, is unresolved and stops the run.
+
+Run on the local dev database (2026-11-17): the four stored disconnects (`5687cc6c…`, `5affd963…`, `a9136b2b…`,
+`32444b9a…`, all sky, a 3500 period with one day used) 167 → −3333; sky's purchases 63288 → 49288; the CHECK still
+validated; a second run wrote nothing.
+
+**Readers of a negative cost:** the books' sums and the ledger (amount = −cost) take any sign, as a switch to a
+cheaper package already stores a negative difference; the ledger page and `provider-operations` keep every row with
+a cost ≠ 0; the providers report and the overview add it. The providers report's share bar clamps a provider's share
+to 0–100 % (a window holding only a disconnect gives that provider a negative cost).
 
 ## Rules that hold for every slice
 

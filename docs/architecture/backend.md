@@ -209,9 +209,8 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   separate review). A plain activation stores its `providerCost` since ADR 0025 P.1.
 - A cut catalog list answers `capped: true` (`LIST_CAP`, 1,000) but no screen says so yet.
 - `provider-operations` filters its match state in memory and `openDifferences` is a Node pass over a provider's
-  priced operations (the match is simulated, not stored; a real reconciliation is an open item). A disconnect still
-  counts its used share and fee as a further purchase (ADR 0025 P.6), and an operation done at the provider but given
-  back to the customer is in no provider's books (P.7).
+  priced operations (the match is simulated, not stored; a real reconciliation is an open item). An operation done at the provider but given
+  back to the customer is in no provider's books (ADR 0025 P.7).
 - An activation records its provider operation in its own transaction (`sales/lines.service.ts` `recordIn`) and the
   worker's dispatcher sends it once dispatch is approved for the provider (ADR 0017, 0018, 0019;
   `sales/activation-dispatch.db.spec.ts`). Still missing: a provider status check, a screen for `unknown`

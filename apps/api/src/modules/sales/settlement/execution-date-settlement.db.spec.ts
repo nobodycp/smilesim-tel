@@ -416,8 +416,8 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
       // What was shown when the task opened is not what is paid once days have passed.
       expect(quotedAtOpening).toBe(refund(0));
       if (days > 0) expect(entry.amount).toBeLessThan(quotedAtOpening);
-      // The provider's side moves with the same day: the days used so far, plus the fee.
-      expect(entry.providerCost).toBe(Math.round((1800 * (30 - (LEFT - days))) / 30) + DISCONNECT_FEE);
+      // The provider's side moves with the same day: it gives back the period's cost less the days used and the fee (P.6).
+      expect(entry.providerCost).toBe(Math.round((1800 * (30 - (LEFT - days))) / 30) + DISCONNECT_FEE - 1800);
       expect(await taskOf(taskId)).toMatchObject({ status: 'done', posDelta: refund(days) });
       expect(await lineOf(lineId)).toMatchObject({ status: 'disconnected' });
       // The wallet (reset for each line by `newLine`) moved by that refund and nothing else.
@@ -473,8 +473,9 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     await complete(taskId);
     const [entry, ...others] = await entryOf(lineId, 'disconnect');
     expect(others).toHaveLength(0);
-    // No debit under a disconnect: the entry records the operation and what it cost at the provider.
-    expect(entry).toMatchObject({ amount: 0, providerCost: 1800 + DISCONNECT_FEE });
+    // No debit under a disconnect: the entry records the operation and what it cost at the provider: the last day,
+    // nothing given back and the fee owed (P.6).
+    expect(entry).toMatchObject({ amount: 0, providerCost: DISCONNECT_FEE });
     expect(await taskOf(taskId)).toMatchObject({ status: 'done' });
     expect(await lineOf(lineId)).toMatchObject({ status: 'disconnected' });
     expect(await wallet()).toMatchObject({ balance: START, held: 0 });
@@ -488,7 +489,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     await prisma.line.update({ where: { id: lineId }, data: { terms: { ...((await lineOf(lineId)).terms as object), subscription: { branchCost: 9999, mainPrice: 9999, agentPrice: 9999, posPrice: 9999, subscriberPrice: 9999 } } } });
     await disconnectNow(lineId);
     const [entry] = await entryOf(lineId, 'disconnect');
-    expect(entry).toMatchObject({ amount: refund(), providerCost: Math.round((1800 * 1) / 30) + DISCONNECT_FEE });
+    expect(entry).toMatchObject({ amount: refund(), providerCost: Math.round((1800 * 1) / 30) + DISCONNECT_FEE - 1800 });
   });
 
   it('refunds once when a disconnect task is completed twice, by several at once, or against a disconnect applied at once', async () => {

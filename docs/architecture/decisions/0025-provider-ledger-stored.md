@@ -316,4 +316,8 @@ Found in review after P.4; built as slice P.4b. Overrides "Backfill" above and t
 4. **Rewriting stored columns of old rows** contradicts rule 3 ("never updated"). It is allowed here only because the
    system runs on trial data before launch, and the owner's standing rule is that nothing is kept in an old form.
    After launch the stored provider and cost are never updated: a later difference is a settlement entry (answer 1).
-
+5. **The disconnect (answer 3, slice P.6).** A disconnect's entry stores minus what the provider gives back:
+   `used share + fee − the open periods' cost` (`settleDisconnect`; spec section "A disconnect lowers the purchases
+   (DB.5 P.6)"). Rule 4's "today `used share + DISCONNECT_FEE`" is replaced. The same command corrects the disconnects
+   stored in the old form (a stored figure above the fee) to the stored figure less the open periods' cost at their
+   own time, each printed; the same trial-data justification, and never after launch.

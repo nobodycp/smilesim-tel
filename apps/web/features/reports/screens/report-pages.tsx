@@ -101,7 +101,8 @@ export function SupplyReportScreen() {
   const data = report.data;
   const rows = data?.rows ?? [];
   const total = data?.totals.cost ?? 0;
-  const shareOf = (cost: number) => (total > 0 ? Math.round((cost / total) * 100) : 0);
+  // A provider's cost over a window may be negative (a disconnect gives back more than the window bought): 0–100 %.
+  const shareOf = (cost: number) => (total > 0 ? Math.min(100, Math.max(0, Math.round((cost / total) * 100))) : 0);
   const top = rows.reduce<SupplyReportRow | null>((best, row) => (!best || row.cost > best.cost ? row : best), null);
   const columns: Column<SupplyReportRow>[] = [
     { key: 'provider', header: t.provider, render: (row) => <strong>{row.providerName}</strong> },

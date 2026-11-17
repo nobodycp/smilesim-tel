@@ -103,11 +103,18 @@ export function periodsAt(
   return { periods: openPeriods(now, rows) ?? lastWindow(now, endsAt, windowDays, lastPrice, renewal), lastPrice };
 }
 
+/** What the branch paid the provider for the open periods: each one's kept cost, else the line's terms (older rows). */
+export function periodsCost(periods: OpenPeriod[], branchCostOf: (renewal: boolean) => number): number {
+  return periods.reduce((sum, period) => sum + (period.cost ?? branchCostOf(period.renewal)), 0);
+}
+
 /**
  * One disconnect posting for a line with paid days left.
  * The point of sale is credited every unused paid day minus the half-shekel fee.
- * The provider cost is the used share of the running period's branch cost plus that same fee: the cost kept on
- * the row that bought the period, else (older rows) the one `branchCostOf` gives from the line's terms.
+ * The provider gives back the cost of the unused days less that same fee (owner, ADR 0025 answer 3; spec section
+ * "A disconnect lowers the purchases (DB.5 P.6)"): the open periods' cost (`periodsCost`) minus the used share of
+ * the running period minus the fee. The entry's provider cost is minus that, `used + fee − cost`: negative while
+ * unused days are worth more than the fee, +fee on the last day. Not clamped: one rule, the used share's one rounding.
  * A line with no open period is not a disconnect: the subscription lapsed.
  * `refundable` is false when the unused days are worth no more than the fee: such a disconnect is refused, and
  * one already carried out at the provider moves no money (owner, 2026-11-15).
@@ -121,7 +128,7 @@ export function settleDisconnect(
   const refund = periods.reduce((sum, period) => sum + period.value, 0);
   const used = Math.round(((running.cost ?? branchCostOf(running.renewal)) * (running.days - running.left)) / running.days);
   const refundable = refund > DISCONNECT_FEE;
-  return { amount: refundable ? refund - DISCONNECT_FEE : 0, providerCost: used + DISCONNECT_FEE, refundable };
+  return { amount: refundable ? refund - DISCONNECT_FEE : 0, providerCost: used + DISCONNECT_FEE - periodsCost(periods, branchCostOf), refundable };
 }
 
 export function renewStay(

@@ -209,21 +209,26 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     await expectPriced(await last('switch'), 'A', -difference);
   });
 
-  it('a disconnect stores the used share and the 0.5 shekel fee, as the books count it today; now and by task', async () => {
-    // Sold ten days ago, part of an eleventh begun: 19 whole days of 30 left, so 11 used. The used share, 2000 × 11 / 30,
-    // and the fee (ADR 0025, owner's answer 3: today's rule, corrected in slice P.6).
-    const used = Math.round((P1.branchCost * 11) / 30) + DISCONNECT_FEE;
+  it('a disconnect stores minus what the provider gives back, now and by task; the line\'s purchases come to the used share and the fee', async () => {
+    // Sold ten days ago, part of an eleventh begun: 19 whole days of 30 left, so 11 used. The provider gives back the
+    // period's cost (2000) less the used share (2000 × 11 / 30) and the fee (ADR 0025 answer 3, slice P.6).
+    const used = Math.round((P1.branchCost * 11) / 30);
+    const cost = used + DISCONNECT_FEE - P1.branchCost;
+    expect(cost).toBe(733 + 50 - 2000);
     const line = await lineNow();
     await aged(line, 10);
     await service.operate(pos, line, 'disconnect', { outcome: 'success' });
     const now = await last('disconnect');
     expect(now.amount).toBeGreaterThan(0);
-    await expectPriced(now, 'A', used);
+    await expectPriced(now, 'A', cost);
+    // The books' purchases for this line: the sale's 2000 and the disconnect's −1217, i.e. 783.
+    const purchases = await prisma.walletEntry.aggregate({ where: { lineId: line, providerId: ids.providerA }, _sum: { providerCost: true } });
+    expect(purchases._sum.providerCost).toBe(used + DISCONNECT_FEE);
 
     const byTask = await lineNow();
     await aged(byTask, 10);
     await done(await taskOf(service.operate(pos, byTask, 'disconnect', { outcome: 'fail' })));
-    await expectPriced(await last('disconnect'), 'A', used);
+    await expectPriced(await last('disconnect'), 'A', cost);
   });
 
   it('the operations that cost nothing store 0 on the line\'s provider: freeze, unfreeze, refresh, rename, SIM, transfer; an eSIM issue its fee', async () => {

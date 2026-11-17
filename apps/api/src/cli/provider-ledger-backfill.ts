@@ -3,9 +3,9 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { lineTermsOf, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
+import { DISCONNECT_FEE, lineTermsOf, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
 import { PREPAID_KINDS } from '../modules/sales/line-pricing';
-import { daysOf, periodsAt, settleDisconnect, windowMonthsOf, type PrepaidRow } from '../modules/sales/rules/periods';
+import { daysOf, periodsAt, periodsCost, settleDisconnect, windowMonthsOf, type OpenPeriod, type PrepaidRow } from '../modules/sales/rules/periods';
 import { PROVIDER_OPERATION_KINDS } from '../modules/wallets/provider-cost';
 import { rewriteOperationColumns, type RepricedEntry } from '../modules/wallets/wallet-ledger';
 
@@ -27,6 +27,8 @@ import { rewriteOperationColumns, type RepricedEntry } from '../modules/wallets/
 //   An entry with no line keeps the provider it stored; with no line and no provider it cannot be attributed.
 // - A cost already stored is kept. A missing one is filled per kind (`costOf` below), from the entry's own record of
 //   the day first, then the line's terms, then the package.
+// - A disconnect stored in the old form (used share + fee, before slice P.6) is corrected to minus what the provider
+//   gives back: the stored figure less the cost of the periods open at its own time (`correctedDisconnect` below).
 //
 // This rewrites stored ledger columns of old rows. That is allowed only because the system runs on trial data before
 // launch and the owner's standing rule keeps nothing in an old form (ADR 0025, amendment; financial-invariants.md).
@@ -139,17 +141,42 @@ function costOf(entry: Entry, prepaid: Prepaid[]): { cost: number; source: strin
     return withFee(providerBranchCost(kind, terms, entry.line.package), typeof saved === 'number' ? "the line's terms" : "the package's price");
   }
   if (kind === 'disconnect') {
-    if (!entry.line) return { reason: 'no line to find the disconnected period on' };
-    const terms = termsOf(entry.line);
-    if (!terms) return { reason: "the line's terms cannot be read" };
-    const rows = prepaid.filter((row) => row.lineId === entry.line?.id && row.createdAt.getTime() < entry.createdAt.getTime());
-    const { periods } = periodsAt(entry.createdAt, rows, entry.line.endsAt, daysOf(windowMonthsOf(terms)), (renewal) => (renewal ? terms.renewal.posPrice : terms.subscription.posPrice));
-    const settled = settleDisconnect(periods, (renewal) => (renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
+    const open = periodsAtDisconnect(entry, prepaid);
+    if ('reason' in open) return open;
+    const settled = settleDisconnect(open.periods, open.branchCostOf);
     return settled ? { cost: settled.providerCost, source: 'the disconnect settlement at its own time' } : { cost: 0, source: 'no open period at the disconnect' };
   }
   if (kind === 'switch') return { reason: 'a switch keeps no record of its quoted difference' };
   if (kind === 'esim') return { cost: entry.esimPrice ?? 0, source: 'the eSIM fee kept on the entry' };
   return { cost: 0, source: 'a kind the provider does not price' };
+}
+
+/** The line's paid periods open at the disconnect's own time, read from the prepaid entries written before it, as the writer read them. */
+function periodsAtDisconnect(entry: Entry, prepaid: Prepaid[]): { periods: OpenPeriod[]; branchCostOf: (renewal: boolean) => number } | { reason: string } {
+  if (!entry.line) return { reason: 'no line to find the disconnected period on' };
+  const terms = termsOf(entry.line);
+  if (!terms) return { reason: "the line's terms cannot be read" };
+  const rows = prepaid.filter((row) => row.lineId === entry.line?.id && row.createdAt.getTime() < entry.createdAt.getTime());
+  const { periods } = periodsAt(entry.createdAt, rows, entry.line.endsAt, daysOf(windowMonthsOf(terms)), (renewal) => (renewal ? terms.renewal.posPrice : terms.subscription.posPrice));
+  return { periods, branchCostOf: (renewal) => (renewal ? terms.renewal.branchCost : terms.subscription.branchCost) };
+}
+
+/**
+ * A disconnect stored before slice P.6 kept the used share plus the fee (always above the fee: a started day counts
+ * as used); one stored since keeps used + fee − the open periods' cost (never above the fee: the used share is at
+ * most the running period's cost). So a stored figure above the fee is the old form, and the new one is that figure
+ * less the cost of the periods open at the disconnect (the used share is the writer's own, kept in the figure).
+ * Null: already in the new form. A reason: the periods cannot be found, or they cost less than the used share.
+ */
+function correctedDisconnect(entry: Entry, prepaid: Prepaid[]): { cost: number; source: string } | { reason: string } | null {
+  if (entry.kind !== 'disconnect' || entry.providerCost === null || entry.providerCost <= DISCONNECT_FEE) return null;
+  const open = periodsAtDisconnect(entry, prepaid);
+  if ('reason' in open) return open;
+  const paid = periodsCost(open.periods, open.branchCostOf);
+  if (paid === 0) return { reason: 'a disconnect in the old form with no open period to give back' };
+  const cost = entry.providerCost - paid;
+  if (cost > DISCONNECT_FEE) return { reason: "a disconnect in the old form whose used share exceeds its periods' cost" };
+  return { cost, source: `the provider gives back the open periods' cost ${paid} (slice P.6)` };
 }
 
 async function purchasesByProvider(tx: Prisma.TransactionClient, scope: BackfillScope | undefined): Promise<Map<string, number>> {
@@ -197,7 +224,7 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
             run.unresolved.push({ id: entry.id, kind: entry.kind, reason: 'no line and no provider stored' });
             continue;
           }
-          const priced = entry.providerCost === null ? costOf(entry, prepaid) : { cost: entry.providerCost, source: 'kept' };
+          const priced = entry.providerCost === null ? costOf(entry, prepaid) : correctedDisconnect(entry, prepaid) ?? { cost: entry.providerCost, source: 'kept' };
           if ('reason' in priced) {
             run.unresolved.push({ id: entry.id, kind: entry.kind, reason: priced.reason });
             continue;
