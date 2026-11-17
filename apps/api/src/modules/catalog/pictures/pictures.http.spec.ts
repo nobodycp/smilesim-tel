@@ -189,6 +189,9 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
     const [page, card] = asked.line;
     expect((page.include!.package as Args).include!.company).toEqual({ select: { code: true, name: true, esim: true } });
     expect((card.include!.package as Args).include!.company).toEqual({ select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true } });
+    // The point of sale on a list row and on the card: its login only, never the whole user row (password hash included).
+    expect(page.include!.pos).toEqual({ select: { loginName: true } });
+    expect(card.include!.pos).toEqual({ select: { loginName: true } });
     const [history, inbox, ofTask, sheet, owner, targets] = asked.package;
     expect(history.select).toEqual({ id: true, name: true, company: { select: { name: true } } });
     expect(inbox.select).toEqual({ id: true, name: true, company: { select: { name: true } }, provider: { select: { name: true } } });

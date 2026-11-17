@@ -54,7 +54,8 @@ export class LinesRepository {
   linesPage(where: Prisma.LineWhereInput, take: number) {
     return this.uow.prisma.line.findMany({
       where,
-      include: { package: { include: { company: { select: LIST_COMPANY } } }, pos: true },
+      // The point of sale's login and nothing else: never its password hash or its two-factor secrets.
+      include: { package: { include: { company: { select: LIST_COMPANY } } }, pos: { select: { loginName: true } } },
       orderBy: [...NEWEST_FIRST],
       take,
     });
@@ -69,7 +70,7 @@ export class LinesRepository {
   lineCard(id: string) {
     return this.uow.prisma.line.findUnique({
       where: { id },
-      include: { package: { include: { company: { select: CARD_COMPANY }, provider: true } }, pos: true },
+      include: { package: { include: { company: { select: CARD_COMPANY }, provider: true } }, pos: { select: { loginName: true } } },
     });
   }
 
