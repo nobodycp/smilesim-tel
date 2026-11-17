@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { cacheControl } from './cache-control';
 import { env, wholeEnv } from './config';
 import { enableWebCors } from './cors';
 import { setupOpenApi } from './openapi/setup';
@@ -19,6 +20,8 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, forceCloseConnections: true });
   app.disable('x-powered-by');
   app.use(securityHeaders());
+  // Before the body parser and every other middleware: its errors and their refusals carry the default too (PF.11).
+  app.use(cacheControl());
   // JSON only: a form posted by another page has no body the API reads (review 2026-11-10, S8).
   app.useBodyParser('json', { limit: '1mb' });
   // Behind a reverse proxy the caller's address is in X-Forwarded-For; TRUST_PROXY says how many hops to trust.

@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-17 (database plan DB.4, DB.10, DB.11: the health view once a window, no branch id list, grouped counts). The history of each change is in git.
+Last verified: 2026-11-17 (database plan DB.4, DB.10, DB.11: the health view once a window, no branch id list, grouped counts; speed PF.11: the `Cache-Control` default). The history of each change is in git.
 
 ## Rules
 
@@ -30,7 +30,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 
 | File | Role |
 |---|---|
-| `src/main.ts` | bootstrap: no `X-Powered-By`, security headers (`security-headers.ts`), JSON bodies only (1mb; no urlencoded parser), first the production settings check (`production-config.ts` `assertProductionConfig`: a problem is logged by variable name and the process exits 1), then `trust proxy` from `TRUST_PROXY` (whole number of hops; unset or 0 = the forwarded header is not read), CORS (`cors.ts`), OpenAPI (`openapi/`). |
+| `src/main.ts` | bootstrap: no `X-Powered-By`, security headers (`security-headers.ts`), then the `Cache-Control` default (`cache-control.ts`, speed PF.11: `private, no-cache` on every answer, errors and middleware refusals included; a handler that sets its own wins: the branding pictures, the notices stream, `/health` `no-store`; order pinned in `http-security-contract.spec.ts`), JSON bodies only (1mb; no urlencoded parser), first the production settings check (`production-config.ts` `assertProductionConfig`: a problem is logged by variable name and the process exits 1), then `trust proxy` from `TRUST_PROXY` (whole number of hops; unset or 0 = the forwarded header is not read), CORS (`cors.ts`), OpenAPI (`openapi/`). |
 | `src/production-config.ts` | part of the bootstrap since slice R.7 (owner `app`: it reads the providers' dispatch settings, so it is not the platform's); pure check of a production environment (ADR 0016): `COOKIE_SECURE=true`, https `WEB_ORIGIN`, `REDIS_URL`, `TRUST_PROXY` stated, 32-byte `SECRETS_KEY`; no `PROVIDER_SIMULATION` other than `0`, no trial-seed flag on. Nothing outside `NODE_ENV=production`. |
 | `src/config.ts` | the only reader of `process.env` (`env(name)`, `isProduction()`, `isTest()`); lists every variable the API knows |
 | `src/origin.middleware.ts` | a write whose `Origin` is not the web app (a configured origin, or a door host of the same site) is 403: the CSRF defence beside `SameSite=Lax` |

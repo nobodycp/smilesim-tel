@@ -268,6 +268,16 @@ describe('the protections that are on every route', () => {
     expect(app).toContain("consumer.apply(RequestLogMiddleware, OriginMiddleware, RateLimitMiddleware, DoorMiddleware).forRoutes('*')");
   });
 
+  it('the security headers and the Cache-Control default come before everything else, the body parser included', () => {
+    // Speed plan PF.11: set first, so every answer carries `private, no-cache` (an error, a refusal by the four
+    // middlewares above, a body the parser refuses) unless its handler states its own (`cache-control.spec.ts`).
+    const main = readFileSync(join(SRC, 'main.ts'), 'utf8');
+    const order = ['app.use(securityHeaders());', 'app.use(cacheControl());', "app.useBodyParser('json'", 'enableWebCors(app);'].map((line) => main.indexOf(line));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(main.match(/app\.use\(/g)).toHaveLength(2);
+  });
+
   it('the paths the middleware names are routes that exist', () => {
     // A route renamed without its line in the middleware would lose its rule (a sign-in limit, the stream's
     // exemption, the right to start a session) with no error.

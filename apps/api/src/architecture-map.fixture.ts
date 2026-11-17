@@ -57,7 +57,7 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // the operators' handbook gives.
   [/^cli\//, 'app'],
   // ── platform ──────────────────────────────────────────────────────────────────────────────────────
-  [/^(config|errors|db|doors|cors|security-headers)\.ts$/, 'platform'],
+  [/^(config|errors|db|doors|cors|security-headers|cache-control)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],
   [/^modules\/platform\//, 'platform'],
   // ── identity, auditing, notifications ─────────────────────────────────────────────────────────────
