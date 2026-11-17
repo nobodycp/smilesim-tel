@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, after } from '../platform';
-import type { RequestFilter } from './request-log.rules';
+import type { ErrorFilter, RequestFilter } from './request-log.rules';
 
 /** One route's figures in the summary: how often it was called and how long it took, in whole milliseconds. */
 export type RouteFigures = { method: string; route: string; calls: number; medianMs: number; p95Ms: number };
 
 /** How many of the summary's slowest and most called routes are named. */
 export const SUMMARY_ROUTES = 5;
+/** One group of server errors: a route and a message, how often, first and last seen, the last request and its stack. */
+type ErrorGroupRow = { method: string; route: string; name: string; message: string; count: number; firstAt: Date; lastAt: Date; lastRequestId: string; stack: string };
 
 type Position = Parameters<typeof after>[0];
 
@@ -86,10 +88,56 @@ export class RequestLogRepository {
     return { slowest: figures('slowest'), busiest: figures('busiest') };
   }
 
-  /** Deletes every row of the request log, and nothing else; answers how many. */
-  async clear(): Promise<number> {
-    return (await this.uow.prisma.requestLog.deleteMany({})).count ?? 0;
+  /** One batch of server errors in one statement. */
+  insertErrors(rows: Prisma.RequestErrorCreateManyInput[]) {
+    return this.uow.prisma.requestError.createMany({ data: rows });
   }
+  /**
+   * The server errors under the filter, grouped by method, route, class and message, the group seen last first;
+   * `limit` groups at most. Each group names its last request and that request's stack, chosen by the database.
+   */
+  errorGroups(filter: ErrorFilter, limit: number) {
+    return this.uow.prisma.$queryRaw<ErrorGroupRow[]>`
+      SELECT "method", "route", "name", "message", count(*)::int AS "count", min("at") AS "firstAt", max("at") AS "lastAt",
+             (array_agg("requestId" ORDER BY "at" DESC, "id" DESC))[1] AS "lastRequestId",
+             (array_agg("stack" ORDER BY "at" DESC, "id" DESC))[1] AS "stack"
+      FROM "RequestError" WHERE ${errorSqlOf(filter)}
+      GROUP BY "method", "route", "name", "message"
+      ORDER BY "lastAt" DESC, "count" DESC, "route", "method", "name", "message"
+      LIMIT ${limit}`;
+  }
+  /** How many server errors the filter holds. */
+  errorCount(filter: ErrorFilter) {
+    return this.uow.prisma.requestError.count({ where: errorWhereOf(filter) });
+  }
+  /** Deletes every server error, and nothing else; answers how many. */
+  async clearErrors(): Promise<number> {
+    return (await this.uow.prisma.requestError.deleteMany({})).count ?? 0;
+  }
+  /** Deletes every row of the request log and every server error, in one transaction (D5); answers both counts. */
+  clear(): Promise<{ removed: number; errorsRemoved: number }> {
+    return this.uow.runTx(async (tx) => {
+      const removed = (await tx.requestLog.deleteMany({})).count ?? 0;
+      const errorsRemoved = (await tx.requestError.deleteMany({})).count ?? 0;
+      return { removed, errorsRemoved };
+    });
+  }
+}
+/** The errors' filter as Prisma's `where`. */
+function errorWhereOf(filter: ErrorFilter): Prisma.RequestErrorWhereInput {
+  const and: Prisma.RequestErrorWhereInput[] = [];
+  if (filter.route !== undefined) and.push({ route: filter.route });
+  if (filter.from) and.push({ at: { gte: filter.from } });
+  if (filter.to) and.push({ at: { lte: filter.to } });
+  return and.length > 0 ? { AND: and } : {};
+}
+/** The same filter as SQL; values are parameters. */
+function errorSqlOf(filter: ErrorFilter): Prisma.Sql {
+  const and: Prisma.Sql[] = [];
+  if (filter.route !== undefined) and.push(Prisma.sql`"route" = ${filter.route}`);
+  if (filter.from) and.push(Prisma.sql`"at" >= ${filter.from}`);
+  if (filter.to) and.push(Prisma.sql`"at" <= ${filter.to}`);
+  return and.length > 0 ? Prisma.join(and, ' AND ') : Prisma.sql`TRUE`;
 }
 
 /** The filter as Prisma's `where`. */

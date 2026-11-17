@@ -1,4 +1,4 @@
-import { errorCode } from './log';
+import { REPORT_FRAMES, errorCode, errorReport } from './log';
 
 const SECRET = 'Bearer sk_live_abc123';
 const coded = (code: unknown) => errorCode(Object.assign(new Error(`connect failed to https://user:pass@host (${SECRET})`), { code, stack: `Error: ${SECRET}\n    at adapter.ts:1:1` }));
@@ -40,5 +40,44 @@ describe('errorCode', () => {
     // A plain object that only claims the name is not an error.
     expect(errorCode({ name: 'TimeoutError' })).toBe('unclassified');
     expect(errorCode(Object.assign(new Error('TimeoutError'), { name: 'Error' }))).toBe('unclassified');
+  });
+});
+
+describe('errorReport (system monitor M.4: what is stored of a server error)', () => {
+  class LeakyError extends Error {}
+
+  it('keeps the class, a code for the message and the frames of the stack, never the message', () => {
+    const error = new LeakyError(`could not save ${SECRET}`);
+    error.stack = `Error: could not save ${SECRET}\n    at LinesService.save (/app/apps/api/dist/modules/sales/lines.service.js:12:7)\n    at async Proxy.run (file:///app/node_modules/x/y.js:3:9)\n    at node:internal/process/task_queues:105:5`;
+    const report = errorReport(error);
+    expect(report).toEqual({
+      name: 'LeakyError',
+      message: 'unclassified',
+      frames: ['LinesService.save (dist/modules/sales/lines.service.js:12:7)', 'async Proxy.run (node_modules/x/y.js:3:9)', 'node:internal/process/task_queues:105:5'],
+    });
+    expect(JSON.stringify(report)).not.toContain('sk_live');
+    // A listed code is the message.
+    expect(errorReport(Object.assign(new Error(SECRET), { code: 'P2024' })).message).toBe('P2024');
+  });
+
+  it('does not take a line of the message for a frame, and keeps no frame when the message is not where it was', () => {
+    const forged = new Error(`bad input\n    at ${SECRET} (/app/dist/${SECRET}.js:1:1)`);
+    forged.stack = `Error: ${forged.message}\n    at real (/app/dist/real.js:1:1)`;
+    expect(errorReport(forged).frames).toEqual(['real (dist/real.js:1:1)']);
+    // The message changed after the stack was made: what precedes the frames cannot be told apart from them.
+    const changed = new Error('first');
+    changed.stack = `Error: first\n    at ${SECRET} (/x.js:1:1)\n    at real (/app/dist/real.js:1:1)`;
+    changed.message = `second ${SECRET}`;
+    expect(errorReport(changed).frames).toEqual([]);
+  });
+
+  it('keeps only lines shaped like frames, the top ones, and a class name only when it is an identifier', () => {
+    const deep = new Error('x');
+    deep.stack = ['Error: x', ...Array.from({ length: 30 }, (_, n) => `    at f${n} (/app/dist/f.js:${n + 1}:1)`), `    at ${SECRET}`, '    some note'].join('\n');
+    expect(errorReport(deep).frames).toHaveLength(REPORT_FRAMES);
+    const named = Object.assign(new Error('x'), { name: `Error ${SECRET}` });
+    expect(errorReport(named).name).toBe('Error');
+    expect(errorReport(SECRET)).toEqual({ name: 'string', message: 'unclassified', frames: [] });
+    expect(errorReport({ message: SECRET })).toEqual({ name: 'Object', message: 'unclassified', frames: [] });
   });
 });

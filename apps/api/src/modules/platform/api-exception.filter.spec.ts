@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { API_PROVIDERS } from './api-providers';
 import { fail } from './api-failure';
+import { ServerErrorRecorder, type ServerErrorDraft } from './server-errors';
 
 // Review 2026-11-10, A2: every error answers `{ message, code }`, whatever threw it, and a write with no body
 // reaches its handler as `{}`.
@@ -79,5 +80,58 @@ describe('ApiExceptionFilter and EmptyBodyPipe', () => {
   it('hands a handler `{}` when a write carries no body', async () => {
     const response = await request(app.getHttpServer()).post('/probe/echo');
     expect([response.status, response.body]).toEqual([201, { keys: [] }]);
+  });
+});
+
+describe('ApiExceptionFilter keeps a server error through the platform\'s port (system monitor M.4)', () => {
+  let app: INestApplication;
+  const recorded: ServerErrorDraft[] = [];
+  let recorder: (draft: ServerErrorDraft) => void = (draft) => void recorded.push(draft);
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [ProbeController],
+      providers: [...API_PROVIDERS, { provide: ServerErrorRecorder, useValue: { record: (draft: ServerErrorDraft) => recorder(draft) } }],
+    }).compile();
+    app = moduleRef.createNestApplication({ logger: false });
+    // As the request log's middleware does: the answer carries its request id before the handler runs.
+    app.use((_req: unknown, res: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+      res.setHeader('X-Request-Id', 'req-1');
+      next();
+    });
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    recorded.length = 0;
+    recorder = (draft) => void recorded.push(draft);
+  });
+
+  it('a 5xx is recorded with its request id, route, class, a code and frames; the message is not', async () => {
+    await request(app.getHttpServer()).get('/probe/bug').expect(500);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ requestId: 'req-1', method: 'GET', route: '/probe/bug', name: 'TypeError', message: 'unclassified' });
+    expect(recorded[0].frames.length).toBeGreaterThan(0);
+    expect(JSON.stringify(recorded[0])).not.toContain('secret');
+  });
+
+  it('a refusal, a conflict or a miss is not a server error', async () => {
+    await request(app.getHttpServer()).get('/probe/refusal').expect(403);
+    await request(app.getHttpServer()).get('/probe/conflict').expect(409);
+    await request(app.getHttpServer()).get('/probe/gone').expect(404);
+    await request(app.getHttpServer()).get('/probe/nowhere').expect(404);
+    expect(recorded).toEqual([]);
+  });
+
+  it('a recorder that throws does not change the answer', async () => {
+    recorder = () => {
+      throw new Error('the port is broken');
+    };
+    const answer = await request(app.getHttpServer()).get('/probe/bug');
+    expect([answer.status, answer.body.code]).toEqual([500, 'SERVER_ERROR']);
   });
 });

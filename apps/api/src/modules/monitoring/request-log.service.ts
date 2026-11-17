@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { FEED_PAGE, cursorPosition, dayRange, page, parseInput } from '../platform';
+import { FEED_PAGE, capList, cursorPosition, dayRange, page, parseInput } from '../platform';
 import { requireOwner, type Actor } from '../access';
 import { RequestLogRepository } from './request-log.repository';
 import { RequestLogWriter } from './request-log.writer';
-import { RequestLogFilterQuery, RequestLogQuery, type RequestLogFilterInput } from './request-log.schemas';
+import { RequestErrorsQuery, RequestLogFilterQuery, RequestLogQuery, type RequestLogFilterInput } from './request-log.schemas';
 import { errorRate, statusRange, type RequestFilter } from './request-log.rules';
 
+/** The server errors' list stops at this many groups (a capped list, backend-engineering.mdc 4.7). */
+const ERROR_GROUPS = 100;
 /**
  * The request log as the branch owner reads and clears it (spec 2026-11-17-system-monitor, section 2). Every use
  * case asks the policy first: the owner in person, no one else (D1), and no entered session.
@@ -58,14 +60,49 @@ export class RequestLogService {
   }
 
   /**
-   * Deletes every row of the request log (D5); the activity log records it, with the count, by the route. The rows
-   * still waiting in this process's writer are written first, so the requests made before the clearing go with it;
-   * the clearing's own request is written after it.
+   * Deletes every row of the request log and every server error (D5: «مسح السجل» clears requests and their errors);
+   * the activity log records it, with the count of requests, by the route. What still waits in this process's
+   * writer is written first, so the requests made before the clearing go with it; the clearing's own request is
+   * written after it.
    */
   async clear(actor: Actor) {
     requireOwner(actor);
     await this.writer.flush();
-    return { removed: await this.repo.clear() };
+    return this.repo.clear();
+  }
+  /**
+   * The server errors (5xx) under the filters, grouped by route and message (spec section 3): how many, first and last
+   * seen, the last request id and its stack's top; the group seen last first, `ERROR_GROUPS` groups at most (`capped`
+   * says more were there). `total` counts the errors under the filters, every group's.
+   */
+  async errors(actor: Actor, input: RequestErrorsQuery = {}) {
+    requireOwner(actor);
+    const query = parseInput(RequestErrorsQuery, input);
+    const { from, to } = dayRange(query.from, query.to);
+    const filter = { ...(query.route ? { route: query.route } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}) };
+    const [groups, total] = await Promise.all([this.repo.errorGroups(filter, ERROR_GROUPS + 1), this.repo.errorCount(filter)]);
+    const { rows, capped } = capList(groups, ERROR_GROUPS);
+    return {
+      items: rows.map((group) => ({
+        method: group.method,
+        route: group.route,
+        name: group.name,
+        message: group.message,
+        count: group.count,
+        firstAt: group.firstAt.toISOString(),
+        lastAt: group.lastAt.toISOString(),
+        lastRequestId: group.lastRequestId,
+        stack: group.stack === '' ? [] : group.stack.split('\n'),
+      })),
+      capped,
+      total,
+    };
+  }
+  /** Deletes every server error and leaves the requests (spec section 3: «or alone»); recorded like the clearing of the log. */
+  async clearErrors(actor: Actor) {
+    requireOwner(actor);
+    await this.writer.flush();
+    return { removed: await this.repo.clearErrors() };
   }
 
   private async filterOf(query: RequestLogFilterInput): Promise<RequestFilter> {

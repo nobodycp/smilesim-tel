@@ -861,3 +861,32 @@ export type RequestLogSummary = {
   slowest: RouteFigures[];
   busiest: RouteFigures[];
 };
+
+/**
+ * One group of server errors (system monitor M.4, `GET /v1/system/errors`, branch owner only): the 5xx answers of
+ * one route with one class and message. `message` is a code (`unclassified`, `timeout`, a driver's code), never the
+ * error's words; `stack` is the top frames of the last one, a function and a file each; `lastRequestId` finds its row
+ * in the request log.
+ */
+export type ErrorGroup = {
+  method: string;
+  route: string;
+  name: string;
+  message: string;
+  count: number;
+  firstAt: string;
+  lastAt: string;
+  lastRequestId: string;
+  stack: string[];
+};
+/** The groups seen last first, 100 at most (`capped` says more were there); `total` counts every error under the filters. */
+export type ErrorGroups = {
+  items: ErrorGroup[];
+  capped: boolean;
+  total: number;
+};
+/** `DELETE /v1/system/requests`: the requests and the server errors removed (D5). `DELETE /v1/system/errors` answers `{ removed }`. */
+export type RequestLogCleared = {
+  removed: number;
+  errorsRemoved: number;
+};

@@ -31,3 +31,10 @@ export type RequestLogFilterInput = z.output<typeof RequestLogFilterQuery>;
 /** GET system/requests — the rows, newest first, paged by cursor. */
 export const RequestLogQuery = RequestLogFilterQuery.extend({ cursor: queryCursor });
 export type RequestLogQuery = z.input<typeof RequestLogQuery>;
+/** GET system/errors — the server errors, grouped: by route and a time range. */
+export const RequestErrorsQuery = z.object({
+  route: queryText(200),
+  from: queryDay,
+  to: queryDay,
+});
+export type RequestErrorsQuery = z.input<typeof RequestErrorsQuery>;

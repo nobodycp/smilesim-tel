@@ -1,8 +1,10 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
-import type { Response } from 'express';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger, Optional } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { ApiFailure } from './api-failure';
+import { errorReport } from './log';
 import { isMissingRow, isUniqueViolation } from './prisma-errors';
+import { ServerErrorRecorder } from './server-errors';
 
 /** The code a plain HTTP status answers with when nothing more specific is known. */
 const CODE_OF_STATUS: Record<number, ErrorCode> = {
@@ -19,19 +21,43 @@ const CODE_OF_STATUS: Record<number, ErrorCode> = {
  * Every error the API answers has the body `{ message, code }` (backend-engineering.mdc 4.3), whatever threw it:
  * a refusal of ours (`ApiFailure`), a framework error (unknown route, malformed JSON, body too large), a
  * database conflict, or a bug. A bug answers 500 `SERVER_ERROR` and is logged with its stack; nothing internal
- * reaches the client.
+ * reaches the client. A 5xx is also handed to the server error port (system monitor M.4) as `errorReport` keeps
+ * it, beside its request's row; an app without the port (most specs) records nothing.
  */
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('ApiError');
+
+  constructor(@Optional() private readonly errors?: ServerErrorRecorder) {}
 
   catch(error: unknown, host: ArgumentsHost): void {
     if (host.getType() !== 'http') throw error;
     const response = host.switchToHttp().getResponse<Response>();
     if (response.headersSent) return;
     const { status, code } = this.answerOf(error);
-    if (status >= 500) this.logger.error(error instanceof Error ? error.stack ?? error.message : String(error));
+    if (status >= 500) {
+      this.logger.error(error instanceof Error ? error.stack ?? error.message : String(error));
+      this.record(error, host.switchToHttp().getRequest<Request>(), response);
+    }
     response.status(status).json({ message: ERROR_MESSAGES[code], code });
+  }
+
+  /** The request id the request log set on the answer, and the route pattern: nothing else of the request. */
+  private record(error: unknown, req: Request, response: Response): void {
+    if (!this.errors) return;
+    try {
+      const requestId = response.getHeader('x-request-id');
+      const route = (req.route as { path?: unknown } | undefined)?.path;
+      this.errors.record({
+        requestId: typeof requestId === 'string' ? requestId : '',
+        at: new Date(),
+        method: req.method,
+        route: typeof route === 'string' ? route.slice(0, 200) : '',
+        ...errorReport(error),
+      });
+    } catch {
+      // Keeping the error never changes the answer.
+    }
   }
 
   private answerOf(error: unknown): { status: number; code: ErrorCode } {

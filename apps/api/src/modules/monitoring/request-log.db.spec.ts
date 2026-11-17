@@ -18,7 +18,7 @@ import { RequestLogController } from './request-log.controller';
 import { RequestLogRepository } from './request-log.repository';
 import { RequestLogService } from './request-log.service';
 import { RequestLogWriter, type RequestLogDraft } from './request-log.writer';
-import { leaked, probeApp, sendSecrets } from '../../request-log.fixture';
+import { leaked, probeApp, sendCrash, sendSecrets } from '../../request-log.fixture';
 
 // The request log in PostgreSQL (system monitor M.1, M.2): what a request leaves in its row, the filters, the figures
 // the database computes, and the clearing, which leaves the activity log and writes its own event there.
@@ -30,7 +30,7 @@ import { leaked, probeApp, sendSecrets } from '../../request-log.fixture';
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
-suite('the request log in PostgreSQL: reading, the summary and clearing', () => {
+suite('the request log in PostgreSQL: reading, the summary, the server errors and clearing', () => {
   jest.setTimeout(60_000);
   const previousUrl = process.env.DATABASE_URL;
   const tag = randomUUID().slice(0, 8);
@@ -52,7 +52,11 @@ suite('the request log in PostgreSQL: reading, the summary and clearing', () => 
   const base = Date.parse(`${day}T08:00:00.000Z`);
   const ownDay = { from: day, to: day };
   const at = (minutes: number) => new Date(base + minutes * 60_000).toISOString();
-  const clearOwnDay = () => prisma.requestLog.deleteMany({ where: { at: { gte: new Date(`${day}T00:00:00.000Z`), lte: new Date(`${day}T23:59:59.999Z`) } } });
+  const dayWhere = { at: { gte: new Date(`${day}T00:00:00.000Z`), lte: new Date(`${day}T23:59:59.999Z`) } };
+  const clearOwnDay = async () => {
+    await prisma.requestLog.deleteMany({ where: dayWhere });
+    await prisma.requestError.deleteMany({ where: dayWhere });
+  };
   let serial = 0;
   /** One row as the writer would write it, `minutes` after 08:00. */
   const row = (minutes: number, extra: Record<string, unknown> = {}) => ({
@@ -215,8 +219,71 @@ suite('the request log in PostgreSQL: reading, the summary and clearing', () => 
     }
   });
 
+  it('a request that crashes with secrets in its body, query, cookie, headers and error message leaves none in its rows (M.4)', async () => {
+    const { app: probe, moduleRef } = await probeApp(null, [UnitOfWork, PrismaService, { provide: NOTICE_WRITER, useValue: {} }]);
+    try {
+      const answer = await sendCrash(probe);
+      expect(answer.status).toBe(500);
+      expect(answer.body).toEqual({ message: expect.any(String), code: 'SERVER_ERROR' });
+      await moduleRef.get(RequestLogWriter).flush();
+      const requestId = answer.headers['x-request-id'] as string;
+      const rows = await prisma.requestLog.findMany({ where: { requestId } });
+      const errors = await prisma.requestError.findMany({ where: { requestId } });
+      expect(rows.map(({ status, route }) => ({ status, route }))).toEqual([{ status: 500, route: '/v1/probe/:id/crash' }]);
+      expect(errors).toHaveLength(1);
+      expect(leaked(JSON.stringify([rows, errors]))).toEqual([]);
+      const [error] = errors;
+      // The class and a code for the message, never its words; the frames name functions and files, the frame-shaped
+      // line the message carried is not one of them.
+      expect({ method: error.method, route: error.route, name: error.name, message: error.message }).toEqual({ method: 'POST', route: '/v1/probe/:id/crash', name: 'TypeError', message: 'unclassified' });
+      const frames = error.stack.split('\n');
+      expect(frames.length).toBeGreaterThan(0);
+      expect(frames[0]).toMatch(/crashWithSecrets \(src\/request-log\.fixture\.ts:\d+:\d+\)$/);
+      expect(error.stack).not.toContain('NEVER-LOGGED');
+      await prisma.requestLog.deleteMany({ where: { requestId } });
+      await prisma.requestError.deleteMany({ where: { requestId } });
+    } finally {
+      await probe.close();
+      await moduleRef.get(UnitOfWork).prisma.$disconnect();
+    }
+  });
+  it('groups the server errors by route and message, with the count, first and last seen and the last request (M.4)', async () => {
+    const route = `/t-${tag}/broken`;
+    const error = (minutes: number, extra: Record<string, unknown> = {}) => ({
+      id: randomUUID(), requestId: `${tag}-e${(serial += 1)}`, at: new Date(base + minutes * 60_000), method: 'GET', route, name: 'TypeError', message: 'unclassified', stack: `f${minutes} (dist/x.js:1:1)`, ...extra,
+    });
+    await prisma.requestError.createMany({
+      data: [error(1), error(5, { requestId: 'last-of-three' }), error(3), error(2, { message: 'P2024', name: 'PrismaClientKnownRequestError' }), error(4, { route: `/t-${tag}/other` })],
+    });
+    const answer = await service.errors(owner(), { ...ownDay, route });
+    expect({ total: answer.total, capped: answer.capped }).toEqual({ total: 4, capped: false });
+    expect(answer.items).toEqual([
+      { method: 'GET', route, name: 'TypeError', message: 'unclassified', count: 3, firstAt: at(1), lastAt: at(5), lastRequestId: 'last-of-three', stack: ['f5 (dist/x.js:1:1)'] },
+      { method: 'GET', route, name: 'PrismaClientKnownRequestError', message: 'P2024', count: 1, firstAt: at(2), lastAt: at(2), lastRequestId: expect.any(String), stack: ['f2 (dist/x.js:1:1)'] },
+    ]);
+    // The day range holds; another route is its own group.
+    expect((await service.errors(owner(), { ...ownDay })).items.map((group) => [group.route, group.count])).toEqual([[route, 3], [`/t-${tag}/other`, 1], [route, 1]]);
+    expect((await service.errors(owner(), { from: at(3), to: at(4) })).items.filter((group) => group.route.startsWith(`/t-${tag}/`)).map((group) => [group.route, group.count])).toEqual([[`/t-${tag}/other`, 1], [route, 1]]);
+    await expect(service.errors(entered())).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
+  });
+  it('clearing the errors alone leaves the requests, and is recorded like the clearing of the log (M.4)', async () => {
+    await prisma.requestLog.createMany({ data: [row(1)] });
+    await prisma.requestError.createMany({ data: [{ requestId: `${tag}-alone`, at: new Date(base), method: 'GET', route: '/x', name: 'Error', message: 'unclassified' }] });
+    const events = () => prisma.activityEvent.findMany({ where: { actorId: ownerId, action: 'request_log_clear', subjectKind: 'request_errors' } });
+    const already = (await events()).length;
+    const answer = await request(app.getHttpServer()).delete('/v1/system/errors').set('Cookie', `sid=${ownerSid}`);
+    expect(answer.status).toBe(200);
+    expect(answer.body.removed).toBeGreaterThanOrEqual(1);
+    expect(await prisma.requestError.count({ where: { requestId: `${tag}-alone` } })).toBe(0);
+    expect(await prisma.requestLog.count({ where: dayWhere })).toBe(1);
+    const written = (await events()).slice(already);
+    expect(written.map(({ result, subjectRef }) => ({ result, subjectRef }))).toEqual([{ result: 'ok', subjectRef: String(answer.body.removed) }]);
+    const refused = await request(app.getHttpServer()).delete('/v1/system/errors').set('Cookie', `sid=${enteredSid}`);
+    expect(refused.status).toBe(403);
+  });
   it('clearing deletes every row, leaves the activity log, and writes one event there with the count', async () => {
     await prisma.requestLog.createMany({ data: [row(1), row(2), row(3)] });
+    await prisma.requestError.createMany({ data: [{ requestId: `${tag}-crashed`, at: new Date(base), method: 'GET', route: '/x', name: 'Error', message: 'unclassified' }] });
     // A row still waiting in the writer goes with the clearing too.
     writer.add({ at: new Date(), durationMs: 1, method: 'GET', route: '', path: '/waiting', status: 200, code: '', ip: '', userAgent: '', requestId: `${tag}-waiting`, bytesIn: 0, bytesOut: 0, account: null, sessionHash: null });
     // An event of the activity log from before: the clearing does not reach it.
@@ -228,6 +295,9 @@ suite('the request log in PostgreSQL: reading, the summary and clearing', () => 
     // Every row of the table: this file's three, and any another spec wrote meanwhile.
     expect(answer.body.removed).toBeGreaterThanOrEqual(4);
     expect(await prisma.requestLog.count({ where: { requestId: { startsWith: `${tag}-` } } })).toBe(0);
+    // D5: the errors go with their requests, and the answer says how many of each.
+    expect(answer.body.errorsRemoved).toBeGreaterThanOrEqual(1);
+    expect(await prisma.requestError.count({ where: { requestId: `${tag}-crashed` } })).toBe(0);
     expect(await prisma.activityEvent.findUnique({ where: { id: kept.id } })).not.toBeNull();
     const written = (await events()).slice(already);
     expect(written.map(({ action, result, subjectKind, subjectRef, actorLoginName }) => ({ action, result, subjectKind, subjectRef, actorLoginName }))).toEqual([

@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { Controller, Get, Module, Param, Post, UseInterceptors, type INestApplication, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
+import { Body, Controller, Get, Module, Param, Post, Query, UseInterceptors, type INestApplication, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DoorMiddleware } from './door.middleware';
@@ -14,6 +14,7 @@ import type { Actor } from './modules/access/types';
 import { API_PROVIDERS } from './modules/platform/api-providers';
 import { fail } from './modules/platform/api-failure';
 import { RESOURCE_CONTROLLER_PREFIXES } from './modules/platform/route-prefixes';
+import { ServerErrorRecorder } from './modules/platform/server-errors';
 import { RequestLogWriter } from './modules/monitoring/request-log.writer';
 import { RequestLogRepository } from './modules/monitoring/request-log.repository';
 
@@ -68,6 +69,12 @@ class SignedInProbe {
   crash() {
     throw new Error('a bug');
   }
+
+  /** A bug whose message quotes the request: its body, its query, and a line shaped like a stack frame. */
+  @Post('probe/:id/crash')
+  crashWithSecrets(@Body() body: unknown, @Query() query: unknown) {
+    throw new TypeError(`cannot read ${JSON.stringify(body)} for ${JSON.stringify(query)}\n    at ${SECRETS.apiKey} (/app/dist/${SECRETS.bearer}.js:1:1)`);
+  }
 }
 
 @Controller(RESOURCE_CONTROLLER_PREFIXES)
@@ -100,6 +107,8 @@ export async function probeApp(writer: Partial<RequestLogWriter> | null, extra: 
       { provide: AUTH_STORE, useValue: new MemoryAuthStore() },
       { provide: ActorResolver, useValue: resolver },
       ...(writer ? [{ provide: RequestLogWriter, useValue: writer }] : [RequestLogWriter, RequestLogRepository]),
+      // The error filter records a 5xx through the platform's port, as the app binds it (MonitoringModule).
+      { provide: ServerErrorRecorder, useExisting: RequestLogWriter },
       ...(extra as never[]),
     ],
   })
@@ -124,6 +133,15 @@ export async function sendSecrets(app: INestApplication) {
     .send({ password: SECRETS.password, code: SECRETS.code, esimCode: SECRETS.esimCode, nested: { secret: SECRETS.session } });
   const read = await request(app.getHttpServer()).get(`/v1/probe/two?code=${SECRETS.code}&esim=${encodeURIComponent(SECRETS.esimCode)}`).set(headers);
   return [write, read];
+}
+
+/** A write that crashes, carrying every secret: body, query, cookies, headers, and in the thrown error's message. */
+export async function sendCrash(app: INestApplication) {
+  const cookie = `sid=${SECRETS.session}; home=${SECRETS.home}; other=${SECRETS.code}`;
+  return request(app.getHttpServer())
+    .post(`/v1/probe/three/crash?token=${SECRETS.query}&password=${SECRETS.password}`)
+    .set({ Cookie: cookie, Authorization: `Bearer ${SECRETS.bearer}`, 'X-Api-Key': SECRETS.apiKey, 'Idempotency-Key': SECRETS.idempotency, 'X-Code': SECRETS.code })
+    .send({ password: SECRETS.password, code: SECRETS.code, esimCode: SECRETS.esimCode, nested: { secret: SECRETS.session } });
 }
 
 export function leaked(text: string): string[] {

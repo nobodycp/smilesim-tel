@@ -1,4 +1,5 @@
-import { REQUEST_LOG_BATCH, REQUEST_LOG_BUFFER_MAX, REQUEST_LOG_FLUSH_MS, RequestLogWriter, type RequestLogDraft } from './request-log.writer';
+import { REQUEST_ERROR_BUFFER_MAX, REQUEST_LOG_BATCH, REQUEST_LOG_BUFFER_MAX, REQUEST_LOG_FLUSH_MS, RequestLogWriter, type RequestLogDraft } from './request-log.writer';
+import type { ServerErrorDraft } from '../platform';
 import type { RequestLogRepository } from './request-log.repository';
 
 // The request log's writer (spec 2026-11-17-system-monitor, slice M.1): batches, the timer, a database that refuses,
@@ -10,9 +11,15 @@ const draft = (n: number, extra: Partial<RequestLogDraft> = {}): RequestLogDraft
   ip: '127.0.0.1', userAgent: '', requestId: `r${n}`, bytesIn: 0, bytesOut: 0, account: null, sessionHash: null, ...extra,
 });
 
-function repo(insert: (rows: unknown[]) => Promise<unknown> = async () => ({ count: 0 })) {
+const crash = (n: number): ServerErrorDraft => ({ requestId: `r${n}`, at: new Date(), method: 'GET', route: '/v1/x', name: 'TypeError', message: 'unclassified', frames: ['f (dist/x.js:1:1)', 'g (dist/y.js:2:2)'] });
+function repo(insert: (rows: unknown[]) => Promise<unknown> = async () => ({ count: 0 }), insertErrors: (rows: unknown[]) => Promise<unknown> = async () => ({ count: 0 })) {
   const batches: Record<string, unknown>[][] = [];
+  const errorBatches: Record<string, unknown>[][] = [];
   const stand = {
+    insertErrors: async (rows: Record<string, unknown>[]) => {
+      errorBatches.push(rows);
+      return insertErrors(rows);
+    },
     insertMany: async (rows: Record<string, unknown>[]) => {
       batches.push(rows);
       return insert(rows);
@@ -22,7 +29,7 @@ function repo(insert: (rows: unknown[]) => Promise<unknown> = async () => ({ cou
       { tokenHash: 'h-entered', kind: 'impersonation', operatorId: 'u1', user: { id: 'p1', loginName: 'pos1', layer: 'pos' } },
     ].filter((row) => hashes.includes(row.tokenHash)),
   };
-  return { stand: stand as unknown as RequestLogRepository, batches };
+  return { stand: stand as unknown as RequestLogRepository, batches, errorBatches };
 }
 
 describe('RequestLogWriter', () => {
@@ -129,5 +136,31 @@ describe('RequestLogWriter', () => {
     writer.add(draft(1));
     await writer.flush();
     expect(batches).toEqual([]);
+  });
+  it('writes a server error in the same pass as the requests, its frames one a line (M.4)', async () => {
+    jest.useFakeTimers();
+    const { stand, batches, errorBatches } = repo();
+    const writer = new RequestLogWriter(stand);
+    writer.record(crash(1));
+    // An error alone starts the timer, as a row does.
+    jest.advanceTimersByTime(REQUEST_LOG_FLUSH_MS);
+    jest.useRealTimers();
+    writer.add(draft(2));
+    await writer.flush();
+    expect(batches.map((rows) => rows.length)).toEqual([1]);
+    expect(errorBatches).toEqual([[{ requestId: 'r1', at: expect.any(Date), method: 'GET', route: '/v1/x', name: 'TypeError', message: 'unclassified', stack: 'f (dist/x.js:1:1)\ng (dist/y.js:2:2)' }]]);
+  });
+  it('drops and counts errors the database refuses or that pass the limit; recording never throws (M.4)', async () => {
+    const { stand } = repo(undefined, async () => {
+      throw new Error('database down');
+    });
+    const writer = new RequestLogWriter(stand);
+    expect(() => {
+      for (let n = 0; n < REQUEST_ERROR_BUFFER_MAX + 3; n += 1) writer.record(crash(n));
+    }).not.toThrow();
+    expect(writer.droppedErrors).toBe(3);
+    await expect(writer.flush()).resolves.toBeUndefined();
+    expect(writer.droppedErrors).toBe(REQUEST_ERROR_BUFFER_MAX + 3);
+    expect(writer.dropped).toBe(0);
   });
 });

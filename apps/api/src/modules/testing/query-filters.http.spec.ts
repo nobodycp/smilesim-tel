@@ -46,6 +46,7 @@ const REFUSED: [path: string, why: string][] = [
   ['/v1/system/requests?slowerThan=fast', 'a duration that is not a number'],
   ['/v1/system/requests?slowerThan=9999999', 'a duration past ten minutes'],
   ['/v1/system/requests/summary?from=yesterday', 'a moment that is not a date'],
+  ['/v1/system/errors?to=tomorrow', 'a moment that is not a date'],
 ];
 
 const ACCEPTED = [
@@ -65,6 +66,7 @@ const ACCEPTED = [
   '/v1/system/requests?status=4xx&code=LOGIN_REQUIRED&route=/v1/me&account=branch&ip=127.0.0.1&slowerThan=250&from=2026-11-17&to=2026-11-17T12:00:00Z',
   '/v1/system/requests?status=404',
   '/v1/system/requests/summary?status=5xx&from=2026-11-17T00:00:00Z',
+  '/v1/system/errors?route=/v1/lines/:id&from=2026-11-17&to=2026-11-17',
 ];
 
 describe('query filters', () => {

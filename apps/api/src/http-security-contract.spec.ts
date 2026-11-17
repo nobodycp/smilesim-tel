@@ -173,8 +173,9 @@ describe('the write routes, as the source has them', () => {
     const count = (prefix: string) => writes.filter((route) => route.controller === prefix).length;
     // Between R.11b and R.11c every resource write was served twice (also under `/office/`): 179 then, 103 now.
     // 78 since package plan D.3a (`PUT packages/:code/durations`, `DELETE packages/:code/durations/:id`; the pin
-    // was left at 76 then and corrected in system monitor M.1); 79 since M.2 (`DELETE system/requests`).
-    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 79, auth: 26, branding: 1, all: 106 });
+    // was left at 76 then and corrected in system monitor M.1); 79 since M.2 (`DELETE system/requests`); 80 since M.4
+    // (`DELETE system/errors`).
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 80, auth: 26, branding: 1, all: 107 });
   });
 
   it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
@@ -216,11 +217,12 @@ describe('the duplicate guard and the idempotency key', () => {
 
   it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
     // A move made on the real routes: every `/v1/` route given another path. The guard is decided by the
-    // controller, so the same 79 are guarded and nothing new is unguarded.
+    // controller, so the same 80 are guarded (79 before system monitor M.4's `DELETE system/errors`) and nothing new
+    // is unguarded.
     const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
     const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/v1\//, '/elsewhere/') }));
     expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
-    expect(moved.filter(guarded)).toHaveLength(79);
+    expect(moved.filter(guarded)).toHaveLength(80);
   });
 });
 

@@ -1,6 +1,6 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { env, logger, reason } from '../platform';
+import { ServerErrorRecorder, env, errorCode, logger, reason, type ServerErrorDraft } from '../platform';
 import { RequestLogRepository } from './request-log.repository';
 
 const log = logger('RequestLog');
@@ -10,6 +10,8 @@ export const REQUEST_LOG_FLUSH_MS = 2_000;
 export const REQUEST_LOG_BATCH = 200;
 /** Rows past this many waiting (the database hangs) are dropped and counted, so memory stays bounded. */
 export const REQUEST_LOG_BUFFER_MAX = 5_000;
+/** Server errors waiting past this many are dropped and counted: a crash loop must not fill memory either. */
+export const REQUEST_ERROR_BUFFER_MAX = 500;
 
 /** Who sent a request, when the request itself knew (the actor interceptor ran). */
 export type RequestAccount = { actorId: string; actorLoginName: string; layer: string; operatorId: string | null };
@@ -27,16 +29,24 @@ export type RequestLogDraft = Omit<Prisma.RequestLogCreateManyInput, 'id' | 'act
  * The request log's writer: rows wait in memory and are written in batches, so a request never waits for its log
  * and never fails because of it. A batch the database refuses is dropped and counted (`dropped`); what is waiting
  * is written when the module stops.
+ *
+ * It is also the platform's `ServerErrorRecorder` (system monitor M.4): a 5xx's error waits beside the rows and is
+ * written by the same pass, after the requests, so an error never waits for a database the requests did not.
  */
 @Injectable()
-export class RequestLogWriter implements OnModuleDestroy {
+export class RequestLogWriter extends ServerErrorRecorder implements OnModuleDestroy {
   private waiting: RequestLogDraft[] = [];
+  private waitingErrors: ServerErrorDraft[] = [];
   private timer: NodeJS.Timeout | null = null;
   private writing: Promise<void> = Promise.resolve();
   /** Rows lost since the process started: refused batches and rows past the buffer's limit. */
   dropped = 0;
+  /** Server errors lost since the process started. */
+  droppedErrors = 0;
 
-  constructor(private readonly repo: RequestLogRepository) {}
+  constructor(private readonly repo: RequestLogRepository) {
+    super();
+  }
 
   /** Takes one row; never throws, never waits. Without a database (specs that set none) nothing is kept. */
   add(draft: RequestLogDraft): void {
@@ -51,6 +61,16 @@ export class RequestLogWriter implements OnModuleDestroy {
     else this.timer ??= setTimeout(() => void this.flush(), REQUEST_LOG_FLUSH_MS).unref();
   }
 
+  /** Takes one server error, like `add`: never throws, never waits. */
+  record(draft: ServerErrorDraft): void {
+    if (!env('DATABASE_URL')) return;
+    if (this.waitingErrors.length >= REQUEST_ERROR_BUFFER_MAX) {
+      this.droppedErrors += 1;
+      return;
+    }
+    this.waitingErrors.push(draft);
+    this.timer ??= setTimeout(() => void this.flush(), REQUEST_LOG_FLUSH_MS).unref();
+  }
   /** Writes what is waiting, one batch at a time; resolves when it is written or dropped. Never rejects. */
   flush(): Promise<void> {
     if (this.timer) clearTimeout(this.timer);
@@ -72,6 +92,15 @@ export class RequestLogWriter implements OnModuleDestroy {
       } catch (error) {
         this.dropped += batch.length;
         log.warn(`a batch of ${batch.length} request rows was not written (${this.dropped} lost so far): ${reason(error)}`);
+      }
+    }
+    while (this.waitingErrors.length > 0) {
+      const batch = this.waitingErrors.splice(0, REQUEST_LOG_BATCH);
+      try {
+        await this.repo.insertErrors(batch.map(({ frames, ...row }) => ({ ...row, stack: frames.join('\n') })));
+      } catch (error) {
+        this.droppedErrors += batch.length;
+        log.warn(`a batch of ${batch.length} server errors was not written (${this.droppedErrors} lost so far): ${errorCode(error)}`);
       }
     }
   }

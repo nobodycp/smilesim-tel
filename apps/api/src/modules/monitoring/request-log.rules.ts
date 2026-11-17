@@ -13,6 +13,8 @@ export type RequestFilter = {
   to?: Date;
 };
 
+/** What the server errors are filtered by: a route pattern and a time range. */
+export type ErrorFilter = { route?: string; from?: Date; to?: Date };
 /** `4xx` is 400–499; `404` is 404 alone. */
 export function statusRange(status: string): { gte: number; lte: number } {
   if (status.endsWith('xx')) {

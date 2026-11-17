@@ -677,6 +677,28 @@ model RequestLog {
   @@index([ip, at])
 }
 
+/// A request that ended in a server error (5xx), beside its row in `RequestLog` (the same `requestId`; system
+/// monitor M.4). Only what `errorReport` (platform/log.ts) keeps: the class, a code for the message (never its
+/// words), and the top frames of the stack. No foreign key: the two tables are written apart, in batches.
+model RequestError {
+  id        String   @id @default(uuid())
+  requestId String
+  at        DateTime
+  method    String
+  /// The route pattern; empty when no route matched.
+  route     String   @default("")
+  /// The error's class (`TypeError`, `PrismaClientKnownRequestError`, …).
+  name      String
+  /// A known error code or `unclassified` / `timeout` (platform/log.ts `errorCode`).
+  message   String
+  /// The top frames of the stack, one a line: a function and a file, no value.
+  stack     String   @default("")
+
+  @@index([at])
+  @@index([route, at])
+  @@index([requestId])
+}
+
 model AccessLog {
   id          String   @id @default(uuid())
   actorId     String

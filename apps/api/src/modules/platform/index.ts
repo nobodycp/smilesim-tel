@@ -38,3 +38,5 @@ export { LAYER_ORDER } from './values';
 export { ApiZodBody } from '../../openapi/body';
 export { ApiZodQuery } from '../../openapi/query';
 export { ApiErrorResponse } from '../../openapi/responses';
+export { ServerErrorRecorder } from './server-errors';
+export type { ServerErrorDraft } from './server-errors';

@@ -125,6 +125,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /v1/system/requests', 'ynnnnn'],
   ['GET /v1/system/requests/summary', 'ynnnnn'],
   ['DELETE /v1/system/requests', 'ynnnnn'],
+  ['GET /v1/system/errors', 'ynnnnn'],
+  ['DELETE /v1/system/errors', 'ynnnnn'],
   ['GET /v1/tasks', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /v1/tasks/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /v1/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec

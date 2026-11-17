@@ -79,6 +79,10 @@ const REQUEST_ROW_KEYS = ['id', 'at', 'durationMs', 'method', 'route', 'path', '
 const REQUEST_LIST_KEYS = ['items', 'nextCursor', 'total'];
 const REQUEST_SUMMARY_KEYS = ['count', 'refused', 'failed', 'errorRate', 'slowest', 'busiest'];
 const ROUTE_FIGURES_KEYS = ['method', 'route', 'calls', 'medianMs', 'p95Ms'];
+// The server errors (M.4): the grouped list, and what each clearing answers.
+const ERROR_GROUP_KEYS = ['method', 'route', 'name', 'message', 'count', 'firstAt', 'lastAt', 'lastRequestId', 'stack'];
+const ERROR_LIST_KEYS = ['items', 'capped', 'total'];
+const LOG_CLEARED_KEYS = ['removed', 'errorsRemoved'];
 
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
@@ -408,6 +412,24 @@ describe('office response shapes', () => {
     expect(keysOf(summary.busiest[0])).toEqual(sorted(ROUTE_FIGURES_KEYS));
   });
 
+  it('answers the server errors grouped, and both clearings, with the pinned keys (M.4)', async () => {
+    const group = { method: 'GET', route: '/v1/lines/:id', name: 'TypeError', message: 'unclassified', count: 2, firstAt: new Date('2026-11-17T10:00:00Z'), lastAt: new Date('2026-11-17T11:00:00Z'), lastRequestId: 'q2', stack: 'f (dist/a.js:1:1)\ng (dist/b.js:2:2)' };
+    const prisma = {
+      requestError: { count: async () => 2, deleteMany: async () => ({ count: 2 }) },
+      requestLog: { deleteMany: async () => ({ count: 5 }) },
+      $queryRaw: async () => [group],
+    };
+    const uow = { prisma, runTx: async (run: (tx: unknown) => Promise<unknown>) => run(prisma) } as unknown as UnitOfWork;
+    const service = new RequestLogService(new RequestLogRepository(uow), { flush: async () => undefined } as unknown as RequestLogWriter);
+    const owner = { id: 'admin', loginName: 'admin', nickname: 'admin', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as Actor;
+    const errors = await service.errors(owner, {});
+    expect(keysOf(errors)).toEqual(sorted(ERROR_LIST_KEYS));
+    expect(keysOf(errors.items[0])).toEqual(sorted(ERROR_GROUP_KEYS));
+    expect(errors.items[0]).toMatchObject({ firstAt: '2026-11-17T10:00:00.000Z', stack: ['f (dist/a.js:1:1)', 'g (dist/b.js:2:2)'] });
+    expect(keysOf(await service.clear(owner))).toEqual(sorted(LOG_CLEARED_KEYS));
+    expect(keysOf(await service.clearErrors(owner))).toEqual(['removed']);
+  });
+
   it('answers /v1/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
     const tables = { package: { findMany: async () => [catalogPackage] } };
     const asBranch = await serviceWith(tables);
@@ -545,6 +567,12 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toContain('export type RequestLogPage = Page<RequestLogRow>;');
     const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]);
     expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS));
+  });
+
+  it('the server errors: ErrorGroup, ErrorGroups and the clearings (M.4)', () => {
+    expect(declared(typeBody(source, 'ErrorGroup'))).toEqual({ required: sorted(ERROR_GROUP_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'ErrorGroups'))).toEqual({ required: sorted(ERROR_LIST_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'RequestLogCleared'))).toEqual({ required: sorted(LOG_CLEARED_KEYS), optional: [] });
   });
 
   it('SimRules', () => {
