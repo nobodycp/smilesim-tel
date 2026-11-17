@@ -38,8 +38,8 @@ const TASK_COUNTS_KEYS = ['working', 'done', 'rejected', 'cancelled'];
 const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
 const LINES_LATER_KEYS = ['items', 'nextCursor', 'total'];
 // No `esimQr`: a list row never carries the eSIM code (ADR 0019, D17; plan slice S.5c). The detail does (below).
-const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
-const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
+const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'companyImage', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
+const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
 const DECISION_ANSWER_KEYS = ['ok', 'outcome'];
@@ -231,13 +231,15 @@ describe('office response shapes', () => {
       posId: 'pos1',
       createdAt: at,
       endsAt: at,
-      package: { code: 'pk', name: '400', posPrice: 30, company: { name: 'سلكوم' } },
+      package: { code: 'pk', name: '400', posPrice: 30, company: { code: 'cellcom', name: 'سلكوم', esim: true } },
       pos: { loginName: 'pos1' },
     };
     const { service, gate } = await serviceWith({ line: { findMany: async () => [row], count: async () => 1 } });
     const listed = await service.lines(gate);
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
     expect(keysOf(listed.items[0])).toEqual(sorted(LINE_KEYS));
+    // A company with no mark: null, never a data URL (speed plan PF.7).
+    expect(listed.items[0].companyImage).toBeNull();
     expect('esimQr' in listed.items[0]).toBe(false);
     expect(listed.poses?.length).toBeGreaterThan(0);
     expect(keysOf(listed.poses?.[0] ?? {})).toEqual(sorted(POS_CHOICE_KEYS));
@@ -245,6 +247,12 @@ describe('office response shapes', () => {
     const later = await service.lines(gate, { cursor: encodeCursor(at, 'ln-0') });
     expect(keysOf(later)).toEqual(sorted(LINES_LATER_KEYS));
     expect(keysOf(later.items[0])).toEqual(sorted(LINE_KEYS));
+    // A company with a mark: its versioned URL, as the companies shelf carries it.
+    const marked = await serviceWith({
+      line: { findMany: async () => [row], count: async () => 1 },
+      $queryRaw: async () => [{ code: 'cellcom', version: '0123456789abcdef' }],
+    });
+    expect((await marked.service.lines(marked.gate)).items[0].companyImage).toBe('/api/pictures/companies/cellcom?v=0123456789abcdef');
   });
 
   it('answers /v1/companies with the fixed company shelf and package counts', async () => {

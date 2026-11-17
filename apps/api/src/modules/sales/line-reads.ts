@@ -14,6 +14,11 @@ import { canActivateFor, opKeyOf, type RunnablePackage } from './line-ops';
 /** Entries that put time on a line: the newest one is the last recharge shown on the card. */
 const RECHARGE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
 
+/** A company's mark URL from the request's one read of the marks; null when the company has none (or there is none). */
+function markOf(marks: ReadonlyMap<string, string>, company: { code: string } | null): string | null {
+  return (company && marks.get(company.code)) ?? null;
+}
+
 /** Numbers as they are read: the paged list and one number's card with its history and the operations it offers. */
 @Injectable()
 export class LineReads {
@@ -42,9 +47,10 @@ export class LineReads {
     // The branch sees every point of sale: its own list sends no ids (database plan DB.10). Narrowed to one account,
     // it sends that account's.
     const where = linesWhere(actor.layer === 'branch' && !query.loginName ? null : posIds, query, periods, namedPackageIds);
-    const [rows, total] = await Promise.all([
+    const [rows, total, marks] = await Promise.all([
       this.repo.linesPage({ ...where, AND: after(cursorPosition(query.cursor)) }, LINES_PAGE + 1),
       this.repo.countLines(where),
+      this.repo.markUrls(),
     ]);
     const { items, nextCursor } = page(rows, LINES_PAGE);
     // One map of the accounts and one visible set for the whole request (plan 2026-11-17-speed, PF.2): each row's
@@ -64,6 +70,8 @@ export class LineReads {
         packageCode: row.package.code,
         packageName: row.package.name,
         companyName: row.package.company?.name ?? '',
+        // The mark's URL (speed plan PF.7), or null when the company has none: the bytes never travel in a list.
+        companyImage: markOf(marks, row.package.company),
         posLoginName: row.pos.loginName,
         posPrice: row.package.posPrice,
         createdAt: row.createdAt.toISOString(),
@@ -96,9 +104,10 @@ export class LineReads {
       const node = posPath.find((step) => step.layer === layer);
       return node && seen.has(node.id) ? node.loginName : '';
     };
-    const [tasks, entries] = await Promise.all([
+    const [tasks, entries, marks] = await Promise.all([
       this.repo.tasksOfLine(line.id),
       this.repo.entriesOfLine(line.id),
+      this.repo.markUrls(),
     ]);
     const packageIds = [...new Set(tasks.flatMap((task) => [task.packageId, task.nextPackageId].filter((id): id is string => !!id)))];
     const packages = packageIds.length
@@ -135,7 +144,7 @@ export class LineReads {
         minutes: line.package.minutes,
         months: line.package.months,
         subscriberPrice: line.package.subscriberPrice,
-        companyImage: line.package.company?.image ?? '',
+        companyImage: markOf(marks, line.package.company),
         sim: simRulesOf(line.package.company, line.package),
         switchTargets: await this.visibleSwitchTargets(line.packageId, posPath),
         opsLocked: line.opsLocked,

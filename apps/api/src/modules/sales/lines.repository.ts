@@ -1,6 +1,15 @@
 import { assertStoredSealed, UnitOfWork, type Db, NEWEST_FIRST } from '../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
+import { companyMarkUrls } from '../catalog';
+
+/**
+ * The company columns a number's reads answer with: never its mark (`image`), which is served by its own route and
+ * reached by `markUrls` (speed plan PF.7). The list needs the name, the code its mark's URL is keyed by, and whether
+ * it sells eSIMs (an operation the row offers); the card adds the SIM rules and the eSIM price.
+ */
+const LIST_COMPANY = { code: true, name: true, esim: true } as const;
+const CARD_COMPANY = { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true } as const;
 
 /**
  * The database as this domain reads and writes it: numbers, and the packages and add-ons an operation on a number reads. One method per query, named for what it
@@ -36,11 +45,16 @@ export class LinesRepository {
     return rows.map((row) => row.id);
   }
 
+  /** The URL of every company mark that is set, by company code (the picture itself stays in the database). */
+  markUrls() {
+    return companyMarkUrls(this.uow.prisma);
+  }
+
   /** One page of numbers (and one row more), newest first, each with its package, company and point of sale. */
   linesPage(where: Prisma.LineWhereInput, take: number) {
     return this.uow.prisma.line.findMany({
       where,
-      include: { package: { include: { company: true } }, pos: true },
+      include: { package: { include: { company: { select: LIST_COMPANY } } }, pos: true },
       orderBy: [...NEWEST_FIRST],
       take,
     });
@@ -54,7 +68,7 @@ export class LinesRepository {
   lineCard(id: string) {
     return this.uow.prisma.line.findUnique({
       where: { id },
-      include: { package: { include: { company: true, provider: true } }, pos: true },
+      include: { package: { include: { company: { select: CARD_COMPANY }, provider: true } }, pos: true },
     });
   }
 
@@ -81,9 +95,9 @@ export class LinesRepository {
     });
   }
 
-  /** These packages with their company. */
+  /** These packages' names with their company's: what the card's history names a task's package by. */
   packagesByIds(ids: string[]) {
-    return this.uow.prisma.package.findMany({ where: { id: { in: ids } }, include: { company: true } });
+    return this.uow.prisma.package.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, company: { select: { name: true } } } });
   }
 
   /** The newest entry of these kinds on a number: its last recharge. */

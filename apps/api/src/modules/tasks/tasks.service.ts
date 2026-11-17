@@ -67,7 +67,7 @@ export class TasksService {
     ]);
     const { items: rows, nextCursor } = page(read, TASKS_PAGE);
     const byId = new Map(accounts.map((account) => [account.id, account]));
-    const packages = await this.repo.packagesWithCompany();
+    const packages = await this.repo.packageNames();
     const byPackage = new Map(packages.map((row) => [row.id, row]));
     return {
       items: rows.map((row) => {

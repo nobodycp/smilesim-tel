@@ -116,6 +116,8 @@ async function serviceWith(tables: Record<string, unknown>) {
     },
     // An empty catalog unless the spec hands one: the searches read names from it first (plan DB.6).
     package: table([]),
+    // The company marks the numbers list reads by URL (speed plan PF.7): none.
+    $queryRaw: async () => [],
     company: table([]),
     ...tables,
   };

@@ -99,12 +99,16 @@ the API), or `null` when there is no picture:
 - `GET /v1/companies` `companies[].image` (was `''` when none, now `null`);
 - `GET /v1/packages` `companies[].image` (only companies with a picture are listed, as before);
 - `GET /v1/providers` `providers[].companies[].image` (was `''` when none, now `null`);
-- `GET /v1/offers`, `GET /v1/offers/live` and every offer write's answer `offers[].image` (`null` when none, as before).
+- `GET /v1/offers`, `GET /v1/offers/live` and every offer write's answer `offers[].image` (`null` when none, as before);
+- `GET /v1/lines/:id` `line.companyImage` (was the data URL, `''` when none, now the URL or `null`), and every row of
+  `GET /v1/lines` carries the same `companyImage` (the key was not in the list before: the numbers table's company
+  mark, which read it, showed the letters only; it now shows the picture where the company has one).
 
 The list queries select no picture column: the company and offer reads name their columns, whether a company has a
 mark comes from one raw read of `code, md5(image)`, and whether an offer has a picture from a read of the ids whose
-picture is set. Left for a follow-up (another module): the number card's `companyImage` (`sales/line-reads.ts`),
-still a data URL, and the lines and tasks list queries that read `company: true`.
+picture is set. The numbers list and card, the inbox and a task's page, and the package sheet (with the reads of its
+renewal and switch targets) select the company columns they answer with; the numbers list and card take the mark's
+URL from the same one raw read (pinned by `catalog/pictures/pictures.http.spec.ts`).
 
 **Writes.** A picture field takes a data URL or `null`; a URL (anything not a PNG, JPEG or WebP data URL) is
 `400 INVALID`. "Unchanged" is said by leaving the key out: the offers form sends `image` only when the picture was

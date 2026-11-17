@@ -41,6 +41,8 @@ function setup() {
     wallet: { findMany: async () => [], findUnique: async () => null },
     task: { count: async () => 0, findFirst: async () => null, groupBy: async () => [] },
     lineCountSnapshot: { findFirst: async () => null },
+    // The company marks the numbers list reads by URL (speed plan PF.7): none.
+    $queryRaw: async () => [],
   } as unknown as ServiceGraph['prismaClient'];
   const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
   const repo = new DeskRepository(kernel.uow);

@@ -30,7 +30,8 @@ export class PackagesRepository {
       where: { code },
       include: {
         provider: true,
-        company: true,
+        // The company's code, name and eSIM price: the sheet sends no picture (speed plan PF.7).
+        company: { select: { code: true, name: true, esimPrice: true } },
         lines: { select: { status: true } },
         renewals: { include: { target: { select: { code: true } } } },
         switches: { include: { target: { select: { code: true } } } },
@@ -80,14 +81,14 @@ export class PackagesRepository {
 
   /** A package with the company and provider its targets must share. */
   packageWithCompany(code: string) {
-    return this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
+    return this.uow.prisma.package.findUnique({ where: { code }, include: { company: { select: { code: true } }, provider: true } });
   }
 
-  /** The packages named as targets, each with its company and provider. */
+  /** The packages named as targets, each with its company's code and its provider. */
   packagesByCodes(codes: string[]) {
     return this.uow.prisma.package.findMany({
       where: { code: { in: codes } },
-      include: { company: true, provider: true },
+      include: { company: { select: { code: true } }, provider: true },
     });
   }
 

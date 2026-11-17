@@ -107,6 +107,8 @@ async function stage() {
     },
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
+    // The company marks the number card reads by URL (speed plan PF.7): none.
+    $queryRaw: async () => [],
     user: {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
       findMany: async () => accounts,

@@ -53,6 +53,8 @@ async function signedIn(account: Account) {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: account.layer === 'branch' }), findMany: async () => accounts },
     line: { findMany: async () => [line], count: async () => 1 },
     package: { findMany: async () => [] },
+    // The company marks the list reads by URL (speed plan PF.7): none.
+    $queryRaw: async () => [],
   };
   return { service, gate: { sessionId } };
 }

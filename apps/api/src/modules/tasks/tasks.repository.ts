@@ -10,6 +10,8 @@ import type { Prisma } from '../../generated/prisma/client';
  */
 /** What a task's screens read of its provider operation (ADR 0019, O6): its state, never what it handed back. */
 const OPERATION_STATE = { status: true, appliedAt: true, applyError: true } as const;
+/** What a task's page reads of its package's company: its name and SIM rules, never its mark (speed plan PF.7). */
+const TASK_COMPANY = { name: true, iccidLength: true, iccidPrefix: true, esim: true } as const;
 
 @Injectable()
 export class TasksRepository {
@@ -40,9 +42,11 @@ export class TasksRepository {
     return groups.map((group) => ({ status: group.status, count: group._count._all }));
   }
 
-  /** Every package with its company and its provider. */
-  packagesWithCompany() {
-    return this.uow.prisma.package.findMany({ include: { company: true, provider: true } });
+  /** Every package's name with its company's and its provider's: what the inbox names a task's package by. */
+  packageNames() {
+    return this.uow.prisma.package.findMany({
+      select: { id: true, name: true, company: { select: { name: true } }, provider: { select: { name: true } } },
+    });
   }
 
   /** The ids of the packages a list filter names. */
@@ -58,7 +62,7 @@ export class TasksRepository {
         submitter: true,
         assignee: true,
         notes: { where: notes, include: { author: true }, orderBy: { createdAt: 'asc' } },
-        line: { include: { package: { include: { company: true, provider: true } } } },
+        line: { include: { package: { include: { company: { select: TASK_COMPANY }, provider: true } } } },
         providerOperation: { select: OPERATION_STATE },
       },
     });
@@ -68,7 +72,7 @@ export class TasksRepository {
   packageOfTask(packageId: string) {
     return this.uow.prisma.package.findUnique({
       where: { id: packageId },
-      include: { company: true, provider: true },
+      include: { company: { select: TASK_COMPANY }, provider: true },
     });
   }
 

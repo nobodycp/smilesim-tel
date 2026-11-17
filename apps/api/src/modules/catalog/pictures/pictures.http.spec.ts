@@ -6,7 +6,10 @@ import request from 'supertest';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import { TermsRepository } from '../../pricing/terms.repository';
 import { ProvidersRepository } from '../../providers/providers.repository';
+import { LinesRepository } from '../../sales/lines.repository';
+import { TasksRepository } from '../../tasks/tasks.repository';
 import { CompaniesRepository } from '../companies/companies.repository';
+import { PackagesRepository } from '../packages/packages.repository';
 import { companyMarkUrls } from '../companies/company-marks';
 import { companyMarkUrl, markVersion, offerPictureUrl } from '../rules/pictures';
 import { PICTURES_CONTROLLERS, PICTURES_PROVIDERS } from './pictures.module';
@@ -118,11 +121,17 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
         (asked[model] ??= []).push(args);
         return [];
       },
+      findUnique: async (args: Args) => {
+        (asked[model] ??= []).push(args);
+        return null;
+      },
     });
     const prisma = {
       company: table('company'),
       package: table('package'),
       provider: table('provider'),
+      line: table('line'),
+      task: table('task'),
       $queryRaw: async (sql: TemplateStringsArray) => {
         statements.push(sql.join('?'));
         return [{ code: 'wecom', version: 'abcdef0123456789' }];
@@ -157,6 +166,38 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
     expect(asked.package[0].include!.company).toEqual({ select: { code: true } });
     expect(asked.package[1].include!.company).toEqual({ select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true } });
     expect(asked.provider[0].include).toEqual({ packages: { include: { company: { select: { id: true, code: true, name: true } } }, orderBy: { code: 'asc' } } });
+    for (const reads of Object.values(asked)) for (const read of reads) expect(namesImage(read)).toBe(false);
+  });
+
+  it('the numbers list, the number card, the inbox, a task and the package sheet select companies without the picture', async () => {
+    const { uow, asked, statements } = recording();
+    const lines = new LinesRepository(uow);
+    await lines.linesPage({}, 31);
+    await lines.lineCard('ln-1');
+    await lines.packagesByIds(['pk-1']);
+    // The mark's URL comes from the one read of code and MD5 the shelves use.
+    expect(await lines.markUrls()).toEqual(new Map([['wecom', '/api/pictures/companies/wecom?v=abcdef0123456789']]));
+    expect(statements).toHaveLength(1);
+    const tasks = new TasksRepository(uow);
+    await tasks.packageNames();
+    await tasks.taskDetail('tk-1', {});
+    await tasks.packageOfTask('pk-1');
+    const packages = new PackagesRepository(uow);
+    await packages.packageSheet('pk');
+    await packages.packageWithCompany('pk');
+    await packages.packagesByCodes(['pk-2']);
+    const [page, card] = asked.line;
+    expect((page.include!.package as Args).include!.company).toEqual({ select: { code: true, name: true, esim: true } });
+    expect((card.include!.package as Args).include!.company).toEqual({ select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true } });
+    const [history, inbox, ofTask, sheet, owner, targets] = asked.package;
+    expect(history.select).toEqual({ id: true, name: true, company: { select: { name: true } } });
+    expect(inbox.select).toEqual({ id: true, name: true, company: { select: { name: true } }, provider: { select: { name: true } } });
+    const taskCompany = { select: { name: true, iccidLength: true, iccidPrefix: true, esim: true } };
+    expect((((asked.task[0].include!.line as Args).include!.package) as Args).include!.company).toEqual(taskCompany);
+    expect(ofTask.include!.company).toEqual(taskCompany);
+    expect(sheet.include!.company).toEqual({ select: { code: true, name: true, esimPrice: true } });
+    expect(owner.include!.company).toEqual({ select: { code: true } });
+    expect(targets.include!.company).toEqual({ select: { code: true } });
     for (const reads of Object.values(asked)) for (const read of reads) expect(namesImage(read)).toBe(false);
   });
 });

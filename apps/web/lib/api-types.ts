@@ -438,6 +438,8 @@ export type LineRow = {
   packageCode: string;
   packageName: string;
   companyName: string;
+  /** The company mark's versioned URL (`/api/pictures/companies/<code>?v=`), null when it has none: an image `src` only. */
+  companyImage: string | null;
   posLoginName: string;
   posPrice: number;
   createdAt: string;
@@ -453,7 +455,6 @@ export type LineRow = {
   minutes?: number | null;
   months?: number;
   subscriberPrice?: number;
-  companyImage?: string;
   lastRechargeAt?: string | null;
   esimPrice?: number;
   sim?: SimRules;
