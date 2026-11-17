@@ -9,11 +9,11 @@ First, no money writes:
 - [x] **DB.1 Indexes for the newest-first order** (lines, wallet entries, tasks; the partial sales index). (2ae5a2b8)
 - [x] **DB.2 Foreign-key and lookup indexes**; `taskNoteSent` filters the text key its index serves. (d71a7236)
 - [x] **DB.3 The cursor's `AND` form** in `platform/paging.ts`, pinned by its spec. (717a5b6f; map be4d64b1)
-- [ ] **DB.4 The health watch and the provider books** read what they need, once.
-- [ ] **DB.10 The branch sends no `posId IN` list.**
+- [x] **DB.4 The health watch and the provider books** read what they need, once. (dbab787e; map f3314819)
+- [x] **DB.10 The branch sends no `posId IN` list.** (aa33c40c; map f3314819)
 - [ ] **DB.6 Search:** `pg_trgm`, the digits/names split, Arabic-Indic digits.
 - [ ] **DB.7 Arabic normalisation** for account search.
-- [ ] **DB.11 SQL aggregates** for the overview's counts, sums and trend.
+- [x] **DB.11 SQL aggregates** for the overview's counts, sums and trend: line and task statuses grouped; the sales figures wait for DB.12 (their profit needs the rows). (0f4eaeb9; map f3314819)
 
 Then, each with the owner's values or word:
 
