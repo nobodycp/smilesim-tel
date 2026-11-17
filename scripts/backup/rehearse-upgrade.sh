@@ -75,9 +75,11 @@ check "packages without a provider product code" 'select count(*) from "Package"
 check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
 check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
 # Partial and expression indexes the schema cannot state, so `prisma migrate diff` does not see them either.
-check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id', 'ProviderOperation_unsettled_id', 'Notice_kind_taskId', 'RequestLog_operatorId_at_idx', 'RequestLog_ip_pattern_at_idx')" 5
-# The provider ledger's CHECK (ADR 0025, migration 20261117210000_provider_ledger_stored): NOT VALID until the
-# backfill has run on the deployment, so only its presence is checked.
+check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id', 'WalletEntry_provider_createdAt_id', 'ProviderOperation_unsettled_id', 'Notice_kind_taskId', 'RequestLog_operatorId_at_idx', 'RequestLog_ip_pattern_at_idx')" 6
+# The provider ledger's CHECK (ADR 0025, migrations 20261117210000_provider_ledger_stored and
+# 20261117220100_provider_ledger_validate): validated only when the copy's operation entries all carry a provider and
+# a cost, that is when the backfill ran on the server the backup came from, so only its presence is checked here;
+# the operator checks `convalidated` on the deployment itself (handover, technical-operations-ar.md §13).
 check "the provider ledger's CHECK" "select count(*) from pg_constraint where conname = 'WalletEntry_operation_priced'" 1
 # Storage settings the schema cannot state either (migrations 20261117180000_request_log_indexes and
 # 20261117200000_table_settings). The latter's three CHECK validations depend on the copy's old rows, so not checked.

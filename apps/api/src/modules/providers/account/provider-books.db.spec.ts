@@ -7,7 +7,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ServiceGraph } from '../../testing/service-graph';
 import { WalletsRepository } from '../../wallets/wallets.repository';
 import { WalletsService } from '../../wallets/wallets.service';
-import { entriesStoredBeforeTheCheck } from '../../wallets/testing/entries-before-the-check';
+import { entriesStoredBeforeTheCheck, theCheckValidatedAgain } from '../../wallets/testing/entries-before-the-check';
 import { ProvidersRepository } from '../providers.repository';
 import { ProviderHealthService } from '../directory/provider-health.service';
 import { ProviderAccountsService } from './provider-accounts.service';
@@ -101,6 +101,7 @@ suite('the provider books (PostgreSQL)', () => {
     await prisma.company.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.providerA, ids.providerB] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.owner] } } });
+    await theCheckValidatedAgain(prisma);
     await prisma.$disconnect();
     process.env.DATABASE_URL = previousUrl;
   });

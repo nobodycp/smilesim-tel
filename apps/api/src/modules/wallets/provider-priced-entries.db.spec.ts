@@ -265,7 +265,7 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     await prisma.packageAddon.deleteMany({ where: { packageId: ids.p1 } });
   });
 
-  it('every operation entry written above carries both; the CHECK lists the same kinds and refuses one without them', async () => {
+  it('every operation entry written above carries both; the CHECK lists the same kinds, refuses one without them, and is validated', async () => {
     const written = await prisma.walletEntry.findMany({ where: { userId: { in: [ids.pos, ids.pos2] }, kind: { in: PROVIDER_OPERATION_KINDS } } });
     expect(written.length).toBeGreaterThan(30);
     expect(written.filter((row) => row.providerId === null || row.providerCost === null)).toEqual([]);
@@ -275,5 +275,8 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     expect(listed).toEqual(PROVIDER_OPERATION_KINDS);
     const refused = prisma.walletEntry.create({ data: { userId: ids.pos, actorId: ids.pos, amount: 0, balanceAfter: 0, kind: 'freeze', providerCost: 0 } });
     await expect(refused).rejects.toThrow(/WalletEntry_operation_priced/);
+    // Validated by migration 20261117220100_provider_ledger_validate: no stored operation entry lacks either.
+    const [check] = await prisma.$queryRaw<{ convalidated: boolean }[]>`SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_operation_priced'`;
+    expect(check).toEqual({ convalidated: true });
   });
 });

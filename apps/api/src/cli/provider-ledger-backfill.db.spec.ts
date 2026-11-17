@@ -5,7 +5,7 @@ import type { Actor } from '../modules/access/types';
 import { UnitOfWork } from '../modules/platform/unit-of-work';
 import { ProviderAccountsService } from '../modules/providers/account/provider-accounts.service';
 import { ProvidersRepository } from '../modules/providers/providers.repository';
-import { entriesStoredBeforeTheCheck } from '../modules/wallets/testing/entries-before-the-check';
+import { entriesStoredBeforeTheCheck, theCheckValidatedAgain } from '../modules/wallets/testing/entries-before-the-check';
 import { WalletsRepository } from '../modules/wallets/wallets.repository';
 import { WalletsService } from '../modules/wallets/wallets.service';
 import { backfillLines, backfillProviderLedger, run, type BackfillScope } from './provider-ledger-backfill';
@@ -106,6 +106,7 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
     await prisma.wallet.deleteMany({ where: { userId: ids.pos } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
     await prisma.user.deleteMany({ where: { id: ids.owner } });
+    await theCheckValidatedAgain(prisma);
     await prisma.$disconnect();
     process.env.DATABASE_URL = previousUrl;
   });

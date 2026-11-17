@@ -158,6 +158,10 @@ model WalletEntry {
   /**
    * The provider of the package the operation was carried out on, fixed at the write (ADR 0025). No relation and
    * no foreign key on purpose: the key's lock on the provider's row would wait on the send gate under the wallet lock.
+   * The provider books read it through a partial index Prisma cannot state: `WalletEntry_provider_createdAt_id`
+   * (`providerId`, `createdAt` DESC, `id` DESC) INCLUDE (`providerCost`) WHERE `providerId` IS NOT NULL (migration
+   * `20261117220000_provider_ledger_index`). The CHECK `WalletEntry_operation_priced` is validated by
+   * `20261117220100_provider_ledger_validate` when no stored row breaks it.
    */
   providerId   String?
   /** The eSIM fee folded into `amount`, when this entry sold or issued one. */

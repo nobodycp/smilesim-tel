@@ -318,6 +318,23 @@ node dist/cli/provider-ledger-backfill.js             # يملأ ويقارن، 
 
 ⏳ لم يُنشر ولم يُشغَّل على أي بيئة غير قاعدة التطوير المحلية. 🔐
 
+**دفتر المزوّدين المحفوظ — الإصدار الثاني (الشريحة P.3، 2026-11-17).** **الترتيب إلزامي: نشر الإصدار الأول ← تشغيل أمر الملء أعلاه حتى يخرج بالرمز 0 ← نشر الإصدار الثاني**، كلٌّ في نافذة صيانة والكتابة موقوفة. قبل نشر الإصدار الثاني تأكّد أن لا قيد عملية بلا مزوّد أو بلا كلفة (يجب أن يكون الجواب `0`):
+```sql
+SELECT count(*) FROM "WalletEntry"
+WHERE "kind" IN ('activate','charge','extend','reactivate','disconnect','freeze','unfreeze','switch','rename','sim','esim','refresh','transfer')
+  AND ("providerId" IS NULL OR "providerCost" IS NULL);
+```
+- migration أولى `20261117220000_provider_ledger_index` تبني الفهرس الجزئي `WalletEntry_provider_createdAt_id` (على القيود التي تحمل مزوّداً فقط). البناء داخل معاملة الـmigration العادية: القراءة تستمر والكتابة تنتظر لحظة البناء، والجدول صغير اليوم.
+- migration ثانية `20261117220100_provider_ledger_validate` تفعّل القيد `WalletEntry_operation_priced` على القيود القديمة **فقط إن لم يوجد قيد يخالفه**. إن وُجد (أي أن أمر الملء لم يُشغَّل) فلا تفشل الـmigration ولا يفشل الإقلاع: تكتب في سجل الـAPI تحذيراً `WARNING: WalletEntry_operation_priced left NOT VALID` ويبقى القيد على حاله (يُفحص الجديد فقط).
+- **بعد النشر يفحص المسؤول** (الجوابان المتوقعان `true` ثم `1`):
+```sql
+SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_operation_priced';
+SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_provider_createdAt_id';
+```
+  إن كان الأول `false` فأوقف الكتابة وأرسل الأمر للمطوّر قبل أي بيع: دفاتر المزوّدين في هذا الإصدار لا ترى قيداً بلا مزوّد.
+
+⏳ لم يُنشر. جُرِّب محلياً: على قاعدة الاختبار وفيها قيود قديمة بلا مزوّد (داخل معاملة تراجعت) ظهر التحذير وبقي القيد غير مفعّل؛ وبعد إزالتها، وعلى قاعدة التطوير بعد أمر الملء، فُعِّل القيد وبُني الفهرس. 🔐
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال
