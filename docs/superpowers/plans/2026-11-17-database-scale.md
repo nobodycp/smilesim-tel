@@ -25,7 +25,13 @@ Then, each with the owner's values or word:
 
 Last, money, each with its ADR:
 
-- [ ] **DB.5 Provider ledger stored** [MONEY][LOCK].
+- [ ] **DB.5 Provider ledger stored** [MONEY][LOCK]. ADR 0025; the slices in the spec's section "Provider ledger stored (DB.5)".
+  - [x] **Provider ledger P.1 columns and writers**: `WalletEntry.providerId` and the CHECK `NOT VALID`; every writer of an operation stores its provider and cost in the same INSERT. (9c695ada)
+  - [x] **Provider ledger P.2 backfill command** with its proof (`provider-ledger-backfill`); run on the local dev database: 46 entries filled, five providers equal to the agora. (dc13d39a)
+  - [ ] **Provider ledger P.3 index and VALIDATE** (release 2, after the backfill ran on the deployment).
+  - [ ] **Provider ledger P.4 reads switched** to the stored columns; the read-time fallback deleted.
+  - [ ] **Provider ledger P.6 a disconnect lowers the purchases** (the unused days less the 0.5 ₪ fee).
+  - [ ] **Provider ledger P.7 done at the provider, given back to the customer**: a purchase, a loss of the branch, with a visible mark.
 - [ ] **DB.12 Stored margin an entry** [MONEY].
 
 Not planned: DB.16 (ancestor columns), until production shows the need.
