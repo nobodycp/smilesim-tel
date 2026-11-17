@@ -64,6 +64,11 @@ function latin(value: string, className?: string) {
   return <bdi dir="ltr" className={cn('tabular-nums sm:whitespace-nowrap', PHONE_WRAP, className)}>{value}</bdi>;
 }
 
+/** A short Latin value in a sentence (a date, a runtime's cycle and its newest): it moves to the next line whole. */
+function whole(value: string) {
+  return <bdi dir="ltr" className="whitespace-nowrap tabular-nums">{value}</bdi>;
+}
+
 function count(value: number) {
   return value.toLocaleString('en');
 }
@@ -91,7 +96,7 @@ function latestCell(t: Copy, row: VersionItem) {
     <span>
       {latest ? latin(latest) : '—'}
       {inCycle && cycle && inCycle !== latest ? (
-        <span className={CELL_SUB}>{fill(t.verInCycle, { cycle: latin(cycle), version: latin(inCycle) })}</span>
+        <span className={CELL_SUB}>{fill(t.verInCycle, { cycle: whole(cycle), version: whole(inCycle) })}</span>
       ) : null}
     </span>
   );
@@ -111,7 +116,7 @@ function stateCell(t: Copy, row: VersionItem) {
 /** A runtime's support: the day it ends, or that it has ended (danger, in words); nothing when undated. */
 function supportLine(t: Copy, row: VersionItem) {
   if (row.supportEnded) return <span className="text-caption leading-1-3 font-semibold text-danger" data-testid="version-support-ended">{t.verSupportEnded}</span>;
-  if (row.supportEnds) return <span className="text-caption leading-1-3 text-muted">{fill(t.verSupportEnds, { date: latin(row.supportEnds) })}</span>;
+  if (row.supportEnds) return <span className="text-caption leading-1-3 text-muted">{fill(t.verSupportEnds, { date: whole(row.supportEnds) })}</span>;
   return null;
 }
 
