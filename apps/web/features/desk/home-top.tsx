@@ -116,6 +116,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
   const pulse = overview?.pulse;
   const now: PulseTotals | undefined = pulse?.current;
   const before = pulse?.previous;
+  const losses = overview?.sales.losses;
   const labels = pulse ? pulse.trend.map((point) => stepLabel(period, point.at)) : [];
   const periodName = period === 'day' ? t.periodToday : period === 'month' ? t.periodMonth : t.periodAll;
   const trend = (pick: (point: PulseTotals) => number, money: boolean, name: string, tone: 'accent' | 'success' = 'accent') => (pulse ? (
@@ -159,7 +160,14 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
         <span className={cn(TILE_LABEL, OVER_TREND)}>{t.homeProfit}</span>
         {now ? <Change now={now.profit} before={before?.profit} period={period} /> : null}
         <div className={cn(TILE_VALUE, OVER_TREND)}>{now ? <Money value={now.profit} signed /> : '—'}</div>
-        <div className={cn(TILE_META, OVER_TREND)}>{periodName}</div>
+        {/* The branch's profit is net of its losses (spec DB.5 P.8): the line names them and links to them. */}
+        <div className={cn(TILE_META, OVER_TREND)}>{branch && losses ? (
+          <>{periodName} · {losses.count ? (
+            <Link className="pointer-events-auto font-bold text-danger no-underline" href="/provider-operations?loss=any" data-testid="home-losses">
+              {t.homeLossesMeta.replace('{n}', String(losses.count)).replace('{amount}', formatShekel(losses.amount))}
+            </Link>
+          ) : t.homeNoLosses}</>
+        ) : periodName}</div>
         {trend((point) => point.profit, true, t.homeProfit, 'success')}
       </div>
       {branch ? null : <div className={FIGURE_TILE} data-slot="figure-tile" data-testid="figure-tile">

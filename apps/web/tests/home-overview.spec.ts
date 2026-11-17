@@ -13,12 +13,14 @@ const overview = (period: string, withProviders: boolean) => ({
   sales: {
     count: 12, amount: 54000, profit: 3600, refunds: 1, refundAmount: 2250, net: 51750,
     trend: [{ day: '2026-11-07', amount: 18000, profit: 1200, count: 4 }, { day: '2026-11-08', amount: 36000, profit: 2400, count: 8 }],
+    // The branch's operations marked as its loss in the period (spec DB.5 P.8); null for another layer.
+    losses: withProviders ? { count: 2, amount: 3200 } : null,
   },
   // The period cards (owner 2026-11-09): this period, the same span before (null over all time), the trend.
   pulse: {
-    current: { count: 12, amount: 54000, activations: 5, profit: 3600 },
-    previous: period === 'all' ? null : { count: 8, amount: 36000, activations: 5, profit: 4000 },
-    trend: [{ at: '2026-11-07', count: 4, amount: 18000, activations: 2, profit: 1200 }, { at: '2026-11-08', count: 8, amount: 36000, activations: 3, profit: 2400 }],
+    current: { count: 12, amount: 54000, activations: 5, profit: 3600, losses: withProviders ? 3200 : 0 },
+    previous: period === 'all' ? null : { count: 8, amount: 36000, activations: 5, profit: 4000, losses: 0 },
+    trend: [{ at: '2026-11-07', count: 4, amount: 18000, activations: 2, profit: 1200, losses: 0 }, { at: '2026-11-08', count: 8, amount: 36000, activations: 3, profit: 2400, losses: withProviders ? 3200 : 0 }],
   },
   top: {
     packages: [ranked('400 جيجا', 8, 2400), ranked('100 جيجا', 4, 1200)],
@@ -55,6 +57,9 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(cards.nth(2)).toContainText('+36.00 ₪');
   await expect(cards.nth(2).getByTestId('pulse-change')).toHaveAttribute('data-trend', 'down');
   await expect(cards.nth(2).getByTestId('pulse-change')).toHaveText('10%');
+  // The branch's profit is net of its losses (spec DB.5 P.8): the meta line names them and links to the marked operations.
+  await expect(cards.nth(2).getByTestId('home-losses')).toHaveText('خسائر: 2 بقيمة 32.00 ₪');
+  await expect(cards.nth(2).getByTestId('home-losses')).toHaveAttribute('href', '/provider-operations?loss=any');
   await expect(band.getByTestId('trend-line')).toHaveCount(3);
   // The branch's home, trimmed (spec 2026-11-09-admin-review, 6.3): the three period cards alone in the band, no
   // «آخر العمليات» or «مهام بانتظارك», no «تمويل حساب» or «تفعيل رقم» in the head.
@@ -121,6 +126,8 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
   });
   await page.goto('http://agent.localhost:3910/');
   await expect(page.getByTestId('account-band').getByTestId('pulse-tile')).toHaveCount(3);
+  // No losses line below the branch (spec DB.5 P.8): the profit card names the period alone.
+  await expect(page.getByTestId('home-losses')).toHaveCount(0);
   // The other layers keep their home: the balance, the active numbers, the two panes and the head buttons.
   await expect(page.getByTestId('account-band').getByTestId(/^(figure|pulse)-tile$/)).toHaveCount(5);
   await expect(page.getByTestId('home-top-row')).toHaveCount(1);

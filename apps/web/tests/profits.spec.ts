@@ -7,10 +7,10 @@ test('profits show the totals and each package, follow the dates, and export the
     'GET /finance/profits': () => ({
       body: {
         packages: [
-          { packageName: '400 جيجا', companyName: 'سلكوم', sales: 3, refunds: 1, profit: 1050 },
-          { packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 0, profit: 600 },
+          { packageName: '400 جيجا', companyName: 'سلكوم', sales: 3, refunds: 1, profit: 1050, losses: 0, lossAmount: 0 },
+          { packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 0, profit: 600, losses: 0, lossAmount: 0 },
         ],
-        totals: { sales: 5, refunds: 1, profit: 1650 },
+        totals: { sales: 5, refunds: 1, profit: 1650, losses: 0, lossAmount: 0 },
       },
     }),
   });
