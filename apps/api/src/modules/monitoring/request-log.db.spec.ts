@@ -22,10 +22,9 @@ import { leaked, probeApp, sendCrash, sendSecrets } from '../../request-log.fixt
 
 // The request log in PostgreSQL (system monitor M.1, M.2): what a request leaves in its row, the filters, the figures
 // the database computes, and the clearing, which leaves the activity log and writes its own event there.
-// PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one). Every test of the table is in this one
-// file, so they run one after another: the clearing empties the whole table, as it would the real one. Other specs
-// that run beside it may write rows (the app's own middleware), so what is read here is held to this file's own day
-// (a day of the years 2000–2009 picked by the run) or to its own request ids.
+// PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one). Other spec files write and read these
+// tables at the same time, so what is read here is held to this file's own day (a day of the years 2000–2009 picked
+// by the run) or to its own request ids, and its app's clearing removes its own rows only (`OwnRowsRepository`).
 
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
@@ -64,6 +63,26 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     actorId: null, actorLoginName: '', operatorId: null, layer: '', ip: '10.0.0.1', userAgent: '', requestId: `${tag}-${(serial += 1)}`, bytesIn: 0, bytesOut: 0, ...extra,
   });
 
+  /**
+   * The clearing as this file's app runs it: this file's rows only. The product's clearing empties both tables, and
+   * other spec files keep rows in them at the same time (the alerts' rules read the request log): run here for real
+   * it deleted their rows under them (seen 2026-11-17: `alerts.db.spec.ts` lost its requests mid-test and its
+   * probing alert never opened). The real, whole-table statements are run in the last test of this file, inside a
+   * transaction that is rolled back, where no other session ever sees them.
+   */
+  class OwnRowsRepository extends RequestLogRepository {
+    override clear() {
+      return prisma.$transaction(async (tx) => ({
+        removed: (await tx.requestLog.deleteMany({ where: { requestId: { startsWith: `${tag}-` } } })).count,
+        errorsRemoved: (await tx.requestError.deleteMany({ where: { requestId: { startsWith: `${tag}-` } } })).count,
+      }));
+    }
+
+    override async clearErrors() {
+      return (await prisma.requestError.deleteMany({ where: { requestId: { startsWith: `${tag}-` } } })).count;
+    }
+  }
+
   beforeAll(async () => {
     process.env.DATABASE_URL = url;
     prisma = createPrismaClient();
@@ -76,7 +95,7 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     const moduleRef = await Test.createTestingModule({
       controllers: [RequestLogController],
       providers: [
-        RequestLogService, RequestLogRepository, RequestLogWriter, UnitOfWork, PrismaService, ...API_PROVIDERS,
+        RequestLogService, { provide: RequestLogRepository, useClass: OwnRowsRepository }, RequestLogWriter, UnitOfWork, PrismaService, ...API_PROVIDERS,
         { provide: NOTICE_WRITER, useValue: {} },
         { provide: ActorResolver, useValue: actors },
         { provide: ActivityRecorder, useClass: PrismaActivityRecorder },
@@ -326,7 +345,8 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     const already = (await events()).length;
     const answer = await request(app.getHttpServer()).delete('/v1/system/requests').set('Cookie', `sid=${ownerSid}`);
     expect(answer.status).toBe(200);
-    // Every row of the table: this file's three, and any another spec wrote meanwhile.
+    // This file's rows only (`OwnRowsRepository`): the three, the one that waited in the writer, and what earlier
+    // tests of this file left.
     expect(answer.body.removed).toBeGreaterThanOrEqual(4);
     expect(await prisma.requestLog.count({ where: { requestId: { startsWith: `${tag}-` } } })).toBe(0);
     // D5: the errors go with their requests, and the answer says how many of each.
@@ -337,5 +357,35 @@ suite('the request log in PostgreSQL: reading, the summary, the server errors an
     expect(written.map(({ action, result, subjectKind, subjectRef, actorLoginName }) => ({ action, result, subjectKind, subjectRef, actorLoginName }))).toEqual([
       { action: 'request_log_clear', result: 'ok', subjectKind: 'request_log', subjectRef: String(answer.body.removed), actorLoginName: login('owner') },
     ]);
+  });
+  it('the real clearing empties both tables, and the real clearing of the errors leaves the requests (rolled back: no other session sees it)', async () => {
+    class RolledBack extends Error {}
+    const seen: Record<string, unknown> = {};
+    // A row and an error that carry nothing of this file: the real statements are not held to this file's rows.
+    const foreign = `foreign-${randomUUID()}`;
+    const mine = { requestId: { startsWith: `${tag}-` } };
+    await expect(prisma.$transaction(async (tx) => {
+      // The repository as the product builds it, on a unit of work that is this transaction.
+      const real = new RequestLogRepository({ prisma: tx, runTx: <T>(run: (client: typeof tx) => Promise<T>) => run(tx) } as unknown as UnitOfWork);
+      await tx.requestLog.createMany({ data: [row(1), row(2), row(3, { requestId: foreign })] });
+      const error = (requestId: string) => ({ requestId, at: new Date(base), method: 'GET', route: '/x', name: 'Error', message: 'unclassified' });
+      await tx.requestError.createMany({ data: [error(`${tag}-real`), error(foreign)] });
+      seen.errorsRemoved = await real.clearErrors();
+      seen.afterErrors = [await tx.requestError.count({ where: { requestId: { in: [`${tag}-real`, foreign] } } }), await tx.requestLog.count({ where: { requestId: foreign } })];
+      await tx.requestError.createMany({ data: [error(`${tag}-real-2`), error(foreign)] });
+      seen.cleared = await real.clear();
+      seen.left = [await tx.requestLog.count({ where: { OR: [mine, { requestId: foreign }] } }), await tx.requestError.count({ where: { OR: [mine, { requestId: foreign }] } })];
+      throw new RolledBack();
+    }, { timeout: 30_000 })).rejects.toBeInstanceOf(RolledBack);
+    // The errors alone: both gone, the foreign request still there.
+    expect(seen.errorsRemoved).toBeGreaterThanOrEqual(2);
+    expect(seen.afterErrors).toEqual([0, 1]);
+    // The whole log: every request and error this transaction could name, this file's or not.
+    const cleared = seen.cleared as { removed: number; errorsRemoved: number };
+    expect(cleared.removed).toBeGreaterThanOrEqual(3);
+    expect(cleared.errorsRemoved).toBeGreaterThanOrEqual(2);
+    expect(seen.left).toEqual([0, 0]);
+    // Rolled back: nothing of it is in the table.
+    expect(await prisma.requestLog.count({ where: { requestId: foreign } })).toBe(0);
   });
 });

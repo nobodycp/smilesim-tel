@@ -117,9 +117,8 @@ As built (M.6, reviewed 2026-11-17), three points the table does not say:
   window, so one crash or one slow report on a quiet system opens nothing.
 - PostgreSQL being down cannot be written while it is down: the alert is written by the first round after it
   answers again, with the time it was down.
-- **The worker runs the rules, so a worker that is down warns of nothing, itself included.** The status page still
-  shows it (the API reads the heartbeat), the sidebar count does not. To close in the security pass or earlier: the
-  API raising that one alert itself.
+- The worker runs the rules, so a worker that is down could warn of nothing, itself included. Closed in the second
+  round (M.9, section 6): the API watches the worker's heartbeat and opens that one alert itself.
 
 **How the owner hears of it (D4):** a notice in the bell that is there today (`Notice`, live through the stream),
 the count on the sidebar section, and the page. One notice an alert, not one a request. SMS, e-mail or WhatsApp
