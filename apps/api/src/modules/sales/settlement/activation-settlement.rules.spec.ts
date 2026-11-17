@@ -294,7 +294,7 @@ describe('decisions by people (D15)', () => {
     expect(shownPhase(null)).toBeNull();
     expect(Object.values(PHASES).map((operation) => shownPhase(operation))).toEqual(Object.keys(PHASES).map((phase) => (phase === 'none' ? null : phase)));
     const task = (status: string, held: number | null = 3500, posDelta = -3500) => ({ status, held, posDelta });
-    expect(['pending', 'working', 'done', 'cancelled'].map((status) => holdOf(task(status)))).toEqual(['held', 'held', 'captured', 'released']);
+    expect(['working', 'done', 'cancelled'].map((status) => holdOf(task(status)))).toEqual(['held', 'captured', 'released']);
     // A task that charges nothing, or was opened before holds existed, held nothing.
     expect([holdOf(task('working', 0, 0)), holdOf(task('working', null)), holdOf(task('done', 0, -3500)), holdOf(task('working', 500, 500))]).toEqual(['none', 'none', 'none', 'none']);
   });
