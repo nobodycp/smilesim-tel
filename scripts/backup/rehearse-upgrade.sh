@@ -75,7 +75,7 @@ check "packages without a provider product code" 'select count(*) from "Package"
 check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
 check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
 # Partial and expression indexes the schema cannot state, so `prisma migrate diff` does not see them either.
-check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id')" 1
+check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id', 'ProviderOperation_unsettled_id', 'Notice_kind_taskId')" 3
 say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes, reservation and raw-SQL indexes as expected"
 
 # 3. The new API on the copy. A key and a Redis that exist for this run only.

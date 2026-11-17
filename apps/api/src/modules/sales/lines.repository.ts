@@ -174,13 +174,22 @@ export class LinesRepository {
     return db.task.updateMany({ where: { id, status: 'working' }, data: { note } });
   }
 
-  /** Whether a note with these fixed words was already sent about the task, to anybody. */
+  /**
+   * Whether a note with these fixed words was already sent about the task, to anybody. Raw SQL so the text key
+   * `payload->>'taskId'` is filtered, which the expression index `Notice_kind_taskId` serves (DB.2). The JSON
+   * equalities after it are the ones Prisma's `path`/`equals` sent before, so the answer is the same: a stored
+   * JSON string equal to `taskId` always has `taskId` as its text.
+   */
   async taskNoteSent(db: Db, taskId: string, words: string): Promise<boolean> {
-    const found = await db.notice.findFirst({
-      where: { kind: 'task.note', AND: [{ payload: { path: ['taskId'], equals: taskId } }, { payload: { path: ['excerpt'], equals: words } }] },
-      select: { id: true },
-    });
-    return found !== null;
+    const [row] = await db.$queryRaw<{ sent: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM "Notice"
+        WHERE "kind" = 'task.note'
+          AND "payload" ->> 'taskId' = ${taskId}
+          AND "payload" -> 'taskId' = to_jsonb(${taskId}::text)
+          AND "payload" -> 'excerpt' = to_jsonb(${words}::text)
+      ) AS "sent"`;
+    return row?.sent === true;
   }
 
   /** Writes on a claimed task what its completion handed back. */

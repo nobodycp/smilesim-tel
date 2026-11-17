@@ -79,6 +79,9 @@ model Session {
   lastSeenAt DateTime  @default(now())
   expiresAt  DateTime
   revokedAt  DateTime?
+
+  // An account's sessions (the sessions list, revoking them, deleting the account).
+  @@index([userId], map: "Session_userId_idx")
 }
 
 model Role {
@@ -168,6 +171,8 @@ model WalletEntry {
   @@index([lineId])
   // Reports and the line card read entries by kind, newest first.
   @@index([kind, createdAt])
+  // The foreign key of who made the entry: deleting an account checks it.
+  @@index([actorId], map: "WalletEntry_actorId_idx")
 }
 
 model Provider {
@@ -264,6 +269,9 @@ model ProviderOperation {
   @@index([status, id])
   @@index([providerId, createdAt])
   @@index([lineId])
+  // The sweeper's unsettled walk (`unsettledPage`) has a partial index Prisma cannot state:
+  // `ProviderOperation_unsettled_id` on (id) WHERE taskId IS NOT NULL AND appliedAt IS NULL
+  // (migration `20261117160000_lookup_indexes`).
 }
 
 /// One step of a decision a person takes on a provider operation (ADR 0019, D15): proposed, approved, refused or
@@ -613,6 +621,8 @@ model Task {
   @@index([posId, createdAt(sort: Desc), id(sort: Desc)], map: "Task_posId_createdAt_id_idx")
   // Tasks an account holds (freezing returns them).
   @@index([assigneeId, status])
+  // A line's tasks (the line card, the open task of every line operation) and the line's foreign key.
+  @@index([lineId], map: "Task_lineId_idx")
 }
 
 /// A note on a task.
@@ -628,6 +638,8 @@ model TaskNote {
   createdAt DateTime   @default(now())
 
   @@index([taskId, createdAt])
+  // The foreign key of the note's author: deleting an account checks it.
+  @@index([authorId], map: "TaskNote_authorId_idx")
 }
 
 model ActivityEvent {
@@ -785,6 +797,8 @@ model Notice {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
+  // Whether a task's note was already sent (`taskNoteSent`) has an expression index Prisma cannot state:
+  // `Notice_kind_taskId` on (kind, payload->>'taskId') (migration `20261117160000_lookup_indexes`).
 }
 
 /// One viewer's line counts on one UTC day, the last read of that day (spec 2026-11-09-admin-review, 6.4): the home
