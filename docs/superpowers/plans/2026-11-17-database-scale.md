@@ -21,7 +21,7 @@ Then, each with the owner's values or word:
 - [x] **DB.9 The tree read once a request and kept out of transactions** [LOCK]: the sale priced on the path read before its transaction, confirmed under the wallet lock by its rows (ADR 0023); writes keep reading the tree afresh. (d1620076)
 - [x] **DB.13 Retention** [UNIQUE for the outbox]: notices 180 days read, 365 unread; ended sessions 30; published outbox messages 30, only of applied operations (ADR 0024); line counts 400; activity 90, batched; `AccessLog` kept. (0b523e8e)
 - [x] **DB.14 Request-log indexes**; the route figures from duration counts; the rollup is an open item. (78bb02a9)
-- [ ] **DB.15 Settings:** pool, time limits, fill factors.
+- [x] **DB.15 Settings:** pool, time limits, fill factors: per-client pools and limits sent on connect (API 20 / 15 s, exports 2 / 90 s, worker 10 / 60 s, purge 2, idle in a transaction 30 s), a cut statement 500 `TOO_SLOW` kept as `57014`; `Wallet` / `Session` fill factors, autovacuum, the three CHECKs validated. (801addc5)
 
 Last, money, each with its ADR:
 
