@@ -14,6 +14,8 @@ import { AlertRepository } from '../monitoring/alert.repository';
 import { AlertsService } from '../monitoring/alerts.service';
 import type { StatusRepository } from '../monitoring/status.repository';
 import type { StatusRedis } from '../monitoring/status-redis';
+import { VersionsService } from '../monitoring/versions.service';
+import type { VersionsRepository } from '../monitoring/versions.repository';
 import type { ProviderHealthService } from '../providers/directory/provider-health.service';
 import type { UnitOfWork } from '../platform/unit-of-work';
 import type { Actor } from '../access/types';
@@ -96,6 +98,9 @@ const ALERT_KEYS = ['id', 'kind', 'state', 'loginName', 'ip', 'method', 'route',
 const ALERT_LINK_KEYS = ['from', 'to'];
 const ALERT_LINK_OPTIONAL_KEYS = ['status', 'code', 'method', 'route', 'unmatched', 'ip', 'account', 'slowerThan'];
 const ALERT_SEEN_KEYS = ['id', 'seenAt', 'seenByLoginName'];
+// The versions page (M.11): the answer and one item.
+const VERSIONS_KEYS = ['checking', 'checkedAt', 'items'];
+const VERSION_ITEM_KEYS = ['name', 'kind', 'where', 'current', 'latest', 'latestInCycle', 'behind', 'supportEnds', 'supportEnded', 'checkedAt', 'failed', 'cycles'];
 // The system status (M.5): the answer, a part, and each part's figures, by name.
 const STATUS_KEYS = ['at', 'state', 'parts'];
 const STATUS_PART_KEYS = ['name', 'state', 'note', 'figures'];
@@ -470,6 +475,41 @@ describe('office response shapes', () => {
     expect(await service.clear(owner)).toEqual({ removed: 3 });
   });
 
+  it('answers the versions page with the pinned keys: each component in each place, the web\'s with no current and its runtime\'s cycles (M.11)', async () => {
+    const checkedAt = new Date('2026-11-17T10:00:00Z');
+    const nodeCycles = [{ cycle: '26', latest: '26.13.1', eol: '2029-04-30' }, { cycle: process.version.slice(1).split('.')[0], latest: '99.0.0', eol: '2000-01-01' }];
+    const repo = {
+      rows: async () => [
+        { name: 'nodejs', kind: 'runtime', latest: '26.13.1', cycles: nodeCycles, checkedAt, failed: false },
+        { name: 'next', kind: 'library', latest: '16.0.0', cycles: null, checkedAt, failed: true },
+      ],
+      postgresVersion: async () => '17.6 (Debian 17.6-1.pgdg120+1)',
+      workerNodeVersion: async () => 'v24.21.0',
+      lastCheckedAt: async () => checkedAt,
+    } as unknown as VersionsRepository;
+    const redis = { configured: () => true, serverVersion: async () => '7.4.1' } as unknown as StatusRedis;
+    const service = new VersionsService(repo, redis, {} as AlertRepository, {} as UnitOfWork);
+    const owner = { id: 'admin', loginName: 'admin', nickname: 'admin', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as Actor;
+    const page = await service.versions(owner);
+    expect(keysOf(page)).toEqual(sorted(VERSIONS_KEYS));
+    expect(page).toMatchObject({ checking: 'on', checkedAt: '2026-11-17T10:00:00.000Z' });
+    for (const item of page.items) expect(keysOf(item)).toEqual(sorted(VERSION_ITEM_KEYS));
+    const at = (name: string, where: string) => page.items.find((item) => item.name === name && item.where === where);
+    expect(page.items.map((item) => `${item.name} ${item.where}`)).toEqual([
+      'nodejs api', 'nodejs worker', 'nodejs web', 'postgresql database', 'redis cache', 'next web', 'react web', 'tailwindcss web',
+      '@nestjs/core api', 'prisma api', '@prisma/client api', 'bullmq api', 'typescript api', 'zod api', 'express api', 'argon2 api',
+    ]);
+    expect(at('nodejs', 'api')).toMatchObject({ current: process.version, latest: '26.13.1', latestInCycle: '99.0.0', supportEnds: '2000-01-01', supportEnded: true, cycles: [] });
+    expect(at('nodejs', 'worker')).toMatchObject({ current: 'v24.21.0', cycles: [] });
+    expect(at('nodejs', 'web')).toMatchObject({ current: null, behind: 'unknown', latestInCycle: null, cycles: nodeCycles });
+    expect(at('postgresql', 'database')).toMatchObject({ current: '17.6', latest: null, behind: 'unknown', checkedAt: null, failed: false });
+    expect(at('redis', 'cache')).toMatchObject({ current: '7.4.1' });
+    expect(at('next', 'web')).toMatchObject({ current: null, latest: '16.0.0', failed: true, checkedAt: '2026-11-17T10:00:00.000Z' });
+    // The API's own libraries, read from their installed package.json.
+    expect(at('@nestjs/core', 'api')?.current).toMatch(/^\d+\.\d+\.\d+/);
+    expect(at('zod', 'api')?.current).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
   it('answers the system status with the pinned keys: nine parts, each with its figures (M.5)', async () => {
     const service = new StatusService(
       { ping: async () => undefined, database: async () => ({ connections: 1, sizeBytes: 1 }), heartbeat: async () => ({ workers: 1, lastBeatAgeS: 1 }), outbox: async () => ({ unpublished: 0, oldestAgeS: null }), appliedMigrations: async () => ['a'], carriedMigrations: async () => ['a'] } as unknown as StatusRepository,
@@ -642,6 +682,13 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toContain('export type RequestLogPage = Page<RequestLogRow>;');
     const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]);
     expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS));
+  });
+
+  it('the versions page: SystemVersions, VersionItem and VersionCycle (M.11)', () => {
+    expect(declared(typeBody(source, 'SystemVersions'))).toEqual({ required: sorted(VERSIONS_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'VersionItem'))).toEqual({ required: sorted(VERSION_ITEM_KEYS), optional: [] });
+    expect(declared(typeBody(source, 'VersionCycle'))).toEqual({ required: ['cycle', 'eol', 'latest'], optional: [] });
+    expect(source).toContain("export type VersionBehind = 'none' | 'patch' | 'minor' | 'major' | 'unknown';");
   });
 
   it('the system status: SystemStatus, a part, and the figures of each part (M.5)', () => {

@@ -703,9 +703,12 @@ model RequestError {
 /// the status reads its age on the same clock. Left to go stale when the worker stops; any worker's beat removes
 /// rows a day old.
 model WorkerHeartbeat {
-  workerId  String   @id
-  startedAt DateTime
-  beatAt    DateTime
+  workerId    String   @id
+  startedAt   DateTime
+  beatAt      DateTime
+  /// The worker's own Node.js (`process.version`), written with every beat (system monitor M.11): the versions page
+  /// shows it, the API cannot read another process's runtime. Null on a row an older worker wrote.
+  nodeVersion String?
 
   @@index([beatAt])
 }
@@ -891,4 +894,27 @@ model Offer {
   updatedAt   DateTime  @updatedAt
 
   @@index([active, position])
+}
+
+/// The newest published version of one component the system runs on (spec 2026-11-17-system-monitor, section 5;
+/// slice M.11): one row a component, by its name (`nodejs`, `postgresql`, `redis`, `next`, `@nestjs/core`, …),
+/// written by the version check (the worker once a day, and the branch owner's «فحص الآن») from the npm registry or
+/// endoflife.date, so the page never waits for the internet. What is in use is not stored: it is read when asked.
+model StackVersion {
+  name           String    @id
+  /// `runtime` (endoflife.date) or `library` (the npm registry).
+  kind           String
+  /// The newest version published; for a runtime, the newest of its newest cycle. Null until a check found one.
+  latest         String?
+  /// A runtime's cycles as endoflife.date answered them, newest first: `[{ cycle, latest, eol }]`, `eol` a date
+  /// (`YYYY-MM-DD`) or a boolean. The cycle of each version in use (the API's, the worker's, the web's Node.js may
+  /// differ) is found in it when the page is read. Null for a library.
+  cycles         Json?
+  /// When the last check of this component ran, and whether its call failed (then `latest` and `cycles` are the
+  /// last answer that came).
+  checkedAt      DateTime
+  failed         Boolean   @default(false)
+  /// What the last check that found a newer `latest` found: when, and the version it replaced (the notice's).
+  foundAt        DateTime?
+  previousLatest String?
 }

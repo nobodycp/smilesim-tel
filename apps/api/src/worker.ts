@@ -15,6 +15,7 @@ import { readCredentials, startReadiness } from './modules/providers/integration
 import { startHeartbeat } from './modules/monitoring/worker-heartbeat';
 import { startAlertPass } from './modules/monitoring/alert-pass';
 import { purgeMonitoring } from './modules/monitoring/retention';
+import { startVersionCheck } from './modules/monitoring/version-check';
 
 const log = logger('Worker');
 
@@ -93,6 +94,12 @@ export async function run(): Promise<void> {
   await purge();
   const purgeTimer = setInterval(() => void purge(), 24 * 60 * 60 * 1000);
   purgeTimer.unref?.();
+  // The versions page's daily check (system monitor M.11), beside the purge and apart from it: its own timers, its
+  // own failures (logged by code), first run shortly after the start without holding it up; on the dispatch's unit
+  // of work for its one notice. `VERSION_CHECK=off` calls nothing.
+  const versions = startVersionCheck(dispatch.uow);
+  // The monitor's two timers on the dispatch's unit of work stop together, before its notice writer closes.
+  const monitor = { stop: async () => void (await Promise.all([alerts.stop(), versions.stop()])) };
 
   // The open Redis connection keeps the process alive, so the container does not restart.
   log.log(`ready: ${workers.length} processors`);
@@ -100,7 +107,7 @@ export async function run(): Promise<void> {
   const stop = workerShutdown({
     readiness,
     heartbeat,
-    alerts,
+    alerts: monitor,
     stopTimers,
     queues: workers,
     closeNotices: dispatch.closeNotices,

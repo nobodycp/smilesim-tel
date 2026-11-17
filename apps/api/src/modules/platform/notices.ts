@@ -74,6 +74,12 @@ export type SystemAlertNoticePayload = {
   count: number;
 };
 
+/**
+ * Newer versions of what the system runs on (system monitor M.11): told to the branch owner once a check, when it
+ * found versions newer than the last check knew. How many, and the components' names (`nodejs`, `next`, …).
+ */
+export type SystemUpdateNoticePayload = { count: number; names: string[] };
+
 export type NoticeDraft =
   | { kind: 'task.opened' | 'task.taken' | 'task.released' | 'task.note' | 'task.done' | 'task.rejected' | 'task.cancelled'; payload: TaskNoticePayload }
   | { kind: 'fund.received' | 'fund.deducted'; payload: FundNoticePayload }
@@ -81,7 +87,8 @@ export type NoticeDraft =
   | { kind: 'transfer.out' | 'transfer.in'; payload: TransferNoticePayload }
   | { kind: 'provider.problem' | 'provider.recovered'; payload: ProviderNoticePayload }
   | { kind: 'provider.match_overdue'; payload: MatchOverduePayload }
-  | { kind: 'system.alert'; payload: SystemAlertNoticePayload };
+  | { kind: 'system.alert'; payload: SystemAlertNoticePayload }
+  | { kind: 'system.update'; payload: SystemUpdateNoticePayload };
 
 export type NoticeKind = NoticeDraft['kind'];
 

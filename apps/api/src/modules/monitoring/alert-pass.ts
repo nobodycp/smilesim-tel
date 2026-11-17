@@ -13,8 +13,8 @@ import {
 
 const log = logger('AlertPass');
 
-/** The sender of the system's own notices: no account. */
-const SYSTEM: NoticeActor = { id: 'system', nickname: SYSTEM_SENDER_NAME };
+/** The sender of the system's own notices: no account. The monitor's notices (alerts, versions) are all from it. */
+export const SYSTEM: NoticeActor = { id: 'system', nickname: SYSTEM_SENDER_NAME };
 
 /** The parts whose being down is an alert (spec section 4, "a service is down"). */
 export const WATCHED_PARTS = ['worker', 'postgres', 'redis', 'outbox'] as const;

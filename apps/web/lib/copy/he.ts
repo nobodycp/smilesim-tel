@@ -985,6 +985,8 @@ export const he: Copy = {
   noticeMatchOverdueDetail: 'הדוח שלו לא הותאם תוך {n} ימים',
   noticeProviderProblem: 'בעיה אצל ספק',
   noticeSystemAlert: 'התראה ממעקב המערכת',
+  noticeSystemUpdate: 'גרסאות חדשות של מה שהמערכת רצה עליו',
+  noticeSystemUpdateCount: 'מספר העדכונים: {n}',
   alertPasswordCracking: 'ניסיון פריצת סיסמה',
   alertManyAccounts: 'כתובת אחת מנסה חשבונות רבים',
   alertSecondStep: 'ניחוש קוד השלב השני',

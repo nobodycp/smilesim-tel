@@ -24,6 +24,7 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'provider.recovered': return t.noticeProviderRecovered;
     case 'provider.match_overdue': return t.noticeMatchOverdue;
     case 'system.alert': return t.noticeSystemAlert;
+    case 'system.update': return t.noticeSystemUpdate;
     default: return row.kind;
   }
 }
@@ -75,6 +76,12 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     parts.push(alertKindName(t, String(p.alertKind ?? '')));
     const about = p.loginName || p.ip || (p.route ? `${p.method} ${p.route}`.trim() : '') || p.path || p.part;
     if (about) parts.push(about);
+    return parts.join(' · ');
+  }
+  if (row.kind === 'system.update') {
+    // How many components have a newer version, then their names (system monitor M.11).
+    if (typeof p.count === 'number') parts.push(t.noticeSystemUpdateCount.replace('{n}', String(p.count)));
+    if (Array.isArray(p.names)) parts.push(...p.names);
     return parts.join(' · ');
   }
   if (row.kind === 'provider.problem' || row.kind === 'provider.recovered') {

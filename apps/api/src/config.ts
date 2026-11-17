@@ -21,6 +21,9 @@ export const ENV_NAMES = [
   'SECRETS_KEY',
   // The commit the build was made from, when the deployment gives it (Coolify sets it); shown by the system status.
   'SOURCE_COMMIT',
+  // `off` stops every outbound call of the versions page (system monitor M.11): the npm registry and endoflife.date.
+  // Any other value, or none, leaves the daily check on.
+  'VERSION_CHECK',
 ] as const;
 
 export type EnvName = (typeof ENV_NAMES)[number];

@@ -39,6 +39,8 @@ suite('the worker heartbeat in PostgreSQL', () => {
     await heartbeat.beat();
     const first = await row();
     expect(first).not.toBeNull();
+    // The worker's own Node.js, for the versions page (M.11).
+    expect(first?.nodeVersion).toBe(process.version);
     const [{ now }] = await prisma.$queryRaw<{ now: Date }[]>`SELECT now() AS "now"`;
     expect(Math.abs(now.getTime() - (first?.beatAt.getTime() ?? 0))).toBeLessThan(5_000);
     await new Promise((resolve) => setTimeout(resolve, 600));

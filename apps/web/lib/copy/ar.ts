@@ -985,6 +985,8 @@ export const ar = {
   noticeMatchOverdueDetail: 'لم يُطابق كشفه خلال {n} أيام',
   noticeProviderProblem: 'مشكلة عند مزوّد',
   noticeSystemAlert: 'إنذار من مراقبة النظام',
+  noticeSystemUpdate: 'إصدارات جديدة لما يعمل عليه النظام',
+  noticeSystemUpdateCount: 'عدد التحديثات: {n}',
   alertPasswordCracking: 'محاولة كسر كلمة سر',
   alertManyAccounts: 'عنوان واحد يجرّب حسابات كثيرة',
   alertSecondStep: 'تخمين رمز الخطوة الثانية',

@@ -985,6 +985,8 @@ export const en: Copy = {
   noticeMatchOverdueDetail: 'its statement was not matched within {n} days',
   noticeProviderProblem: 'A provider has a problem',
   noticeSystemAlert: 'System monitor alert',
+  noticeSystemUpdate: 'New versions of what the system runs on',
+  noticeSystemUpdateCount: 'Updates: {n}',
   alertPasswordCracking: 'Password cracking attempt',
   alertManyAccounts: 'One address trying many accounts',
   alertSecondStep: 'Second-step code guessing',

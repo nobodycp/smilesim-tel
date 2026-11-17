@@ -616,6 +616,8 @@ export type NoticePayload = {
   part?: string;
   detail?: string;
   count?: number;
+  /** `system.update` (system monitor M.11): the components with a newer version (`count` is shared). */
+  names?: string[];
 };
 export type NoticeRow = {
   id: string;
@@ -1042,4 +1044,51 @@ export type AlertSeen = {
 /** `DELETE /v1/system/alerts`: the closed alerts removed. */
 export type AlertsCleared = {
   removed: number;
+};
+/**
+ * How far a version in use is behind the newest (system monitor M.11). The API's rule, for the web to apply the
+ * same to its own components (`current` null where `where` is `web`):
+ * - read each version as up to three numbers after an optional `v`; a tag right after them (`-rc.1`, `beta1`) is a
+ *   pre-release; anything after a space or a `+` is ignored (`17.6 (Debian …)` is `17.6`);
+ * - when both versions have two numbers or fewer (PostgreSQL's `17.6`) they are major and patch; otherwise a
+ *   missing number is 0 (`7.4` is `7.4.0`);
+ * - `none` when current is the same or newer (a pre-release is older than its release); otherwise the first number
+ *   that differs says `major`, `minor` or `patch` (a pre-release of the newest numbers is `patch`);
+ * - `unknown` when either is missing or unreadable.
+ */
+export type VersionBehind = 'none' | 'patch' | 'minor' | 'major' | 'unknown';
+/** A runtime's cycle as endoflife.date gives it: `eol` the date its support ends (`YYYY-MM-DD`), or undated `true` / `false`. */
+export type VersionCycle = {
+  cycle: string;
+  latest: string;
+  eol: string | boolean;
+};
+/**
+ * One component in one place (`GET /v1/system/versions`, branch owner only). `latest` is the newest published (for
+ * a runtime, the newest of its newest cycle, pre-releases left out); `latestInCycle`, `supportEnds` and
+ * `supportEnded` are a runtime's cycle in use (the cycle is the longest cycle name that is the version or starts it
+ * before a dot: `24` for `v24.21.0`, `7.4` for `7.4.1`). For `where: 'web'` the API knows none of them: `current`,
+ * `latestInCycle` and `supportEnds` are null, `behind` is `unknown`, and a web runtime carries `cycles` for the web
+ * to find its own; every other item has `cycles: []`. `failed`: the last check of it failed, `latest` is the last
+ * answer that came.
+ */
+export type VersionItem = {
+  name: string;
+  kind: 'runtime' | 'library';
+  where: 'api' | 'worker' | 'web' | 'database' | 'cache';
+  current: string | null;
+  latest: string | null;
+  latestInCycle: string | null;
+  behind: VersionBehind;
+  supportEnds: string | null;
+  supportEnded: boolean;
+  checkedAt: string | null;
+  failed: boolean;
+  cycles: VersionCycle[];
+};
+/** `GET /v1/system/versions` and `POST /v1/system/versions/check` (429 `RATE_LIMITED` within a minute of the last check). `checking: 'off'`: the deployment calls nothing (`VERSION_CHECK=off`). */
+export type SystemVersions = {
+  checking: 'on' | 'off';
+  checkedAt: string | null;
+  items: VersionItem[];
 };

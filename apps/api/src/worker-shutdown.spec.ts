@@ -131,11 +131,14 @@ describe('the worker stops through workerShutdown', () => {
     // worker hands it every part.
     const worker = readFileSync(join(__dirname, 'worker.ts'), 'utf8');
     const stop = worker.slice(worker.indexOf('const stop = workerShutdown({'), worker.indexOf("process.once('SIGINT'"));
-    for (const part of ['readiness,', 'heartbeat,', 'alerts,', 'stopTimers,', 'queues: workers,', 'closeNotices: dispatch.closeNotices,', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();', "process.once('SIGTERM', () => void stop());"]) {
+    // `alerts` is the monitor's two timers since system monitor M.11: the alert pass and the version check.
+    for (const part of ['readiness,', 'heartbeat,', 'alerts: monitor,', 'stopTimers,', 'queues: workers,', 'closeNotices: dispatch.closeNotices,', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();', "process.once('SIGTERM', () => void stop());"]) {
       expect({ part, there: stop.includes(part) }).toEqual({ part, there: true });
     }
     expect(worker).toContain("process.once('SIGINT', () => void stop());");
     // The alert pass (system monitor M.6) runs on the dispatch's unit of work, its own composition beside the money path.
     expect(worker).toContain('const alerts = startAlertPass(dispatch.uow);');
+    expect(worker).toContain('const versions = startVersionCheck(dispatch.uow);');
+    expect(worker).toContain('const monitor = { stop: async () => void (await Promise.all([alerts.stop(), versions.stop()])) };');
   });
 });

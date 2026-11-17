@@ -102,3 +102,17 @@ export const CLOSED_ALERT_RETENTION_DAYS = 90;
  * the owner's clearing for its whole length and vacuum could reclaim nothing until it ended.
  */
 export const PURGE_BATCH_ROWS = 5_000;
+
+// ── Versions (spec section 5; slice M.11) ─────────────────────────────────────────────────────────────────────
+
+/** Each call to the npm registry or endoflife.date answers within this, or that component's check has failed. */
+export const VERSION_CALL_TIMEOUT_MS = 5_000;
+/** An answer longer than this is not read: the registry's `latest` and a product's cycles are a few kilobytes. */
+export const VERSION_ANSWER_MAX_BYTES = 1_000_000;
+/** The worker checks when the last check is this old: once a day, whatever the restarts in between. */
+export const VERSION_CHECK_EVERY_MS = 24 * 60 * 60 * 1000;
+/** How often the worker asks whether a day has passed, and how long after its start it first asks (not blocking it). */
+export const VERSION_CHECK_TICK_MS = 60 * 60 * 1000;
+export const VERSION_CHECK_FIRST_AFTER_MS = 30_000;
+/** The owner's «فحص الآن» is refused (`429 RATE_LIMITED`) within this of the last check. */
+export const VERSION_CHECK_AGAIN_AFTER_MS = 60_000;

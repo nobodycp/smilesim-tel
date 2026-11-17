@@ -39,6 +39,12 @@ export class StatusRedis implements OnModuleDestroy {
     return found ? Number(found[1]) : null;
   }
 
+  /** `redis_version` of `INFO server`; null when Redis does not say (system monitor M.11). */
+  async serverVersion(): Promise<string | null> {
+    const info = await this.connection().info('server');
+    return /^redis_version:([^\r\n]+)/m.exec(info)?.[1] ?? null;
+  }
+
   async counts(name: string): Promise<QueueCounts> {
     const counts = await this.queue(name).getJobCounts('waiting', 'active', 'failed');
     return { name, waiting: counts.waiting ?? 0, active: counts.active ?? 0, failed: counts.failed ?? 0 };
