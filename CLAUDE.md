@@ -15,6 +15,7 @@ Wholesale SIM-card office, RTL-first (ar / en / he). Four layers ("doors"), reso
 | Operations: backup, restore, the upgrade plan | `docs/operations/`, scripts in `scripts/backup/` |
 | Areen (عرين) provider: what it gives, decisions, open questions, live-test log | `docs/providers/areen.md` |
 | Handover guides in Arabic (operator, client, checklist, secrets register) | `docs/handover/` — a standing requirement: keep them true to the code and the deployment in the same change |
+| The owner's one status page (Arabic): readiness, every plan's items, open decisions, what was checked | `docs/status/index.html`, built by `node scripts/status/build.mjs` from the plans' checkboxes and `docs/status/status.json` |
 | How to check a UI change before replying (every page, measured, clicked) | `.cursor/rules/verify-before-reply.mdc` |
 
 Open source files only for the area you are changing. If a map is wrong, fix the map in the same change.
@@ -38,6 +39,7 @@ A change is not done until the matching doc says what the code now does:
 - New token, stylesheet, or primitive → `DESIGN.md`.
 - A refactor slice finished → tick it in the plan file with the commit hash.
 - A choice between real alternatives → a short ADR in `docs/architecture/decisions/NNNN-<slug>.md`.
+- A slice ticked, a plan added or removed, an owner's decision asked or answered → `docs/status/status.json` when it names the item, then `node scripts/status/build.mjs` (the owner follows the project from that page).
 - Bump the "Last verified" line of a map you edited.
 
 ## Commands (repo root)
