@@ -15,7 +15,7 @@ function unit(locale: Locale, name: (typeof UNITS)[number]['unit'], value: numbe
   return new Intl.NumberFormat(`${locale}-u-nu-latn`, { style: 'unit', unit: name, unitDisplay: 'long' }).format(value);
 }
 
-/** A span of seconds in its two largest units: «45 ثانية», «12 دقيقة», «3 ساعات 12 دقيقة», «2 days 4 hours». */
+/** A span of seconds in its two largest units: «45 ثانية», «12 دقيقة», «3 ساعات و12 دقيقة», "2 days, 4 hours". */
 export function span(locale: Locale, totalSeconds: number): string {
   let rest = Math.max(0, Math.floor(totalSeconds));
   const parts: string[] = [];
@@ -25,7 +25,8 @@ export function span(locale: Locale, totalSeconds: number): string {
     rest -= count * seconds;
     if (parts.length === 2 || (parts.length === 1 && count === 0)) break;
   }
-  return parts.join(' ');
+  // Joined as the language joins units: «دقيقة و30 ثانية», "1 minute, 30 seconds".
+  return new Intl.ListFormat(locale, { style: 'long', type: 'unit' }).format(parts);
 }
 
 /** A count of bytes in megabytes (or kilobytes under one), one decimal under 10 MB: «512 MB», «3.4 MB». */

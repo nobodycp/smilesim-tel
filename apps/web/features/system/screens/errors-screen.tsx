@@ -92,7 +92,7 @@ function ErrorsDesk() {
       render: (row) => (
         <span>
           <bdi dir="ltr" className={cn('font-semibold', PHONE_WRAP)}>{row.name}</bdi>
-          <bdi dir="ltr" className={CELL_SUB}>{row.message}</bdi>
+          <span className={CELL_SUB}><bdi dir="ltr">{row.message}</bdi></span>
         </span>
       ),
     },
