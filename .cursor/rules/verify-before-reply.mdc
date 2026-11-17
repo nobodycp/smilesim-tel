@@ -31,7 +31,7 @@ For the Tailwind CSS v4 + Radix migration (ADR 0022; spec
 visual checks off: the work is code maintenance without visual verification. While a slice of that plan is being done:
 
 - Steps 2–5 above do not run: no browser, no screenshots, no computed-style measurement against port 3000, no
-  `apps/web/tests/dom-snapshot.mjs`, no `apps/web/visual-audit/` run, no clicking through. The app on port 3000 is not needed,
+  `apps/web/visual-audit/` run, no clicking through. The app on port 3000 is not needed,
   and the browser step of `work-plan.mdc` and `machine-limits.mdc` («checked on it in the browser») is waived for
   these slices only.
 - In their place a slice is checked by `npm run lint`, `npm run typecheck`, `npm run check:copy`,

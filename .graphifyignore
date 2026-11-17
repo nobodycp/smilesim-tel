@@ -3,7 +3,6 @@ docs/superpowers/
 docs/reference/
 apps/api/prisma/migrations/
 apps/web/audit/
-apps/web/tests/dom-snapshot.mjs
 .cursor/
 .github/
 .claude/
