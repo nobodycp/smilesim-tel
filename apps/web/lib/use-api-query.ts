@@ -13,8 +13,14 @@ import type { Fetched } from './fetched';
  * screen opens and is asked again in the background; `reload` asks again now (a write's `onDone`).
  * `fresh` drops the answer when the last screen using it closes, so the next opening waits for a new one: for
  * an editor that copies the answer into drafts once (branding, line prices), where a cached copy would seed stale drafts.
+ * `every` (milliseconds) asks again on that beat while the tab is in view (TanStack Query pauses the beat in a hidden
+ * tab); `fetching` is true while an ask is on the way, the first one or a later one.
  */
-export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>, { enabled = true, fresh = false }: { enabled?: boolean; fresh?: boolean } = {}) {
+export function useApiQuery<T>(
+  key: QueryKey,
+  fetcher: () => Promise<Fetched<T>>,
+  { enabled = true, fresh = false, every }: { enabled?: boolean; fresh?: boolean; every?: number } = {},
+) {
   const { apiText } = usePrefs();
   const latest = useRef(fetcher);
   useEffect(() => {
@@ -29,6 +35,7 @@ export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>
     },
     staleTime: 0,
     ...(fresh ? { gcTime: 0 } : {}),
+    ...(every ? { refetchInterval: every } : {}),
     enabled,
   });
 
@@ -53,5 +60,5 @@ export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>
   }, [generation, enabled, isError, refetch]);
 
   const error = query.error instanceof ApiFailure ? apiText(query.error) : query.error ? apiText(query.error.message) : '';
-  return { data: query.data ?? null, error, loaded: query.data !== undefined || query.isError, reload };
+  return { data: query.data ?? null, error, loaded: query.data !== undefined || query.isError, fetching: query.isFetching, reload };
 }

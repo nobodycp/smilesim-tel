@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ClipboardList,
+  Gauge,
   Home,
   Layers,
   LogOut,
@@ -329,10 +330,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      // The system monitor (spec 2026-11-17-system-monitor, D1): the branch owner's alone. The status, errors and
-      // alerts pages join it in their own slices.
+      // The system monitor (spec 2026-11-17-system-monitor, D1): the branch owner's alone. The alerts page joins it in
+      // its own slice.
       title: t.navDevSecurity,
       items: [
+        { label: t.navSystemStatus, href: '/system', icon: Gauge, layers: ['branch'], owner: true },
         { label: t.navRequestLog, href: '/system/requests', icon: ScrollText, layers: ['branch'], owner: true },
       ],
     },
@@ -364,7 +366,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         : [{ href: entry.href, label: entry.label, above: [group.title] }],
     ),
   );
-  const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+  // A page is active on its own path and the paths under it, unless a longer sidebar page holds the path (`/system`
+  // is not active on `/system/requests`, which has its own item), as the topbar path picks the longest match.
+  const holdsPath = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+  const isActive = (href: string) =>
+    holdsPath(href) && !sections.some((other) => other.href.length > href.length && other.href.startsWith(`${href}/`) && holdsPath(other.href));
 
   // The account answer wins; before it lands the saved identity, then the cookie name, fill in.
   const shown = me ? me.nickname || me.loginName : saved.account || initialName;

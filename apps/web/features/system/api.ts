@@ -1,5 +1,5 @@
 import { request, queryString } from '../../lib/http';
-import type { RequestLogPage, RequestLogSummary } from '../../lib/api-types';
+import type { RequestLogPage, RequestLogSummary, SystemStatus } from '../../lib/api-types';
 
 /** The filters of the request log, as `GET /v1/system/requests` and its summary read them. */
 export type RequestLogFilters = {
@@ -20,4 +20,5 @@ export const systemApi = {
   requestLogSummary: (query: RequestLogFilters = {}) =>
     request<RequestLogSummary>('GET', `/v1/system/requests/summary${queryString(query)}`),
   clearRequestLog: () => request<{ removed: number }>('DELETE', '/v1/system/requests'),
+  systemStatus: () => request<SystemStatus>('GET', '/v1/system/status'),
 };

@@ -65,3 +65,9 @@ export function requestTone(status: number): Tone {
   if (status >= 500) return 'danger';
   return 'muted';
 }
+
+/** A part of the system status: working is good, a warning a warning, down danger. */
+export function partTone(state: 'ok' | 'warn' | 'down'): Tone {
+  if (state === 'ok') return 'success';
+  return state === 'warn' ? 'warning' : 'danger';
+}
