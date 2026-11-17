@@ -159,7 +159,12 @@ model WalletEntry {
   held         Int?
   createdAt    DateTime  @default(now())
 
-  @@index([userId, createdAt])
+  // An account's own entries and the finance page under it, newest first (NEWEST_FIRST, paging.ts).
+  @@index([userId, createdAt(sort: Desc), id(sort: Desc)], map: "WalletEntry_userId_createdAt_id_idx")
+  // The finance page of the branch, newest first. The sales and refunds of the overview and the reports, newest
+  // first, have a partial index Prisma cannot state: `WalletEntry_sale_or_refund_createdAt_id` (migration
+  // `20261117150000_newest_first_indexes`).
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "WalletEntry_createdAt_id_idx")
   @@index([lineId])
   // Reports and the line card read entries by kind, newest first.
   @@index([kind, createdAt])
@@ -552,6 +557,8 @@ model Line {
   providerOperations ProviderOperation[]
 
   @@index([posId, createdAt])
+  // The numbers list of the branch, newest first (NEWEST_FIRST, paging.ts).
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Line_createdAt_id_idx")
   @@index([status])
   @@index([packageId])
   @@index([iccid])
@@ -600,6 +607,10 @@ model Task {
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
+  // The inbox, newest first (NEWEST_FIRST, paging.ts): the branch's, and the tasks of the points of sale under an
+  // account. The second one also serves the point of sale's foreign key.
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Task_createdAt_id_idx")
+  @@index([posId, createdAt(sort: Desc), id(sort: Desc)], map: "Task_posId_createdAt_id_idx")
   // Tasks an account holds (freezing returns them).
   @@index([assigneeId, status])
 }

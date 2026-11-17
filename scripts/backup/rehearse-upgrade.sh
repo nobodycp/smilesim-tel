@@ -74,7 +74,9 @@ check "lines whose package code is not their own package's" "select count(*) fro
 check "packages without a provider product code" 'select count(*) from "Package" where "providerProductCode" is null' 0
 check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
 check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
-say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes and reservation indexes as expected"
+# Partial and expression indexes the schema cannot state, so `prisma migrate diff` does not see them either.
+check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id')" 1
+say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes, reservation and raw-SQL indexes as expected"
 
 # 3. The new API on the copy. A key and a Redis that exist for this run only.
 docker run -d --name "$redis" -p "127.0.0.1:$((port + 1)):6379" redis:8 >/dev/null || die "the throwaway Redis could not be started"
