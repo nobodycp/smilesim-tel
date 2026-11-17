@@ -1,5 +1,5 @@
 import { ApiFailure } from '../platform/api-failure';
-import { brandingSummary, decodeImage, parseBrandingBody } from './branding-rules';
+import { brandingSummary, decodeImage, factsOf, imageCacheControl, parseBrandingBody } from './branding-rules';
 
 describe('branding rules', () => {
   const png = `data:image/png;base64,${Buffer.alloc(64, 1).toString('base64')}`;
@@ -55,12 +55,19 @@ describe('branding rules', () => {
 
   it('summarises a row with its updatedAt as the version', () => {
     const updatedAt = new Date('2026-11-05T09:00:00Z');
-    expect(brandingSummary({ siteName: 'Pro', tagline: 'Desk', logo: png, logoDark: null, favicon: null, updatedAt })).toEqual({
+    expect(brandingSummary(factsOf({ siteName: 'Pro', tagline: 'Desk', logo: png, logoDark: null, favicon: null, updatedAt }))).toEqual({
       siteName: 'Pro',
       tagline: 'Desk',
       hasLogo: true,
       hasFavicon: false,
       version: updatedAt.getTime(),
     });
+  });
+
+  it('caches an image for a year only under the current version', () => {
+    expect(imageCacheControl('1700', 1700)).toBe('public, max-age=31536000, immutable');
+    expect(imageCacheControl(undefined, 1700)).toBe('no-cache');
+    expect(imageCacheControl('1699', 1700)).toBe('no-cache');
+    expect(imageCacheControl(['1700', '1700'], 1700)).toBe('no-cache');
   });
 });

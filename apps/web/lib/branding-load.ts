@@ -1,5 +1,6 @@
 // Server-side read of the office identity for the layout and its metadata. It never throws:
 // an API that is down or slow answers the defaults, so the office still draws.
+import { cache } from 'react';
 import type { BrandingSummary } from './api';
 
 export const DEFAULT_BRANDING: BrandingSummary = { siteName: '', tagline: '', hasLogo: false, hasFavicon: false, version: 0 };
@@ -12,7 +13,9 @@ function isSummary(value: unknown): value is BrandingSummary {
   return typeof row.siteName === 'string' && typeof row.tagline === 'string' && typeof row.version === 'number';
 }
 
-export async function loadBranding(): Promise<BrandingSummary> {
+// `cache` makes one server render (the root `generateMetadata` and `RootLayout`) share one read: the fetch
+// carries an AbortSignal, so Next's own fetch memoisation does not merge the two. On the client it is inert.
+export const loadBranding = cache(async function loadBranding(): Promise<BrandingSummary> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001';
   try {
     const response = await fetch(`${base}/branding`, { cache: 'no-store', signal: AbortSignal.timeout(TIMEOUT_MS) });
@@ -29,7 +32,7 @@ export async function loadBranding(): Promise<BrandingSummary> {
   } catch {
     return DEFAULT_BRANDING;
   }
-}
+});
 
 /** Same-origin URL of one identity image; the Next rewrite forwards `/api` to the API. */
 export function brandingImageUrl(kind: 'logo' | 'logo-dark' | 'favicon', version: number): string {

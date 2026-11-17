@@ -9,6 +9,8 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { hashPassword } from '../auth/password';
 import { BrandingModule } from './branding.module';
 import { BRANDING_STORE, MemoryBrandingStore } from './branding.store';
+import { PrismaBrandingStore } from './prisma-branding.store';
+import type { PrismaService } from '../platform';
 
 function cookieOf(response: request.Response): string {
   const header = response.headers['set-cookie'];
@@ -104,7 +106,7 @@ describe('branding endpoints', () => {
     const summary = await request(app.getHttpServer()).get('/branding');
     expect(summary.body).toEqual(saved.body);
 
-    const logo = await request(app.getHttpServer()).get('/branding/logo');
+    const logo = await request(app.getHttpServer()).get(`/branding/logo?v=${saved.body.version}`);
     expect(logo.status).toBe(200);
     expect(logo.headers['content-type']).toBe('image/png');
     expect(logo.headers['cache-control']).toBe('public, max-age=31536000, immutable');
@@ -143,5 +145,81 @@ describe('branding endpoints', () => {
       .send({ siteName: '', tagline: '', logo: 'data:image/jpeg;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAA' });
     expect(response.status).toBe(400);
     expect(response.body.code).toBe('INVALID');
+  });
+
+  it('caches an image for a year only under the current ?v=, so a CDN never pins an old logo', async () => {
+    const first = await request(app.getHttpServer())
+      .put('/branding')
+      .set('Cookie', ownerCookie)
+      .send({ siteName: 'Pro Sim', tagline: '', logo: png, logoDark: null, favicon: null });
+    const old = first.body.version as number;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const second = await request(app.getHttpServer())
+      .put('/branding')
+      .set('Cookie', ownerCookie)
+      .send({ siteName: 'Pro Sim', tagline: '', logo: webp, logoDark: null, favicon: null });
+    const current = second.body.version as number;
+    expect(current).toBeGreaterThan(old);
+
+    const named = await request(app.getHttpServer()).get(`/branding/logo?v=${current}`);
+    expect(named.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expect(named.headers['content-type']).toBe('image/webp');
+
+    const bare = await request(app.getHttpServer()).get('/branding/logo');
+    expect(bare.status).toBe(200);
+    expect(bare.headers['cache-control']).toBe('no-cache');
+
+    // The old URL answers today's bytes, so it must not be kept for a year under that name.
+    const stale = await request(app.getHttpServer()).get(`/branding/logo?v=${old}`);
+    expect(stale.status).toBe(200);
+    expect(stale.headers['cache-control']).toBe('no-cache');
+    expect(Buffer.from(stale.body)).toEqual(Buffer.alloc(64, 9));
+  });
+});
+
+describe('branding reads in the Prisma store', () => {
+  const updatedAt = new Date('2026-11-17T08:00:00Z');
+
+  function storeOver(client: object): PrismaBrandingStore {
+    return new PrismaBrandingStore({ client } as unknown as PrismaService);
+  }
+
+  it('answers GET /branding without reading any image column', async () => {
+    const statements: string[] = [];
+    const store = storeOver({
+      $queryRaw: async (sql: TemplateStringsArray) => {
+        statements.push(sql.join('?'));
+        return [{ siteName: 'Pro', tagline: 'Desk', hasLogo: true, hasFavicon: false, updatedAt }];
+      },
+      siteBranding: { findUnique: () => Promise.reject(new Error('the summary must not read the row')) },
+    });
+    expect(await store.loadFacts()).toEqual({ siteName: 'Pro', tagline: 'Desk', hasLogo: true, hasFavicon: false, updatedAt });
+    expect(statements).toHaveLength(1);
+    const selected = /SELECT([\s\S]*)FROM/.exec(statements[0])![1];
+    // Each image column appears only inside its "is it set" test, never as a selected value.
+    expect(selected.replace(/\s+/g, ' ').trim()).toBe(
+      `"siteName", "tagline", COALESCE("logo", '') <> '' AS "hasLogo", COALESCE("favicon", '') <> '' AS "hasFavicon", "updatedAt"`,
+    );
+  });
+
+  it('reads only the asked image column (and the light logo behind the dark one)', async () => {
+    const selects: Record<string, boolean>[] = [];
+    const store = storeOver({
+      siteBranding: {
+        findUnique: async ({ select }: { select: Record<string, boolean> }) => {
+          selects.push(select);
+          return { updatedAt, logo: select.logo ? png : undefined, logoDark: select.logoDark ? null : undefined, favicon: select.favicon ? webp : undefined };
+        },
+      },
+    });
+    expect(await store.loadImage('logo')).toEqual({ source: png, updatedAt });
+    expect(await store.loadImage('logo-dark')).toEqual({ source: png, updatedAt });
+    expect(await store.loadImage('favicon')).toEqual({ source: webp, updatedAt });
+    const asked = selects.map((select) => Object.keys(select).filter((key) => select[key]).sort());
+    expect(asked).toEqual([
+      ['logo', 'updatedAt'],
+      ['logo', 'logoDark', 'updatedAt'],
+      ['favicon', 'updatedAt'],
+    ]);
   });
 });

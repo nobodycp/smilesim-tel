@@ -1,8 +1,19 @@
-import { gateOf, errorBody, ApiErrorResponse, ActivityRecorder, ApiFailure, NotDuplicateGuarded } from '../platform';
-import { Body, Controller, Get, Param, Put, Req, Res } from '@nestjs/common';
+import {
+  gateOf,
+  errorBody,
+  parseInput,
+  ApiErrorResponse,
+  ApiZodQuery,
+  ActivityRecorder,
+  ApiFailure,
+  NotDuplicateGuarded,
+} from '../platform';
+import { Body, Controller, Get, Param, Put, Query, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags, ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { BrandingService, type ImageKind } from './branding.service';
+import { imageCacheControl, type ImageKind } from './branding-rules';
+import { BrandingImageQuery } from './branding.schemas';
+import { BrandingService } from './branding.service';
 
 @NotDuplicateGuarded('one write, PUT /branding, replaces the identity with a stated one: a repeat changes nothing')
 export class BrandingBodyDto {
@@ -39,10 +50,11 @@ export class BrandingController {
   }
 
   @Get(':kind')
-  @ApiOperation({ summary: 'One identity image as bytes (public, immutable by ?v=version)' })
+  @ApiOperation({ summary: 'One identity image as bytes (public; immutable for a year only under the current ?v=version)' })
   @ApiParam({ name: 'kind', enum: IMAGE_KINDS })
+  @ApiZodQuery(BrandingImageQuery)
   @ApiErrorResponse(404)
-  async image(@Param('kind') kind: string, @Res() res: Response) {
+  async image(@Param('kind') kind: string, @Query() query: BrandingImageQuery, @Res() res: Response) {
     if (!IMAGE_KINDS.includes(kind as ImageKind)) {
       res.status(404).json(errorBody('NOT_FOUND'));
       return;
@@ -53,7 +65,7 @@ export class BrandingController {
       return;
     }
     res.setHeader('Content-Type', image.type);
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('Cache-Control', imageCacheControl(parseInput(BrandingImageQuery, query).v, image.version));
     res.send(image.bytes);
   }
 

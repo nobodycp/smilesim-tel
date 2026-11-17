@@ -1,8 +1,8 @@
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { createPrismaClient, PrismaService } from '../platform';
 import { PrismaClient } from '../../generated/prisma/client';
-import type { BrandingBody, BrandingRow } from './branding-rules';
-import type { BrandingStore } from './branding.store';
+import type { BrandingBody, BrandingFacts, BrandingImageRow, BrandingRow, ImageKind } from './branding-rules';
+import { imageSource, type BrandingStore } from './branding.store';
 
 const ROW_ID = 1;
 
@@ -23,8 +23,30 @@ export class PrismaBrandingStore implements BrandingStore, OnModuleDestroy {
     return this.prismaClient;
   }
 
-  async load(): Promise<BrandingRow | null> {
-    return this.prisma.siteBranding.findUnique({ where: { id: ROW_ID } });
+  // Raw SQL because Prisma cannot select "is this column set" without reading it: the images are up to
+  // ~400 KB of base64 each and the answer is 129 bytes.
+  async loadFacts(): Promise<BrandingFacts | null> {
+    const rows = await this.prisma.$queryRaw<BrandingFacts[]>`
+      SELECT "siteName", "tagline",
+             COALESCE("logo", '') <> '' AS "hasLogo",
+             COALESCE("favicon", '') <> '' AS "hasFavicon",
+             "updatedAt"
+        FROM "SiteBranding" WHERE "id" = ${ROW_ID}`;
+    return rows[0] ?? null;
+  }
+
+  async loadImage(kind: ImageKind): Promise<BrandingImageRow | null> {
+    const row = await this.prisma.siteBranding.findUnique({
+      where: { id: ROW_ID },
+      select: {
+        updatedAt: true,
+        logo: kind !== 'favicon',
+        logoDark: kind === 'logo-dark',
+        favicon: kind === 'favicon',
+      },
+    });
+    if (!row) return null;
+    return { source: imageSource(kind, { logo: row.logo ?? null, logoDark: row.logoDark ?? null, favicon: row.favicon ?? null }), updatedAt: row.updatedAt };
   }
 
   async save(body: BrandingBody): Promise<BrandingRow> {

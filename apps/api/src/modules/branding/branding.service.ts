@@ -4,14 +4,15 @@ import { ApiFailure } from '../platform';
 import {
   brandingSummary,
   decodeImage,
+  factsOf,
   parseBrandingBody,
   type BrandingSummary,
+  type ImageKind,
   type ImageType,
 } from './branding-rules';
 import { BRANDING_STORE, BrandingStore } from './branding.store';
 
 import type { Gate } from '../platform';
-export type ImageKind = 'logo' | 'logo-dark' | 'favicon';
 
 @Injectable()
 export class BrandingService {
@@ -22,22 +23,25 @@ export class BrandingService {
 
   /** Public: what every page needs to draw the brand. */
   async summary(): Promise<BrandingSummary> {
-    return brandingSummary(await this.store.load());
+    return brandingSummary(await this.store.loadFacts());
   }
 
-  /** Public: the bytes of one image, or null when unset. The dark logo falls back to the light one. */
-  async image(kind: ImageKind): Promise<{ type: ImageType; bytes: Buffer } | null> {
-    const row = await this.store.load();
+  /**
+   * Public: the bytes of one image and the row's version (as GET /branding answers it), or null when unset.
+   * The dark logo falls back to the light one.
+   */
+  async image(kind: ImageKind): Promise<{ type: ImageType; bytes: Buffer; version: number } | null> {
+    const row = await this.store.loadImage(kind);
     if (!row) return null;
-    const source = kind === 'favicon' ? row.favicon : kind === 'logo-dark' ? row.logoDark ?? row.logo : row.logo;
-    return decodeImage(source);
+    const decoded = decodeImage(row.source);
+    return decoded ? { ...decoded, version: row.updatedAt.getTime() } : null;
   }
 
   /** The branch owner, in their own full session, replaces the identity. */
   async save(gate: Gate, body: unknown): Promise<BrandingSummary> {
     await this.assertOwner(gate);
     const parsed = parseBrandingBody(body);
-    return brandingSummary(await this.store.save(parsed));
+    return brandingSummary(factsOf(await this.store.save(parsed)));
   }
 
   private async assertOwner(gate: Gate): Promise<void> {
