@@ -4,7 +4,7 @@ import { AccountTree } from '../access';
 import { UnitOfWork, fail } from '../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client';
-import { daysOf, lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from './rules/periods';
+import { daysOf, periodsAt, revalue, settleDisconnect, switchOver, windowMonthsOf } from './rules/periods';
 import type { PathNode } from '../access';
 
 type Db = Prisma.TransactionClient | PrismaClient;
@@ -76,10 +76,7 @@ export class LinePricing {
   private async openPeriodsOf(db: Db, line: PricedLine, now: Date) {
     const terms = lineTermsOf(line.terms, line.package);
     const rows = await this.repo.paidEntries(db, line.id, PREPAID_KINDS);
-    const last = rows[0];
-    const renewal = Boolean(last && (last.kind === 'charge' || last.kind === 'extend' || last.kind === 'reactivate'));
-    const lastPrice = last?.packagePrice ?? (renewal ? terms.renewal.posPrice : terms.subscription.posPrice);
-    const periods = openPeriods(now, rows) ?? lastWindow(now, line.endsAt, daysOf(windowMonthsOf(terms)), lastPrice, renewal);
+    const { periods, lastPrice } = periodsAt(now, rows, line.endsAt, daysOf(windowMonthsOf(terms)), (renewal) => (renewal ? terms.renewal.posPrice : terms.subscription.posPrice));
     return { terms, periods, lastPrice };
   }
 

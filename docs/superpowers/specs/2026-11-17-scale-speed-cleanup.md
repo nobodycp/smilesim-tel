@@ -317,9 +317,10 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | # | Slice | State |
 |---|---|---|
 | P.1 | `WalletEntry.providerId` (no foreign key) and the CHECK `WalletEntry_operation_priced`, `NOT VALID` (migration `20261117210000_provider_ledger_stored`); `Sale.providerId`; every writer of an operation kind passes the provider and the cost (below). Reads unchanged. | done |
-| P.2 | The backfill command `provider-ledger-backfill` (`cli/`) with its built-in proof. | done |
-| P.3 | The partial index `WalletEntry_provider_createdAt_id` (migration `20261117220000_provider_ledger_index`, a plain `CREATE INDEX` by the rule below, not `CONCURRENTLY`) and `VALIDATE CONSTRAINT` (`20261117220100_provider_ledger_validate`: only when no stored row breaks the CHECK, else a `WARNING` and it stays `NOT VALID`), in the release after the backfill ran. | done |
-| P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. The backfill command is deleted with it (it froze the read-time pricing): it exists in release 1 only. | done |
+| P.2 | The first backfill command, which froze the read-time books (name matching included) and proved them equal. Deleted by P.4; replaced by P.4b. | done |
+| P.3 | The partial index `WalletEntry_provider_createdAt_id` (migration `20261117220000_provider_ledger_index`, a plain `CREATE INDEX` by the rule below, not `CONCURRENTLY`) and `VALIDATE CONSTRAINT` (`20261117220100_provider_ledger_validate`: only when no stored row breaks the CHECK, else a `WARNING` and it stays `NOT VALID`). | done |
+| P.4 | Reads switched to the stored columns (`books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`); `pricedOp` and the read-time fallback deleted; `openDifferences` out of `summaries()`. P.2's command is deleted with it. | done |
+| P.4b | **The backfill at HEAD** (`cli/provider-ledger-backfill.ts`, ADR 0025 amendment): the server deploys `main` once, so the command must exist in the release it runs on. It gives every operation entry its line's package's provider (moving the ones P.2's name matching gave to another provider), fills a missing cost by today's writer rule, and validates the CHECK. The overview's top providers read the stored provider. | done |
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. Example: a 30 ₪ period, the number worked 10 days: the disconnect stores −19.5 ₪, so the line's net cost is 10.5 ₪. Today (kept by P.1 and the backfill, so the proof is equal) the disconnect stores *used share + fee* as a further purchase, 40.5 ₪ in all. Its own spec section first; the stored history is corrected by a settlement entry or a migration the owner chooses. | after P.4 |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Its own spec first. | after P.4 |
 
@@ -343,10 +344,8 @@ operations): sky 63288, −63288, −63288, 27; lian 8500, −8500, −8500, 4; 
 alloha 22000, 8000, 99000, 15 — the same in both. The providers report moved on purpose (ADR 0025 rule 5, the
 owner's answers 2 and 5): it took the provider from the line's current package and skipped an entry without a line;
 it now counts the stored provider. On the dev data four entries whose package name and company («500 جيجا», ويكوم)
-exist under three providers moved from aren (2 entries, 5000) and alloha (2, 3500) to lian (4, 8500): the old books'
-name matching, frozen by the backfill, gave them to lian, while their lines hold aren's and alloha's package and
-never switched. **Open, for the owner, before the backfill runs on a server:** an entry whose package name and
-company match packages of several providers is attributed to the first one found, not to its line's package.
+exist under three providers had been given to lian by the old books' name matching, frozen by P.2, while their lines
+hold aren's and alloha's package and never switched. P.4b moves them (below).
 
 **What each writer stores (P.1).** The provider is the one of the package the entry names (`Package.providerId` of
 the row the caller already read: no read is added); the cost is the one of that moment.
@@ -366,14 +365,39 @@ kind without a provider, or a priced kind that moves money without its cost, thr
 refuses it in the database. No statement, lock or foreign key is added under the wallet lock:
 `sale-lock-tree.db.spec.ts` still counts 11 statements for an activation and 12 for an extension.
 
-**The backfill (P.2; release 1 only, deleted by P.4).** One transaction on the `tool` client, with `WalletEntry` locked against writes. It reads
-today's books through the services the screens use (`WalletsService.pricedOperations`,
-`ProviderAccountsService.summaries` and `detail`), writes `providerId` and `providerCost` on every operation entry
-that has no provider, then compares, inside the same transaction: each entry's stored provider and cost with what
-the books give it; each provider's purchases, balance and available with the same figures from the stored columns
-(an SQL sum); each provider's ledger row by row (id, amount, balance after). Equal to the agora, it commits;
-otherwise it rolls back and prints the differences. An entry the books give to no provider is listed and the run
-stops before writing. `--dry-run` proves and rolls back.
+**The backfill (P.4b).** The office pushes `main` once and the server deploys HEAD: there is no release in which
+P.2's command and the old reads ran, so the backfill lives at HEAD and runs on a database the new reads already use
+(until it runs, an entry without a provider is in no provider's books). `node dist/cli/provider-ledger-backfill.js`
+(`--dry-run`, `--leave-unresolved`) runs once, after the deploy, with writes stopped; one transaction on the `tool`
+client, `WalletEntry` locked against writes (`SHARE ROW EXCLUSIVE`). For every operation entry:
+
+- **Provider:** the provider of the entry's line's package (owner's answer 2). A line never moves to another
+  provider's package (`switchOnto` refuses `OTHER_SHELF`), so its package's provider is the one of every operation it
+  had. A stored provider that differs is replaced, and each move is printed (id, kind, from → to). An entry with no
+  line keeps the provider it stored.
+- **Cost:** a stored cost is kept. A missing one is filled by the rule its writer uses today, from the nearest record
+  of the day: `activate` — the period cost kept on the entry (`periodCost`, the subscription's branch cost the sale
+  wrote), else the branch's cost on the entry's own ladder (the price chain kept at the sale), else the line's terms
+  (stamped at the sale; a transfer re-stamps them from the prices of its day), else the package's current branch cost;
+  plus the eSIM fee kept on the entry (`esimPrice`), as `activationProviderCost` adds it. `charge`, `extend`,
+  `reactivate` — the same with the renewal branch cost. `disconnect` — the settlement worked out at the entry's own
+  time from the line's prepaid entries written before it (`periodsAt`, `settleDisconnect`), 0 when no period was open,
+  as the writer records it. `esim` — the fee kept on the entry. The kinds the provider does not price — 0. `switch` —
+  none: its cost is the quoted difference of the day, which no row keeps.
+- **Unresolved** (no line and no provider; a switch without its cost; a disconnect whose line's terms cannot be read):
+  listed, and the run stops before writing. `--leave-unresolved` is the smallest safe choice: those entries stay as
+  they are — in no provider's books, as the books already read them — everything else is written, and the CHECK is
+  left `NOT VALID` (it still checks every new row). Nothing is invented for them.
+- It prints each provider's purchases before → after, then validates `WalletEntry_operation_priced` in the same
+  transaction when no stored row breaks it. A second run writes nothing. Exit 0 committed (or a dry run rolled back),
+  1 stopped on unresolved entries, 2 could not run; nothing is changed unless it exits 0 without `--dry-run`.
+
+Run on the local dev database (2026-11-17): 46 entries, 4 moved (`2512722b…` activate and `b388a730…` rename lian →
+alloha, `c1fc7e92…` activate and `b83518e6…` extend lian → aren), no cost filled; purchases alloha 22000 → 25500,
+aren 0 → 5000, lian 8500 → 0, sky 63288 → 63288; the CHECK validated; a second run wrote nothing.
+
+This updates stored ledger columns of old rows: allowed only because the system runs on trial data before launch and
+the owner's standing rule keeps nothing in an old form. After launch an entry's provider and cost are never updated.
 
 ## Rules that hold for every slice
 

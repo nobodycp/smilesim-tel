@@ -224,10 +224,10 @@ Each one commit, each verified on its own.
 |---|---|---|
 | P.1 | Columns and the `NOT VALID` check; `Sale.providerId`; every writer of an operation kind passes provider and cost (plain activation and renewal task included). Reads unchanged. | new `wallets/provider-priced-entries.db.spec.ts`: each writer (sale, task completion, settlement, charge, extend, switch ±, disconnect, every `recordOp` kind) stores the right provider and cost; `sale-lock-tree.db.spec.ts` counts unchanged |
 | P.2 | The backfill CLI with its built-in proof. | a db spec on the case fixture; the CLI run on a copy of the staging database |
-| — | **Release 1** (P.1, P.2), the CLI run in the window. | the CLI's comparison output |
+| — | ~~Release 1 (P.1, P.2), the CLI run in the window.~~ Superseded: see the amendment. | |
 | P.3 | Index (`CONCURRENTLY`, own migration) and `VALIDATE`. | migration applies on a backfilled database |
 | P.4 | Reads switched: `books`, `detail` by keyset, `provider-operations`, the reconciliation window, `supply`; `pricedOp` and the fallback deleted; `openDifferences` out of `summaries()`. | `provider-books.db.spec.ts` and `provider-accounts.service.spec.ts` with the same answers; `response-shape.spec.ts` unchanged; before/after plans on the audit's scratch sizes |
-| — | **Release 2** (P.3, P.4). | |
+| — | ~~Release 2 (P.3, P.4).~~ Superseded: one deploy of HEAD, then the command (amendment). | |
 | P.5 | (Only if P.4 measures over budget) `ProviderMonth` and its worker close. | the invariant over closed months; a db spec around a month boundary |
 
 ## Docs that change with it
@@ -238,7 +238,7 @@ Each one commit, each verified on its own.
 - `docs/architecture/backend.md`: `wallets/` (`Sale.providerId`, `provider-cost.ts` gone), `providers/account/`
   (books from SQL), reporting (`supply`); remove the "Known gaps" lines on plain activations storing no
   `providerCost` and on provider accounts adding purchases in memory.
-- `docs/handover/technical-operations-ar.md` §13: the two releases and the backfill command in the window.
+- `docs/handover/technical-operations-ar.md` §13: the deploy, the backfill command once, the check (amendment).
 
 ## Questions for the owner
 
@@ -291,3 +291,29 @@ Each one commit, each verified on its own.
    recorded, what the provider recorded, and the difference between them. Today's "open differences" is a simulated
    match; a real one needs the provider's own statement (see `docs/providers/areen.md`) and its own spec. Recorded
    in `docs/superpowers/plans/2026-11-10-open-items.md`.
+
+## Amendment (2026-11-17): one deploy, the backfill at HEAD, the provider from the line
+
+Found in review after P.4; built as slice P.4b. Overrides "Backfill" above and the two releases of "Slices".
+
+1. **There are no two releases.** The office pushes `main` once and the server deploys HEAD. Release 1 (P.1, P.2),
+   with its backfill command, never runs on a server: the server goes straight to the code where P.4 deleted that
+   command, the old rows have no `providerId`, and the books (sums of the stored columns) read zero for all history.
+   So the backfill lives at HEAD (`cli/provider-ledger-backfill.ts`) and runs once on a database the new reads
+   already use: deploy → run the command once, writes stopped → check (handover §13). Until it runs, the validate
+   migration leaves the CHECK `NOT VALID` with a `WARNING`; the command validates it when no row breaks it.
+2. **P.2's frozen name matching is replaced.** P.2 stored what the old books gave each entry, and the old books found
+   the provider by the entry's package name and company: where that pair exists under several providers, the first
+   found was taken (local dev: four entries of «500 جيجا», ويكوم, given to lian while their lines hold aren's and
+   alloha's package). The owner's answer 2 is the rule: an operation belongs to the provider of its package at the
+   time. A line cannot move to another provider's package (`switchOnto` refuses `OTHER_SHELF`), so the provider of the
+   line's package is that provider. The command gives every operation entry its line's package's provider, moves the
+   entries stored otherwise, and prints each move. A missing cost is filled by the rule its writer uses today, from
+   the entry's own record of the day first (spec section "Provider ledger stored (DB.5)", P.4b).
+3. **Entries it cannot resolve** (no line and no provider; a switch without its quoted difference) stop the run. The
+   flag `--leave-unresolved` leaves them as they are — in no provider's books, as the books already read them — and
+   the CHECK `NOT VALID`; nothing is invented for them.
+4. **Rewriting stored columns of old rows** contradicts rule 3 ("never updated"). It is allowed here only because the
+   system runs on trial data before launch, and the owner's standing rule is that nothing is kept in an old form.
+   After launch the stored provider and cost are never updated: a later difference is a settlement entry (answer 1).
+

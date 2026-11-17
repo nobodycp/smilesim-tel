@@ -9,6 +9,29 @@ import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLad
 
 const log = logger('WalletLedger');
 
+/** An operation entry and the provider and cost the provider ledger's backfill stores on it. */
+export type RepricedEntry = { id: string; providerId: string; cost: number };
+
+/**
+ * The provider ledger's backfill (`cli/provider-ledger-backfill.ts`; ADR 0025, amendment): the one write to an
+ * operation entry after it was written. It sets the provider and the cost of the given entries, in the caller's
+ * transaction, and only where either differs, so a second run writes nothing. No money moves: `amount`,
+ * `balanceAfter` and every wallet stay as they are. Allowed only before launch, on trial data (the owner's standing
+ * rule); after launch an entry's provider and cost are never updated. Answers how many rows it wrote.
+ */
+export async function rewriteOperationColumns(tx: Prisma.TransactionClient, rows: RepricedEntry[]): Promise<number> {
+  let written = 0;
+  for (let at = 0; at < rows.length; at += 1000) {
+    const batch = rows.slice(at, at + 1000);
+    written += await tx.$executeRaw`
+      UPDATE "WalletEntry" AS entry SET "providerId" = given.provider, "providerCost" = given.cost
+      FROM unnest(${batch.map((row) => row.id)}::text[], ${batch.map((row) => row.providerId)}::text[], ${batch.map((row) => row.cost)}::int[]) AS given(id, provider, cost)
+      WHERE entry."id" = given.id
+        AND (entry."providerId" IS DISTINCT FROM given.provider OR entry."providerCost" IS DISTINCT FROM given.cost)`;
+  }
+  return written;
+}
+
 /** A wallet as `post` needs it: the row, and of its owner what a notice names. */
 type PostedWallet = { userId: string; balance: number; ceiling: number; layer: string; parentId: string | null; loginName: string };
 

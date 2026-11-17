@@ -17,10 +17,10 @@ const accounts = [
 const ladder = (pos: string) => ({ kind: 'subscription', chain: [pos, 'agent', 'main', 'branch'], costs: { [pos]: 3800, agent: 3500, main: 3000, branch: 2500 }, posSell: 4500 });
 const at = new Date('2026-11-09T08:00:00.000Z');
 const entries = [
-  { id: 's1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerCost: 2500 },
-  { id: 's2', userId: 'pos', kind: 'charge', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerCost: 2500 },
-  { id: 's3', userId: 'pos2', kind: 'activate', lineId: 'l2', packagePrice: 3800, amount: -3800, ladder: ladder('pos2'), createdAt: at, packageName: '100 جيجا', companyName: 'وي', providerCost: 2500 },
-  { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: { ...ladder('pos'), share: -0.5 }, createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerCost: 0 },
+  { id: 's1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 2500 },
+  { id: 's2', userId: 'pos', kind: 'charge', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: ladder('pos'), createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 2500 },
+  { id: 's3', userId: 'pos2', kind: 'activate', lineId: 'l2', packagePrice: 3800, amount: -3800, ladder: ladder('pos2'), createdAt: at, packageName: '100 جيجا', companyName: 'وي', providerId: 'p-lian', providerCost: 2500 },
+  { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: { ...ladder('pos'), share: -0.5 }, createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerId: 'p-sky', providerCost: 0 },
 ];
 
 function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = [], providers: { accounts: unknown; insights: unknown; health: unknown } = { accounts: {}, insights: {}, health: {} }) {
@@ -32,11 +32,9 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     line: {
       count: async ({ where }: { where: { status?: string; AND?: unknown[] } }) => (where.status ? lineCounts[where.status] : JSON.stringify(where).includes('suspendAfterDays') ? 1 : 2),
       groupBy: async () => Object.entries(lineCounts).map(([status, count]) => ({ status, _count: { _all: count } })),
-      findMany: async () => [
-        { id: 'l1', package: { provider: { code: 'sky', name: 'سكاي' } } },
-        { id: 'l2', package: { provider: { code: 'lian', name: 'ليان' } } },
-      ],
     },
+    // The overview ranks providers by the provider each entry stored (ADR 0025), named from here.
+    provider: { findMany: async () => [{ id: 'p-sky', code: 'sky', name: 'سكاي' }, { id: 'p-lian', code: 'lian', name: 'ليان' }] },
     walletEntry: { findMany: async () => entries },
     lineCountSnapshot: {
       upsert: async ({ create }: { create: (typeof snapshots)[number] }) => {
@@ -142,6 +140,13 @@ describe('OverviewService', () => {
     expect(calls.list).toBe(1);
     expect(calls.health).toEqual([rows]);
     expect(result.providers).toEqual([{ code: 'sky', name: 'سكاي', operations: 2, cost: 5000, profit: 700, balance: -100, creditLimit: 0, available: -100, status: 'problem', problem: 'balance', failures: 0, alertFloor: 0 }]);
+  });
+
+  it('ranks the branch\'s providers by the provider each sale stored, not by the line\'s package now (ADR 0025)', async () => {
+    const branch = { ...actor('branch', 'branch'), isBranchOwner: true, grants: ['reports'] };
+    const providers = { accounts: { list: async () => ({ rows: [] }) }, insights: { supply: async () => ({ rows: [] }) }, health: { current: async () => [] } };
+    const result = await service([], providers).overview(branch, {});
+    expect(result.top.providers.map((row) => [row.key, row.label, row.count])).toEqual([['sky', 'سكاي', 2], ['lian', 'ليان', 1]]);
   });
 
   it('compares today with the same span of yesterday', async () => {

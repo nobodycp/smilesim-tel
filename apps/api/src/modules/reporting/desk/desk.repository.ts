@@ -75,7 +75,7 @@ export class DeskRepository {
   periodEntries(where: Prisma.WalletEntryWhereInput, take: number) {
     return this.uow.prisma.walletEntry.findMany({
       where,
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true, providerCost: true },
+      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true, providerId: true, providerCost: true },
       orderBy: [...NEWEST_FIRST],
       take,
     });
@@ -90,9 +90,9 @@ export class DeskRepository {
     });
   }
 
-  /** The provider behind each of these lines. */
-  providersOfLines(ids: string[]) {
-    return this.uow.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } } });
+  /** Every provider's code and name, by id: an entry stores its provider's id (ADR 0025). */
+  providerNames() {
+    return this.uow.prisma.provider.findMany({ select: { id: true, code: true, name: true } });
   }
 
   /** The balance and ceiling of each of these accounts. */

@@ -137,7 +137,7 @@ export class OverviewService {
     const ladders = await this.wallets.laddersFor(rows);
     const viewerOf = (chain: string[]) => (actor.layer === 'branch' ? chain[chain.length - 1] : actor.id);
     const byId = new Map(accounts.map((account) => [account.id, account]));
-    const providerOfLine = await this.providerOfLines(rows.map((row) => row.lineId));
+    const providerOf = actor.layer === 'branch' ? await this.providerNames(rows) : new Map<string, { code: string; name: string }>();
 
     const sales = { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0 };
     const daily = new Map<string, { day: string; amount: number; profit: number; count: number }>();
@@ -169,7 +169,7 @@ export class OverviewService {
         point.count += 1;
         bump(packages, row.packageName ?? '', row.packageName ?? '—', paid, profit);
         bump(companies, row.companyName ?? '', row.companyName ?? '—', paid, profit);
-        const provider = row.lineId ? providerOfLine.get(row.lineId) : undefined;
+        const provider = row.providerId ? providerOf.get(row.providerId) : undefined;
         if (provider) bump(providers, provider.code, provider.name, paid, profit);
         // Every account of the sale's chain under the viewer did this sale: the most active accounts per layer.
         for (const id of ladder?.chain ?? [row.userId]) {
@@ -230,11 +230,10 @@ export class OverviewService {
     return totals;
   }
 
-  private async providerOfLines(lineIds: (string | null)[]) {
-    const ids = [...new Set(lineIds.filter((id): id is string => Boolean(id)))];
-    if (!ids.length) return new Map<string, { code: string; name: string }>();
-    const lines = await this.repo.providersOfLines(ids);
-    return new Map(lines.map((line) => [line.id, line.package.provider]));
+  /** The providers the entries stored (ADR 0025: the provider of the operation's package at the time), by id. */
+  private async providerNames(rows: { providerId: string | null }[]) {
+    if (!rows.some((row) => row.providerId)) return new Map<string, { code: string; name: string }>();
+    return new Map((await this.repo.providerNames()).map((row) => [row.id, { code: row.code, name: row.name }]));
   }
 
   /** The accounts below the viewer: how many per layer, what they owe, and their ceilings. */

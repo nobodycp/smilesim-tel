@@ -86,6 +86,24 @@ export function lastWindow(now: Date, endsAt: Date, days: number, price: number,
 }
 
 /**
+ * The paid periods open at `now`, as a disconnect and a switch read them: from the prepaid rows (newest first),
+ * else, when a row in the run carries no period, the line's last window (`endsAt`, `windowDays` long) at the newest
+ * row's price, or `priceOf` the line's terms when there is no row. `lastPrice` is that price.
+ */
+export function periodsAt(
+  now: Date,
+  rows: PrepaidRow[],
+  endsAt: Date,
+  windowDays: number,
+  priceOf: (renewal: boolean) => number,
+): { periods: OpenPeriod[]; lastPrice: number } {
+  const last = rows[0];
+  const renewal = Boolean(last && RENEWAL_PERIOD_KINDS.has(last.kind));
+  const lastPrice = last?.packagePrice ?? priceOf(renewal);
+  return { periods: openPeriods(now, rows) ?? lastWindow(now, endsAt, windowDays, lastPrice, renewal), lastPrice };
+}
+
+/**
  * One disconnect posting for a line with paid days left.
  * The point of sale is credited every unused paid day minus the half-shekel fee.
  * The provider cost is the used share of the running period's branch cost plus that same fee: the cost kept on
