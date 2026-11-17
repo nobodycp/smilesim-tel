@@ -47,7 +47,7 @@ npm run lint          npm run typecheck      npm run check:copy     npm run chec
 npm run test:api      npm run test:e2e       npm run build
 docker compose up --build    # web :3000, api :3001, worker, postgres, redis
 ```
-CI (`.github/workflows/ci.yml`) runs lint, check:copy, check:styles, typecheck, test:api, build, and a `db` job with the `*.db.spec.ts` files on PostgreSQL.
+CI (`.github/workflows/ci.yml`) runs lint, check:copy, check:styles, typecheck, test:api, build, and a `db` job with the `*.db.spec.ts` files on PostgreSQL; a `measure` job (bundle sizes, Lighthouse) reports to the run summary and blocks nothing.
 
 **Machine limits (owner, `.cursor/rules/machine-limits.mdc`):** **one** running copy of the app, always on port
 **3000** (`.claude/launch.json` → `smilesim` = `npm run dev:local`); keep it running and check every change on it; an
