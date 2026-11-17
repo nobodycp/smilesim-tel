@@ -35,6 +35,18 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:api
       - run: npm run build
+      # The measure job reads this build of the web instead of building it again (speed plan PF.14). An upload that
+      # fails never fails this job: the measure job then builds on its own.
+      - uses: actions/upload-artifact@v7
+        continue-on-error: true
+        with:
+          name: web-build
+          path: |
+            apps/web/.next
+            !apps/web/.next/cache
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 1
 
   # Specs that need a real PostgreSQL (row locks, transactions) are named *.db.spec.ts and skip without
   # TEST_DATABASE_URL. This job gives them one: a throwaway postgres service with the migrations applied.
@@ -109,5 +121,74 @@ jobs:
           path: |
             apps/web/playwright-report
             apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Production figures for the web (speed plan PF.14, spec decision 15), written to the job summary: first-load JS a
+  # route and the largest chunks from the build above, then Lighthouse on the sign-in page and one signed-in page
+  # (`next start` against the e2e mock API). It measures and never gates: continue-on-error, and no job needs it.
+  # Budgets that fail a merge come later, once the numbers have settled.
+  measure:
+    name: measure (production build, non-blocking)
+    needs: verify
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        id: build
+        continue-on-error: true
+        with:
+          name: web-build
+          path: apps/web/.next
+      # The same build the verify job makes (no NEXT_PUBLIC_API_URL: the /api rewrite goes to 127.0.0.1:3001).
+      - name: Build the web when the verify job left no build
+        if: ${{ steps.build.outcome != 'success' || hashFiles('apps/web/.next/BUILD_ID') == '' }}
+        working-directory: apps/web
+        run: npx next build
+      - name: Route sizes and the largest chunks
+        working-directory: apps/web
+        run: node scripts/measure.mjs bundle .next >> "$GITHUB_STEP_SUMMARY"
+      - name: Lighthouse on the sign-in page and the numbers list
+        id: lighthouse
+        continue-on-error: true
+        working-directory: apps/web
+        run: |
+          mkdir -p "$RUNNER_TEMP/lighthouse"
+          # The mock answers on the API's own port, where the build's /api rewrite points.
+          MOCK_API_PORT=3001 MOCK_WEB_ORIGIN=http://admin.localhost:3910 node tests/mock-api.mjs > "$RUNNER_TEMP/lighthouse/mock-api.log" 2>&1 &
+          npx next start -p 3910 > "$RUNNER_TEMP/lighthouse/next-start.log" 2>&1 &
+          for attempt in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:3910/login && break; sleep 1; done
+          export CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          run() {
+            npx --yes lighthouse@13 "$1" --quiet --only-categories=performance \
+              --chrome-flags="--headless=new --no-sandbox" \
+              --output=json --output=html --output-path="$RUNNER_TEMP/lighthouse/$2" "${@:3}" || true
+          }
+          # A door host, as a browser opens it; the signed-in page is the mock's branch session (the cookie the
+          # e2e numbers spec sets).
+          run http://pos.localhost:3910/login sign-in
+          run http://admin.localhost:3910/numbers numbers --extra-headers='{"Cookie":"mock-branch=1"}'
+      - name: Lighthouse figures
+        if: ${{ always() && steps.lighthouse.outcome != 'skipped' }}
+        working-directory: apps/web
+        run: |
+          node scripts/measure.mjs lighthouse \
+            "sign-in=$RUNNER_TEMP/lighthouse/sign-in.report.json" \
+            "numbers, signed in=$RUNNER_TEMP/lighthouse/numbers.report.json" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() }}
+        with:
+          name: lighthouse-reports
+          path: ${{ runner.temp }}/lighthouse
           if-no-files-found: ignore
           retention-days: 7
