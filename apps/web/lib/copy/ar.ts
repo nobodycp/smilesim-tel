@@ -1326,7 +1326,6 @@ export const ar = {
   verCurrent: "المستخدم",
   verLatest: "الأحدث",
   verState: "الحالة",
-  verSupport: "الدعم",
   verInCycle: "أحدث ضمن الإصدار {cycle}: {version}",
   verSupportEnds: "ينتهي دعمه في {date}",
   verSupportEnded: "انتهى دعمه",
@@ -1349,8 +1348,8 @@ export const ar = {
   },
   verWhat: {
     nodejs: "يشغّل برامج النظام",
-    postgresql: "قاعدة البيانات",
-    redis: "الذاكرة السريعة",
+    postgresql: "تحفظ كل بيانات النظام",
+    redis: "يحفظ الجلسات وطوابير المهام",
     next: "واجهة الموقع",
     react: "بناء شاشات الموقع",
     tailwindcss: "تنسيق شكل الموقع",

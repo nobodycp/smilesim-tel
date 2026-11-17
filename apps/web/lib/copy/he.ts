@@ -1326,7 +1326,6 @@ export const he: Copy = {
   verCurrent: "בשימוש",
   verLatest: "החדשה ביותר",
   verState: "מצב",
-  verSupport: "תמיכה",
   verInCycle: "החדשה ביותר בגרסה {cycle}: {version}",
   verSupportEnds: "התמיכה מסתיימת ב־{date}",
   verSupportEnded: "התמיכה הסתיימה",
@@ -1349,8 +1348,8 @@ export const he: Copy = {
   },
   verWhat: {
     nodejs: "מריץ את התוכנות של המערכת",
-    postgresql: "מסד הנתונים",
-    redis: "זיכרון מהיר",
+    postgresql: "שומר את כל הנתונים של המערכת",
+    redis: "שומר את ההפעלות ואת תורי המשימות",
     next: "ממשק האתר",
     react: "בונה את מסכי האתר",
     tailwindcss: "העיצוב של האתר",

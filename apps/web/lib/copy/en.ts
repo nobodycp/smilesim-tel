@@ -1326,7 +1326,6 @@ export const en: Copy = {
   verCurrent: "In use",
   verLatest: "Newest",
   verState: "State",
-  verSupport: "Support",
   verInCycle: "Newest of version {cycle}: {version}",
   verSupportEnds: "Supported until {date}",
   verSupportEnded: "No longer supported",
@@ -1349,8 +1348,8 @@ export const en: Copy = {
   },
   verWhat: {
     nodejs: "Runs the system's programs",
-    postgresql: "The database",
-    redis: "Fast memory",
+    postgresql: "Keeps all of the system's data",
+    redis: "Keeps sessions and job queues",
     next: "The website's front end",
     react: "Builds the website's screens",
     tailwindcss: "The website's look",

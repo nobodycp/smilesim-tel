@@ -42,6 +42,12 @@ const BEHIND_TONE: Record<VersionBehind, Tone | 'info'> = {
  */
 const PHONE_WRAP = 'wrap-anywhere max-sm:whitespace-normal';
 
+/*
+ * The name and the place may break between words from 640px up (a purpose line, «العامل في الخلفية»), so the
+ * runtimes' five columns fit the desk at 1024px without the table scrolling; a version never breaks there.
+ */
+const WORDS_WRAP = 'whitespace-normal';
+
 function rowKey(row: VersionItem) {
   return `${row.name} ${row.where}`;
 }
@@ -55,7 +61,7 @@ function fill(template: string, values: Record<string, ReactNode>): ReactNode {
 }
 
 function latin(value: string, className?: string) {
-  return <bdi dir="ltr" className={cn('tabular-nums', PHONE_WRAP, className)}>{value}</bdi>;
+  return <bdi dir="ltr" className={cn('tabular-nums sm:whitespace-nowrap', PHONE_WRAP, className)}>{value}</bdi>;
 }
 
 function count(value: number) {
@@ -91,19 +97,22 @@ function latestCell(t: Copy, row: VersionItem) {
   );
 }
 
+/** The state as a word and a tone; under it, for a runtime, its support, and a failed last check. */
 function stateCell(t: Copy, row: VersionItem) {
   return (
     <span className="inline-grid justify-items-start gap-1">
       <Badge variant={BEHIND_TONE[row.behind]} dot>{t.verBehind[row.behind]}</Badge>
+      {row.kind === 'runtime' ? supportLine(t, row) : null}
       {row.failed ? <span className="text-caption leading-1-3 font-semibold text-warning" data-testid="version-failed">{t.verFailed}</span> : null}
     </span>
   );
 }
 
-function supportCell(t: Copy, row: VersionItem) {
-  if (row.supportEnded) return <Badge variant="danger" dot>{t.verSupportEnded}</Badge>;
-  if (row.supportEnds) return <span className="text-muted">{fill(t.verSupportEnds, { date: latin(row.supportEnds) })}</span>;
-  return '—';
+/** A runtime's support: the day it ends, or that it has ended (danger, in words); nothing when undated. */
+function supportLine(t: Copy, row: VersionItem) {
+  if (row.supportEnded) return <span className="text-caption leading-1-3 font-semibold text-danger" data-testid="version-support-ended">{t.verSupportEnded}</span>;
+  if (row.supportEnds) return <span className="text-caption leading-1-3 text-muted">{fill(t.verSupportEnds, { date: latin(row.supportEnds) })}</span>;
+  return null;
 }
 
 /** The versions page (spec 2026-11-17-system-monitor, section 5): the branch owner's page. */
@@ -136,18 +145,18 @@ function VersionsDesk() {
   }
 
   const base: Column<VersionItem>[] = [
-    { key: 'name', header: t.verName, sortValue: (row) => SHOWN_NAME[row.name] ?? row.name, render: (row) => nameCell(t, row) },
-    { key: 'where', header: t.verWhereLabel, sortValue: (row) => t.verWhere[row.where], render: (row) => t.verWhere[row.where] },
+    { key: 'name', header: t.verName, cell: WORDS_WRAP, sortValue: (row) => SHOWN_NAME[row.name] ?? row.name, render: (row) => nameCell(t, row) },
+    { key: 'where', header: t.verWhereLabel, cell: WORDS_WRAP, sortValue: (row) => t.verWhere[row.where], render: (row) => t.verWhere[row.where] },
     { key: 'current', header: t.verCurrent, render: (row) => (shown(row.current) ? latin(shown(row.current) as string) : '—') },
   ];
+  // With the check off the newest, the state and a runtime's support are never asked: only what is in use is shown.
   const judged: Column<VersionItem>[] = checking
     ? [
         { key: 'latest', header: t.verLatest, render: (row) => latestCell(t, row) },
         { key: 'state', header: t.verState, sortValue: (row) => ['major', 'minor', 'patch', 'unknown', 'none'].indexOf(row.behind), render: (row) => stateCell(t, row) },
       ]
     : [];
-  const runtimeColumns: Column<VersionItem>[] = [...base, ...judged, { key: 'support', header: t.verSupport, render: (row) => supportCell(t, row) }];
-  const libraryColumns: Column<VersionItem>[] = [...base, ...judged];
+  const columns: Column<VersionItem>[] = [...base, ...judged];
 
   const table = (rows: VersionItem[], columns: Column<VersionItem>[], skeletonRows: number) => (
     <DataTable
@@ -197,13 +206,13 @@ function VersionsDesk() {
         <header className={PANE_HEAD}>
           <h2 className={PANE_TITLE}><ServerCog size={16} aria-hidden="true" className="flex-none text-muted" />{t.verRuntimes}</h2>
         </header>
-        {table(runtimes, runtimeColumns, 5)}
+        {table(runtimes, columns, 5)}
       </Pane>
       <Pane data-testid="versions-libraries">
         <header className={PANE_HEAD}>
           <h2 className={PANE_TITLE}><Boxes size={16} aria-hidden="true" className="flex-none text-muted" />{t.verLibraries}</h2>
         </header>
-        {table(libraries, libraryColumns, 8)}
+        {table(libraries, columns, 8)}
       </Pane>
       <p className="m-0 text-sm leading-1-5 text-muted" data-testid="versions-footnote">{t.verFootnote}</p>
     </Desk>
