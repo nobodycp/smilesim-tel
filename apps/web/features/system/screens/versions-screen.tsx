@@ -179,9 +179,21 @@ function VersionsDesk() {
   );
 
   return (
-    <Desk title={t.navVersions} lede={t.verLede} error={error} note={note}>
+    <Desk
+      title={t.navVersions}
+      lede={t.verLede}
+      error={error}
+      note={note}
+      action={data && checking ? (
+        // The page's one action in its head, as the status page's «تحديث» (with the check off there is nothing to ask).
+        <Button type="button" variant="secondary" disabled={busy} aria-busy={busy} onClick={() => void checkNow()} data-testid="versions-check">
+          <RefreshCw size={15} aria-hidden="true" className={cn(busy && 'motion-safe:animate-spin')} />
+          {t.verCheckNow}
+        </Button>
+      ) : undefined}
+    >
       {data ? (
-        <Pane className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4.5 py-3.5 [.desk>&]:flex-row" data-testid="versions-summary">
+        <Pane className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4.5 py-3.5 [.desk>&]:flex-row" data-testid="versions-summary">
           {checking ? (
             <>
               <p className="m-0 text-md font-semibold text-ink" aria-live="polite">
@@ -192,13 +204,9 @@ function VersionsDesk() {
                   </Fragment>
                 ))}
               </p>
-              <p className="m-0 text-sm text-muted">
+              <p className="m-0 ms-auto text-sm text-muted">
                 {data.checkedAt ? fill(t.verCheckedAt, { time: latin(latinWhen(data.checkedAt)) }) : t.verNeverChecked}
               </p>
-              <Button type="button" variant="secondary" className="ms-auto" disabled={busy} aria-busy={busy} onClick={() => void checkNow()} data-testid="versions-check">
-                <RefreshCw size={15} aria-hidden="true" className={cn(busy && 'motion-safe:animate-spin')} />
-                {t.verCheckNow}
-              </Button>
             </>
           ) : (
             <p className="m-0 text-md font-semibold text-ink" role="status" data-testid="versions-off">
