@@ -30,11 +30,11 @@ under `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
 - [x] **M.3 Web: the section and the request log.** (`109e4159`) `apps/web/components/app-shell.tsx`: the group
   «المطورين والحماية» (branch, owner). `apps/web/features/system/` (api, screens), `app/system/requests/page.tsx`:
   the table on `DataTable` and `FilterBar`, the summary strip, the clear dialog. Copy in the three languages.
-- [x] **M.4 Errors.** (API `b31153bf`; web pending) `RequestError` (requestId, at, route, name, message, stack top; filtered by
+- [x] **M.4 Errors.** (API `b31153bf`; web `347e993a`) `RequestError` (requestId, at, route, name, message, stack top; filtered by
   `platform/log.ts`), written by `api-exception.filter.ts` through a port of the platform for a 5xx only.
   `GET /v1/system/errors` (grouped by route and message), `DELETE /v1/system/errors`. Web: `app/system/errors`.
   Spec: no value of the request in a stored message.
-- [x] **M.5 Status.** (API `be3ec8f3`; web pending) `WorkerHeartbeat` (one row a worker, by the database's clock, written every 20 s by
+- [x] **M.5 Status.** (API `be3ec8f3`; web `379cab04`) `WorkerHeartbeat` (one row a worker, by the database's clock, written every 20 s by
   `src/worker/`) and its migration. `monitoring/status.service.ts`: the nine parts of the spec, each a small
   probe with a time limit of its own, so that a part that hangs shows `متوقف` and the others still answer;
   thresholds in `monitoring/thresholds.ts`. `GET /v1/system/status`. Web: `app/system/page.tsx`, cards, 15 s.
