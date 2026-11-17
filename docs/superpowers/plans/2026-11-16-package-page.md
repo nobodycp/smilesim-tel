@@ -31,7 +31,7 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   customer field, no numbering), `components/ui/checkbox.tsx`.
 - [x] **P.8 An offer's card stands out** (`e7490a70`). `apps/web/features/catalog/screens/packages-screen.tsx` (`OFFER_CARD`,
   `OfferShow`, `GbRing` gold), keyframes in `apps/web/app/tailwind.css`.
-- [x] **P.9 «المستثنون» on the package page, the two places linked.** API `GET /v1/packages/:code/hidden-accounts`
+- [x] **P.9 «المستثنون» on the package page, the two places linked** (`3f656556`). API `GET /v1/packages/:code/hidden-accounts`
   (`pricing/terms.service.ts` `hiddenAccounts`, `terms.controller.ts`, `testing/routes.ts`, permissions, facade,
   `pricing/user-terms-service.spec.ts`). Web: `features/catalog/package-excluded.tsx`, the tab in
   `package-sheet-screen.tsx`, account names there and in «تخصيص سعر» link to the account's page;
