@@ -2,7 +2,8 @@
 // another through its surface only (`module-surface`, architecture-boundaries.spec.ts); the composition roots
 // (`app`) and the specs may reach inside.
 
-export { PROVIDER_OPERATION_KINDS } from './provider-cost';
+export { LOSS_FILTERS, PROVIDER_LOSSES, PROVIDER_OPERATION_KINDS } from './provider-cost';
+export type { LossFilter, ProviderLoss } from './provider-cost';
 export { csvOf } from './report-csv';
 export { saleOf } from './sale';
 export { marginViewOf, saleOrRefundWhere } from './stored-margins';

@@ -3,10 +3,10 @@ import type { Prisma } from '../../generated/prisma/client';
 import { logger, fail, UnitOfWork, type Db } from '../platform';
 import { AccountTree } from '../access';
 import type { Sale } from './sale';
-import { operationColumns } from './provider-cost';
+import { operationColumns, type ProviderLoss } from './provider-cost';
 import { uncoveredDebit, withinCeiling } from './ceiling';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../pricing';
-import { NO_MARGINS, chainIdsOf, marginColumns, storedChainIds, type ChainIds, type MarginColumns } from './stored-margins';
+import { NO_MARGINS, chainIdsOf, lossMargins, marginColumns, storedChainIds, type ChainIds, type MarginColumns } from './stored-margins';
 
 const log = logger('WalletLedger');
 
@@ -31,6 +31,49 @@ export async function rewriteOperationColumns(tx: Prisma.TransactionClient, rows
         AND (entry."providerId" IS DISTINCT FROM given.provider OR entry."providerCost" IS DISTINCT FROM given.cost)`;
   }
   return written;
+}
+
+/** An operation entry the provider ledger's backfill marks as the branch's loss (spec DB.5 P.7), with its cost. */
+export type MarkedEntry = { id: string; cost: number; loss: ProviderLoss };
+
+/**
+ * The provider ledger's backfill, P.7 pass: marks old operations the provider was paid for and the point of sale was
+ * not charged for, with their cost and the branch's loss as their margin (`lossMargins`), only where one differs, so
+ * a second run writes nothing. No money moves. Trial data only, as `rewriteOperationColumns`. Answers the rows written.
+ */
+export async function markProviderLosses(tx: Prisma.TransactionClient, rows: MarkedEntry[]): Promise<number> {
+  let written = 0;
+  for (let at = 0; at < rows.length; at += 1000) {
+    const batch = rows.slice(at, at + 1000);
+    written += await tx.$executeRaw`
+      UPDATE "WalletEntry" AS entry SET "providerCost" = given.cost, "providerLoss" = given.loss, "branchMargin" = -given.cost
+      FROM unnest(${batch.map((row) => row.id)}::text[], ${batch.map((row) => row.cost)}::int[], ${batch.map((row) => row.loss)}::text[]) AS given(id, cost, loss)
+      WHERE entry."id" = given.id AND entry."amount" = 0
+        AND (entry."providerCost" IS DISTINCT FROM given.cost OR entry."providerLoss" IS DISTINCT FROM given.loss OR entry."branchMargin" IS DISTINCT FROM -given.cost)`;
+  }
+  return written;
+}
+
+/** An activation given back after the provider's success that wrote no entry (before P.7), as the backfill writes it. */
+export type GivenBackEntry = { userId: string; actorId: string; at: Date; balanceAfter: number; note: string; sale: Sale };
+
+/**
+ * The provider ledger's backfill, P.7 pass: writes the entry an old `release-after-success` approval did not write,
+ * dated at the approval, as `recordOp` writes one today (`operationColumns`, `lossMargins`). `balanceAfter` is the
+ * point of sale's balance after its last entry before that time, read by the caller: the entry moves no money and no
+ * wallet is written. Trial data only.
+ */
+export async function writeGivenBack(tx: Prisma.TransactionClient, row: GivenBackEntry): Promise<string> {
+  const operation = operationColumns('activate', row.sale, true, 0);
+  const created = await tx.walletEntry.create({
+    data: {
+      userId: row.userId, actorId: row.actorId, amount: 0, balanceAfter: row.balanceAfter, kind: 'activate', note: row.note || null,
+      msisdn: row.sale.msisdn, lineId: null, companyName: row.sale.companyName, packageName: row.sale.packageName, packagePrice: row.sale.packagePrice,
+      ...operation, ...lossMargins(operation.providerCost ?? 0), createdAt: row.at,
+    },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 /** A sale or refund entry and the ladder and margins the stored margins' backfill stores on it. */
@@ -218,6 +261,8 @@ export class WalletLedger {
         : REFUND_KINDS.has(kind)
           ? await this.refundOf(tx, amount, sale)
           : null;
+    // An operation's provider, cost and loss mark, fixed now (ADR 0025; P.7): part of this INSERT, no statement of their own.
+    const operation = operationColumns(kind, sale, false, amount);
     await tx.walletEntry.create({
       data: {
         userId,
@@ -232,13 +277,14 @@ export class WalletLedger {
         companyName: sale?.companyName,
         packageName: sale?.packageName,
         packagePrice: sale?.packagePrice,
-        // An operation's provider and cost, fixed now (ADR 0025): part of this INSERT, no statement of their own.
-        ...operationColumns(kind, sale, false),
+        ...operation,
         esimPrice: sale?.esimPrice ?? null,
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
         periodCost: sale?.periodCost ?? null,
-        ...(priced ? { ladder: priced.ladder as unknown as Prisma.InputJsonValue, ...marginColumns(priced.ladder, priced.ids) } : NO_MARGINS),
+        ...(priced
+          ? { ladder: priced.ladder as unknown as Prisma.InputJsonValue, ...marginColumns(priced.ladder, priced.ids) }
+          : operation.providerLoss ? lossMargins(operation.providerCost ?? 0) : NO_MARGINS),
       },
     });
   }
@@ -307,9 +353,15 @@ export class WalletLedger {
     return { ladder, ids: chainIdsOf(path) };
   }
 
-  async recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {
+  /**
+   * Records an operation that moves no money: an entry of amount 0 with the operation's provider and cost, and its loss
+   * mark when the provider was paid and the point of sale charged nothing (P.7: a sale priced 0, or one given back
+   * after the provider's success), with the branch's loss as its margin. `note`: why, when the caller has a reason.
+   */
+  async recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale, note = '') {
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     if (!wallet) fail(404, 'NOT_FOUND');
+    const operation = operationColumns(kind, sale, true, 0);
     await tx.walletEntry.create({
       data: {
         userId,
@@ -317,12 +369,14 @@ export class WalletLedger {
         amount: 0,
         balanceAfter: wallet.balance,
         kind,
+        note: note || null,
         msisdn: sale.msisdn,
         lineId: sale.lineId || null,
         companyName: sale.companyName,
         packageName: sale.packageName,
         packagePrice: sale.packagePrice,
-        ...operationColumns(kind, sale, true),
+        ...operation,
+        ...(operation.providerLoss ? lossMargins(operation.providerCost ?? 0) : {}),
         periodDays: sale.period?.days ?? null,
         periodEndsAt: sale.period?.endsAt ?? null,
         periodCost: sale.periodCost ?? null,

@@ -561,7 +561,13 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect((await answer('acc2', taskId, true)).body).toEqual({ ok: true, outcome: 'approved' });
       expect(await task(taskId)).toMatchObject({ status: 'cancelled', resultNote: PROVIDER_RELEASED_NOTE, assigneeId: ids.acc2 });
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
-      expect(await kinds()).toEqual(['hold', 'release']);
+      // The provider was paid and the point of sale was not charged (spec DB.5 P.7): the activation is recorded,
+      // moving 0, with the package's provider and cost, marked as the branch's loss.
+      expect(await kinds()).toEqual(['activate', 'hold', 'release']);
+      expect(await prisma.walletEntry.findFirst({ where: { userId: ids.pos, kind: 'activate' } })).toMatchObject({
+        amount: 0, balanceAfter: START, msisdn: '0500000042', lineId: null, packageName: 's9 package', providerId: ids.provider,
+        providerCost: 2000, providerLoss: 'given_back', branchMargin: -2000, posMargin: null, chainPosId: null, ladder: null, note: PROVIDER_RELEASED_NOTE,
+      });
       expect(await lines()).toHaveLength(0);
       // The operation is what it was: the provider ran it, and that is never rewritten. Nothing is sent again.
       expect(await operation(operationId)).toEqual(before.operation);
@@ -574,7 +580,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(said(await decide('owner', taskId, 'release-after-success'))).toBe('409 DECISION_NOT_APPLICABLE');
       expect(said(await decide('owner', taskId, 'apply-corrected', { msisdn: number() }))).toBe('409 DECISION_NOT_APPLICABLE');
       expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
-      expect(await kinds()).toEqual(['hold', 'release']);
+      expect(await kinds()).toEqual(['activate', 'hold', 'release']);
       expect(await events(operationId)).toHaveLength(2);
       await expectWalletAddsUp();
     });
@@ -738,7 +744,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(outcomes.filter((text) => text === 'ok approved')).toHaveLength(1);
       expect(outcomes.filter((text) => text !== 'ok approved').every((text) => text === '409 DECISION_NOT_APPLICABLE')).toBe(true);
       expect(await events(operationId)).toHaveLength(2);
-      expect(await kinds()).toEqual(['hold', 'release']);
+      expect(await kinds()).toEqual(['activate', 'hold', 'release']);
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
       await expectWalletAddsUp();
     });
@@ -1132,7 +1138,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       await lock.release();
       const outcomes = (await Promise.all(runs)).map(said).sort();
       expect(outcomes).toEqual(['409 DECISION_NOT_APPLICABLE', 'ok approved']);
-      expect(await kinds()).toEqual(['hold', 'release']);
+      expect(await kinds()).toEqual(['activate', 'hold', 'release']);
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
       await expectWalletAddsUp();
     });
@@ -1314,7 +1320,13 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     }
     const done = await prisma.task.count({ where: { posId: ids.pos, status: 'done' } });
     expect(await lines()).toHaveLength(done);
-    expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(done);
+    // One sale per task done, and one record of the activation the provider ran per approved release (spec DB.5
+    // P.7: moving 0, marked `given_back`): neither written twice.
+    const released = (await Promise.all(exceptions.map(({ operationId }) => steps(operationId)))).filter((list) => list.some((step) => step.includes('approved release-after-success'))).length;
+    const activations = await prisma.walletEntry.findMany({ where: { userId: ids.pos, kind: 'activate' }, select: { providerLoss: true, amount: true } });
+    expect(activations.filter((row) => row.providerLoss === null)).toHaveLength(done);
+    expect(activations.filter((row) => row.providerLoss === 'given_back' && row.amount === 0)).toHaveLength(released);
+    expect(activations).toHaveLength(done + released);
     await expectWalletAddsUp();
   });
 });

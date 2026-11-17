@@ -27,6 +27,16 @@ export const NO_MARGINS = {
 export type StoredMargins = MarginColumns | typeof NO_MARGINS;
 
 /**
+ * What an operation marked as a loss stores (spec DB.5 P.7): the point of sale paid 0, so nobody below the branch
+ * earned or lost on it, and the branch paid the provider. Only `branchMargin`, minus the cost; no chain ids, so the row
+ * is in no lower layer's figures. It is what `marginOf` gives on a ladder with the sell price and every cost below the
+ * branch 0 and the provider's cost at the branch.
+ */
+export function lossMargins(providerCost: number) {
+  return { ...NO_MARGINS, branchMargin: -providerCost };
+}
+
+/**
  * The layers of a sale's path (the seller first, the branch last), as `confirmedPath` answered it. A path that holds
  * two accounts of one layer cannot be stored by layer: the sale is refused (409), as a path that is no longer the
  * seller's is (ADR 0026, rule 1). The tree never builds one (see above).
@@ -63,6 +73,9 @@ export function storedChainIds(row: { chainPosId?: string | null; chainAgentId?:
 type StoredRow = {
   id: string;
   ladder: unknown;
+  /** The loss mark and the cost (P.7): a marked row stores only `branchMargin` = − `providerCost`. */
+  providerLoss?: string | null;
+  providerCost?: number | null;
   chainPosId: string | null;
   chainAgentId: string | null;
   chainMainAgentId: string | null;
@@ -78,12 +91,18 @@ const COLUMNS = ['chainPosId', 'chainAgentId', 'chainMainAgentId', 'posMargin', 
  * The invariant of ADR 0026 (rule 6), in Node and not in SQL: a refund's margin is JavaScript's `Math.round` of a
  * float (ties toward +∞), which PostgreSQL's `round` does not reproduce. For every entry with a ladder, the stored ids
  * are its chain's accounts by layer (`layerOf`: each account's layer, which never changes) and each stored margin is
- * `marginOf(ladder, that account)`; an entry without a ladder stores none of the seven. Answers each entry that breaks
- * it, and how.
+ * `marginOf(ladder, that account)`; an entry without a ladder stores none of the seven, except an operation marked as a
+ * loss (P.7), which stores only `branchMargin` = − its provider cost. Answers each entry that breaks it, and how.
  */
 export function marginBreaks(rows: StoredRow[], layerOf: (id: string) => string): { id: string; reason: string }[] {
   const breaks: { id: string; reason: string }[] = [];
   for (const row of rows) {
+    if (!row.ladder && row.providerLoss) {
+      const set = COLUMNS.filter((key) => key !== 'branchMargin' && row[key] !== null);
+      const expected = -(row.providerCost ?? 0);
+      if (set.length || row.branchMargin !== expected) breaks.push({ id: row.id, reason: `marked ${row.providerLoss}: branchMargin ${row.branchMargin ?? 'none'} (expected ${expected})${set.length ? `, yet ${set.join(', ')} stored` : ''}` });
+      continue;
+    }
     if (!row.ladder) {
       const set = COLUMNS.filter((key) => row[key] !== null);
       if (set.length) breaks.push({ id: row.id, reason: `no ladder, yet ${set.join(', ')} stored` });

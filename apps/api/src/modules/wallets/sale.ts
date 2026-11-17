@@ -17,6 +17,12 @@ export type Sale = {
    * provider (`costsAtProvider`) that moves money must carry it; any other kind costs 0 when it is left out.
    */
   providerCost?: number;
+  /**
+   * Set only by the approval that gives the money back after the provider's success (`given_back`, spec DB.5 P.7):
+   * the entry then records the operation the provider was paid for, moving 0. `priced_zero` is never passed: the
+   * ledger works it out (`operationColumns`).
+   */
+  providerLoss?: 'given_back';
   /** The eSIM fee that is part of this entry's amount, so the finance row can explain amount − package price. */
   esimPrice?: number;
   /** The period a prepaid row bought. A switch has no end: it reprices the open periods. */

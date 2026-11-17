@@ -12,6 +12,15 @@ import { AGOROT, type PriceField, type Prices } from '../../catalog';
 export function activationProviderCost(subscriptionBranchCost: number, esim: boolean, esimFee: number): number | undefined {
   return esim ? subscriptionBranchCost + esimFee : undefined;
 }
+/**
+ * What an activation of a package costs the branch at the provider, from the package's own price: its subscription
+ * branch cost, plus the eSIM fee for an eSIM. The figure every activation of that package stores, for an operation
+ * that has no line's terms to read it from (one given back after the provider's success, spec DB.5 P.7).
+ */
+export function packageActivationCost(branchCost: number, esim: boolean, esimFee: number): number {
+  return activationProviderCost(branchCost, esim, esimFee) ?? branchCost;
+}
+
 /** Half a shekel. The provider's disconnect fee, inside the one disconnect posting. */
 export const DISCONNECT_FEE = AGOROT / 2;
 

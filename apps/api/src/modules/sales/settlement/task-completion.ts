@@ -42,9 +42,9 @@ export type Completion = {
 
 /**
  * What a handler did: the sale to record, whether it already wrote its wallet entry, and the amount it moved.
- * `postedCost`: the provider cost of a sale that names none, when the task's charge posts it (a plain activation:
- * the subscription's branch cost on the line's new terms). Recorded without money, such a sale stores 0, as it
- * always has (ADR 0025, P.1: today's books kept as they are).
+ * `postedCost`: the provider cost of a sale that names none (a plain activation: the subscription's branch cost on
+ * the line's new terms). Stored whether the task's charge posts it or the task charged nothing (spec DB.5 P.7: an
+ * activation priced 0 stores the package's real cost, marked `priced_zero`; before P.7 it stored 0).
  */
 type Applied = { sale?: Sale; posted?: boolean; amount?: number; postedCost?: number };
 
@@ -121,6 +121,15 @@ export class TaskCompletion {
     return this.pricing.pathOf(posId);
   }
 
+  /**
+   * Records the activation a provider ran whose money was given back to the point of sale (spec DB.5 P.7): an
+   * operation moving 0 on the task's point of sale's wallet, with the sale's provider and cost, marked `given_back`.
+   * Called by the approval of a release after the provider's success, after the hold's release, in its transaction.
+   */
+  recordGivenBack(tx: Prisma.TransactionClient, task: Pick<Task, 'posId' | 'action'>, actor: Actor, sale: Sale & { providerLoss: 'given_back' }, note: string): Promise<void> {
+    return this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale, note);
+  }
+
   /** A number for an activation that has none yet, as the branch's completion gives one. */
   freshNumber(tx: Prisma.TransactionClient): Promise<string> {
     return this.pricing.freshMsisdn(tx);
@@ -139,7 +148,9 @@ export class TaskCompletion {
     const sale = applied.sale ?? (await this.plainSale(job));
     const charged = sale && sale.providerCost === undefined && applied.postedCost !== undefined ? { ...sale, providerCost: applied.postedCost } : sale;
     const posted = (await this.charge(job, charged)) || applied.posted === true;
-    if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
+    // A task that charged nothing records the operation with the cost a charged one stores (P.7: an activation priced
+    // 0 is a purchase the branch pays and the point of sale does not; the ledger marks it `priced_zero`).
+    if (!posted && charged) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, charged);
     await this.repo.recordTaskResult(tx, task.id, {
       resultNote: note || null,
       ...(handed.iccid ? { iccid: handed.iccid } : {}),

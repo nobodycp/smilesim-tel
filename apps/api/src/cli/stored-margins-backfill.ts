@@ -339,7 +339,7 @@ export async function backfillStoredMargins(prisma: PrismaClient, options: Backf
 function storedRows(db: Prisma.TransactionClient | PrismaClient, scope: BackfillScope | undefined) {
   const users = scope ? Prisma.sql`AND "userId" IN (${Prisma.join(scope.userIds)})` : Prisma.empty;
   return db.$queryRaw<Parameters<typeof marginBreaks>[0]>`
-    SELECT "id", "ladder", "chainPosId", "chainAgentId", "chainMainAgentId", "posMargin", "agentMargin", "mainAgentMargin", "branchMargin"
+    SELECT "id", "ladder", "providerLoss", "providerCost", "chainPosId", "chainAgentId", "chainMainAgentId", "posMargin", "agentMargin", "mainAgentMargin", "branchMargin"
     FROM "WalletEntry"
     WHERE ("ladder" IS NOT NULL OR "chainPosId" IS NOT NULL OR "chainAgentId" IS NOT NULL OR "chainMainAgentId" IS NOT NULL
        OR "posMargin" IS NOT NULL OR "agentMargin" IS NOT NULL OR "mainAgentMargin" IS NOT NULL OR "branchMargin" IS NOT NULL) ${users}`;

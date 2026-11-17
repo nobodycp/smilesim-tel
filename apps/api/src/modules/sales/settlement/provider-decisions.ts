@@ -7,7 +7,9 @@ import type { WrittenNotice } from '../../notifications';
 import { refuseEntered, requireGrant } from '../../access';
 import type { OperationStatus } from '../../providers';
 import { ProviderOperationsService } from '../../providers';
-import { simRefusal, simRulesOf } from '../../catalog';
+import { esimPriceOf, simRefusal, simRulesOf } from '../../catalog';
+import { packageActivationCost } from '../../pricing';
+import type { Sale } from '../../wallets';
 import { lockedTask, lockedTaskOperation, TasksService, DECISION_GRANT, shownPhase, type TaskOperation } from '../../tasks';
 import { applyAsSettlement, submitterOf, tellDeciders } from './activation-settlement';
 import { applyErrorOf, decisionChoices, decisionStep, needsSecondAccount, openProposal, type ApplyError, type Decision, type DecisionEvent, type DecisionEvidence, type DecisionRefusal, type DecisionRequest, type DecisionStep } from './activation-settlement.rules';
@@ -130,6 +132,8 @@ export class ProviderDecisions {
     const { task, operation } = await this.subject(taskId);
     const asked: Asked = { act: approve ? 'approve' : 'refuse' };
     this.stepOrFail(operation ? await this.operations.decisionEvents(this.uow.prisma, operation.id) : [], actor, asked, operation, task);
+    // What a release after the provider's success records, read before the transaction (spec DB.5 P.7).
+    const givenBack = approve && operation ? await this.givenBackSale(task, operation) : null;
     const { outcome, written } = await this.uow.runTx(async (tx) => {
       // The task's row, then the operation's: the approval that releases the hold closes the task in this transaction.
       const current = await lockedTask(tx, task.id);
@@ -146,11 +150,39 @@ export class ProviderDecisions {
       if (step.effect !== 'release-after-success') fail(409, 'DECISION_NOT_APPLICABLE');
       // The task is rejected and its hold given back, once. The operation keeps `succeeded`, what the provider
       // handed back and its exception: the record that the provider did run it. Nothing is sent again.
-      return { outcome: 'approved' as const, written: await this.tasks.rejectByDecision(tx, task, actor, PROVIDER_RELEASED_NOTE) };
+      const rejected = await this.tasks.rejectByDecision(tx, task, actor, PROVIDER_RELEASED_NOTE);
+      // The provider was paid and the point of sale is not charged (spec DB.5 P.7, ADR 0025 answer 4): the activation
+      // is recorded on the point of sale's wallet, moving 0, with its provider and cost, marked `given_back`: a
+      // purchase, and the branch's loss. Written after the release, under the wallet lock it took.
+      if (!givenBack) fail(409, 'DECISION_NOT_APPLICABLE');
+      await this.completion.recordGivenBack(tx, task, actor, givenBack, PROVIDER_RELEASED_NOTE);
+      return { outcome: 'approved' as const, written: rejected };
     });
     await this.uow.publishQuietly(written);
     if (outcome === 'approved') log.warn(`task ${task.id}: a proposed decision on its provider operation was approved by a second account`);
     return { ok: true, outcome };
+  }
+
+  /**
+   * The activation the provider ran and the money of which is given back (spec DB.5 P.7): the task's package, its
+   * provider, and the package's cost at the provider now (`packageActivationCost`: the figure an activation of it
+   * stores; the task keeps no cost of the day it opened). The number is the one the provider handed back, else the
+   * task's. No line was made. The package cannot be gone: a task's package is kept while the task exists.
+   */
+  private async givenBackSale(task: Task, operation: ProviderOperation): Promise<Sale & { providerLoss: 'given_back' }> {
+    const pkg = await this.lines.packageById(this.uow.prisma, task.packageId);
+    if (!pkg || !pkg.provider) fail(409, 'DECISION_NOT_APPLICABLE');
+    const fee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company ?? undefined }).price;
+    return {
+      msisdn: operation.resultMsisdn ?? task.msisdn ?? '',
+      lineId: '',
+      companyName: pkg.company?.name ?? '',
+      packageName: pkg.name,
+      packagePrice: task.unitPrice ?? pkg.posPrice,
+      providerId: pkg.providerId,
+      providerCost: packageActivationCost(pkg.branchCost, task.esim, fee),
+      providerLoss: 'given_back',
+    };
   }
 
   // ── What a screen reads (O6) ────────────────────────────────────────────────────────────────────────────
