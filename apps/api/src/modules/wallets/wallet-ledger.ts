@@ -6,7 +6,7 @@ import type { Sale } from './sale';
 import { operationColumns } from './provider-cost';
 import { uncoveredDebit, withinCeiling } from './ceiling';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../pricing';
-import { NO_MARGINS, chainIdsOf, marginColumns, storedChainIds, type ChainIds } from './stored-margins';
+import { NO_MARGINS, chainIdsOf, marginColumns, storedChainIds, type ChainIds, type MarginColumns } from './stored-margins';
 
 const log = logger('WalletLedger');
 
@@ -29,6 +29,39 @@ export async function rewriteOperationColumns(tx: Prisma.TransactionClient, rows
       FROM unnest(${batch.map((row) => row.id)}::text[], ${batch.map((row) => row.providerId)}::text[], ${batch.map((row) => row.cost)}::int[]) AS given(id, provider, cost)
       WHERE entry."id" = given.id
         AND (entry."providerId" IS DISTINCT FROM given.provider OR entry."providerCost" IS DISTINCT FROM given.cost)`;
+  }
+  return written;
+}
+
+/** A sale or refund entry and the ladder and margins the stored margins' backfill stores on it. */
+export type MarginedEntry = { id: string; ladder: Ladder; columns: MarginColumns };
+
+/**
+ * The stored margins' backfill (`cli/stored-margins-backfill.ts`; ADR 0026, amendment): the one write of an entry's
+ * ladder and margins after it was written. It sets them on the given entries, in the caller's transaction, and only
+ * where one differs, so a second run writes nothing. No money moves: `amount`, `balanceAfter` and every wallet stay
+ * as they are. Allowed only before launch, on trial data (the owner's standing rule); after launch an entry's margins
+ * are never updated. Answers how many rows it wrote.
+ */
+export async function rewriteMarginColumns(tx: Prisma.TransactionClient, rows: MarginedEntry[]): Promise<number> {
+  let written = 0;
+  for (let at = 0; at < rows.length; at += 1000) {
+    const batch = rows.slice(at, at + 1000);
+    const column = <K extends keyof MarginColumns>(key: K) => batch.map((row) => row.columns[key]);
+    written += await tx.$executeRaw`
+      UPDATE "WalletEntry" AS entry
+      SET "ladder" = given.ladder, "chainPosId" = given.pos, "chainAgentId" = given.agent, "chainMainAgentId" = given.main,
+          "posMargin" = given.pos_margin, "agentMargin" = given.agent_margin, "mainAgentMargin" = given.main_margin, "branchMargin" = given.branch_margin
+      FROM unnest(
+        ${batch.map((row) => row.id)}::text[], ${batch.map((row) => JSON.stringify(row.ladder))}::jsonb[],
+        ${column('chainPosId')}::text[], ${column('chainAgentId')}::text[], ${column('chainMainAgentId')}::text[],
+        ${column('posMargin')}::int[], ${column('agentMargin')}::int[], ${column('mainAgentMargin')}::int[], ${column('branchMargin')}::int[]
+      ) AS given(id, ladder, pos, agent, main, pos_margin, agent_margin, main_margin, branch_margin)
+      WHERE entry."id" = given.id
+        AND (entry."ladder" IS DISTINCT FROM given.ladder OR entry."chainPosId" IS DISTINCT FROM given.pos
+          OR entry."chainAgentId" IS DISTINCT FROM given.agent OR entry."chainMainAgentId" IS DISTINCT FROM given.main
+          OR entry."posMargin" IS DISTINCT FROM given.pos_margin OR entry."agentMargin" IS DISTINCT FROM given.agent_margin
+          OR entry."mainAgentMargin" IS DISTINCT FROM given.main_margin OR entry."branchMargin" IS DISTINCT FROM given.branch_margin)`;
   }
   return written;
 }
