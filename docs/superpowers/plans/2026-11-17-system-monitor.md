@@ -72,3 +72,19 @@ warnings. M.8 the upkeep. Each stops at a usable state; the owner may reorder M.
   sends secrets every way a request can carry them and reads the table.
 - **Alerts that cry wolf.** The thresholds are first values; M.6 keeps them in one file, and the first week on
   the trial server is for tuning them.
+
+## Second round (spec sections 5 and 6; owner, 2026-11-17)
+
+- [ ] **M.9 A stopped worker is warned of (API).** A timer in the API (monitoring, stopped with the module) reads
+  the heartbeat every 30 s and opens `service_down` for `worker` past the `down` limit, through the same repository
+  and notice as the pass; the worker's own pass does not open a second one. Specs: opens once with several
+  checkers, one notice, closes after the worker is back.
+- [ ] **M.10 The server log.** `platform/api-exception.filter.ts` logs `errorReport` and the request id. Spec: a
+  crash that carries a secret in its message leaves none in the captured log.
+- [ ] **M.11 Versions (API and worker).** `StackVersion` + migration; `monitoring/versions.*`: what is in use on
+  the API side, the daily check in the worker (npm registry, endoflife.date; `VERSION_CHECK`; a time limit a
+  call; a failed call keeps the last answer), the notice `system.update`, `GET /v1/system/versions`,
+  `POST /v1/system/versions/check`. Handover: the new variable, the two hosts the server calls.
+- [ ] **M.12 Versions (web) and the Hebrew pass.** `app/system/versions`, the web's own versions read by the web
+  server, the sidebar item; the section's Hebrew texts read through and corrected.
+

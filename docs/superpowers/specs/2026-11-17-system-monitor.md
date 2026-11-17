@@ -152,3 +152,48 @@ wait for the messaging feature.
 
 Blocking (limits everywhere, the account lock): the security pass. Metrics over months, charts of trends: later,
 from this log. Alerts outside the app. The server's own logs (Coolify, Docker): they stay where they are.
+
+## Second round (owner, 2026-11-17): the open points, and the versions page
+
+The owner asked for the points the first round left open, and for one more page.
+
+### 5. Versions (`/system/versions`, «الإصدارات»)
+
+What the system runs on, each with the version in use and the newest one published, so the owner sees an update
+when it comes: the runtimes (Node.js of the API, of the worker and of the web; PostgreSQL; Redis) and the main
+libraries (Next.js, React, NestJS, Prisma, BullMQ, Tailwind CSS, TypeScript, zod; the list is one constant).
+
+- **In use** is read from what is running: the process's own Node.js, `SHOW server_version`, Redis `INFO`, and each
+  library's installed `package.json`. The web's own (Next.js, React, Tailwind CSS, its Node.js) are read by the web
+  server, which is the only one that has them.
+- **Newest** is asked once a day by the worker, and on the owner's «فحص الآن»: the npm registry for the libraries
+  (`registry.npmjs.org/<name>/latest`), `endoflife.date` for the runtimes (the newest of the cycle in use, the
+  newest cycle, and the date the cycle in use stops being supported). Only package names leave the server. What was
+  found is stored (`StackVersion`), so the page never waits for the internet.
+- **The page** lists each: in use, newest, and one word: «محدّث», «تحديث صغير» (patch), «تحديث» (minor),
+  «إصدار رئيسي جديد» (major), and for a runtime «انتهى دعمه» or «ينتهي دعمه في …». When it was last checked. A
+  component whose check failed says so and keeps the last answer.
+- **Hearing of it:** one notice in the bell a check, when it found something new since the last one
+  («3 تحديثات جديدة»), to the branch owner. Not an alert: nothing is wrong.
+- **A deployment with no way out to the internet** sets `VERSION_CHECK=off`: the page then shows what is in use
+  and says the newest is not checked.
+- Not in it: applying an update (a developer does that, through a commit and CI), and security advisories
+  (a later step: `npm audit` in CI is the place).
+
+### 6. The open points of the first round
+
+- **A stopped worker is warned of.** The API checks the worker's heartbeat every 30 s and opens the
+  `service_down` alert for the worker itself when it is past the status's `down` limit; the unique open alert and
+  its one notice hold whatever the number of API copies. It closes as every alert does, once the worker is back.
+- **The server log no longer prints a crash as it is.** `api-exception.filter.ts` writes what `errorReport` keeps
+  (class, code, code locations) in place of the raw message and stack; the request id is on the line, so the row of
+  the errors page is found from the log.
+- **`SOURCE_COMMIT`.** Coolify's documentation lists it among the predefined application variables ("Deployed Git
+  commit"), given at run time and left out of the build by default: the status page's version needs no setting.
+  Not yet seen on our server.
+- **Hebrew.** The section's Hebrew texts are read through once more and corrected; a native reader's pass stays
+  open.
+- **The thresholds** stay first values: tuning needs a week of the trial server's own traffic, not a guess.
+- **Blocking** (limits everywhere, the account lock) is the security pass, with a spec of its own and the owner's
+  decisions; it is not part of this round.
+
