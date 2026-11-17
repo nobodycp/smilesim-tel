@@ -22,7 +22,6 @@
     "@simplewebauthn/server": "^14.1.0",
     "argon2": "^0.45.2",
     "bullmq": "^6.7.7",
-    "cookie-parser": "^1.4.7",
     "exceljs": "^4.4.0",
     "ioredis": "^6.0.0",
     "otplib": "^13.5.0",
@@ -36,7 +35,6 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@nestjs/testing": "^12.5.1",
-    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.19.2",

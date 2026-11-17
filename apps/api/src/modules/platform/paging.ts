@@ -4,9 +4,6 @@ import { fail } from './api-failure';
 // own extra keys, takes `?cursor=` and nothing else, and reads `size + 1` rows so the extra one tells whether
 // another page exists. The cursor is opaque to the caller: the time and id of the last row served.
 
-/** No list serves more rows than this in one answer. */
-export const PAGE_MAX = 100;
-
 // The page size of each list.
 export const LINES_PAGE = 30;
 export const TASKS_PAGE = 50;

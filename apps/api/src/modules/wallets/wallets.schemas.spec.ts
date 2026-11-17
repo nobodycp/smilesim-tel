@@ -15,7 +15,7 @@ const invalid = (run: () => unknown) => {
   return false;
 };
 
-// The schemas accept and refuse what the hand-written checks did (`positive`, `nonNegative`, the note rule).
+// The schemas accept and refuse what the hand-written checks did (`positive`, a whole number from 0, the note rule).
 describe('wallet schemas', () => {
   it.each([1, 250, 100_000_000])('a fund of %p agorot passes', (amount) => {
     expect(parseInput(FundBody, { amount, note: '  rent ' })).toEqual({ amount, note: 'rent', reason: 'deposit' });

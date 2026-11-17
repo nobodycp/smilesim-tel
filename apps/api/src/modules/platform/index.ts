@@ -22,7 +22,7 @@ export { assertCanSealEsimCode, assertStoredSealed, esimCodeOrFail, storableEsim
 export { parseInput } from './input';
 export { errorCode, logger, reason } from './log';
 export { NOTICE_WRITER } from './notices';
-export type { FundNoticePayload, MatchOverduePayload, NoticeActor, NoticeDraft, NoticeKind, NoticeView, NoticeWriter, ProviderNoticePayload, SystemAlertKind, SystemAlertNoticePayload, TaskNoticePayload, TransferNoticePayload, WalletNoticePayload, WrittenNotice } from './notices';
+export type { FundNoticePayload, MatchOverduePayload, NoticeActor, NoticeDraft, NoticeKind, NoticeView, NoticeWriter, ProviderNoticePayload, SystemAlertKind, TaskNoticePayload, TransferNoticePayload, WalletNoticePayload, WrittenNotice } from './notices';
 export { BALANCES_PAGE, FEED_PAGE, LINES_PAGE, LIST_CAP, NEWEST_FIRST, NOTICES_PAGE, TASKS_PAGE, after, capList, cursorPosition, encodeKeyCursor, keyCursor, keyPage, page } from './paging';
 export type { Page } from './paging';
 export { PlatformModule } from './platform.module';

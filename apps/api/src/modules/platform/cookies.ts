@@ -6,10 +6,8 @@ import { env } from '../../config';
 /** What a call is made with: the session, and the owner's own session kept aside while an account is entered. */
 export type Gate = { sessionId?: string; homeId?: string };
 
-/** One cookie, from cookie-parser when it ran, else from the raw header. */
+/** One cookie, read from the raw `Cookie` header. */
 export function readCookie(req: Request, name: string): string | undefined {
-  const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.[name];
-  if (typeof parsed === 'string' && parsed) return parsed;
   for (const part of String(req.headers.cookie ?? '').split(';')) {
     const index = part.indexOf('=');
     if (index > 0 && part.slice(0, index).trim() === name) {

@@ -28,12 +28,6 @@ export const note = optionalText(NOTE_MAX);
 /** An account's login name as it is stored. */
 export const loginName = z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,32}$/);
 
-/** A mobile number as the resource writes it. */
-export const msisdn = z.string().trim().regex(/^05\d{8}$/);
-
-/** A SIM serial as typed: digits are checked against the company's rules by the service. */
-export const iccid = z.string().trim().max(32);
-
 /** A catalog code (package, company, provider). */
 export const code = z.string().trim().min(1).max(64);
 
