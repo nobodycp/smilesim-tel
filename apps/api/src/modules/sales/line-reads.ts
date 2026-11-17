@@ -48,7 +48,8 @@ export class LineReads {
     // it sends that account's.
     const where = linesWhere(actor.layer === 'branch' && !query.loginName ? null : posIds, query, periods, namedPackageIds);
     const [rows, total, marks] = await Promise.all([
-      this.repo.linesPage({ ...where, AND: after(cursorPosition(query.cursor)) }, LINES_PAGE + 1),
+      // The cursor joins the filter instead of replacing its own conditions (the search sits under `AND` in it).
+      this.repo.linesPage({ AND: [where, ...after(cursorPosition(query.cursor))] }, LINES_PAGE + 1),
       this.repo.countLines(where),
       this.repo.markUrls(),
     ]);

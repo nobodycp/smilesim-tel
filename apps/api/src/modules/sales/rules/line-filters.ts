@@ -71,6 +71,7 @@ export function lineSearch(q: string | undefined, namedPackageIds: string[]): Pr
  */
 export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = [], namedPackageIds: string[] = []): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
+  const search = lineSearch(filter.q, namedPackageIds);
   const packageCode = (filter.packageCode ?? '').trim();
   const provider = (filter.provider ?? '').trim();
   const company = (filter.company ?? '').trim();
@@ -85,6 +86,9 @@ export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendP
     ...(filter.status === 'expiring' ? expiringWhere() : filter.status === 'suspended' ? suspendedWhere(suspendPeriods) : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),
     ...(filter.sim === 'esim' ? { esim: true } : filter.sim === 'sim' ? { esim: false } : {}),
-    ...lineSearch(filter.q, namedPackageIds),
+    // The search is an OR, and so is the suspended window's one condition per period: the search sits under AND so
+    // both hold together (one spread over the other kept only the search). A caller adding its own AND (the page
+    // cursor) composes with AND around this whole clause, never by spreading over it.
+    ...(search.OR ? { AND: [search] } : {}),
   };
 }

@@ -143,6 +143,9 @@ describe('numbers list paging', () => {
     endsAt: new Date(t0 + 86_400_000),
   }));
 
+  /** The list's own filter in a page read: the first part of the AND the cursor joins. */
+  const filterOf = (call: FindArgs) => (call.where as { AND: Where[] }).AND[0];
+
   async function walk(query: Parameters<ApiFacade['lines']>[1]) {
     const calls: FindArgs[] = [];
     // The catalog the search reads names from first (search, plan DB.6).
@@ -169,7 +172,8 @@ describe('numbers list paging', () => {
     // The one cursor: a condition in the query, never Prisma's row cursor (platform/paging.ts).
     expect(calls.every((call) => call.cursor === undefined && call.skip === undefined)).toBe(true);
     const last = lines.find((line) => line.id === pages[0][29])!;
-    expect(JSON.stringify(calls[1].where)).toContain(JSON.stringify([{ createdAt: { lte: last.createdAt } }, { OR: [{ createdAt: { lt: last.createdAt } }, { id: { lt: last.id } }] }]));
+    // The cursor joins the list's filter (here none) under AND, never spread over it (sales/line-reads.ts).
+    expect(calls[1].where).toEqual({ AND: [{}, { createdAt: { lte: last.createdAt } }, { OR: [{ createdAt: { lt: last.createdAt } }, { id: { lt: last.id } }] }] });
   });
 
   it('sends no next cursor when the last page is exactly full', async () => {
@@ -187,15 +191,15 @@ describe('numbers list paging', () => {
     expect(pages.map((page) => page.length)).toEqual([30, 5]);
     expect(new Set(pages.flat())).toEqual(new Set(expected.map((line) => line.id)));
     // The walk reads as the branch, which sees every point of sale: no id list is sent (database plan DB.10).
-    expect(calls[0].where).toMatchObject({ status: 'frozen' });
-    expect(calls[0].where).not.toHaveProperty('posId');
+    expect(filterOf(calls[0])).toMatchObject({ status: 'frozen' });
+    expect(filterOf(calls[0])).not.toHaveProperty('posId');
   });
 
   it('filters by package code and combines it with the status', async () => {
     const both = await walk({ status: 'active', packageCode: 'pk-a' });
     const expected = lines.filter((line) => line.status === 'active' && (line.package as typeof pkgA).code === 'pk-a');
     expect(both.pages.flat().sort()).toEqual(expected.map((line) => line.id).sort());
-    expect(both.calls[0].where).toMatchObject({ status: 'active', package: { code: 'pk-a' } });
+    expect(filterOf(both.calls[0])).toMatchObject({ status: 'active', package: { code: 'pk-a' } });
   });
 
   it('narrows to one account\'s numbers, and to none for an account outside the tree', async () => {
@@ -214,9 +218,10 @@ describe('numbers list paging', () => {
 
   it('searches the number and the serial as typed, and the packages its names matched, together', () => {
     // Since DB.6 the names are matched against the catalog first and the lines filtered by those package ids; the
-    // number is the typed text with no spaces (`searchTerms`).
+    // number is the typed text with no spaces (`searchTerms`). The search sits under AND, so another OR (the
+    // suspended window) holds beside it.
     const search = (number: string, ids: string[]) => ({
-      OR: [{ msisdn: { contains: number } }, { iccid: { contains: number } }, ...(ids.length ? [{ packageId: { in: ids } }] : [])],
+      AND: [{ OR: [{ msisdn: { contains: number } }, { iccid: { contains: number } }, ...(ids.length ? [{ packageId: { in: ids } }] : [])] }],
     });
     expect(linesWhere(['p'], { q: '055 024' })).toEqual({ posId: { in: ['p'] }, ...search('055024', []) });
     expect(linesWhere(['p'], { q: '400' }, [], ['pa'])).toEqual({ posId: { in: ['p'] }, ...search('400', ['pa']) });
@@ -267,6 +272,22 @@ describe('numbers list paging', () => {
     expect(linesWhere(['p'], { status: 'suspended' }, [60])).toMatchObject({ posId: { in: ['p'] }, status: { in: ['active', 'suspended'] } });
   });
 
+  it('keeps the suspended window and the search together: neither OR replaces the other', () => {
+    const where = linesWhere(['p'], { status: 'suspended', q: '055' }, [60], ['pa']);
+    expect(where.OR).toEqual([{ package: { suspendAfterDays: 60 }, endsAt: { lte: expect.any(Date) } }]);
+    expect(where.AND).toEqual([{ OR: [{ msisdn: { contains: '055' } }, { iccid: { contains: '055' } }, { packageId: { in: ['pa'] } }] }]);
+    expect(where.status).toEqual({ in: ['active', 'suspended'] });
+    // Before the fix the search's OR was spread over the window's: the period condition was gone.
+    const row = (endsDaysAgo: number, msisdn: string, status = 'active') => ({
+      status, msisdn, iccid: null, packageId: 'pz', posId: 'p', package: { suspendAfterDays: 60 },
+      endsAt: new Date(Date.now() - endsDaysAgo * 86_400_000),
+    });
+    const keep = [row(61, '0550000001'), row(61, '0590000001'), row(1, '0550000002'), row(61, '0550000003', 'frozen')]
+      .filter((line) => matches(line as unknown as Row, where as Where))
+      .map((line) => line.msisdn);
+    expect(keep).toEqual(['0550000001']);
+  });
+
   it('finds a line by its serial', async () => {
     const serial = { ...lines[0], id: 'by-serial', msisdn: '0590000001', iccid: '8997200000000000001' };
     const { service, gate } = await serviceWith({ line: table([serial, lines[1]]) });
@@ -278,7 +299,7 @@ describe('numbers list paging', () => {
     const { pages, calls } = await walk({ provider: 'سكاي', company: 'سلكوم' });
     const expected = lines.filter((line) => (line.package as typeof pkgA).provider.name === 'سكاي');
     expect(pages.flat().sort()).toEqual(expected.map((line) => line.id).sort());
-    expect(calls[0].where).toMatchObject({ package: { provider: { name: 'سكاي' }, company: { name: 'سلكوم' } } });
+    expect(filterOf(calls[0])).toMatchObject({ package: { provider: { name: 'سكاي' }, company: { name: 'سلكوم' } } });
   });
 
   it('finds a package by its digits and a number that holds the same digits, as the top bar search needs', async () => {

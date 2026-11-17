@@ -206,6 +206,32 @@ suite('search: digits and names (PostgreSQL)', () => {
     });
   });
 
+  it('keeps the suspended window with a search: a suspended line that matches, never an active one', async () => {
+    await scratch(async (tx) => {
+      const { pos } = await seed(tx);
+      const pkg = await tx.package.findFirstOrThrow({ where: { lines: { some: { posId: pos.id } } }, select: { id: true, suspendAfterDays: true } });
+      const ended = new Date(Date.now() - (pkg.suspendAfterDays + 5) * 86_400_000);
+      const line = (msisdn: string, endsAt: Date) =>
+        tx.line.create({ data: { msisdn, iccid: null, status: 'active', endsAt, packageId: pkg.id, posId: pos.id, terms: {} } });
+      await line('0577700001', ended); // suspended, matches
+      await line('0566600001', ended); // suspended, does not match
+      await line('0577700002', new Date(Date.now() + 86_400_000)); // active, matches
+      const uow = { prisma: tx } as unknown as UnitOfWork;
+      const terms = searchTerms('05777');
+      const ids = await new LinesRepository(uow).packageIdsNamed(terms!.names);
+      const found = async (where: Prisma.LineWhereInput) =>
+        (await tx.line.findMany({ where, select: { msisdn: true } })).map((row) => row.msisdn).sort();
+      const where = linesWhere([pos.id], { status: 'suspended', q: '05777' }, [pkg.suspendAfterDays], ids);
+      expect(await found(where)).toEqual(['0577700001']);
+      // The clause before the fix: the search's OR spread over the window's, so the period condition was lost.
+      const { AND: search, ...rest } = where as Prisma.LineWhereInput & { AND: Prisma.LineWhereInput[] };
+      expect(await found({ ...rest, ...search[0] })).toEqual(['0577700001', '0577700002']);
+      // Each alone still answers its own rows.
+      expect(await found(linesWhere([pos.id], { status: 'suspended' }, [pkg.suspendAfterDays]))).toEqual(['0566600001', '0577700001']);
+      expect(await found(linesWhere([pos.id], { q: '05777' }, [], ids))).toEqual(['0577700001', '0577700002']);
+    });
+  });
+
   it('can serve every number shape from the trigram indexes', async () => {
     await scratch(async (tx) => {
       await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off');
