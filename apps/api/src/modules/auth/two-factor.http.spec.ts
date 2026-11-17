@@ -181,22 +181,6 @@ describe('two-factor endpoints', () => {
     expect(none.status).toBe(401);
   });
 
-  it('lets only the owner change an exemption', async () => {
-    const posCookie = cookieOf(await login('pos', '123456'));
-    const forbidden = await http().patch('/auth/exemptions/employee').set('Cookie', posCookie).send({ exempt: true });
-    expect(forbidden.status).toBe(403);
-    expect(stored('employee').twoFactorExempt).toBe(false);
-
-    const ownerCookie = cookieOf(await login('owner', 'ownerpass1'));
-    const ok = await http().patch('/auth/exemptions/employee').set('Cookie', ownerCookie).send({ exempt: true });
-    expect(ok.status).toBe(200);
-    expect(stored('employee').twoFactorExempt).toBe(true);
-    const missing = await http().patch('/auth/exemptions/nobody').set('Cookie', ownerCookie).send({ exempt: true });
-    expect(missing.status).toBe(404);
-    const bad = await http().patch('/auth/exemptions/employee').set('Cookie', ownerCookie).send({ exempt: 'yes' });
-    expect(bad.status).toBe(400);
-  });
-
   it('asks an exempt account for a code after that account turns two-factor on', async () => {
     const posCookie = cookieOf(await login('pos', '123456'));
     const setup = await http().post('/auth/two-factor/setup').set('Cookie', posCookie);

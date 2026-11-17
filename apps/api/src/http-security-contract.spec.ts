@@ -121,10 +121,7 @@ const UNGUARDED_WRITES: Record<string, [standing: Standing, why: string]> = {
   'DELETE /auth/two-factor': ['equivalent', 'removing twice is removing once'],
   'DELETE /auth/two-factor/:loginName': ['equivalent', 'removing twice is removing once'],
   'DELETE /auth/passkeys/:id': ['equivalent', 'deleting twice is deleting once'],
-  'POST /auth/users/:loginName/password': ['equivalent', 'a stated new value'],
-  'POST /auth/users/:loginName/disable': ['equivalent', 'a stated state, not a toggle'],
   'PATCH /auth/policy': ['equivalent', 'a stated value'],
-  'PATCH /auth/exemptions/:loginName': ['equivalent', 'a stated value'],
   'PATCH /auth/session-rules/:layer': ['equivalent', 'a stated value'],
   'PATCH /auth/users/:loginName/two-factor': ['equivalent', 'a stated value'],
   'PATCH /auth/users/:loginName/contact': ['equivalent', 'a stated value'],
@@ -164,9 +161,10 @@ describe('the write routes, as the source has them', () => {
     // R.A: `/auth` is three controllers (sign-in, the account on itself, the owner on others), the same 35 routes.
     // Twenty-five since the system monitor M.2: the request log's controller (monitoring). Twenty-six since M.5: the
     // status's controller (monitoring). Twenty-seven since M.6: the alerts' controller (monitoring). Twenty-eight since
-    // M.11: the versions' controller (monitoring).
+    // M.11: the versions' controller (monitoring). 32 `/auth` routes since clean-up CL.4 removed three that no client
+    // called (`POST users/:loginName/password`, `POST users/:loginName/disable`, `PATCH exemptions/:loginName`).
     expect(controllers).toHaveLength(28);
-    expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(35);
+    expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(32);
     // The empty prefix is the health probe: one read, no write.
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'v1']);
     // One prefix for the resources (slice R.11c): no route is declared under `office`.
@@ -177,8 +175,8 @@ describe('the write routes, as the source has them', () => {
     // 78 since package plan D.3a (`PUT packages/:code/durations`, `DELETE packages/:code/durations/:id`; the pin
     // was left at 76 then and corrected in system monitor M.1); 79 since M.2 (`DELETE system/requests`); 80 since M.4
     // (`DELETE system/errors`); 82 since M.6 (`POST system/alerts/:id/seen`, `DELETE system/alerts`); 83 since M.11
-    // (`POST system/versions/check`).
-    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 83, auth: 26, branding: 1, all: 110 });
+    // (`POST system/versions/check`). `auth` 23 since clean-up CL.4 (three owner writes no client called).
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 83, auth: 23, branding: 1, all: 107 });
   });
 
   it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
@@ -207,12 +205,12 @@ describe('the duplicate guard and the idempotency key', () => {
     const all = new Map(writes.map((route) => [named(route), route]));
     expect(Object.keys(UNGUARDED_WRITES).filter((name) => !all.has(name))).toEqual([]);
     expect(Object.keys(UNGUARDED_WRITES).filter((name) => guarded(all.get(name) as Route))).toEqual([]);
-    expect(Object.keys(UNGUARDED_WRITES)).toHaveLength(27);
+    expect(Object.keys(UNGUARDED_WRITES)).toHaveLength(24);
   });
 
-  it('each stated route has a standing: none needs protection (R.11a), seventeen have an equivalent, ten are never replayed', () => {
+  it('each stated route has a standing: none needs protection (R.11a), fourteen have an equivalent, ten are never replayed', () => {
     const count = (standing: Standing) => Object.values(UNGUARDED_WRITES).filter(([its]) => its === standing).length;
-    expect({ needs: count('needs'), equivalent: count('equivalent'), noReplay: count('no-replay') }).toEqual({ needs: 0, equivalent: 17, noReplay: 10 });
+    expect({ needs: count('needs'), equivalent: count('equivalent'), noReplay: count('no-replay') }).toEqual({ needs: 0, equivalent: 14, noReplay: 10 });
     // Sign-in, passkey and one-time-code steps are never among the routes to be guarded by replaying an answer.
     const authSteps = Object.keys(UNGUARDED_WRITES).filter((name) => /\/(login|logout|passkey-login|two-factor\/(setup|confirm|verify|method\/confirm)|passkeys\/options)/.test(name));
     for (const name of authSteps) expect({ name, standing: UNGUARDED_WRITES[name][0] }).toEqual({ name, standing: 'no-replay' });

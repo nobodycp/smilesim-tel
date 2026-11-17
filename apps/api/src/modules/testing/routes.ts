@@ -147,7 +147,6 @@ export const ROUTES: RouteRow[] = [
   ['POST', '/v1/users/LOGIN1/restore', ['user_restore', 'account', 'LOGIN1']],
   ['POST', '/v1/users/LOGIN1/transfer', ['user_transfer', 'user', 'LOGIN1']],
   ['GET', '/v1/users/LOGIN1/transfer-preview', null],
-  ['GET', '/v1/wallets', null],
   ['PATCH', '/v1/wallets/LOGIN1/ceiling', ['ceiling', 'account', 'LOGIN1']],
   ['POST', '/v1/wallets/LOGIN1/deduct', ['deduct', 'account', 'LOGIN1']],
   ['POST', '/v1/wallets/LOGIN1/fund', ['fund', 'account', 'LOGIN1']],

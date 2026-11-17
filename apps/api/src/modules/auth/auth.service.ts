@@ -6,7 +6,6 @@ import {
   ChangePasswordBody,
   ConfirmMethodBody,
   SessionRulesBody,
-  SetPasswordBody,
   TwoFactorCodeBody,
   TwoFactorMethodBody,
   UpdateProfileBody,
@@ -254,29 +253,6 @@ export class AuthService {
     await this.store.updateUser(user.id, patch);
     const stored = (await this.store.findByLogin(user.loginName)) ?? user;
     return { kind: 'ok', profile: profileView(stored) };
-  }
-
-  async setUserPassword(
-    sessionId: string | undefined,
-    loginName: string,
-    body: SetPasswordBody,
-  ): Promise<Outcome<unknown>> {
-    const authed = await this.authenticate(sessionId);
-    if (!authed) return fail(401, 'LOGIN_REQUIRED');
-    if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, 'FORBIDDEN');
-    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
-    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
-    const input = parseBody(SetPasswordBody, body);
-    if (!input) return fail(400, 'INVALID');
-    const invalid = newPasswordProblem(input.password);
-    if (invalid) return fail(400, invalid);
-    const target = await this.store.findByLogin(loginName);
-    if (!target) return fail(404, 'NOT_FOUND');
-    // The owner's own password changes through `changePassword`, which asks for the current one.
-    if (target.id === authed.user.id) return fail(403, 'FORBIDDEN');
-    await this.store.updateUser(target.id, { passwordHash: await hashPassword(input.password), mustChangePassword: true });
-    await this.store.dropLiveSessions(target.id);
-    return { kind: 'ok' };
   }
 
   /** Full account sessions that are not revoked and have not expired. */
@@ -647,18 +623,6 @@ export class AuthService {
     await this.clearTwoFactor(target.id);
     // An account held to two-step verification that was just reset signs in again and enrols (spec 2026-11-11-two-factor-policy).
     await endUnenrolledSessions(this.store, [{ ...target, twoFactorEnabled: false }], owner.user.id);
-    return { kind: 'ok' };
-  }
-
-  async disableUser(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
-    const owner = await this.ownerSession(sessionId);
-    if (owner.kind === 'error') return owner;
-    const target = await this.store.findByLogin(loginName);
-    if (!target) return fail(404, 'NOT_FOUND');
-    // The owner cannot lock the office out of itself.
-    if (target.isBranchOwner || target.id === owner.user.id) return fail(403, 'FORBIDDEN');
-    await this.store.updateUser(target.id, { disabledAt: new Date() });
-    await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };
   }
 }

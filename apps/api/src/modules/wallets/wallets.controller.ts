@@ -1,5 +1,5 @@
 import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
-import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery } from './wallets.schemas';
+import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery } from './wallets.schemas';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { Actor, ActorInterceptor } from '../access';
@@ -14,14 +14,6 @@ import type { Response } from 'express';
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class WalletsController {
   constructor(private readonly walletDesk: WalletsService) {}
-
-  @Get('wallets')
-  @ApiOperation({ summary: 'One page of the wallets visible to the session ({ items, nextCursor, total })' })
-  @ApiZodQuery(CursorQuery)
-  @ApiErrorResponse(400, 401, 403)
-  wallets(@Actor() actor: ActorShape, @Query() query: CursorQuery) {
-    return this.walletDesk.list(actor, query);
-  }
 
   @Post('wallets/:loginName/deduct')
   @ApiOperation({ summary: 'Take money back from a child: return, correction or settlement (note required)' })

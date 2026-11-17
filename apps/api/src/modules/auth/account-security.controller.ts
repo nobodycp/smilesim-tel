@@ -1,16 +1,16 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Req, Res } from '@nestjs/common';
 import { ApiCookieAuth, ApiOkResponse, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ApiErrorResponse, ApiZodBody, NotDuplicateGuarded } from '../platform';
 import { answer, sessionIdOf } from './auth-http';
 import { AuthRecords } from './auth-records';
-import { OkDto, TwoFactorExemptDto } from './auth.dto';
-import { ExemptionBody, PolicyBody, SessionRulesBody, SetPasswordBody, TwoFactorModeBody, UserContactBody } from './auth.schemas';
+import { OkDto } from './auth.dto';
+import { PolicyBody, SessionRulesBody, TwoFactorModeBody, UserContactBody } from './auth.schemas';
 import { AuthService } from './auth.service';
 import { TwoFactorPolicyService } from './two-factor-policy.service';
 
-// What the branch owner sets for other accounts and for layers (slice R.A): passwords, the second step and its
-// policy, session rules, contact fields. Every write is recorded with the account or the layer it was done to.
+// What the branch owner sets for other accounts and for layers (slice R.A): the second step and its policy,
+// session rules, contact fields. Every write is recorded with the account or the layer it was done to.
 @ApiTags('auth')
 @ApiSecurity('x-door')
 @Controller('auth')
@@ -21,25 +21,6 @@ export class AccountSecurityController {
     private readonly policies: TwoFactorPolicyService,
     private readonly records: AuthRecords,
   ) {}
-
-  @Post('users/:loginName/password')
-  @HttpCode(200)
-  @ApiCookieAuth('sid')
-  @ApiOperation({ summary: 'Set another user password (privileged)' })
-  @ApiParam({ name: 'loginName' })
-  @ApiZodBody(SetPasswordBody)
-  @ApiOkResponse({ type: OkDto })
-  @ApiErrorResponse(401, 403, 404, 400)
-  async setUserPassword(
-    @Param('loginName') loginName: string,
-    @Body() body: SetPasswordBody,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.auth.setUserPassword(sessionIdOf(req), loginName, body);
-    await this.records.owner(req, { action: 'password', subjectKind: 'account', subjectRef: loginName }, result);
-    return answer(res, result, () => ({ ok: true }));
-  }
 
   @Delete('two-factor/:loginName')
   @HttpCode(200)
@@ -55,23 +36,6 @@ export class AccountSecurityController {
   ) {
     const result = await this.auth.clearUserTwoFactor(sessionIdOf(req), loginName);
     await this.records.owner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
-    return answer(res, result, () => ({ ok: true }));
-  }
-
-  @Post('users/:loginName/disable')
-  @HttpCode(200)
-  @ApiCookieAuth('sid')
-  @ApiOperation({ summary: 'Disable a user account (auth-side)' })
-  @ApiParam({ name: 'loginName' })
-  @ApiOkResponse({ type: OkDto })
-  @ApiErrorResponse(401, 403, 404)
-  async disableUser(
-    @Param('loginName') loginName: string,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.auth.disableUser(sessionIdOf(req), loginName);
-    await this.records.owner(req, { action: 'user_freeze', subjectKind: 'account', subjectRef: loginName }, result);
     return answer(res, result, () => ({ ok: true }));
   }
 
@@ -97,25 +61,6 @@ export class AccountSecurityController {
   @ApiErrorResponse(401, 403)
   async readPolicy(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return answer(res, await this.policies.overview(sessionIdOf(req)), ({ policy }) => ({ policy }));
-  }
-
-  @Patch('exemptions/:loginName')
-  @HttpCode(200)
-  @ApiCookieAuth('sid')
-  @ApiOperation({ summary: 'Set 2FA exemption for a login' })
-  @ApiParam({ name: 'loginName' })
-  @ApiZodBody(ExemptionBody)
-  @ApiOkResponse({ type: TwoFactorExemptDto })
-  @ApiErrorResponse(401, 403, 404)
-  async exemption(
-    @Param('loginName') loginName: string,
-    @Body() body: ExemptionBody,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const result = await this.policies.setExemption(sessionIdOf(req), loginName, body);
-    await this.records.owner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
-    return answer(res, result, ({ twoFactorExempt }) => ({ twoFactorExempt }));
   }
 
   @Get('session-rules')

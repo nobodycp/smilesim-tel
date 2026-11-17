@@ -11,11 +11,6 @@ import { UnitOfWork, NEWEST_FIRST } from '../platform';
 export class WalletsRepository {
   constructor(private readonly uow: UnitOfWork) {}
 
-  /** The wallets of these accounts. */
-  walletsOf(userIds: string[]) {
-    return this.uow.prisma.wallet.findMany({ where: { userId: { in: userIds } } });
-  }
-
   /** One account's wallet, or null. */
   walletOf(userId: string) {
     return this.uow.prisma.wallet.findUnique({ where: { userId } });

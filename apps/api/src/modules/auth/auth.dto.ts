@@ -60,8 +60,3 @@ export class SessionsListDto {
   sessions!: SessionRowDto[];
 }
 
-export class TwoFactorExemptDto {
-  @ApiProperty()
-  twoFactorExempt!: boolean;
-}
-

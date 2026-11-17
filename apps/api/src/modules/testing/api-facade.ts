@@ -205,10 +205,6 @@ export class ApiFacade {
   }
 
   // Spec entry points; the routes live in wallets/wallets.controller.ts.
-  async wallets(gate: Gate) {
-    return this.walletDesk.list(await this.actor(gate));
-  }
-
   async fund(gate: Gate, loginName: string, body: unknown) {
     return this.walletDesk.fund(await this.actor(gate), loginName, body);
   }

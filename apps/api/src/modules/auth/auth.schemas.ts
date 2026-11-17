@@ -57,10 +57,6 @@ export function profileChangeAction(body: unknown): 'password' | 'user_contact' 
   return parsed.success && parsed.data.nextPassword ? 'password' : 'user_contact';
 }
 
-/** `POST /auth/users/:loginName/password` */
-export const SetPasswordBody = z.object({ password });
-export type SetPasswordBody = z.input<typeof SetPasswordBody>;
-
 /** `POST /auth/two-factor/confirm`, `POST /auth/two-factor/verify` */
 export const TwoFactorCodeBody = z.object({ code: oneTimeCode });
 export type TwoFactorCodeBody = z.input<typeof TwoFactorCodeBody>;
@@ -85,10 +81,6 @@ export const TwoFactorModeBody = z.object({
   method: z.enum(TWO_FACTOR_CHOICES).nullable().optional(),
 });
 export type TwoFactorModeBody = z.input<typeof TwoFactorModeBody>;
-
-/** `PATCH /auth/exemptions/:loginName` */
-export const ExemptionBody = z.object({ exempt: z.boolean() });
-export type ExemptionBody = z.input<typeof ExemptionBody>;
 
 /** `PATCH /auth/session-rules/:layer`, `PATCH /auth/users/:loginName/session-rules`: null follows the next level. */
 export const SessionRulesBody = z.object({

@@ -163,7 +163,6 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /v1/users/LOGIN1/restore', 'ynynnn'],
   ['POST /v1/users/LOGIN1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /v1/users/LOGIN1/transfer-preview', 'ynyyyn'],
-  ['GET /v1/wallets', 'yyyyyy'], // read/accounting not checked (see spec)
   ['PATCH /v1/wallets/LOGIN1/ceiling', 'yyyyyy'], // read/accounting not checked (see spec)
   ['POST /v1/wallets/LOGIN1/deduct', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /v1/wallets/LOGIN1/fund', 'yyyyyy'], // read/accounting not checked (see spec)

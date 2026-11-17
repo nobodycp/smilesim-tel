@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Layer } from '../platform';
-import { ExemptionBody, PolicyBody, TwoFactorModeBody, parseBody } from './auth.schemas';
+import { PolicyBody, TwoFactorModeBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, TwoFactorMethod } from './auth.store';
 import { AuthService, fail, type Outcome } from './auth.service';
 import { MESSAGE_SENDER, type MessageSender } from './message-sender';
@@ -40,18 +40,6 @@ export class TwoFactorPolicyService {
     if (input.required !== undefined) await this.store.setPolicy(input.layer, input.required);
     const endedAccounts = input.required === true ? await endUnenrolledSessions(this.store, await this.store.unenrolledUsers(input.layer), owner.user.id) : 0;
     return { kind: 'ok', policy: await policyView(this.store), endedAccounts };
-  }
-
-  /** Shorthand kept for older callers: exempt = mode optional, not exempt = follow the layer. */
-  async setExemption(sessionId: string | undefined, loginName: string, body: ExemptionBody): Promise<Outcome<{ twoFactorExempt: boolean }>> {
-    const owner = await this.auth.ownerSession(sessionId);
-    if (owner.kind === 'error') return owner;
-    const input = parseBody(ExemptionBody, body);
-    if (!input) return fail(400, 'INVALID');
-    const target = await this.store.findByLogin(loginName);
-    if (!target) return fail(404, 'NOT_FOUND');
-    await this.store.updateUser(target.id, { twoFactorExempt: input.exempt, twoFactorRequired: false, requiredMethod: null });
-    return { kind: 'ok', twoFactorExempt: input.exempt };
   }
 
   /** The account's own two-step mode: follow its layer, required (with its own method or the layer's), or optional. */

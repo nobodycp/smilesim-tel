@@ -2,11 +2,11 @@ import { WalletsRepository } from './wallets.repository';
 import { PriceLadder, REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
-import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, keyPage, page, BALANCES_PAGE, FEED_PAGE } from '../platform';
+import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, page, FEED_PAGE } from '../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
-import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
+import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 
@@ -17,33 +17,6 @@ const PROFIT_REPORT_LIMIT = 50_000;
 @Injectable()
 export class WalletsService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, private readonly repo: WalletsRepository) {}
-
-  /** One page of the wallets the actor may see, in the tree's order. */
-  async list(actor: Actor, input: CursorQuery = {}) {
-    const { cursor } = parseInput(CursorQuery, input);
-    const accounts = await this.tree.accounts();
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const rows = await this.repo.walletsOf([...visible]);
-    const byUser = new Map(rows.map((row) => [row.userId, row]));
-    const byId = new Map(accounts.map((account) => [account.id, account]));
-    return keyPage(
-      accounts
-        .filter((account) => visible.has(account.id))
-        .map((account) => ({
-          loginName: account.loginName,
-          nickname: account.nickname,
-          layer: account.layer,
-          balance: byUser.get(account.id)?.balance ?? 0,
-          ceiling: byUser.get(account.id)?.ceiling ?? 0,
-          parentLoginName: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
-          self: account.id === actor.id,
-          directChild: account.parentId === actor.id,
-        })),
-      BALANCES_PAGE,
-      cursor,
-      (row) => row.loginName,
-    );
-  }
 
   async fund(actor: Actor, loginName: string, body: unknown) {
     const { amount, note, reason } = parseInput(FundBody, body);
