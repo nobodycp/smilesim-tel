@@ -51,7 +51,7 @@ test.describe('layer guard', () => {
 
 test.describe('DataTable and EmptyState', () => {
   const task = (id: string, extra = {}) => ({
-    id, action: 'activate', status: 'pending', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
+    id, action: 'activate', status: 'working', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
     msisdn: `055000000${id}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false, ...extra,
   });
 

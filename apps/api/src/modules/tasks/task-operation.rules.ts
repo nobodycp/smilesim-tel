@@ -85,7 +85,7 @@ export type HoldState = 'none' | 'held' | 'captured' | 'released';
  */
 export function holdOf(task: { status: string; held: number | null; posDelta: number }): HoldState {
   if (!task.held || task.held <= 0 || task.posDelta >= 0) return 'none';
-  if (task.status === 'pending' || task.status === 'working') return 'held';
+  if (task.status === 'working') return 'held';
   return task.status === 'done' ? 'captured' : 'released';
 }
 

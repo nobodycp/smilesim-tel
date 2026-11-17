@@ -108,7 +108,7 @@ export class TasksRepository {
   /** Closes a task its own submitter withdraws while it is open; the caller checks `count`. */
   cancelTask(db: Db, id: string, submitterId: string) {
     return db.task.updateMany({
-      where: { id, submitterId, status: { in: ['pending', 'working'] } },
+      where: { id, submitterId, status: 'working' },
       data: { status: 'cancelled', resultNote: null, assigneeId: null },
     });
   }

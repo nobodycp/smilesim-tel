@@ -28,7 +28,7 @@ test('a filter change keeps the previous rows until the new list arrives', async
 // After a write the list is asked again in the background, every chunk already read, and the reader stays on the page.
 test('taking a task on page 3 keeps the reader on page 3, with rows on screen while the list is asked again', async ({ page }) => {
   const task = (n: number) => ({
-    id: `t${n}`, action: 'activate', status: 'pending', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
+    id: `t${n}`, action: 'activate', status: 'working', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
     msisdn: `05500000${String(n).padStart(2, '0')}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: true, canWork: false, canCancel: false,
   });
   const all = Array.from({ length: 25 }, (_, i) => task(i));

@@ -61,7 +61,7 @@ export function TasksScreen() {
   const router = useRouter();
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  // The filters live in the address (`?status=pending&q=…`), so back/forward and links keep them.
+  // The filters live in the address (`?status=working&q=…`), so back/forward and links keep them.
   const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
   const { q: needle, action, pack, company, provider } = filters;
   const status = TASK_STATUSES.includes(filters.status) ? filters.status : '';
