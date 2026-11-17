@@ -60,8 +60,9 @@ export class LinesRepository {
     });
   }
 
-  countLines(where: Prisma.LineWhereInput) {
-    return this.uow.prisma.line.count({ where });
+  /** How many numbers `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  countLines(where: Prisma.LineWhereInput, take: number) {
+    return this.uow.prisma.line.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
   /** One number as its card shows it: its package with company and provider, and its point of sale. */

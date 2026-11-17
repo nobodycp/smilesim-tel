@@ -31,6 +31,11 @@ export type PaginationProps = {
   page: number;
   pageSize: PageSize;
   count: number;
+  /**
+   * The server counted the list up to its cap and more rows wait (database plan DB.8): the status reads
+   * «more than {moreThan} results» and names no last page, since the last page is not known yet.
+   */
+  moreThan?: number;
   onPageChange: (page: number) => void;
   /** When provided, renders the per-page size selector (resets to page 1 on change). */
   onPageSizeChange?: (pageSize: PageSize) => void;
@@ -71,6 +76,7 @@ export function Pagination({
   page,
   pageSize,
   count,
+  moreThan,
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = PAGE_SIZE_OPTIONS,
@@ -79,10 +85,12 @@ export function Pagination({
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(count / pageSize));
   const showSizeSelector = Boolean(onPageSizeChange) && count > 0;
   if (!shouldShowPagination({ count, pageSize, onPageSizeChange })) return null;
-  const status = t.pageStatus
-    .replace('{page}', String(page))
-    .replace('{total}', String(totalPages))
-    .replace('{n}', formatInteger(count));
+  const status = moreThan !== undefined
+    ? t.pageStatusCapped.replace('{page}', String(page)).replace('{n}', formatInteger(moreThan))
+    : t.pageStatus
+      .replace('{page}', String(page))
+      .replace('{total}', String(totalPages))
+      .replace('{n}', formatInteger(count));
 
   return (
     <nav

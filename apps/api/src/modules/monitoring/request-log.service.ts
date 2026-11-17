@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FEED_PAGE, capList, cursorPosition, dayRange, isOn, page, parseInput } from '../platform';
+import { FEED_PAGE, capList, countUpTo, cursorPosition, dayRange, isOn, page, parseInput } from '../platform';
 import { requireOwner, type Actor } from '../access';
 import { RequestLogRepository } from './request-log.repository';
 import { RequestLogWriter } from './request-log.writer';
@@ -22,7 +22,7 @@ export class RequestLogService {
     const query = parseInput(RequestLogQuery, input);
     const filter = await this.filterOf(query);
     const position = cursorPosition(query.cursor);
-    const [rows, total] = await Promise.all([this.repo.rows(filter, position, FEED_PAGE + 1), this.repo.count(filter)]);
+    const [rows, counted] = await Promise.all([this.repo.rows(filter, position, FEED_PAGE + 1), countUpTo((take) => this.repo.count(filter, take))]);
     const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.at);
     const operators = [...new Set(items.map((row) => row.operatorId).filter((id): id is string => Boolean(id)))];
     const names = new Map((operators.length > 0 ? await this.repo.loginNames(operators) : []).map((user) => [user.id, user.loginName]));
@@ -47,7 +47,7 @@ export class RequestLogService {
         bytesOut: row.bytesOut,
       })),
       nextCursor,
-      total,
+      ...counted,
     };
   }
 

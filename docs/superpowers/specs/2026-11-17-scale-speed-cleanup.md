@@ -134,6 +134,30 @@ already filters by package code and already answers the rows the tab shows. The 
 numbers: opening it reads no line. «تحديد الكل» picks the numbers read so far. An action on the sheet asks for the
 tab's pages again with the sheet's other reads. The rows are the same as before, in the list's order (newest first).
 
+## Capped totals (DB.8)
+
+Decision 2, as built. Every list answer carries `total` and `totalCapped` (ADR 0014, amended):
+
+- **`total`** is how many rows the list's filter holds, counted **up to 10,000** (`TOTAL_CAP`,
+  `platform/paging.ts`). **`totalCapped: true`** says there are more; `total` is then 10,000. Otherwise
+  `totalCapped: false` and `total` is exact. One shape for every list: lines, tasks, finance, the own ledger, the
+  activity log, notices, the request log, alerts, the two provider-operations lists (the branch report, the provider accounts'), the
+  provider decisions queue, accounts, the directory, the balances report, the providers report.
+- **How it is counted.** A list read from the database counts with `countUpTo`: the list's own Prisma
+  `count({ where, orderBy, take: 10_001 })`, which Prisma 7 sends as
+  `SELECT COUNT(*) FROM (SELECT id … WHERE … ORDER BY … LIMIT 10001 OFFSET 0) AS sub`. The `orderBy` is the page's
+  own: without one Prisma orders the subquery by `id`, which sorts every matching row. A list read whole in memory
+  (accounts, directory, balances, the provider accounts' operations, the queue, the providers report) passes its length through `cappedTotal`, the
+  same rule; at its sizes it is never capped. Rule `list-total` (`architecture.spec.ts`) refuses a list answer that
+  writes `total` by hand.
+- **Not list totals, still exact:** the status tabs (`GET /v1/tasks/counts`), the overview and the desk's figures,
+  unread notices (`unread` beside the notices list), the queue's `totals`, the provider accounts' `stats`, the balances
+  report's `totals.count`, and the server errors' `total` (a sum over the groups the same query reads).
+- **Screens.** A capped total reads «أكثر من 10,000» / "More than 10,000" / «יותר מ־10,000» (`moreThan`), and the
+  pager's line reads «الصفحة 3 · أكثر من 10,000 نتيجة» without a last page while more rows wait (`pageStatusCapped`);
+  its pages go on as the rows are read. An answer without `totalCapped` (the Playwright mocks, an older API) reads as
+  not capped. CSV exports are not lists: unchanged. Under the cap every screen shows the numbers it showed before.
+
 ## A request's sign-in cost (PF.9)
 
 Until PF.9 a signed-in request sent 8–9 SQL statements before its handler ran, one of them an `UPDATE` of the

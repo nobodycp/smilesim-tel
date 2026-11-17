@@ -13,6 +13,7 @@ import { api, type ActivityRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
+import { listTotal } from '../../../lib/list-total';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
@@ -140,9 +141,9 @@ export function AuditScreen() {
         </FilterBar>
       </ReportFilters>
       <StatRow>
-        <Stat label={t.auditEvents} value={list.total ?? '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
-        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'text-danger' : undefined}>{failed.data.total}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
-        <Stat label={t.priceEdits} value={prices.data ? prices.data.total : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat label={t.auditEvents} value={list.total === null ? '—' : listTotal(t, list.total, list.capped)} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'text-danger' : undefined}>{listTotal(t, failed.data.total, failed.data.totalCapped)}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat label={t.priceEdits} value={prices.data ? listTotal(t, prices.data.total, prices.data.totalCapped) : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
       </StatRow>
       <Pane data-testid="audit-pane">
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />

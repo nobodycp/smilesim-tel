@@ -923,6 +923,8 @@ export const ar = {
   pagerNext: 'التالي',
   perPage: 'لكل صفحة',
   pageStatus: 'الصفحة {page} من {total} · {n} نتيجة',
+  pageStatusCapped: 'الصفحة {page} · أكثر من {n} نتيجة',
+  moreThan: 'أكثر من {n}',
   period: 'الفترة',
   periodAll: 'كل الوقت',
   period7: '7 أيام',

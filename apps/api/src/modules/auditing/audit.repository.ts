@@ -15,8 +15,9 @@ export class AuditRepository {
     return this.uow.prisma.activityEvent.findMany({ where, orderBy: [{ at: 'desc' }, { id: 'desc' }], take });
   }
 
-  eventCount(where: Prisma.ActivityEventWhereInput) {
-    return this.uow.prisma.activityEvent.count({ where });
+  /** How many events `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  eventCount(where: Prisma.ActivityEventWhereInput, take: number) {
+    return this.uow.prisma.activityEvent.count({ where, orderBy: [{ at: 'desc' }, { id: 'desc' }], take });
   }
 
   /** From how many network addresses the events under the filter came. */

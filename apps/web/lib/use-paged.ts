@@ -9,16 +9,21 @@ import { ApiFailure } from './query';
 import type { Fetched } from './fetched';
 import type { Page } from './api-types';
 
-/** One answer of the API's list envelope as the pager reads it. A list with extra keys adds `extra` beside it. */
-export function pageRows<Row>(data: Page<Row>): { rows: Row[]; next: string | null; total: number } {
-  return { rows: data.items, next: data.nextCursor, total: data.total };
+/**
+ * One answer of the API's list envelope as the pager reads it. A list with extra keys adds `extra` beside it.
+ * `capped`: the API counted up to its cap (database plan DB.8); an answer without `totalCapped` is not capped.
+ */
+export function pageRows<Row>(data: Page<Row>): { rows: Row[]; next: string | null; total: number; capped: boolean } {
+  return { rows: data.items, next: data.nextCursor, total: data.total, capped: data.totalCapped === true };
 }
 
 export type PageOf<Row, Extra = undefined> = {
   rows: Row[];
   next: string | null | undefined;
-  // How many rows match on the server, across every chunk. The pager counts its pages from it.
+  // How many rows match on the server, across every chunk, up to the API's cap. The pager counts its pages from it.
   total?: number;
+  // The API counted up to its cap and there are more (`totalCapped`, database plan DB.8): `total` is the cap.
+  capped?: boolean;
   extra?: Extra;
 };
 
@@ -63,7 +68,9 @@ export function usePaged<Row, Extra = undefined>(
 
   const pages = query.data?.pages;
   const all = useMemo(() => (pages ? pages.flatMap((chunk) => chunk.rows) : []), [pages]);
-  const total = pages ? (pages[pages.length - 1].total ?? pages[0].total ?? null) : query.isError ? 0 : null;
+  const counted = pages ? (pages[pages.length - 1].total !== undefined ? pages[pages.length - 1] : pages[0]) : undefined;
+  const total = counted ? (counted.total ?? null) : query.isError ? 0 : null;
+  const capped = counted?.capped === true;
   const extra = useMemo(() => {
     const withExtra = pages ? [...pages].reverse().find((chunk) => chunk.extra !== undefined) : undefined;
     return withExtra ? (withExtra.extra as Extra) : null;
@@ -103,6 +110,7 @@ export function usePaged<Row, Extra = undefined>(
     key,
     all,
     total,
+    capped,
     ready: query.data !== undefined || query.isError,
     started: query.data !== undefined || query.isError,
     stale,

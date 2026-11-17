@@ -32,8 +32,9 @@ export class TasksRepository {
     });
   }
 
-  countTasks(where: Prisma.TaskWhereInput) {
-    return this.uow.prisma.task.count({ where });
+  /** How many tasks `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  countTasks(where: Prisma.TaskWhereInput, take: number) {
+    return this.uow.prisma.task.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
   /** How many tasks under `where` hold each status: one grouped count, a row per status that has any. */

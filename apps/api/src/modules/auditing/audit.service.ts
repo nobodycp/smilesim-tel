@@ -1,4 +1,4 @@
-import { isOn, parseInput, dayRange, after, cursorPosition, page, FEED_PAGE, csvDocument } from '../platform';
+import { isOn, parseInput, dayRange, after, countUpTo, cursorPosition, page, FEED_PAGE, csvDocument } from '../platform';
 import { AuditQuery, type AuditFilter } from './audit.schemas';
 import { AccountTree, visibleAccountIds } from '../access';
 import { AuditRepository } from './audit.repository';
@@ -39,15 +39,15 @@ export class AuditService {
     const query = parseInput(AuditQuery, input);
     const where = await this.whereFor(actor, query);
     const position = cursorPosition(query.cursor);
-    const [rows, total, addresses] = await Promise.all([
+    const [rows, counted, addresses] = await Promise.all([
       this.repo.events({ ...where, AND: after(position, 'at') }, FEED_PAGE + 1),
-      this.repo.eventCount(where),
+      countUpTo((take) => this.repo.eventCount(where, take)),
       // On request (the failed sign-ins figure): from how many network addresses the matching events came.
       isOn(query.addresses) ? this.repo.addressCount(where) : Promise.resolve(undefined),
     ]);
     const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.at);
     return {
-      total,
+      ...counted,
       ...(addresses === undefined ? {} : { addresses }),
       items: items.map((row) => ({
         id: row.id,

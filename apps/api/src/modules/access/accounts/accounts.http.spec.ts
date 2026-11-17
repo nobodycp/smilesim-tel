@@ -141,7 +141,7 @@ describe('accounts and roles over HTTP', () => {
     expect(named.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['pos1']);
     expect(named.body.items[0]).toMatchObject({ balance: 700, ceiling: 100 });
     const full = await as('owner', 'get', '/v1/users');
-    expect(Object.keys(full.body).sort()).toEqual(['items', 'nextCursor', 'total']);
+    expect(Object.keys(full.body).sort()).toEqual(['items', 'nextCursor', 'total', 'totalCapped']);
     expect(full.body.items).toHaveLength(6);
     expect(await code(as('owner', 'get', '/v1/users?cursor=junk'))).toBe('400 INVALID');
     expect((await as('ag1', 'get', '/v1/directory')).body.total).toBeGreaterThan(2);
@@ -151,6 +151,7 @@ describe('accounts and roles over HTTP', () => {
       items: [{ loginName: 'pos1', nickname: 'نقطة', layer: 'pos', parentLoginName: 'ag1', frozen: false, mine: true }],
       nextCursor: null,
       total: 1,
+      totalCapped: false,
     });
   });
 

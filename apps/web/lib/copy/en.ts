@@ -923,6 +923,8 @@ export const en: Copy = {
   pagerNext: 'Next',
   perPage: 'Per page',
   pageStatus: 'Page {page} of {total} · {n} results',
+  pageStatusCapped: 'Page {page} · more than {n} results',
+  moreThan: 'More than {n}',
   period: 'Period',
   periodAll: 'All time',
   period7: '7 days',

@@ -70,6 +70,7 @@ describe('notices over HTTP', () => {
     expect(response.body).toEqual({
       unread: 2,
       total: 3,
+      totalCapped: false,
       items: [
         { id: 'n3', kind: 'task.opened', payload: { n: 'n3' }, actorName: 'الفرع', href: '/tasks/n3', read: false, createdAt: at(3).toISOString() },
         { id: 'n2', kind: 'fund.received', payload: { n: 'n2' }, actorName: 'الفرع', href: '/tasks/n2', read: true, createdAt: at(2).toISOString() },

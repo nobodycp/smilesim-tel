@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FEED_PAGE, cursorPosition, fail, page, parseInput } from '../platform';
+import { FEED_PAGE, countUpTo, cursorPosition, fail, page, parseInput } from '../platform';
 import { requireOwner, type Actor } from '../access';
 import { AlertRepository } from './alert.repository';
 import { linkOf, type AlertState } from './alert-rules';
@@ -22,7 +22,7 @@ export class AlertsService {
     // The cursor names an alert: whether it was open says which part of the list it stopped in. A gone one was
     // closed (an open alert is never deleted).
     const cursor = position ? { ...position, state: (await this.repo.stateOf(position.id)) ?? ('closed' as AlertState) } : undefined;
-    const [rows, total] = await Promise.all([this.repo.rows(query.state, cursor, FEED_PAGE + 1), this.repo.count(query.state)]);
+    const [rows, counted] = await Promise.all([this.repo.rows(query.state, cursor, FEED_PAGE + 1), countUpTo((take) => this.repo.count(query.state, take))]);
     const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.lastAt);
     return {
       items: items.map((row) => ({
@@ -45,7 +45,7 @@ export class AlertsService {
         link: linkOf(row),
       })),
       nextCursor,
-      total,
+      ...counted,
     };
   }
 

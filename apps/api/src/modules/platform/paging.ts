@@ -1,7 +1,7 @@
 import { fail } from './api-failure';
 
-// The one list contract (backend-engineering.mdc 4.7). Every list answers `{ items, nextCursor, total }` plus its
-// own extra keys, takes `?cursor=` and nothing else, and reads `size + 1` rows so the extra one tells whether
+// The one list contract (backend-engineering.mdc 4.7). Every list answers `{ items, nextCursor, total, totalCapped }`
+// plus its own extra keys, takes `?cursor=` and nothing else, and reads `size + 1` rows so the extra one tells whether
 // another page exists. The cursor is opaque to the caller: the time and id of the last row served.
 
 // The page size of each list.
@@ -12,7 +12,33 @@ export const NOTICES_PAGE = 40;
 /** The balances report and the wallets list: one short row an account, in the tree's order (by login). */
 export const BALANCES_PAGE = 200;
 
-export type Page<Item> = { items: Item[]; nextCursor: string | null; total: number };
+/**
+ * A list's `total` is counted up to this many rows (spec 2026-11-17-scale-speed-cleanup, decision 2; database plan
+ * DB.8): counting a whole filter took seconds at 2M numbers / 6M ledger entries (audit 2026-11-17, L1c, W1c).
+ */
+export const TOTAL_CAP = 10_000;
+
+/** How many rows a list's filter holds, up to the cap. `totalCapped: true` says there are more; `total` is then the cap. */
+export type Total = { total: number; totalCapped: boolean };
+
+export type Page<Item> = { items: Item[]; nextCursor: string | null } & Total;
+
+/** A count already in hand (a list read whole, a grouped count) under the same contract as `countUpTo`. */
+export function cappedTotal(count: number, cap = TOTAL_CAP): Total {
+  return count > cap ? { total: cap, totalCapped: true } : { total: count, totalCapped: false };
+}
+
+/**
+ * A list's `total`, counted up to the cap. `count` is the list's own Prisma `count({ where, orderBy, take })` with the
+ * `take` handed to it (`cap + 1`) and the order its page is read in. Prisma 7 sends a limited count as
+ * `SELECT COUNT(*) FROM (SELECT id FROM … WHERE … ORDER BY … LIMIT $take OFFSET 0) AS sub`, so the database stops at
+ * `cap + 1` rows. The order matters: without one Prisma orders the subquery by `id ASC`, which sorts every matching
+ * row or walks the primary key; the page's own order lets the index that serves the page stop the count
+ * (`paging.db.spec.ts` keeps the captured SQL and its plan).
+ */
+export async function countUpTo(count: (take: number) => Promise<number>, cap = TOTAL_CAP): Promise<Total> {
+  return cappedTotal(await count(cap + 1), cap);
+}
 
 export type Position = { at: Date; id: string };
 
@@ -91,7 +117,7 @@ export function keyPage<Row>(rows: Row[], size: number, cursor: string | undefin
   const from = next < 0 ? rows.length : next;
   const items = rows.slice(from, from + size);
   const tail = items[items.length - 1];
-  return { items, nextCursor: from + size < rows.length && tail ? encodeKeyCursor(keyOf(tail)) : null, total: rows.length };
+  return { items, nextCursor: from + size < rows.length && tail ? encodeKeyCursor(keyOf(tail)) : null, ...cappedTotal(rows.length) };
 }
 
 /**

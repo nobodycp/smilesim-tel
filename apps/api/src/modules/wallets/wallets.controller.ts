@@ -105,7 +105,7 @@ export class WalletsController {
   }
 
   @Get('ledger')
-  @ApiOperation({ summary: 'One page of the signed-in account\'s own wallet ledger ({ items, nextCursor, total })' })
+  @ApiOperation({ summary: 'One page of the signed-in account\'s own wallet ledger ({ items, nextCursor, total, totalCapped })' })
   @ApiZodQuery(LedgerQuery)
   @ApiErrorResponse(400, 401, 403)
   ledger(@Actor() actor: ActorShape, @Query() query: LedgerQuery) {

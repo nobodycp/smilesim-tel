@@ -60,10 +60,11 @@ describe('reports and line refusals over HTTP', () => {
 
   it('reports providers and packages, and the operations ledger', async () => {
     expect((await as('owner', 'get', '/v1/reports/providers')).body).toEqual({
-      items: [{ providerName: 'ليان', companyName: 'ويكوم', packageName: 'باقة', price: 2000, lines: 4 }], nextCursor: null, total: 1,
+      items: [{ providerName: 'ليان', companyName: 'ويكوم', packageName: 'باقة', price: 2000, lines: 4 }], nextCursor: null, total: 1, totalCapped: false,
     });
     expect((await as('owner', 'get', '/v1/reports/operations')).body).toEqual({
       total: 1,
+      totalCapped: false,
       items: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLoginName: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
       nextCursor: null,
     });

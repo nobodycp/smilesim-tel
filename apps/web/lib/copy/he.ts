@@ -923,6 +923,8 @@ export const he: Copy = {
   pagerNext: 'הבא',
   perPage: 'לכל עמוד',
   pageStatus: 'עמוד {page} מתוך {total} · {n} תוצאות',
+  pageStatusCapped: 'עמוד {page} · יותר מ־{n} תוצאות',
+  moreThan: 'יותר מ־{n}',
   period: 'תקופה',
   periodAll: 'כל הזמן',
   period7: '7 ימים',

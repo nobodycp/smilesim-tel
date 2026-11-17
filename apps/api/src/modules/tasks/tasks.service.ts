@@ -2,7 +2,7 @@ import { TasksQuery, TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksRepository } from './tasks.repository';
 import { WalletLedger } from '../wallets';
 import { ActorResolver, AccountTree, assertBranch } from '../access';
-import { UnitOfWork, esimCodeOrFail, parseInput, fail, after, cursorPosition, page, searchTerms, TASKS_PAGE, HANDLER_FROZEN_NOTE } from '../platform';
+import { UnitOfWork, esimCodeOrFail, parseInput, fail, after, cappedTotal, countUpTo, cursorPosition, page, searchTerms, TASKS_PAGE, HANDLER_FROZEN_NOTE } from '../platform';
 import { taskEvents } from './task-events';
 import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from './task-operation.rules';
 import { Injectable } from '@nestjs/common';
@@ -51,7 +51,7 @@ export class TasksService {
     const digits = searchTerms(typeof query.q === 'string' ? query.q : '')?.number ?? '';
     const matchedPackages = await this.packagesMatching({ packageCode, company, provider });
     if (matchedPackages && matchedPackages.length === 0) {
-      return { items: [], nextCursor: null, total: 0 };
+      return { items: [], nextCursor: null, ...cappedTotal(0) };
     }
     const where = {
       ...taskWhereFor(actor, accounts),
@@ -60,10 +60,10 @@ export class TasksService {
       ...(digits ? { msisdn: { contains: digits } } : {}),
       ...(matchedPackages ? { packageId: { in: matchedPackages.map((row) => row.id) } } : {}),
     };
-    const [read, total] = await Promise.all([
+    const [read, counted] = await Promise.all([
       // The list's last note skips internal notes for accounts outside the branch.
       this.repo.tasksPage({ ...where, AND: after(cursorPosition(query.cursor)) }, actor.layer === 'branch' ? {} : { internal: false }),
-      this.repo.countTasks(where),
+      countUpTo((take) => this.repo.countTasks(where, take)),
     ]);
     const { items: rows, nextCursor } = page(read, TASKS_PAGE);
     const byId = new Map(accounts.map((account) => [account.id, account]));
@@ -103,7 +103,7 @@ export class TasksService {
         };
       }),
       nextCursor,
-      total,
+      ...counted,
     };
   }
 

@@ -1,5 +1,5 @@
 import { ApiFailure } from './api-failure';
-import { after, cursorPosition, decodeCursor, encodeCursor, encodeKeyCursor, capList, keyCursor, keyPage, page } from './paging';
+import { TOTAL_CAP, after, cappedTotal, countUpTo, cursorPosition, decodeCursor, encodeCursor, encodeKeyCursor, capList, keyCursor, keyPage, page } from './paging';
 
 const at = (second: number) => new Date(Date.UTC(2026, 10, 1, 0, 0, second));
 const row = (id: string, second: number) => ({ id, createdAt: at(second) });
@@ -107,5 +107,22 @@ describe('capList()', () => {
   it('cuts a list read one past the cap and says so', () => {
     expect(capList([1, 2, 3], 2)).toEqual({ rows: [1, 2], capped: true });
     expect(capList([1, 2], 2)).toEqual({ rows: [1, 2], capped: false });
+  });
+});
+
+describe('a list total counted up to the cap (database plan DB.8)', () => {
+  it('answers the count under the cap, and the cap with totalCapped past it', () => {
+    expect(TOTAL_CAP).toBe(10_000);
+    expect(cappedTotal(0)).toEqual({ total: 0, totalCapped: false });
+    expect(cappedTotal(TOTAL_CAP)).toEqual({ total: TOTAL_CAP, totalCapped: false });
+    expect(cappedTotal(TOTAL_CAP + 1)).toEqual({ total: TOTAL_CAP, totalCapped: true });
+    expect(cappedTotal(4, 3)).toEqual({ total: 3, totalCapped: true });
+  });
+
+  it('asks the count for one row past the cap and no more', async () => {
+    const asked: number[] = [];
+    expect(await countUpTo(async (take) => (asked.push(take), Math.min(take, 7)), 3)).toEqual({ total: 3, totalCapped: true });
+    expect(await countUpTo(async (take) => (asked.push(take), Math.min(take, 2)))).toEqual({ total: 2, totalCapped: false });
+    expect(asked).toEqual([4, TOTAL_CAP + 1]);
   });
 });

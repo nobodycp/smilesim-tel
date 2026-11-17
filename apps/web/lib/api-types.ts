@@ -421,10 +421,13 @@ export type TransferPreview = {
   lines: number;
 };
 /**
- * Every list of the API answers this envelope (API `shared/paging.ts`): the rows of one page, the cursor of the
- * next one or null at the end, and how many rows match across every page. A list's own extra keys sit beside it.
+ * Every list of the API answers this envelope (API `platform/paging.ts`): the rows of one page, the cursor of the
+ * next one or null at the end, and how many rows match across every page, counted up to 10,000 (database plan
+ * DB.8): `totalCapped` says there are more, and `total` is then 10,000. The API always sends `totalCapped`; it is
+ * optional here so an answer without it (the Playwright mocks, an older API) reads as not capped
+ * (`lib/list-total.ts`). A list's own extra keys sit beside it.
  */
-export type Page<Row> = { items: Row[]; nextCursor: string | null; total: number };
+export type Page<Row> = { items: Row[]; nextCursor: string | null; total: number; totalCapped?: boolean };
 /** One package of the branch's providers report: what it costs the branch and how many numbers are on it. */
 export type ProviderReportRow = { providerName: string; companyName: string; packageName: string; price: number; lines: number };
 export type LineRow = {

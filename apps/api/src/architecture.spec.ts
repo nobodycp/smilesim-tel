@@ -158,6 +158,16 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('list-envelope', answers);
   });
 
+  it('4.7 list-total: a paged answer\'s total is counted by platform/paging.ts, with totalCapped (plan DB.8)', () => {
+    // A `return { … nextCursor … }` that writes `total` by hand (`total,`, `total: rows.length`) instead of spreading
+    // what `countUpTo` / `cappedTotal` / `keyPage` answer, so no list counts its whole filter or forgets `totalCapped`.
+    const answers = hits(domains, /return \{/, (match, text) => {
+      const body = blockAt(text, match.index);
+      return /\bnextCursor\b/.test(body) && /(?<!\.\.\.)\btotal\b(?!s|Capped)/.test(body);
+    });
+    check('list-total', answers);
+  });
+
   it('4.9 login-field-name: a field that holds a login ends in LoginName', () => {
     // `parentLogin:`, `posLogin?:`, `actorLogin,` … as a property or a shorthand. Function names (`findByLogin`,
     // `decideLogin`) are not fields and are not matched.

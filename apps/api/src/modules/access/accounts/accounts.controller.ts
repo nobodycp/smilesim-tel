@@ -16,7 +16,7 @@ export class AccountsController {
   constructor(private readonly accountDesk: AccountsService) {}
 
   @Get('users')
-  @ApiOperation({ summary: 'One page of the accounts the actor may see ({ items, nextCursor, total })' })
+  @ApiOperation({ summary: 'One page of the accounts the actor may see ({ items, nextCursor, total, totalCapped })' })
   @ApiZodQuery(UsersQuery)
   @ApiErrorResponse(400, 401, 403)
   users(@Actor() actor: ActorShape, @Query() query: UsersQuery) {
@@ -24,7 +24,7 @@ export class AccountsController {
   }
 
   @Get('directory')
-  @ApiOperation({ summary: 'One page of the accounts the actor may meet on a screen: login, full name, layer ({ items, nextCursor, total })' })
+  @ApiOperation({ summary: 'One page of the accounts the actor may meet on a screen: login, full name, layer ({ items, nextCursor, total, totalCapped })' })
   @ApiZodQuery(DirectoryQuery)
   @ApiErrorResponse(400, 401, 403)
   directory(@Actor() actor: ActorShape, @Query() query: DirectoryQuery) {

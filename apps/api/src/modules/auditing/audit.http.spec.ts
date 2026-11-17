@@ -46,6 +46,7 @@ describe('GET /v1/audit', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       total: 1,
+      totalCapped: false,
       items: [{ id: 'ev1', at: '2026-11-08T10:00:00.000Z', action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLoginName: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' }],
       nextCursor: null,
     });

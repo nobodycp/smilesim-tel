@@ -2,7 +2,7 @@ import { WalletsRepository } from './wallets.repository';
 import { PriceLadder, REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
-import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
+import { UnitOfWork, dayRange, fail, parseInput, after, countUpTo, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
 import { financeSearch, loginIdsContaining } from './finance-search';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
@@ -101,9 +101,9 @@ export class WalletsService {
       ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
     };
-    const [read, total] = await Promise.all([
+    const [read, counted] = await Promise.all([
       this.repo.entriesWithAccounts({ ...where, AND: after(cursorPosition(query.cursor)) }, FEED_PAGE + 1),
-      this.repo.countEntries(where),
+      countUpTo((take) => this.repo.countEntries(where, take)),
     ]);
     const { items: rows, nextCursor } = page(read, FEED_PAGE);
     return {
@@ -124,7 +124,7 @@ export class WalletsService {
         actorLoginName: row.actor.loginName,
       })),
       nextCursor,
-      total,
+      ...counted,
     };
   }
 
@@ -346,10 +346,10 @@ export class WalletsService {
     const query = parseInput(FinanceQuery, input);
     const position = cursorPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
-    const [rows, total] = await Promise.all([
+    const [rows, counted] = await Promise.all([
       // The page cursor joins the ledger filter instead of replacing its own conditions.
       this.repo.entriesWithAccounts(position ? { AND: [where, ...after(position)] } : where, FEED_PAGE + 1),
-      this.repo.countEntries(where),
+      countUpTo((take) => this.repo.countEntries(where, take)),
     ]);
     const { items, nextCursor } = page(rows, FEED_PAGE);
     const ladders = await this.laddersFor(items);
@@ -357,7 +357,7 @@ export class WalletsService {
     const accounts = actor.layer === 'branch' ? await this.tree.accounts() : [];
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
-      total,
+      ...counted,
       items: items.map((row) => ({
         /**
          * For the branch: what every account in the sale's chain earned on it, branch first. Null for other viewers

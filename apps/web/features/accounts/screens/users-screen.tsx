@@ -24,6 +24,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
+import { listTotal } from '../../../lib/list-total';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { accountTone } from '../../../lib/status-tone';
@@ -195,7 +196,7 @@ export function UsersScreen() {
       </FilterBar>
       <Pane>
         <header className={PANE_HEAD}>
-          <h2 className={PANE_TITLE}>{t.usersList}{list.ready ? <span className={COUNT} data-testid="list-count">{list.total ?? list.all.length}</span> : null}</h2>
+          <h2 className={PANE_TITLE}>{t.usersList}{list.ready ? <span className={COUNT} data-testid="list-count">{list.total === null ? list.all.length : listTotal(t, list.total, list.capped)}</span> : null}</h2>
         </header>
         <Dialog
           open={creating}

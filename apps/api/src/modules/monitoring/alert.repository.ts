@@ -175,8 +175,9 @@ export class AlertRepository {
     });
   }
 
-  count(state: AlertState | undefined) {
-    return this.uow.prisma.alert.count({ where: state ? { state } : {} });
+  /** How many alerts the list holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  count(state: AlertState | undefined, take: number) {
+    return this.uow.prisma.alert.count({ where: state ? { state } : {}, orderBy: [{ state: 'desc' }, { lastAt: 'desc' }, { id: 'desc' }], take });
   }
 
   /** Marks an alert seen, once: the first owner who saw it is kept. Answers how many it marked (0 or 1). */

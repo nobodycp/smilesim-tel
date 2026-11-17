@@ -1,4 +1,4 @@
-import { PeriodQuery, UnitOfWork, dayRange, fail, parseInput, cursorPosition, page, FEED_PAGE } from '../../platform';
+import { PeriodQuery, UnitOfWork, cappedTotal, dayRange, fail, parseInput, cursorPosition, page, FEED_PAGE } from '../../platform';
 import { ProvidersRepository } from '../providers.repository';
 import { requireAnyGrant, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
@@ -90,7 +90,7 @@ export class ProviderAccountsService {
         difference: matches.get(row.id)?.difference ?? null,
       })),
       nextCursor,
-      total: ranged.length,
+      ...cappedTotal(ranged.length),
       stats: {
         count: ranged.length,
         cost: ranged.reduce((sum, row) => sum + row.cost, 0),

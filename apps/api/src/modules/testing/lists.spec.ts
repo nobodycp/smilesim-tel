@@ -4,7 +4,20 @@ import type { Layer } from '../../doors';
 import { hashOnce } from './test-hash';
 import { ApiFailure } from '../platform/api-failure';
 import { ApiFacade } from './api-facade';
-import { after, decodeCursor, encodeCursor } from '../platform/paging';
+import { TOTAL_CAP, after, decodeCursor, encodeCursor, keyPage } from '../platform/paging';
+import { usersPage } from '../access/accounts/users-page';
+import type { UnitOfWork } from '../platform/unit-of-work';
+import type { Actor } from '../access/types';
+import { AlertRepository } from '../monitoring/alert.repository';
+import { AlertsService } from '../monitoring/alerts.service';
+import { RequestLogRepository } from '../monitoring/request-log.repository';
+import { RequestLogService } from '../monitoring/request-log.service';
+import type { RequestLogWriter } from '../monitoring/request-log.writer';
+import { NoticesRepository } from '../notifications/notices.repository';
+import { NoticeInboxService } from '../notifications/notice-inbox.service';
+import type { NoticeService } from '../notifications/notice.service';
+import { ReportsRepository } from '../reporting/reports/reports.repository';
+import { ReportsService } from '../reporting/reports/reports.service';
 import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../sales/rules/line-filters';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
@@ -80,7 +93,11 @@ function table(rows: Row[], calls: FindArgs[] = []) {
       }
       return args.take === undefined ? list : list.slice(0, args.take);
     },
-    count: async (args: { where?: Where } = {}) => rows.filter((row) => matches(row, args.where ?? {})).length,
+    // A limited count (`take`, the capped totals of plan DB.8) stops at `take`, like the database's subquery.
+    count: async (args: FindArgs = {}) => {
+      const counted = rows.filter((row) => matches(row, args.where ?? {})).length;
+      return args.take === undefined ? counted : Math.min(counted, args.take);
+    },
     findFirst: async (args: { where?: Where } = {}) => rows.find((row) => matches(row, args.where ?? {})) ?? null,
   };
 }
@@ -588,5 +605,130 @@ describe('the list cursor against the rows a list reads', () => {
     const ordered = [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1));
     const served = ordered.findIndex((row) => row.id === 'r-009');
     expect(rest.map((row) => row.id).sort()).toEqual(ordered.slice(served + 1).map((row) => row.id).sort());
+  });
+});
+
+describe('capped totals (database plan DB.8)', () => {
+  // The helper itself is proven on PostgreSQL with a small cap (`platform/paging.db.spec.ts`). Here each list's
+  // wiring: its count is limited to TOTAL_CAP + 1 in the order its page is read in, and a filter that holds more
+  // rows than the cap answers `{ total: TOTAL_CAP, totalCapped: true }`. The stand-in below holds "more than the cap"
+  // without 10,001 rows: its count answers whatever `take` allows (a million when there is none).
+  function crowded(rows: Row[], counts: FindArgs[], pages: FindArgs[] = []) {
+    return {
+      ...table(rows, pages),
+      count: async (args: FindArgs = {}) => {
+        counts.push(args);
+        return args.take ?? 1_000_000;
+      },
+    };
+  }
+  const CAPPED = { total: TOTAL_CAP, totalCapped: true };
+  const owner = { id: 'admin', loginName: 'admin', nickname: 'الإدارة', layer: 'branch', isBranchOwner: true, grants: [], operatorId: 'admin', impersonating: false } as unknown as Actor;
+  const stamped = (prefix: string, extra: Row = {}) => Array.from({ length: 3 }, (_, i) => ({ id: `${prefix}-${i}`, createdAt: new Date(t0 + i * 1000), ...extra }));
+  /** The one limited count a list sent: `take` is the cap and one more, the order is the page's own. */
+  function expectCapped(counts: FindArgs[], pages: FindArgs[]) {
+    const limited = counts.filter((call) => call.take !== undefined);
+    expect(limited).toHaveLength(1);
+    expect(limited[0].take).toBe(TOTAL_CAP + 1);
+    expect(limited[0].orderBy).toEqual(pages[0].orderBy);
+  }
+
+  it('the numbers list', async () => {
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    const rows = stamped('ln', { posId: 'pos1', status: 'active', endsAt: new Date(t0), package: { code: 'pk', name: '400', posPrice: 30, company: null }, pos: { loginName: 'pos1' } });
+    const crowd = await serviceWith({ line: crowded(rows, counts, pages) });
+    expect(await crowd.service.lines(crowd.gate)).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    const few = await serviceWith({ line: table(rows) });
+    expect(await few.service.lines(few.gate)).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('the tasks', async () => {
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    const rows = stamped('tk', { posId: 'pos1', action: 'extend', status: 'pending', posDelta: 0, packageId: 'pa', submitterId: 'admin', submitter: { loginName: 'admin' }, assignee: null, notes: [] });
+    const pkg = { findMany: async () => [{ id: 'pa', name: '400' }] };
+    const crowd = await serviceWith({ task: crowded(rows, counts, pages), package: pkg });
+    expect(await crowd.service.tasks(crowd.gate, {})).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    const few = await serviceWith({ task: table(rows), package: pkg });
+    expect(await few.service.tasks(few.gate, {})).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('finance and the own ledger', async () => {
+    const rows = stamped('en', { userId: 'admin', kind: 'activate', amount: -10, balanceAfter: 90, actor: { loginName: 'admin' }, user: { loginName: 'admin', layer: 'branch' } });
+    for (const read of ['finance', 'ledger'] as const) {
+      const counts: FindArgs[] = [];
+      const pages: FindArgs[] = [];
+      const crowd = await serviceWith({ walletEntry: crowded(rows, counts, pages) });
+      expect(await crowd.service[read](crowd.gate, {})).toMatchObject(CAPPED);
+      expectCapped(counts, pages);
+      const few = await serviceWith({ walletEntry: table(rows) });
+      expect(await few.service[read](few.gate, {})).toMatchObject({ total: 3, totalCapped: false });
+    }
+  });
+
+  it('the activity log', async () => {
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    const now = Date.now();
+    const rows = Array.from({ length: 3 }, (_, i) => ({ id: `ev-${i}`, at: new Date(now - i * 1000), actorId: 'admin', actorLoginName: 'admin', actorLayer: 'branch', action: 'extend', result: 'ok', reason: '', ip: '', subjectKind: '', subjectRef: '' }));
+    const crowd = await serviceWith({ activityEvent: crowded(rows, counts, pages) });
+    expect(await crowd.service.audit(crowd.gate, {})).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    const few = await serviceWith({ activityEvent: table(rows) });
+    expect(await few.service.audit(few.gate, {})).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('the notices, whose unread figure stays an exact count', async () => {
+    const rows = stamped('nt', { userId: 'admin', kind: 'transfer', payload: {}, actorName: '', href: '', readAt: null });
+    const inbox = (notice: unknown) => new NoticeInboxService(new NoticesRepository({ prisma: { notice } } as unknown as UnitOfWork), {} as NoticeService, new MemoryAuthStore());
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    const crowd = await inbox(crowded(rows, counts, pages)).list(owner, {});
+    expect(crowd).toMatchObject({ ...CAPPED, unread: 1_000_000 });
+    expectCapped(counts, pages);
+    expect(counts.filter((call) => call.take === undefined && call.orderBy === undefined)).toHaveLength(1);
+    expect(await inbox(table(rows)).list(owner, {})).toMatchObject({ total: 3, totalCapped: false, unread: 3 });
+  });
+
+  it('the alerts', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({ id: `al-${i}`, state: 'open', lastAt: new Date(t0 + i * 1000), firstAt: new Date(t0), closedAt: null, seenAt: null, kind: 'probing', detail: '' }));
+    const alerts = (alert: unknown) => new AlertsService(new AlertRepository({ prisma: { alert } } as unknown as UnitOfWork));
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    expect(await alerts(crowded(rows, counts, pages)).list(owner, {})).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    expect(await alerts(table(rows)).list(owner, {})).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('the request log', async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({ id: `rq-${i}`, at: new Date(Date.now() - i * 1000), operatorId: null }));
+    const log = (requestLog: unknown) => new RequestLogService(new RequestLogRepository({ prisma: { requestLog } } as unknown as UnitOfWork), {} as RequestLogWriter);
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    expect(await log(crowded(rows, counts, pages)).list(owner, {})).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    expect(await log(table(rows)).list(owner, {})).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('the provider operations report', async () => {
+    const rows = stamped('op', { kind: 'activate', amount: -10, balanceAfter: 90, user: { loginName: 'pos1' }, actor: { loginName: 'admin' } });
+    const reports = (walletEntry: unknown) => new ReportsService(new ReportsRepository({ prisma: { walletEntry } } as unknown as UnitOfWork));
+    const counts: FindArgs[] = [];
+    const pages: FindArgs[] = [];
+    expect(await reports(crowded(rows, counts, pages)).operations(owner, {})).toMatchObject(CAPPED);
+    expectCapped(counts, pages);
+    expect(await reports(table(rows)).operations(owner, {})).toMatchObject({ total: 3, totalCapped: false });
+  });
+
+  it('the lists read whole in memory (the accounts, the directory, the balances) answer the same shape', async () => {
+    const { service, gate } = await serviceWith({});
+    expect(await service.directory(gate)).toMatchObject({ total: 2, totalCapped: false });
+    const many = Array.from({ length: TOTAL_CAP + 1 }, (_, i) => ({ loginName: `p${pad(i, 5)}`, nickname: '', layer: 'pos' }));
+    expect(usersPage(many, {})).toMatchObject(CAPPED);
+    expect(keyPage(many, 10, undefined, (row) => row.loginName)).toMatchObject(CAPPED);
+    expect(usersPage(many.slice(0, 3), {})).toMatchObject({ total: 3, totalCapped: false });
   });
 });

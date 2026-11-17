@@ -238,13 +238,13 @@ const TASK_MARK = cn(
   '[clip-path:polygon(0_0,calc(100%_-_8px)_0,100%_8px,100%_100%,0_100%)] rtl:[clip-path:polygon(8px_0,100%_0,100%_100%,0_100%,0_8px)]',
 );
 
-export function WaitingTasks({ tasks, open, loading }: { tasks: TaskRow[]; open: number; loading: boolean }) {
+export function WaitingTasks({ tasks, open, loading }: { tasks: TaskRow[]; open: string; loading: boolean }) {
   const { t } = usePrefs();
   return (
     <Pane>
       <header className={PANE_HEAD}>
         <h2 className={PANE_TITLE}>{t.tasksWaiting}</h2>
-        {loading ? <Spinner /> : <span className={cn(PANE_HINT, 'ms-auto')}>{t.openMeta.replace('{n}', String(open))}</span>}
+        {loading ? <Spinner /> : <span className={cn(PANE_HINT, 'ms-auto')}>{t.openMeta.replace('{n}', open)}</span>}
       </header>
       <div className={PANE_BODY}>
         {loading ? <TableSkeleton rows={3} columns={1} /> : tasks.length === 0 ? (

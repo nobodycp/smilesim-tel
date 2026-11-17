@@ -19,6 +19,11 @@ export class NoticesRepository {
     return this.uow.prisma.notice.count({ where });
   }
 
+  /** How many notices `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  noticeTotal(where: Prisma.NoticeWhereInput, take: number) {
+    return this.uow.prisma.notice.count({ where, orderBy: [...NEWEST_FIRST], take });
+  }
+
   /** Marks one unread notice of the account read, or every unread one when no id is given. */
   markRead(userId: string, id?: string) {
     return this.uow.prisma.notice.updateMany({ where: { userId, readAt: null, ...(id ? { id } : {}) }, data: { readAt: new Date() } });

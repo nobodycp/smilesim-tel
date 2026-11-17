@@ -31,8 +31,9 @@ export class ReportsRepository {
     });
   }
 
-  entryCount(where: Prisma.WalletEntryWhereInput) {
-    return this.uow.prisma.walletEntry.count({ where });
+  /** How many entries `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  entryCount(where: Prisma.WalletEntryWhereInput, take: number) {
+    return this.uow.prisma.walletEntry.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
   walletsOf(userIds: string[]) {

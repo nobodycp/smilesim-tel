@@ -26,8 +26,9 @@ export class WalletsRepository {
     return this.uow.prisma.walletEntry.findMany({ where, include: { user: true, actor: true }, orderBy: [...NEWEST_FIRST], take });
   }
 
-  countEntries(where: Prisma.WalletEntryWhereInput) {
-    return this.uow.prisma.walletEntry.count({ where });
+  /** How many entries `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  countEntries(where: Prisma.WalletEntryWhereInput, take: number) {
+    return this.uow.prisma.walletEntry.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
   /** Every entry the filter keeps, newest first, as the provider-operations report prices them. */

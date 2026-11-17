@@ -1,5 +1,5 @@
 import { NoticesQuery } from './notices.schemas';
-import { parseInput, after, cursorPosition, page, NOTICES_PAGE } from '../platform';
+import { parseInput, after, countUpTo, cursorPosition, page, NOTICES_PAGE } from '../platform';
 import { AUTH_STORE, type AuthStore } from '../auth';
 import { NoticesRepository } from './notices.repository';
 import { NoticeService } from './notice.service';
@@ -23,15 +23,15 @@ export class NoticeInboxService {
       ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
       ...(onlyUnread ? { readAt: null } : {}),
     };
-    const [rows, unread, total] = await Promise.all([
+    const [rows, unread, counted] = await Promise.all([
       this.repo.notices({ ...where, AND: after(position) }, size + 1),
       this.repo.noticeCount({ userId: actor.id, readAt: null }),
-      this.repo.noticeCount(where),
+      countUpTo((take) => this.repo.noticeTotal(where, take)),
     ]);
     const { items, nextCursor } = page(rows, size);
     return {
       unread,
-      total,
+      ...counted,
       items: items.map((row) => ({
         id: row.id,
         kind: row.kind,

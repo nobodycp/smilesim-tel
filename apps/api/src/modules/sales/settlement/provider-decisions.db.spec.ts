@@ -906,7 +906,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect((await queue('acc2', mine, 'approval')).map((row) => row.taskId)).toEqual([proposed.taskId]);
       expect((await queue('acc2', mine, 'decision')).map((row) => row.taskId)).toEqual([undecided.taskId]);
       const first = (await get('acc2', '/v1/provider-decisions')).body;
-      expect(Object.keys(first).sort()).toEqual(['items', 'nextCursor', 'total', 'totals']);
+      expect(Object.keys(first).sort()).toEqual(['items', 'nextCursor', 'total', 'totalCapped', 'totals']);
       expect(said(await get('acc2', '/v1/provider-decisions?waiting=everything'))).toBe('400 INVALID');
       expect(said(await get('acc2', '/v1/provider-decisions?cursor=not-a-cursor'))).toBe('400 INVALID');
       expect(Object.keys(rows[0]).sort()).toEqual(['action', 'blocked', 'canApprove', 'canRefuse', 'decisions', 'held', 'msisdn', 'packageName', 'phase', 'posLoginName', 'proposal', 'reason', 'submitterLoginName', 'taskId', 'waitingSince']);

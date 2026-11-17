@@ -29,8 +29,8 @@ export class AccountsService {
   async page(actor: Actor, input: UsersQuery = {}) {
     const filter = parseInput(UsersQuery, input);
     const { accounts, visible } = await this.visibleAccounts(actor);
-    const { items: page, nextCursor, total } = usersPage(visible, filter);
-    return { items: await this.present(actor, accounts, page), nextCursor, total };
+    const { items: page, nextCursor, ...total } = usersPage(visible, filter);
+    return { items: await this.present(actor, accounts, page), nextCursor, ...total };
   }
 
   private async visibleAccounts(actor: Actor) {
@@ -75,7 +75,7 @@ export class AccountsService {
     const byId = new Map(accounts.map((account) => [account.id, account]));
     // `mine` keeps the actor's own tree: what an account picker offers.
     const met = accounts.filter((account) => visible.has(account.id) || (!isOn(mine) && (chain.has(account.id) || account.layer === 'branch')));
-    const { items: page, nextCursor, total } = usersPage(met, filter, DIRECTORY_PAGE);
+    const { items: page, nextCursor, ...total } = usersPage(met, filter, DIRECTORY_PAGE);
     return {
       items: page.map((account) => {
         const mine = visible.has(account.id);
@@ -89,7 +89,7 @@ export class AccountsService {
         };
       }),
       nextCursor,
-      total,
+      ...total,
     };
   }
 

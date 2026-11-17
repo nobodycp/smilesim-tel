@@ -1,4 +1,4 @@
-import { encodeKeyCursor, keyCursor, normalizeArabic } from '../../platform';
+import { cappedTotal, encodeKeyCursor, keyCursor, normalizeArabic } from '../../platform';
 
 // The users list and the directory, paged by the server. The list is ordered by layer (branch, main agent, agent, point of sale)
 // and then by login name, the order the desk always drew; `q` matches the login or the full name, both sides read
@@ -44,5 +44,5 @@ export function usersPage<T extends Row>(rows: T[], filter: UsersFilter, size = 
   const from = start < 0 ? matching.length : start;
   const items = matching.slice(from, from + size);
   const last = items[items.length - 1];
-  return { items, nextCursor: from + size < matching.length && last ? cursorOf(last) : null, total: matching.length };
+  return { items, nextCursor: from + size < matching.length && last ? cursorOf(last) : null, ...cappedTotal(matching.length) };
 }

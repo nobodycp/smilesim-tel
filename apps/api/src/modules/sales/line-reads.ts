@@ -1,4 +1,4 @@
-import { parseInput, esimCodeOrFail, fail, after, cursorPosition, page, searchTerms, LINES_PAGE } from '../platform';
+import { parseInput, esimCodeOrFail, fail, after, countUpTo, cursorPosition, page, searchTerms, LINES_PAGE } from '../platform';
 import { esimCodeReaders } from '../tasks';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
@@ -47,10 +47,10 @@ export class LineReads {
     // The branch sees every point of sale: its own list sends no ids (database plan DB.10). Narrowed to one account,
     // it sends that account's.
     const where = linesWhere(actor.layer === 'branch' && !query.loginName ? null : posIds, query, periods, namedPackageIds);
-    const [rows, total, marks] = await Promise.all([
+    const [rows, counted, marks] = await Promise.all([
       // The cursor joins the filter instead of replacing its own conditions (the search sits under `AND` in it).
       this.repo.linesPage({ AND: [where, ...after(cursorPosition(query.cursor))] }, LINES_PAGE + 1),
-      this.repo.countLines(where),
+      countUpTo((take) => this.repo.countLines(where, take)),
       this.repo.markUrls(),
     ]);
     const { items, nextCursor } = page(rows, LINES_PAGE);
@@ -58,7 +58,7 @@ export class LineReads {
     // path and the points of sale reuse them instead of walking the tree again.
     const byId = accountsById(accounts);
     return {
-      total,
+      ...counted,
       items: items.map((row) => ({
         id: row.id,
         msisdn: row.msisdn,

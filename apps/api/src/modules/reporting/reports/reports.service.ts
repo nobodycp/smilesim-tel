@@ -1,5 +1,5 @@
 import { CursorQuery, PROVIDER_OPERATION_KINDS } from '../../wallets';
-import { parseInput, fail, after, capList, cursorPosition, page, FEED_PAGE } from '../../platform';
+import { parseInput, fail, after, capList, cappedTotal, countUpTo, cursorPosition, page, FEED_PAGE } from '../../platform';
 import { ReportsRepository } from './reports.repository';
 import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
@@ -25,7 +25,7 @@ export class ReportsService {
         lines: row._count.lines,
       })),
       nextCursor: null,
-      total: rows.length,
+      ...cappedTotal(rows.length),
     };
   }
 
@@ -42,13 +42,13 @@ export class ReportsService {
 
   private async entryReport(cursor: string | undefined, kinds?: string[]) {
     const where = kinds ? { kind: { in: kinds } } : {};
-    const [read, total] = await Promise.all([
+    const [read, counted] = await Promise.all([
       this.repo.entriesPage({ ...where, AND: after(cursorPosition(cursor)) }, FEED_PAGE + 1),
-      this.repo.entryCount(where),
+      countUpTo((take) => this.repo.entryCount(where, take)),
     ]);
     const { items: rows, nextCursor } = page(read, FEED_PAGE);
     return {
-      total,
+      ...counted,
       items: rows.map((row) => ({
         id: row.id,
         at: row.createdAt.toISOString(),

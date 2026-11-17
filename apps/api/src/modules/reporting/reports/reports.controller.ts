@@ -54,14 +54,14 @@ export class ReportsController {
   }
 
   @Get('reports/providers')
-  @ApiOperation({ summary: 'Every package by provider with its cost and its numbers ({ items, nextCursor, total }; branch, reports grant)' })
+  @ApiOperation({ summary: 'Every package by provider with its cost and its numbers ({ items, nextCursor, total, totalCapped }; branch, reports grant)' })
   @ApiErrorResponse(401, 403)
   providers(@Actor() actor: ActorShape) {
     return this.reports.providers(actor);
   }
 
   @Get('reports/operations')
-  @ApiOperation({ summary: 'One page of the provider operations ledger ({ items, nextCursor, total }; branch, reports grant)' })
+  @ApiOperation({ summary: 'One page of the provider operations ledger ({ items, nextCursor, total, totalCapped }; branch, reports grant)' })
   @ApiZodQuery(CursorQuery)
   @ApiErrorResponse(400, 401, 403)
   operations(@Actor() actor: ActorShape, @Query() query: CursorQuery) {

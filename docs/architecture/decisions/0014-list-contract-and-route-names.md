@@ -46,3 +46,18 @@ the caller's tree answered 403 where a missing one answered 404.
   an answer that carries `nextCursor` without `items`.
 - A client of the old shapes breaks at once (no compatibility layer): the web and its Playwright mocks moved in
   the same commits.
+
+## Amended by database plan DB.8 (2026-11-17): capped totals
+
+Owner, spec `2026-11-17-scale-speed-cleanup.md` decision 2 (section "Capped totals (DB.8)"). Counting a whole filter
+beside each page took seconds at scale (audit 2026-11-17: branch lines 3.5–5.9 s, finance 5.2–6.7 s).
+
+- **Envelope.** Every paged list answers `{ items, nextCursor, total, totalCapped }`. `total` is counted up to
+  10,000 (`TOTAL_CAP`); `totalCapped: true` says there are more and `total` is then 10,000. The web's `Page<Row>`
+  declares `totalCapped` optional and reads a missing one as `false`.
+- **One place counts.** `platform/paging.ts` (the module is `platform` now, not `shared`): `countUpTo` for a list read
+  from the database (a Prisma count with `take: cap + 1` in the page's order), `cappedTotal` for a count already in
+  hand, `keyPage` through it. Rule `list-total` (`architecture.spec.ts`) refuses a list answer that writes `total`
+  by hand.
+- Figures beside a list (`unread`, `totals`, `stats`) and counts that are not a list's total stay exact.
+

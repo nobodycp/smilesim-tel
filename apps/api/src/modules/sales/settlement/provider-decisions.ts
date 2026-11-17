@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Task, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import type { ErrorCode } from '../../platform';
-import { parseInput, cursorPosition, page, type Page, logger, ApiFailure, fail, UnitOfWork, PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE, esimCodeOrFail, storableEsimCode } from '../../platform';
+import { parseInput, cappedTotal, cursorPosition, page, type Page, logger, ApiFailure, fail, UnitOfWork, PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE, esimCodeOrFail, storableEsimCode } from '../../platform';
 import type { Actor } from '../../access';
 import type { WrittenNotice } from '../../notifications';
 import { refuseEntered, requireGrant } from '../../access';
@@ -179,7 +179,7 @@ export class ProviderDecisions {
   }
 
   /**
-   * The operations that wait for a person, a page at a time in the list contract (`{ items, nextCursor, total }`),
+   * The operations that wait for a person, a page at a time in the list contract (`{ items, nextCursor, total, totalCapped }`),
    * newest first by the time the operation was recorded: an order that never changes under the reader, so a walk
    * through the pages meets each waiting operation once. `waiting` keeps the ones with a proposal to answer, or
    * the ones nobody has decided on yet; `total` counts the part asked for and `totals` both, from the database and
@@ -206,8 +206,8 @@ export class ProviderDecisions {
         ...standing,
       }];
     });
-    const total = query.waiting ? counts[query.waiting] : counts.approval + counts.decision;
-    return { items, nextCursor, total, totals: counts };
+    const total = cappedTotal(query.waiting ? counts[query.waiting] : counts.approval + counts.decision);
+    return { items, nextCursor, ...total, totals: counts };
   }
 
   /** What both reads say of one operation: its state, the money, the open proposal and what this account may do. */

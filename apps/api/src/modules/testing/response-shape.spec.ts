@@ -35,8 +35,9 @@ const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName'
 // Speed plan PF.5: the tasks screen's tabs, one number per stored status (tasks/task-status.ts).
 const TASK_COUNTS_KEYS = ['working', 'done', 'rejected', 'cancelled'];
 // `poses` comes with the first page only (plan 2026-11-17-speed, PF.2): a page read on from a cursor has none.
-const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
-const LINES_LATER_KEYS = ['items', 'nextCursor', 'total'];
+// `totalCapped` beside `total` (database plan DB.8): every list's total is counted up to 10,000.
+const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total', 'totalCapped'];
+const LINES_LATER_KEYS = ['items', 'nextCursor', 'total', 'totalCapped'];
 // No `esimQr`: a list row never carries the eSIM code (ADR 0019, D17; plan slice S.5c). The detail does (below).
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'companyImage', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
 const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
@@ -91,7 +92,7 @@ const catalogPackage = {
 
 // The request log (system monitor M.2), branch owner only: the list's rows and envelope, and the summary.
 const REQUEST_ROW_KEYS = ['id', 'at', 'durationMs', 'method', 'route', 'path', 'status', 'code', 'actorLoginName', 'layer', 'operatorLoginName', 'ip', 'userAgent', 'requestId', 'bytesIn', 'bytesOut'];
-const REQUEST_LIST_KEYS = ['items', 'nextCursor', 'total'];
+const REQUEST_LIST_KEYS = ['items', 'nextCursor', 'total', 'totalCapped'];
 const REQUEST_SUMMARY_KEYS = ['count', 'refused', 'failed', 'errorRate', 'slowest', 'busiest'];
 const ROUTE_FIGURES_KEYS = ['method', 'route', 'calls', 'medianMs', 'p95Ms'];
 // The server errors (M.4): the grouped list, and what each clearing answers.
@@ -725,8 +726,9 @@ describeWeb('web types match the pinned shapes', () => {
     expect(declared(typeBody(source, 'RouteFigures'))).toEqual({ required: sorted(ROUTE_FIGURES_KEYS), optional: [] });
     expect(declared(typeBody(source, 'RequestLogSummary'))).toEqual({ required: sorted(REQUEST_SUMMARY_KEYS), optional: [] });
     expect(source).toContain('export type RequestLogPage = Page<RequestLogRow>;');
-    const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]);
-    expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS));
+    const pageKeys = [...(/export type Page<Row> = \{([^}]*)\}/.exec(source)?.[1] ?? '').matchAll(/(\w+)(\?)?:/g)].map((match) => match[1] + (match[2] ?? ''));
+    // `totalCapped` is optional on the web's side only: an answer without it (the Playwright mocks) reads as not capped.
+    expect(sorted(pageKeys)).toEqual(sorted(REQUEST_LIST_KEYS.map((key) => (key === 'totalCapped' ? 'totalCapped?' : key))));
   });
 
   it('the versions page: SystemVersions, VersionItem and VersionCycle (M.11)', () => {

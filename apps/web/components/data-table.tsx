@@ -234,6 +234,8 @@ export type PagedView<Row> = {
   key: string;
   all: Row[];
   total: number | null;
+  /** The server counted up to its cap and there are more (database plan DB.8): `total` is the cap. */
+  capped?: boolean;
   ready: boolean;
   hasNext: boolean;
   more: boolean;
@@ -281,8 +283,9 @@ export function PagedTable<Row>({
     setPage(1);
     setSortAll(false);
   }
-  // Without a server total, a pending cursor still counts as one more page so it can be asked for.
-  const held = list.all.length + (list.total === null && list.hasNext && pageSize !== 'all' ? pageSize : 0);
+  // Without a server total, or past a capped one (database plan DB.8), a pending cursor still counts as one more page
+  // so it can be asked for.
+  const held = list.all.length + ((list.total === null || list.capped) && list.hasNext && pageSize !== 'all' ? pageSize : 0);
   const count = Math.max(list.total ?? 0, held);
   const size = pageSize === 'all' ? Math.max(count, 1) : pageSize;
   const pageCount = Math.max(1, Math.ceil(count / size));
@@ -304,7 +307,7 @@ export function PagedTable<Row>({
   };
   const pager = list.ready && shouldShowPagination({ count, pageSize, onPageSizeChange: choose }) ? (
     <div className={PAGER} data-testid="table-pager">
-      <Pagination page={current} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={choose} />
+      <Pagination page={current} pageSize={pageSize} count={count} moreThan={list.capped && list.hasNext ? Math.max(list.total ?? 0, list.all.length) : undefined} onPageChange={setPage} onPageSizeChange={choose} />
     </div>
   ) : null;
   return (

@@ -70,8 +70,9 @@ export class RequestLogRepository {
     return this.uow.prisma.requestLog.findMany({ where: { id: { in: ids } }, orderBy: NEWEST, take });
   }
 
-  count(filter: RequestFilter) {
-    return this.uow.prisma.requestLog.count({ where: whereOf(filter) });
+  /** How many rows the filter holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
+  count(filter: RequestFilter, take: number) {
+    return this.uow.prisma.requestLog.count({ where: whereOf(filter), orderBy: NEWEST, take });
   }
 
   /** How many rows the filter holds, how many were refused (4xx) and how many failed (5xx): counted by the database. */

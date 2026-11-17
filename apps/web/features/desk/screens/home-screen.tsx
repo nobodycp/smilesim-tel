@@ -14,6 +14,7 @@ import { api } from '../../../lib/api';
 import { useDesk } from '../../../lib/desk-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
+import { listTotal } from '../../../lib/list-total';
 import { useGreeting } from '../../../lib/greeting';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -103,7 +104,7 @@ export function HomeScreen() {
       {branch ? null : (
         <div className="grid grid-cols-1 items-start gap-3 min-[1000px]:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" data-testid="home-top-row">
           <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
-          <WaitingTasks tasks={waiting.data?.items ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
+          <WaitingTasks tasks={waiting.data?.items ?? []} open={home ? String(home.openTasks) : waiting.data ? listTotal(t, waiting.data.total, waiting.data.totalCapped) : '0'} loading={!waiting.data && !waiting.error} />
         </div>
       )}
       {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F), with

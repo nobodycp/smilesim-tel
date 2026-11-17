@@ -23,6 +23,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
+import { listTotal } from '../../../lib/list-total';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { operationTone, taskTone } from '../../../lib/status-tone';
 import { useDesk } from '../../../lib/desk-session';
@@ -188,7 +189,7 @@ export function TasksScreen() {
           <Link href="/tasks/decisions">
             {t.decQueueLink}
             {/* The count is the API's total of the whole queue, not the size of the page it answered. */}
-            {waiting.data && waiting.data.total > 0 ? <Badge variant="warning">{waiting.data.total}</Badge> : null}
+            {waiting.data && waiting.data.total > 0 ? <Badge variant="warning">{listTotal(t, waiting.data.total, waiting.data.totalCapped)}</Badge> : null}
           </Link>
         </Button>
       ) : undefined}
