@@ -323,6 +323,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.4b | **The backfill at HEAD** (`cli/provider-ledger-backfill.ts`, ADR 0025 amendment): the server deploys `main` once, so the command must exist in the release it runs on. It gives every operation entry its line's package's provider (moving the ones P.2's name matching gave to another provider), fills a missing cost by today's writer rule, and validates the CHECK. The overview's top providers read the stored provider. | done |
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | done |
+| P.8 | **Branch losses in the profit figures** (owner, 2026-11-17): the losses show on the home and are subtracted from the branch's profit on the home, the profit report and the finance summary. Section "Branch losses in the profit figures (DB.5 P.8)" below. | open |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
 (the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
@@ -585,9 +586,70 @@ new fields.
 ### For the owner
 
 - Should the home's and the profit report's branch profit subtract these losses (today they are sales figures:
-  they do not move)?
+  they do not move)? **Answered 2026-11-17: yes — section "Branch losses in the profit figures (DB.5 P.8)" below.**
 - A given-back operation's cost is the package's price at the approval; if the provider's price changed between its
   success and the approval, the difference is a settlement entry (answer 1).
+
+## Branch losses in the profit figures (DB.5 P.8)
+
+The owner (2026-11-17, answering P.7's question): «الخسارة تبيّن في الداش بورد عندي خسائر، وتنطرح من الربح أكيد».
+A marked operation (`providerLoss` not null, P.7) is a loss of the branch: the branch sees it on the home as a loss,
+and every profit figure of the branch is net of it.
+
+### The rule
+
+**For the branch viewer, a profit figure over a period is the sum of `branchMargin` over the period's sales and
+refunds plus the sum of `branchMargin` over the period's marked operations** (each stores − its provider cost, P.7).
+A marked operation stays **not a sale**: it adds nothing to a count of sales, a volume, the activations or the
+refunds. For any other layer nothing changes and nothing is told: a marked row has no chain ids, so it is in no lower
+layer's sums, and the new fields below are null for them.
+
+The date of a loss is its entry's `createdAt` (the approval of the give-back; the operation's own time for a sale
+priced 0), the same instant its row shows in the finance list.
+
+### Where
+
+| Read | Today | P.8 |
+|---|---|---|
+| `GET /v1/overview` (home) | `sales.profit`, `sales.trend[].profit`, `pulse.current/previous/trend[].profit`, the profit of `top.packages/companies/providers`: sales and refunds only | each net of the losses of its period, bucket or group (a loss is grouped by the package name, the company name and the provider its row stores; a group with losses and no sale appears with count 0). New **`sales.losses`**: `{ count, amount }` for the branch (the period's marked operations and what they cost, `amount` positive agorot), `null` for another layer. `PulseTotals` gains **`losses`** (the amount, positive; 0 for another layer) so the tile and its change read one object. |
+| `GET /v1/finance/profits` and its CSV | per package and totals: sales and refunds | for the branch each package's `profit` is net of its losses and each row and the totals gain **`losses`** (a count) and **`lossAmount`** (positive agorot); a package with losses and no sale is a row. For another layer both are 0. Same filters (`from`, `to`, `q`). The CSV gains the two columns **for the branch only**. |
+| `GET /v1/finance/summary` | `profit` over the window: sales and refunds | net for the branch; new **`losses`**: `{ count, amount }` for the branch, `null` otherwise. |
+| The providers report, the provider's books, the finance list's margin column | already count it (P.7) | unchanged |
+
+So one figure wherever the branch reads its profit: the home's top providers and the providers report now agree.
+
+### How it is read
+
+A second read beside the sales read, added in Node: the sales read keeps its predicate, so it keeps the partial
+sales index (`WalletEntry_sale_or_refund_createdAt_id`); an `OR` in one statement would lose it. The losses read is
+`WHERE "providerLoss" IS NOT NULL` and the period, grouped in SQL (the home: by the finer of the trend's bucket and
+the day, with the package, company and provider; the report: by company and package; the summary: one sum). Marked
+rows are few by nature (each is a fault the office is meant to remove), and a partial index
+**`WalletEntry_loss_createdAt`** on (`createdAt` DESC) `WHERE "providerLoss" IS NOT NULL` (one migration) serves the
+period whatever the table's size. The read runs **for the branch only**: no statement is added to another layer's
+home. Nothing is added to a write: the sale path's statements under the wallet lock stay 11 and 12.
+
+No old row changes: P.7's backfill already stores `branchMargin` on each marked row.
+
+### Web (branch only)
+
+- **Home, the profit tile:** the figure is the net profit (as answered). Its meta line, which reads the period's name
+  today, reads for the branch the period and the losses: «{period} · خسائر: {n} بقيمة {amount}» in the danger tone
+  and a link to «عمليات المزودين» filtered on the marked operations (`/provider-operations?loss=any`) when there are
+  any, and «{period} · لا خسائر» muted when none. No new tile: the band keeps its three.
+- **الأرباح (the profit report):** for the branch a column «خسائر» (the count, danger when above 0) and, under the
+  profit figure's stat, the losses of the period (count and amount). Another layer's page is as it is.
+- **المالية:** the summary's profit is net; no new element (the section's rearrangement is an open item).
+- Copy in ar / en / he; existing tokens and components only.
+
+### Proof
+
+`reporting/desk` and `wallets` db specs: with one sale and one marked operation in the period, the branch's home
+profit, its bucket of the trend, its package/company/provider group, the report's row and totals and the summary's
+profit are each the sale's margin minus the cost, the counts and volumes unchanged; the previous period carries a loss
+dated in it; a main agent's, agent's and point of sale's figures are unchanged and their new fields null / 0; the
+index is used (`EXPLAIN`, as the stored-margins indexes are proven). `response-shape.spec.ts` pins the new fields.
+`sale-lock-tree.db.spec.ts` unchanged.
 
 ## Stored margin an entry (DB.12)
 
