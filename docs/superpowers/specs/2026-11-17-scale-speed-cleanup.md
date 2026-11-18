@@ -324,6 +324,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | done |
 | P.8 | **Branch losses in the profit figures** (owner, 2026-11-17): the losses show on the home and are subtracted from the branch's profit on the home, the profit report and the finance summary. Section "Branch losses in the profit figures (DB.5 P.8)" below. | done |
+| P.9 | **A given-back operation charged later** (owner, 2026-11-18): a button on the marked operation charges the point of sale its price; the warning goes and the profit is put right. Section "A given-back operation charged later (DB.5 P.9)" below. | open |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
 (the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
@@ -588,7 +589,9 @@ new fields.
 - Should the home's and the profit report's branch profit subtract these losses (today they are sales figures:
   they do not move)? **Answered 2026-11-17: yes — section "Branch losses in the profit figures (DB.5 P.8)" below.**
 - A given-back operation's cost is the package's price at the approval; if the provider's price changed between its
-  success and the approval, the difference is a settlement entry (answer 1).
+  success and the approval, the difference is a settlement entry (answer 1). **Answered 2026-11-18: accepted; the
+  office charges the point of sale again when it sees the warning — section "A given-back operation charged later
+  (DB.5 P.9)".**
 
 ## Branch losses in the profit figures (DB.5 P.8)
 
@@ -650,6 +653,77 @@ profit are each the sale's margin minus the cost, the counts and volumes unchang
 dated in it; a main agent's, agent's and point of sale's figures are unchanged and their new fields null / 0; the
 index is used (`EXPLAIN`, as the stored-margins indexes are proven). `response-shape.spec.ts` pins the new fields.
 `sale-lock-tree.db.spec.ts` unchanged.
+
+## A given-back operation charged later (DB.5 P.9)
+
+The owner (2026-11-18): an operation whose money went back to the point of sale after the provider carried it out
+can be charged again, and that is the fix; the office needs the warning that an operation was not charged (P.7's
+mark, P.8's line on the home). A plain manual deduction would leave the mark and the loss in place, because nothing
+ties it to the operation. So the charge is made **from the marked operation itself** (approved: «اقتراحك ممتاز امشي
+عليه»).
+
+### The action
+
+`POST /v1/provider-operations/:entryId/charge` — the branch only, with the grant the manual deduction of an account
+asks (`wallets/:loginName/deduct`), recorded in the activity log. No body: nothing is chosen.
+
+- **Which rows:** an entry marked `given_back`. A row marked `priced_zero` is refused (400 `INVALID`): its price was
+  0 by the price list, there is no amount to charge; the fix there is the price. An unmarked row, or one already
+  charged, is refused (409 `DUPLICATE_REQUEST`).
+- **The amount:** exactly what the task held and gave back (the package price the marked row stores, with the eSIM
+  fee when the task was an eSIM one). If the marked row does not store enough to know it, the slice stores it at the
+  give-back (and the backfill for old rows); the amount is never typed.
+- **The rule of any sale:** the debit goes through `WalletLedger.move` on the point of sale's wallet — the wallet
+  lock, the held money, the ceiling (`BALANCE_CEILING` refuses it as it refuses a sale; the branch funds the account
+  first), the notice when the balance goes below zero.
+
+### What is written (one transaction)
+
+1. **The charge entry**, a sale: `kind` `activate`, `amount` − the amount, on the point of sale's wallet, the marked
+   row's number, package, company and price, `actorId` the operator, a fixed note (a constant, as
+   `PROVIDER_RELEASED_NOTE` is), **`chargesEntryId`** the marked row's id (new nullable column, a unique partial index
+   `WalletEntry_charges_entry`: the database refuses a second charge of one operation). Its provider is the marked
+   row's, its **`providerCost` 0**: the provider was paid once and that purchase is the marked row, at its own date —
+   the provider's books do not move. Its ladder is the sale's ladder on the point of sale's path now (read before the
+   transaction, confirmed under the wallet lock as every sale's is), at the package's prices now, **with the
+   provider's cost at the branch 0**, so `marginOf` gives every layer below the branch its usual margin and the
+   branch its sell price; the seven margin columns are that ladder's projection, as on every sale (ADR 0026's
+   invariant holds unchanged).
+2. **The mark** of the operation's row turns `given_back` → **`charged_later`** (`UPDATE … WHERE id AND
+   "providerLoss" = 'given_back'`, one row or 409), after the wallet lock is held. Only the mark changes: no money
+   column of the row is touched (its purchase and its `branchMargin` = − cost stay).
+
+So the sums are right with no rule of their own: the operation's row − cost, the charge row + the branch's sell
+price: together the margin an ordinary sale of that package gives the branch, each at its own date; the lower layers
+earn on the charge as on any sale; the provider's purchases count the cost once.
+
+### What `charged_later` changes in the reads
+
+A row marked `charged_later` is **no longer a loss to chase**: the counts and amounts that warn (`sales.losses` and
+`PulseTotals.losses` on the home, the profit report's `losses` / `lossAmount`, the finance summary's `losses`,
+`provider-operations` `stats.losses`, the provider summaries' `losses`, the filter `loss=any`) read only
+`given_back` and `priced_zero`. Its `branchMargin` **stays in every profit sum** (P.8's losses read keeps summing
+the margin of every marked row; it counts and prices only the open ones). The CHECK `WalletEntry_provider_loss` takes
+the third value. The filters gain `loss=charged_later`.
+
+### Web (branch only)
+
+- «عمليات المزودين»: on a row marked «خسارة: أُعيد المبلغ» a button «خصم المبلغ من نقطة البيع»; a confirmation that
+  names the point of sale, the number, the package and the amount, and says it is charged now; on success the row's
+  badge reads «خُصم لاحقاً» (neutral, not danger) and the lists and the home refresh. A refusal shows the API's
+  message (ceiling: fund the account first). The filter gains «خُصم لاحقاً».
+- «المالية» and the provider's ledger show the new badge; the button lives in «عمليات المزودين» only (where the
+  home's warning leads).
+- Copy ar / en / he; existing components (`ConfirmDialog` or the screen's own confirm pattern, `Badge`).
+
+### Proof
+
+A db spec: a given-back operation charged — the point of sale's balance falls by the amount; the charge entry's
+columns, ladder and margins; the mark; the provider's purchases unchanged; the branch's profit over both dates is the
+ordinary sale's margin; the home's and the report's losses no longer count it while their profit still holds − cost
+at the first date; a second charge is refused (409) and so is a concurrent one (two at once: one entry); `priced_zero`
+and an unmarked row refused; a debit over the ceiling refused and nothing written; another layer refused (403).
+`response-shape.spec.ts`, `marginBreaks` on the result, `sale-lock-tree.db.spec.ts` unchanged.
 
 ## Stored margin an entry (DB.12)
 
