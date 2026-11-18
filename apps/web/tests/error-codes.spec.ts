@@ -9,5 +9,5 @@ test('a page error in English follows the code, not the Arabic message', async (
     'GET /users': () => ({ body: { message: 'نص عربي لم يُترجم بعد', code: 'FORBIDDEN' }, status: 403 }),
   });
   await page.goto(`${admin}/users`);
-  await expect(page.getByTestId('load-failed-message')).toHaveText('Not allowed');
+  await expect(page.getByTestId('load-failed-message')).toHaveText('You do not have permission for this action');
 });
