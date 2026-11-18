@@ -43,8 +43,12 @@ suite('the worker heartbeat in PostgreSQL', () => {
     expect(first?.nodeVersion).toBe(process.version);
     const [{ now }] = await prisma.$queryRaw<{ now: Date }[]>`SELECT now() AS "now"`;
     expect(Math.abs(now.getTime() - (first?.beatAt.getTime() ?? 0))).toBeLessThan(5_000);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    const later = await row();
+    // The timer's next beat, however long its statements take on this machine (a beat may open a connection of its
+    // own: on CI one was still in flight after a fixed 600 ms). Waited for, at most 5 s; never assumed.
+    let later = await row();
+    for (const until = Date.now() + 5_000; Date.now() < until && (later?.beatAt.getTime() ?? 0) <= (first?.beatAt.getTime() ?? 0); later = await row()) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     expect(later?.beatAt.getTime()).toBeGreaterThan(first?.beatAt.getTime() ?? 0);
     expect(later?.startedAt.getTime()).toBe(first?.startedAt.getTime());
     await heartbeat.stop();
