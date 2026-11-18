@@ -1,6 +1,6 @@
 // The shared page tools (useLoad, usePaged, useAction, useRequireLayer, DataTable, EmptyState, lineActions)
 // have no React harness of their own, so they are exercised through the real pages that use them.
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { chooseOption, serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
@@ -17,6 +17,12 @@ const line = (id: string, status = 'active', extra = {}) => ({
   packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم', posLoginName: 'pos', posPrice: 26,
   createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z', ...extra,
 });
+
+/**
+ * A page's error is held in the system messages under the top bar, not drawn in the page (9c88e4a8, owner
+ * 2026-11-17: one place, always in view). Each error there is an `alert`; its words are the toast's paragraph.
+ */
+const pageErrors = (page: Page) => page.getByRole('region', { name: 'رسائل النظام' }).getByRole('alert').locator('p');
 
 const account = (id: string, msisdn: string) => ({
   id, at: '2026-10-02T10:30:00.000Z', msisdn, companyName: 'سلكوم', packageName: '400 جيجا',
@@ -158,7 +164,7 @@ test.describe('usePaged', () => {
     const failed = page.getByTestId('audit-pane').getByTestId('load-failed');
     await expect(failed).toContainText('بيانات غير صالحة');
     await expect(failed.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
-    await expect(page.getByTestId(/^(error|banner)$/)).toHaveCount(0);
+    await expect(pageErrors(page)).toHaveCount(0);
     await expect(page.getByTestId('table-skeleton')).toHaveCount(0);
     await chooseOption(page.getByLabel('الحدث'), 'extend');
     await expect(page.getByTestId('load-failed')).toHaveCount(0);
@@ -227,7 +233,7 @@ test.describe('useAction and lineActions', () => {
       await expect(dialog).toHaveCount(0);
     };
     await disconnect();
-    await expect(page.getByTestId(/^(error|banner)$/)).toHaveText('بيانات غير صالحة');
+    await expect(pageErrors(page)).toHaveText('بيانات غير صالحة');
     await disconnect();
     await expect.poll(() => tries).toBe(2);
   });
