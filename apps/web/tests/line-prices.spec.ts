@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pickName, serveApi, type Routes } from './desk';
+import { serveApi, type Routes } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -215,8 +215,8 @@ test('the package sheet opens the table for the whole system and then for one ac
   // Opening it again for an account reads that account's table, not the one just closed.
   await dialog.getByRole('button', { name: 'إلغاء' }).click();
   await expect(dialog).toHaveCount(0);
-  await pickName(block.getByRole('combobox'), 'pos1', /pos1 \(نقطة بيع\)/);
-  await block.getByRole('button', { name: 'عرض الأرقام' }).click();
+  // One account is its row's «تعديل السعر»; the tab has no account field any more (6c98c6ef, P.3).
+  await block.locator('tbody tr').filter({ hasText: 'pos1' }).getByRole('button', { name: 'تعديل السعر' }).click();
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
   await expect(dialog.getByRole('button', { name: 'اتباع السعر الحالي (32.00 ₪)' })).toBeVisible();
   expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
