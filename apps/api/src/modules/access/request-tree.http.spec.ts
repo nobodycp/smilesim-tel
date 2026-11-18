@@ -120,7 +120,8 @@ describe('ActorInterceptor shares the tree within a GET only', () => {
       const second = await this.tree.accounts();
       // Work the handler leaves behind runs after the request: it reads afresh.
       later = new Promise((resolve) => setTimeout(() => void this.tree.accounts().then((list) => resolve(list.length)), 5));
-      return { first: first.length, second: second.length };
+      // The reads so far are told by the handler itself: the work left behind may run before the caller has the answer.
+      return { first: first.length, second: second.length, reads: table.reads };
     }
 
     /** As an account-changing route does: reads, writes an account, reads again. */
@@ -158,12 +159,11 @@ describe('ActorInterceptor shares the tree within a GET only', () => {
   const http = () => request(app.getHttpServer());
 
   it('a GET reads the tree once however often its handler asks; the next GET reads it again', async () => {
-    expect((await http().get('/probe/tree').set('Cookie', `sid=${session}`)).body).toEqual({ first: 2, second: 2 });
-    expect(table.reads).toBe(1);
+    expect((await http().get('/probe/tree').set('Cookie', `sid=${session}`)).body).toEqual({ first: 2, second: 2, reads: 1 });
     expect(await later).toBe(2);
     expect(table.reads).toBe(2);
-    await http().get('/probe/tree').set('Cookie', `sid=${session}`);
-    expect(table.reads).toBe(3);
+    // The next GET reads once more, whatever its own left-behind work has done by the time it answers.
+    expect((await http().get('/probe/tree').set('Cookie', `sid=${session}`)).body).toEqual({ first: 2, second: 2, reads: 3 });
   });
 
   it('a write route sees the account it wrote: it reads the tree afresh after its write', async () => {
@@ -174,6 +174,6 @@ describe('ActorInterceptor shares the tree within a GET only', () => {
   it('a GET after a write sees the write', async () => {
     await http().get('/probe/tree').set('Cookie', `sid=${session}`);
     await http().post('/probe/tree').set('Cookie', `sid=${session}`);
-    expect((await http().get('/probe/tree').set('Cookie', `sid=${session}`)).body).toEqual({ first: 3, second: 3 });
+    expect((await http().get('/probe/tree').set('Cookie', `sid=${session}`)).body).toMatchObject({ first: 3, second: 3 });
   });
 });

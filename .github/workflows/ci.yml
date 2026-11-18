@@ -94,7 +94,9 @@ jobs:
         working-directory: apps/api
       # One file at a time: every db spec shares this one database, and the branch's figures are whole-database
       # reads (the overview, the desk), so two files writing sales or lines at once change each other's counts.
-      - run: npm test --workspace api -- --runInBand '\.db\.spec\.ts$'
+      # --forceExit: in band there is no worker for jest to kill, and a handle a spec leaves open (a pool, a Redis
+      # client) kept the process alive after every test had passed until the job's time limit cancelled it.
+      - run: npm test --workspace api -- --runInBand --forceExit '\.db\.spec\.ts$'
 
   # Playwright runs the web app against a mock api in a real browser.
   # continue-on-error is deliberate for now: these tests have never run in CI, and a browser,
