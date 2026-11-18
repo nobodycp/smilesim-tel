@@ -17,8 +17,16 @@ test('the sidebar foot holds the account, which opens the profile, and signing o
 // «المحفظة» (spec 2026-11-09, 4): the balance chip is a link to the wallet page, also in the account menu.
 test('the wallet chip opens the wallet page, and Escape on the notices gives the focus back', async ({ page }) => {
   // An agent: the branch has no wallet (spec 2026-11-09-admin-review, 7).
+  // The wallet page reads the summary for its head. Unanswered, the mock's 404 is the page's error, and since 9c88e4a8
+  // a page's error is held as a toast under the top bar, over the «شحن الرصيد» button this test presses.
   await serveApi(page, 'agent', {
     'GET /home': () => home,
+    'GET /finance/summary': () => ({
+      body: {
+        balance: 5000, ceiling: 0, held: 0, unlimited: false, moneyIn: 5000, moneyOut: 0, count: 1, manual: 1, days: 30, profit: 0, sales: 0, losses: null,
+        series: [{ day: '2026-11-07', balance: 0 }, { day: '2026-11-08', balance: 5000 }],
+      },
+    }),
     'GET /ledger': () => ({ body: { items: [{ id: 'e1', at: '2026-11-08T10:00:00.000Z', kind: 'fund', amount: 5000, balanceBefore: 0, balanceAfter: 5000, note: 'إيداع', packageName: null, msisdn: null, actorLoginName: 'admin', loginName: 'admin', layer: 'branch', margin: null }], nextCursor: null, total: 1 } }),
   });
   const session = page.waitForResponse((response) => response.url().endsWith('/v1/me'));
