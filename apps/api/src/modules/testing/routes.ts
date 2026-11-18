@@ -86,6 +86,7 @@ export const ROUTES: RouteRow[] = [
   ['PATCH', '/v1/reconciliation-items/ID1', ['provider_reconcile_item', 'provider', 'ID1']],
   ['GET', '/v1/reconciliations/ID1', null],
   ['GET', '/v1/provider-operations', null],
+  ['POST', '/v1/provider-operations/ID1/charge', ['provider_charge', 'entry', 'ID1']],
   ['GET', '/v1/providers', null],
   ['PATCH', '/v1/providers/CODE1/esim-price', ['provider_esim_price', 'provider', 'CODE1']],
   ['GET', '/v1/providers/CODE1/catalog/companies', null],

@@ -35,7 +35,7 @@ export { normalizeArabic } from './normalize-arabic';
 export { asciiDigits, searchTerms } from './search';
 export type { SearchTerms } from './search';
 export { isSealed, open, seal, secretsKey } from './secret-box';
-export { BRANCH_TASK_NOTE, HANDLER_FROZEN_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from './stored-text';
+export { BRANCH_TASK_NOTE, HANDLER_FROZEN_NOTE, PROVIDER_CHARGED_LATER_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from './stored-text';
 export { UnitOfWork, transaction } from './unit-of-work';
 export type { Db } from './unit-of-work';
 export { LAYER_ORDER } from './values';

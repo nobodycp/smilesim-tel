@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, NEWEST_FIRST } from '../platform';
 import type { MarginView } from './stored-margins';
+import { OPEN_LOSSES } from './provider-cost';
 
 /**
  * The database as this domain reads and writes it: wallets and wallet entries as the finance pages read them. One method per query, named for what it
@@ -43,10 +44,11 @@ export class WalletsRepository {
 
   /**
    * How many operations each provider was paid for and the point of sale was not charged for (spec DB.5 P.7): the
-   * marked entries, by provider, read from the partial index `WalletEntry_provider_loss`.
+   * entries still open (a given-back one charged later is not, P.9), by provider, read from the partial index
+   * `WalletEntry_provider_loss`.
    */
   providerLosses() {
-    return this.uow.prisma.walletEntry.groupBy({ by: ['providerId'], where: { providerLoss: { not: null } }, _count: { _all: true } });
+    return this.uow.prisma.walletEntry.groupBy({ by: ['providerId'], where: { providerLoss: { not: null, in: [...OPEN_LOSSES] } }, _count: { _all: true } });
   }
 
   /** What one provider's operation entries stored as cost, up to an instant (inclusive), or ever when there is none. */
@@ -58,7 +60,7 @@ export class WalletsRepository {
   operationsAtProviders(where: Prisma.WalletEntryWhereInput, take: number | undefined) {
     return this.uow.prisma.walletEntry.findMany({
       where,
-      select: { id: true, createdAt: true, kind: true, msisdn: true, companyName: true, packageName: true, providerId: true, providerCost: true, esimPrice: true, providerLoss: true },
+      select: { id: true, userId: true, createdAt: true, kind: true, msisdn: true, companyName: true, packageName: true, packagePrice: true, providerId: true, providerCost: true, esimPrice: true, providerLoss: true },
       orderBy: [...NEWEST_FIRST],
       ...(take === undefined ? {} : { take }),
     });
@@ -93,11 +95,12 @@ export class WalletsRepository {
 
   /**
    * The operations marked as the branch's loss the filter keeps (spec DB.5 P.8), by company and package: how many,
-   * the `branchMargin` they store (− their cost) and the newest. Served by `WalletEntry_loss_createdAt`.
+   * the `branchMargin` they store (− their cost) and the newest, by mark too: a given-back one charged later (P.9)
+   * keeps its margin in the profit and is no longer a loss to count. Served by `WalletEntry_loss_createdAt`.
    */
   lossGroups(where: Prisma.WalletEntryWhereInput) {
     return this.uow.prisma.walletEntry.groupBy({
-      by: ['companyName', 'packageName'],
+      by: ['companyName', 'packageName', 'providerLoss'],
       where: { AND: [{ providerLoss: { not: null } }, where] },
       _count: { _all: true },
       _sum: { branchMargin: true },
@@ -105,9 +108,32 @@ export class WalletsRepository {
     });
   }
 
-  /** The operations marked as the branch's loss since a moment: how many and the `branchMargin` they store (spec DB.5 P.8). */
+  /**
+   * The operations marked as the branch's loss since a moment, by mark: how many and the `branchMargin` they store
+   * (spec DB.5 P.8; P.9 tells the open marks from the ones charged later).
+   */
   lossTotal(since: Date) {
-    return this.uow.prisma.walletEntry.aggregate({ where: { providerLoss: { not: null }, createdAt: { gte: since } }, _count: { _all: true }, _sum: { branchMargin: true } });
+    return this.uow.prisma.walletEntry.groupBy({ by: ['providerLoss'], where: { providerLoss: { not: null }, createdAt: { gte: since } }, _count: { _all: true }, _sum: { branchMargin: true } });
+  }
+
+  /** A marked operation's entry as its charge reads it (spec DB.5 P.9), or null. */
+  markedEntry(id: string) {
+    return this.uow.prisma.walletEntry.findUnique({
+      where: { id },
+      select: { id: true, userId: true, kind: true, providerLoss: true, msisdn: true, companyName: true, packageName: true, packagePrice: true, esimPrice: true, providerId: true, user: { select: { loginName: true } } },
+    });
+  }
+
+  /**
+   * The packages a marked operation's entry names (no line was made): its provider's, by the package's and the
+   * company's name the entry stores. At most two, so the caller can tell one from several.
+   */
+  packagesNamed(providerId: string, packageName: string, companyName: string) {
+    return this.uow.prisma.package.findMany({
+      where: { providerId, name: packageName, ...(companyName ? { company: { name: companyName } } : { companyId: null }) },
+      select: { code: true },
+      take: 2,
+    });
   }
 
   /** The sales and refunds the filter keeps, by kind: how many and the viewer's stored margin (`margin`). */

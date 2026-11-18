@@ -34,6 +34,13 @@ export type Sale = {
    * Not stored: the ledger confirms it under the wallet lock and builds the entry's ladder on it (DB.9, ADR 0023).
    */
   path?: PathNode[];
+  /**
+   * Set only by the charge of a given-back operation (spec DB.5 P.9, ADR 0027): the marked row this sale charges
+   * (stored as `chargesEntryId`, one charge per operation by the unique index `WalletEntry_charges_entry`) and the
+   * package the ladder is built on, since no line was made. The ladder then counts the provider's cost at the branch
+   * as 0: the provider was paid once, on the marked row.
+   */
+  charges?: { entryId: string; packageCode: string };
 };
 
 type SoldPackage = { name: string; posPrice: number; company: { name: string } | null; providerId: string };

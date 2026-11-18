@@ -209,10 +209,11 @@ suite('the branch\'s losses in its profit figures (PostgreSQL)', () => {
       const plan = async (sql: string) => (await tx.$queryRawUnsafe<{ 'QUERY PLAN': string }[]>(`EXPLAIN (COSTS OFF) ${sql}`)).map((row) => row['QUERY PLAN']).join('\n');
       const since = `'${dayStart.toISOString()}'::timestamp`;
       plans = [
-        // The home's read (`lossesByBucket`), the summary's (`lossTotal`) and the report's (`lossGroups`), in their shape.
-        await plan(`SELECT to_char("createdAt", 'YYYY-MM-DD') AS at, "packageName", "companyName", "providerId", count(*), sum("branchMargin") FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL AND "createdAt" >= ${since} GROUP BY 1, 2, 3, 4`),
-        await plan(`SELECT count(*), sum("branchMargin") FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL AND "createdAt" >= ${since}`),
-        await plan(`SELECT "companyName", "packageName", count(*), sum("branchMargin"), max("createdAt") FROM "WalletEntry" WHERE ("providerLoss" IS NOT NULL AND "createdAt" >= ${since} AND "createdAt" <= now()) GROUP BY 1, 2`),
+        // The home's read (`lossesByBucket`), the summary's (`lossTotal`) and the report's (`lossGroups`), in their shape
+        // (since P.9 each tells the open marks from the ones charged later: a FILTER, or the mark as a group key).
+        await plan(`SELECT to_char("createdAt", 'YYYY-MM-DD') AS at, "packageName", "companyName", "providerId", count(*) FILTER (WHERE "providerLoss" IN ('given_back', 'priced_zero')), -sum("branchMargin") FILTER (WHERE "providerLoss" IN ('given_back', 'priced_zero')), sum("branchMargin") FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL AND "createdAt" >= ${since} GROUP BY 1, 2, 3, 4`),
+        await plan(`SELECT "providerLoss", count(*), sum("branchMargin") FROM "WalletEntry" WHERE "providerLoss" IS NOT NULL AND "createdAt" >= ${since} GROUP BY 1`),
+        await plan(`SELECT "companyName", "packageName", "providerLoss", count(*), sum("branchMargin"), max("createdAt") FROM "WalletEntry" WHERE ("providerLoss" IS NOT NULL AND "createdAt" >= ${since} AND "createdAt" <= now()) GROUP BY 1, 2, 3`),
       ];
       throw rollback;
     }, { timeout: 30_000 }).catch((error: unknown) => {

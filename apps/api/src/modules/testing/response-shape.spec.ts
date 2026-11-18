@@ -731,6 +731,13 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toMatch(/export type ProviderOpStats = \{[^}]*\blosses\?: number[^}]*\};/);
   });
 
+  // Spec DB.5 P.9: a given-back operation charged later (`wallets/charged-later.db.spec.ts` pins what the API answers).
+  it('the charge of a given-back operation: the row\'s account and what charging it takes on ProviderOpRow', () => {
+    expect(PROVIDER_LOSSES).toContain('charged_later');
+    expect(typeBody(source, 'ProviderOpRow')).toMatch(/\n {2}loginName: string;/);
+    expect(typeBody(source, 'ProviderOpRow')).toMatch(/\n {2}chargeAmount: number \| null;/);
+  });
+
   // Spec DB.5 P.8: the branch's losses in its profit figures (`reporting/desk/branch-losses.db.spec.ts` pins what the
   // API answers, for the branch and for every lower layer).
   it('the branch\'s losses: LossTotals, PulseTotals, the overview\'s sales, ProfitRow, ProfitReport and FinanceSummary', () => {

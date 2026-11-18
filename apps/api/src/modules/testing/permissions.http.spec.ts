@@ -99,6 +99,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['PATCH /v1/reconciliation-items/ID1', 'ynynnn'],
   ['GET /v1/reconciliations/ID1', 'ynynnn'],
   ['GET /v1/provider-operations', 'ynynnn'],
+  ['POST /v1/provider-operations/ID1/charge', 'yyynnn'], // spec DB.5 P.9: the branch, with the grant the manual deduction asks (accounting not checked, see spec)
   ['GET /v1/providers', 'yyynnn'],
   ['PATCH /v1/providers/CODE1/esim-price', 'ynynnn'],
   ['GET /v1/providers/CODE1/catalog/companies', 'ynynnn'],

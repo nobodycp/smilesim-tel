@@ -195,8 +195,17 @@ model WalletEntry {
    * IS NOT NULL are raw SQL (migration `20261117240000_provider_loss`); so is the partial index
    * `WalletEntry_loss_createdAt` (`createdAt` DESC) WHERE `providerLoss` IS NOT NULL, which serves the branch's losses
    * over a period in its profit figures (spec DB.5 P.8, migration `20261118000000_provider_loss_created_at`).
+   * A `given_back` row the branch charged the point of sale for afterwards turns to `charged_later` (spec DB.5 P.9,
+   * ADR 0027; the CHECK takes it since `20261118100000_provider_loss_charged_later`): its purchase and its margin
+   * stay, and it is no longer a loss the warnings count.
    */
   providerLoss String?
+  /**
+   * On the sale entry that charged a given-back operation later (spec DB.5 P.9): the marked row's id. Null on every
+   * other row. One charge per operation: the unique partial index `WalletEntry_charges_entry` WHERE it is not null is
+   * raw SQL (migration `20261118100000_provider_loss_charged_later`). No relation and no foreign key, as `providerId`.
+   */
+  chargesEntryId String?
   chainPosId       String?
   chainAgentId     String?
   chainMainAgentId String?

@@ -222,6 +222,11 @@ export class ApiFacade {
     return new ProviderAccountsService(this.graph.uow, this.walletDesk, new ProvidersRepository(this.graph.uow)).providerOperations(await this.actor(gate), query);
   }
 
+  /** `POST provider-operations/:entryId/charge` (spec DB.5 P.9). */
+  async chargeGivenBack(gate: Gate, entryId: string) {
+    return this.walletDesk.chargeGivenBack(await this.actor(gate), entryId);
+  }
+
   async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string; loss?: string } = {}) {
     return this.walletDesk.finance(await this.actor(gate), query);
   }

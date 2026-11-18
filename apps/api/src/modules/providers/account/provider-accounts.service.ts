@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../../access';
 import { providerBranchCost } from '../../pricing';
-import { csvOf, WalletsService, PROVIDER_OPERATION_KINDS } from '../../wallets';
+import { csvOf, isOpenLoss, WalletsService, PROVIDER_OPERATION_KINDS } from '../../wallets';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
 import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 
@@ -49,7 +49,7 @@ export class ProviderAccountsService {
     const providerById = new Map(providers.map((item) => [item.id, item]));
     const named = query.provider ? providerByCode.get(query.provider) : undefined;
     // A provider code that names no provider has no operations.
-    const read = query.provider && !named ? [] : await this.wallets.providerOperations({ providerId: named?.id, kind: kind || undefined, msisdn: needle || undefined, from: since, loss: query.loss });
+    const read = query.provider && !named ? [] : await this.wallets.providerOperations({ providerId: named?.id, kind: kind || undefined, msisdn: needle || undefined, from: since, loss: query.loss, named: true });
     const chosen = read.map((row) => ({ ...row, providerCode: providerById.get(row.providerId)?.code ?? '', providerName: providerById.get(row.providerId)?.name ?? '' }));
     // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
     const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
@@ -74,6 +74,8 @@ export class ProviderAccountsService {
         id: row.id,
         at: row.at.toISOString(),
         kind: row.kind,
+        /** The point of sale the operation was for (the wallet it is on). */
+        loginName: row.loginName,
         msisdn: row.msisdn,
         providerCode: row.providerCode,
         providerName: row.providerName,
@@ -83,6 +85,8 @@ export class ProviderAccountsService {
         esimPrice: row.esimPrice,
         /** Why the provider was paid and the point of sale charged nothing (spec DB.5 P.7), or null. */
         loss: row.loss,
+        /** What charging a given-back operation takes (spec DB.5 P.9); null on any other row. */
+        chargeAmount: row.chargeAmount,
         matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
         matchState: matches.get(row.id)?.state ?? 'pending',
         providerAmount: matches.get(row.id)?.providerAmount ?? null,
@@ -98,11 +102,19 @@ export class ProviderAccountsService {
         differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
         pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
         differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
-        /** The window's operations the provider was paid for and the point of sale was not charged for (P.7). */
-        losses: ranged.filter((row) => row.loss !== null).length,
+        /** The window's operations the provider was paid for and the point of sale was not charged for (P.7), still open (P.9). */
+        losses: ranged.filter((row) => isOpenLoss(row.loss)).length,
       },
       providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
     };
+  }
+
+  /**
+   * Charges the point of sale for a given-back operation (`POST provider-operations/:entryId/charge`, spec DB.5 P.9):
+   * the wallets' rule, `WalletsService.chargeGivenBack` (the branch only, as the manual deduction).
+   */
+  chargeGivenBack(actor: Actor, entryId: string) {
+    return this.wallets.chargeGivenBack(actor, entryId);
   }
 
   /** Reading needs the branch owner or the accounting or reports grant; writing the owner or accounting. */

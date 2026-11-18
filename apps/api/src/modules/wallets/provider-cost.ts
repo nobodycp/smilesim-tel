@@ -12,20 +12,34 @@ const OPERATION_KINDS = new Set(PROVIDER_OPERATION_KINDS);
 /**
  * Why an operation the provider was paid for charged the point of sale nothing (spec DB.5 P.7, ADR 0025 answer 4):
  * `given_back` — the provider succeeded and the money was given back (`release-after-success`, named by the caller);
- * `priced_zero` — an activation or renewal sold at 0 (worked out here). The CHECK `WalletEntry_provider_loss`
- * (migration 20261117240000_provider_loss) accepts these two only.
+ * `priced_zero` — an activation or renewal sold at 0 (worked out here). A given-back operation the branch charged the
+ * point of sale for afterwards (spec DB.5 P.9, ADR 0027) turns to `charged_later`: the row keeps its purchase and its
+ * `branchMargin`, and is no longer a loss to chase. The CHECK `WalletEntry_provider_loss` (migrations
+ * 20261117240000_provider_loss, 20261118100000_provider_loss_charged_later) accepts these three only.
  */
-export const PROVIDER_LOSSES = ['given_back', 'priced_zero'] as const;
+export const PROVIDER_LOSSES = ['given_back', 'priced_zero', 'charged_later'] as const;
 export type ProviderLoss = (typeof PROVIDER_LOSSES)[number];
 
-/** What a screen may filter on: every marked operation (`any`), or one reason. */
+/** The marks still open (P.9): what the warnings count and price, and what the filter `any` keeps. */
+export const OPEN_LOSSES = ['given_back', 'priced_zero'] as const;
+const OPEN = new Set<string>(OPEN_LOSSES);
+
+/** Whether a mark is a loss still to chase (P.9): `charged_later` is not. */
+export function isOpenLoss(loss: string | null | undefined): boolean {
+  return loss != null && OPEN.has(loss);
+}
+
+/** What a screen may filter on: every open mark (`any`), or one reason. */
 export const LOSS_FILTERS = ['any', ...PROVIDER_LOSSES] as const;
 export type LossFilter = (typeof LOSS_FILTERS)[number];
 
-/** The entries a loss filter keeps, in SQL (the partial index `WalletEntry_provider_loss` serves it). */
-export function lossWhere(filter: LossFilter | undefined): { providerLoss?: { not: null } | ProviderLoss } {
+/**
+ * The entries a loss filter keeps, in SQL. `any` keeps `IS NOT NULL` beside the open marks, and one reason is an
+ * equality (which implies it), so the partial index `WalletEntry_provider_loss` (its predicate) serves every form.
+ */
+export function lossWhere(filter: LossFilter | undefined): { providerLoss?: { not: null; in: string[] } | ProviderLoss } {
   if (!filter) return {};
-  return filter === 'any' ? { providerLoss: { not: null } } : { providerLoss: filter };
+  return filter === 'any' ? { providerLoss: { not: null, in: [...OPEN_LOSSES] } } : { providerLoss: filter };
 }
 
 /**
@@ -34,7 +48,7 @@ export function lossWhere(filter: LossFilter | undefined): { providerLoss?: { no
  */
 const PRICED_ZERO_KINDS = new Set(['activate', 'charge', 'extend', 'reactivate']);
 
-export type OperationColumns = { providerId: string | null; providerCost: number | null; providerLoss: ProviderLoss | null };
+export type OperationColumns = { providerId: string | null; providerCost: number | null; providerLoss: 'given_back' | 'priced_zero' | null };
 
 /**
  * The provider, the cost and the loss mark an entry of `kind` stores, written in the entry's own INSERT (ADR 0025,

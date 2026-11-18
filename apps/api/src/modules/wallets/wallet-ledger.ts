@@ -69,7 +69,7 @@ export async function writeGivenBack(tx: Prisma.TransactionClient, row: GivenBac
     data: {
       userId: row.userId, actorId: row.actorId, amount: 0, balanceAfter: row.balanceAfter, kind: 'activate', note: row.note || null,
       msisdn: row.sale.msisdn, lineId: null, companyName: row.sale.companyName, packageName: row.sale.packageName, packagePrice: row.sale.packagePrice,
-      ...operation, ...lossMargins(operation.providerCost ?? 0), createdAt: row.at,
+      esimPrice: row.sale.esimPrice ?? null, ...operation, ...lossMargins(operation.providerCost ?? 0), createdAt: row.at,
     },
     select: { id: true },
   });
@@ -282,6 +282,7 @@ export class WalletLedger {
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
         periodCost: sale?.periodCost ?? null,
+        chargesEntryId: sale?.charges?.entryId ?? null,
         ...(priced
           ? { ladder: priced.ladder as unknown as Prisma.InputJsonValue, ...marginColumns(priced.ladder, priced.ids) }
           : operation.providerLoss ? lossMargins(operation.providerCost ?? 0) : NO_MARGINS),
@@ -329,11 +330,11 @@ export class WalletLedger {
    * plan DB.9, ADR 0023). The price rows are read here, under the lock, by the path's ids, as before. The path's
    * layers name the chain's accounts the entry stores its margins for (ADR 0026, `chainIdsOf`).
    */
-  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
+  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path' | 'charges'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
     const priceKind = SALE_KINDS[kind];
-    if (!priceKind || !sale.lineId) return null;
-    const line = await db.line.findUnique({ where: { id: sale.lineId }, select: { terms: true } });
-    const code = (line?.terms as { packageCode?: string } | null)?.packageCode;
+    if (!priceKind) return null;
+    // A given-back operation charged later (P.9) names its package: no line was made.
+    const code = sale.charges ? sale.charges.packageCode : await this.packageCodeOf(db, sale.lineId);
     if (!code) return null;
     const path = await this.tree.confirmedPath(db, posId, sale.path);
     const [rows, subscriber] = await Promise.all([
@@ -342,15 +343,39 @@ export class WalletLedger {
     ]);
     const pkg = rows.packages[0];
     if (!pkg || !subscriber || path.length === 0) return null;
+    // The charge of a given-back operation (P.9, ADR 0027): the provider's cost at the branch is 0 on its ladder, so
+    // the branch earns its sell price on it; the purchase is the marked row's, at its own date.
+    const prices = sale.charges ? { ...pkg, branchCost: 0, renewalBranchCost: 0 } : pkg;
     const ladder = ladderOf(
       path,
       rows.termRows.filter((row) => row.packageId === pkg.id),
       rows.sellRows.filter((row) => row.packageId === pkg.id),
-      { ...pkg, ...subscriber },
+      { ...prices, ...subscriber },
       priceKind,
       sale.packagePrice,
     );
     return { ladder, ids: chainIdsOf(path) };
+  }
+
+  /** The package a line's terms name, or null when there is no line. */
+  private async packageCodeOf(db: Db, lineId: string): Promise<string | null> {
+    if (!lineId) return null;
+    const line = await db.line.findUnique({ where: { id: lineId }, select: { terms: true } });
+    return (line?.terms as { packageCode?: string } | null)?.packageCode ?? null;
+  }
+
+  /**
+   * Charges the point of sale for an activation given back after the provider's success (spec DB.5 P.9, ADR 0027),
+   * in the caller's transaction: the point of sale's wallet locked first, then the marked row's mark turned
+   * `given_back` → `charged_later` by a guarded UPDATE (one row, or 409 `DUPLICATE_REQUEST`: charged already, or a
+   * concurrent charge got there first), no money column of it touched; then the debit through `move`, as any sale
+   * (held money, the ceiling, the notice below zero), its entry naming the row (`sale.charges`, unique).
+   */
+  async chargeLater(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, note: string, sale: Sale & { charges: NonNullable<Sale['charges']> }) {
+    await this.lockWallets(tx, [userId]);
+    const turned = await tx.$executeRaw`UPDATE "WalletEntry" SET "providerLoss" = 'charged_later' WHERE "id" = ${sale.charges.entryId} AND "providerLoss" = 'given_back'`;
+    if (turned !== 1) fail(409, 'DUPLICATE_REQUEST');
+    await this.move(tx, userId, -amount, actorId, 'activate', note, sale);
   }
 
   /**
@@ -377,6 +402,9 @@ export class WalletLedger {
         packagePrice: sale.packagePrice,
         ...operation,
         ...(operation.providerLoss ? lossMargins(operation.providerCost ?? 0) : {}),
+        // The eSIM fee the sale names: on a given-back activation, the part of what was held beyond the package price,
+        // so the charge of it later (P.9) knows the whole amount.
+        esimPrice: sale.esimPrice ?? null,
         periodDays: sale.period?.days ?? null,
         periodEndsAt: sale.period?.endsAt ?? null,
         periodCost: sale.periodCost ?? null,

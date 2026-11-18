@@ -30,5 +30,11 @@ export const PROVIDER_DISPATCH_NOTE = 'أُرسل الطلب إلى المزود
 /** The reason a task carries when two accounts released it after the provider's success (ADR 0019, D15). */
 export const PROVIDER_RELEASED_NOTE = 'أُلغيت بقرار معتمد من حسابين بعد نجاح المزود، وأُعيد المبلغ المحجوز';
 
+/**
+ * The note of the charge of an activation given back after the provider's success, made later by the branch from the
+ * operation itself (spec DB.5 P.9): the point of sale reads its debit as that activation's price.
+ */
+export const PROVIDER_CHARGED_LATER_NOTE = 'خصم تفعيل نفّذه المزود وأُعيد مبلغه سابقاً';
+
 /** Who a notice comes from when no person sent it. */
 export const SYSTEM_SENDER_NAME = 'النظام';

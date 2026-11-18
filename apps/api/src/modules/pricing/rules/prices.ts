@@ -21,6 +21,14 @@ export function packageActivationCost(branchCost: number, esim: boolean, esimFee
   return activationProviderCost(branchCost, esim, esimFee) ?? branchCost;
 }
 
+/**
+ * The eSIM fee an eSIM activation task held beyond its package price: the task's debit (`posDelta`, negative) less
+ * the package price, never below 0. What an eSIM activation's entry stores as `esimPrice` (spec DB.5 P.9).
+ */
+export function heldEsimFee(posDelta: number, packagePrice: number): number {
+  return Math.max(0, -posDelta - packagePrice);
+}
+
 /** Half a shekel. The provider's disconnect fee, inside the one disconnect posting. */
 export const DISCONNECT_FEE = AGOROT / 2;
 

@@ -50,8 +50,8 @@ suite('the provider books (PostgreSQL)', () => {
     wallets = new WalletsService(graph.uow, graph.tree, graph.ledger, new WalletsRepository(graph.uow));
     accounts = new ProviderAccountsService(graph.uow, wallets, repo);
     const unwindowed = {
-      providerOperations: async (filter: { providerId?: string; kind?: string; msisdn?: string } = {}) =>
-        (await wallets.providerOperations({ kind: filter.kind, msisdn: filter.msisdn })).filter((row) => !filter.providerId || row.providerId === filter.providerId),
+      providerOperations: async (filter: { providerId?: string; kind?: string; msisdn?: string; named?: boolean } = {}) =>
+        (await wallets.providerOperations({ kind: filter.kind, msisdn: filter.msisdn, named: filter.named })).filter((row) => !filter.providerId || row.providerId === filter.providerId),
     };
     oracle = new ProviderAccountsService(graph.uow, unwindowed as unknown as WalletsService, repo);
     health = new ProviderHealthService(graph.uow, accounts, repo);

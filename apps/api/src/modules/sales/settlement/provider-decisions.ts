@@ -8,7 +8,7 @@ import { refuseEntered, requireGrant } from '../../access';
 import type { OperationStatus } from '../../providers';
 import { ProviderOperationsService } from '../../providers';
 import { esimPriceOf, simRefusal, simRulesOf } from '../../catalog';
-import { packageActivationCost } from '../../pricing';
+import { heldEsimFee, packageActivationCost } from '../../pricing';
 import type { Sale } from '../../wallets';
 import { lockedTask, lockedTaskOperation, TasksService, DECISION_GRANT, shownPhase, type TaskOperation } from '../../tasks';
 import { applyAsSettlement, submitterOf, tellDeciders } from './activation-settlement';
@@ -167,18 +167,23 @@ export class ProviderDecisions {
    * The activation the provider ran and the money of which is given back (spec DB.5 P.7): the task's package, its
    * provider, and the package's cost at the provider now (`packageActivationCost`: the figure an activation of it
    * stores; the task keeps no cost of the day it opened). The number is the one the provider handed back, else the
-   * task's. No line was made. The package cannot be gone: a task's package is kept while the task exists.
+   * task's. No line was made. The package cannot be gone: a task's package is kept while the task exists. It keeps
+   * the package price and, for an eSIM, the fee: together what the task held and gave back (P.9).
    */
   private async givenBackSale(task: Task, operation: ProviderOperation): Promise<Sale & { providerLoss: 'given_back' }> {
     const pkg = await this.lines.packageById(this.uow.prisma, task.packageId);
     if (!pkg || !pkg.provider) fail(409, 'DECISION_NOT_APPLICABLE');
     const fee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company ?? undefined }).price;
+    const packagePrice = task.unitPrice ?? pkg.posPrice;
     return {
       msisdn: operation.resultMsisdn ?? task.msisdn ?? '',
       lineId: '',
       companyName: pkg.company?.name ?? '',
       packageName: pkg.name,
-      packagePrice: task.unitPrice ?? pkg.posPrice,
+      packagePrice,
+      // The eSIM fee the task held beyond the package price (as the completion stores it), so the entry keeps the
+      // whole amount given back: what charging it later takes (spec DB.5 P.9).
+      ...(task.esim ? { esimPrice: heldEsimFee(task.posDelta, packagePrice) } : {}),
       providerId: pkg.providerId,
       providerCost: packageActivationCost(pkg.branchCost, task.esim, fee),
       providerLoss: 'given_back',

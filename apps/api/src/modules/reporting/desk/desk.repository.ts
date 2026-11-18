@@ -18,10 +18,11 @@ export type SalesGroup = { key: string | null; count: number; amount: number; pr
 
 /**
  * The branch's operations marked as its loss (spec DB.5 P.8), added up per bucket of their time and what they were for:
- * how many, and the sum of the `branchMargin` each stores (− its provider cost, P.7). Not a sale: no count, volume or
- * activation of the sales reads holds them.
+ * the sum of the `branchMargin` every marked row stores (− its provider cost, P.7), and how many of them are still
+ * open and what those cost (`count`, `cost` positive: a given-back operation charged later is no loss to chase, P.9,
+ * though its margin stays in the profit). Not a sale: no count, volume or activation of the sales reads holds them.
  */
-export type LossGroup = { at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: number; margin: number };
+export type LossGroup = { at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: number; cost: number; margin: number };
 
 /** The chain columns by layer, and each layer's margin (ADR 0026): the "most active" cards group by them. */
 const CHAIN_OF = {
@@ -166,14 +167,18 @@ export class DeskRepository {
    * 20261118000000_provider_loss_created_at). For the branch only: a marked row has no chain ids.
    */
   async lossesByBucket(from: Date | null, to: Date | null, format: BucketFormat): Promise<LossGroup[]> {
-    const rows = await this.uow.prisma.$queryRaw<{ at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: bigint; margin: bigint | null }[]>`
-      SELECT to_char("createdAt", ${format}) AS at, "packageName", "companyName", "providerId", count(*) AS count, sum("branchMargin") AS margin
+    // Every marked row in the sum of the margin; the open marks alone in the count and the cost (P.9). The WHERE keeps
+    // the index's predicate, so the read stays on `WalletEntry_loss_createdAt`.
+    const open = Prisma.sql`"providerLoss" IN ('given_back', 'priced_zero')`;
+    const rows = await this.uow.prisma.$queryRaw<{ at: string; packageName: string | null; companyName: string | null; providerId: string | null; count: bigint; cost: bigint | null; margin: bigint | null }[]>`
+      SELECT to_char("createdAt", ${format}) AS at, "packageName", "companyName", "providerId",
+        count(*) FILTER (WHERE ${open}) AS count, -sum("branchMargin") FILTER (WHERE ${open}) AS cost, sum("branchMargin") AS margin
       FROM "WalletEntry"
       WHERE "providerLoss" IS NOT NULL
         ${from ? Prisma.sql`AND "createdAt" >= ${from}` : Prisma.empty}
         ${to ? Prisma.sql`AND "createdAt" <= ${to}` : Prisma.empty}
       GROUP BY 1, 2, 3, 4`;
-    return rows.map((row) => ({ at: String(row.at), packageName: row.packageName, companyName: row.companyName, providerId: row.providerId, count: asNumber(row.count), margin: asNumber(row.margin) }));
+    return rows.map((row) => ({ at: String(row.at), packageName: row.packageName, companyName: row.companyName, providerId: row.providerId, count: asNumber(row.count), cost: asNumber(row.cost), margin: asNumber(row.margin) }));
   }
 
   /** The scope's sales (not refunds) grouped by what they sold: the package's name, the company's, or the provider. */

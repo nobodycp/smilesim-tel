@@ -35,6 +35,8 @@ export const ACTIVITY_ACTIONS = [
   'provider_credit',
   'provider_reconcile',
   'provider_reconcile_item',
+  // A given-back operation charged to its point of sale later (spec DB.5 P.9); the subject is the marked entry.
+  'provider_charge',
   'activate',
   'charge',
   'extend',

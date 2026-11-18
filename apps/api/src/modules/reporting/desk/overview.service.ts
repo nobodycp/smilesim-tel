@@ -71,7 +71,7 @@ function withLosses(buckets: SalesBucket[], losses: LossGroup[], keyOf: (at: str
     const at = keyOf(loss.at);
     const row = rows.get(at) ?? { at, count: 0, amount: 0, activations: 0, refunds: 0, refundAmount: 0, profit: 0, losses: 0 };
     row.profit += loss.margin;
-    row.losses -= loss.margin;
+    row.losses += loss.cost;
     rows.set(at, row);
   }
   return [...rows.values()];
@@ -202,7 +202,8 @@ export class OverviewService {
     const steps = withLosses(stepSales, losses, (at) => (step === 'month' ? at.slice(0, 7) : at));
     const days = daySales && withLosses(daySales, losses, (at) => at.slice(0, 10));
     const previous = previousSales && totalsOf(withLosses(previousSales, previousLosses, (at) => at));
-    const lost = losses.reduce((sum, loss) => ({ count: sum.count + loss.count, amount: sum.amount - loss.margin }), { count: 0, amount: 0 });
+    // The losses still open (P.9: one charged later keeps its margin in the profit and is not counted here).
+    const lost = losses.reduce((sum, loss) => ({ count: sum.count + loss.count, amount: sum.amount + loss.cost }), { count: 0, amount: 0 });
     // The providers each sale stored (ADR 0025), named only when there is one to name.
     const providerOf = providers.some((group) => group.key) || losses.some((loss) => loss.providerId) ? new Map((await this.repo.providerNames()).map((row) => [row.id, row])) : new Map<string, { code: string; name: string }>();
     const daily = days ?? steps;

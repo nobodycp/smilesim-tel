@@ -3,7 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { DISCONNECT_FEE, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
+import { DISCONNECT_FEE, heldEsimFee, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
 import { esimPriceOf } from '../modules/catalog';
 import { PROVIDER_RELEASED_NOTE } from '../modules/platform/stored-text';
 import { PREPAID_KINDS } from '../modules/sales/line-pricing';
@@ -320,7 +320,7 @@ async function writeOldGivenBack(tx: Prisma.TransactionClient, scope: BackfillSc
   const approvals = await tx.providerDecisionEvent.findMany({
     where: { type: 'approved', decision: 'release-after-success', operation: { task: scope ? { posId: { in: scope.userIds } } : { isNot: null } } },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    select: { accountId: true, createdAt: true, operation: { select: { resultMsisdn: true, task: { select: { id: true, posId: true, packageId: true, esim: true, msisdn: true, unitPrice: true } } } } },
+    select: { accountId: true, createdAt: true, operation: { select: { resultMsisdn: true, task: { select: { id: true, posId: true, packageId: true, esim: true, msisdn: true, unitPrice: true, posDelta: true } } } } },
   });
   let written = 0;
   for (const approval of approvals) {
@@ -328,17 +328,23 @@ async function writeOldGivenBack(tx: Prisma.TransactionClient, scope: BackfillSc
     if (!task) continue;
     const pkg = await tx.package.findUniqueOrThrow({ where: { id: task.packageId }, include: { company: true, provider: true } });
     const msisdn = approval.operation.resultMsisdn ?? task.msisdn ?? '';
-    // Already recorded (by the approval since P.7, or by an earlier run): a number given back once for that package.
-    const recorded = await tx.walletEntry.findFirst({ where: { userId: task.posId, kind: 'activate', providerLoss: 'given_back', msisdn, packageName: pkg.name }, select: { id: true } });
+    // Already recorded (by the approval since P.7, or by an earlier run): a number given back once for that package,
+    // charged to the point of sale later or not (P.9).
+    const recorded = await tx.walletEntry.findFirst({ where: { userId: task.posId, kind: 'activate', providerLoss: { in: ['given_back', 'charged_later'] }, msisdn, packageName: pkg.name }, select: { id: true } });
     if (recorded) continue;
     const before = await tx.walletEntry.findFirst({ where: { userId: task.posId, createdAt: { lte: approval.createdAt } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { balanceAfter: true } });
     const after = before ? null : await tx.walletEntry.findFirst({ where: { userId: task.posId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { balanceAfter: true, amount: true } });
     const wallet = before || after ? null : await tx.wallet.findUnique({ where: { userId: task.posId }, select: { balance: true } });
     const balanceAfter = before?.balanceAfter ?? (after ? after.balanceAfter - after.amount : wallet?.balance ?? 0);
     const cost = packageActivationCost(pkg.branchCost, task.esim, esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company ?? undefined }).price);
+    // The package price and, for an eSIM, the fee: what the task held and gave back, which charging it later takes (P.9).
+    const packagePrice = task.unitPrice ?? pkg.posPrice;
     const id = await writeGivenBack(tx, {
       userId: task.posId, actorId: approval.accountId, at: approval.createdAt, balanceAfter, note: PROVIDER_RELEASED_NOTE,
-      sale: { msisdn, lineId: '', companyName: pkg.company?.name ?? '', packageName: pkg.name, packagePrice: task.unitPrice ?? pkg.posPrice, providerId: pkg.providerId, providerCost: cost, providerLoss: 'given_back' },
+      sale: {
+        msisdn, lineId: '', companyName: pkg.company?.name ?? '', packageName: pkg.name, packagePrice, providerId: pkg.providerId, providerCost: cost, providerLoss: 'given_back',
+        ...(task.esim ? { esimPrice: heldEsimFee(task.posDelta, packagePrice) } : {}),
+      },
     });
     run.givenBack.push({ id, taskId: task.id, provider: code(pkg.providerId) as string, cost, at: approval.createdAt });
     written += 1;

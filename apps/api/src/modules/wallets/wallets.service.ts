@@ -2,15 +2,19 @@ import { WalletsRepository } from './wallets.repository';
 import { SALE_KINDS, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
-import { UnitOfWork, dayRange, fail, parseInput, after, countUpTo, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
+import { PROVIDER_CHARGED_LATER_NOTE, UnitOfWork, dayRange, fail, parseInput, after, countUpTo, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';
 import { financeSearch, loginIdsContaining } from './finance-search';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
-import { PROVIDER_OPERATION_KINDS, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
+import { PROVIDER_OPERATION_KINDS, isOpenLoss, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
+import type { Sale } from './sale';
+
+/** What a given-back operation's charge takes (spec DB.5 P.9): the package price and the eSIM fee its row stores. */
+const chargeAmountOf = (row: { packagePrice: number | null; esimPrice: number | null }) => (row.packagePrice ?? 0) + (row.esimPrice ?? 0);
 
 const FINANCE_CSV_LIMIT = 10_000;
 
@@ -149,10 +153,10 @@ export class WalletsService {
    * The line operations with the provider and the cost each stored when it was written (ADR 0025), newest first.
    * Every filter runs in the database: the provider, the kind, a part of the number, the entry's time (`from` and
    * `to` inclusive), `priced` (a cost other than 0: what a provider's ledger and a statement list), `loss` (the
-   * operations marked as the branch's loss, spec DB.5 P.7), and `take`.
+   * operations marked as the branch's loss, spec DB.5 P.7), and `take`; `named` adds each row's account's login.
    * An operation entry always carries both columns (the CHECK `WalletEntry_operation_priced`).
    */
-  async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; loss?: LossFilter; take?: number } = {}) {
+  async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; loss?: LossFilter; take?: number; named?: boolean } = {}) {
     const rows = await this.repo.operationsAtProviders(
       {
         kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
@@ -164,10 +168,15 @@ export class WalletsService {
       },
       filter.take,
     );
+    // The accounts' names only for the screen that shows them («عمليات المزودين»): the books and statements need none.
+    const accounts = filter.named && rows.length ? await this.tree.accounts() : [];
+    const loginOf = new Map(accounts.map((account) => [account.id, account.loginName]));
     return rows.map((row) => ({
       id: row.id,
       at: row.createdAt,
       kind: row.kind,
+      /** The account whose wallet the operation is on: the point of sale it was for. */
+      loginName: loginOf.get(row.userId) ?? '',
       msisdn: row.msisdn ?? '',
       companyName: row.companyName ?? '',
       packageName: row.packageName ?? '',
@@ -175,7 +184,50 @@ export class WalletsService {
       cost: row.providerCost ?? 0,
       esimPrice: row.esimPrice ?? null,
       loss: (row.providerLoss ?? null) as ProviderLoss | null,
+      /** What charging a given-back operation takes (P.9): what the task held and gave back; null on any other row. */
+      chargeAmount: row.providerLoss === 'given_back' ? chargeAmountOf(row) : null,
     }));
+  }
+
+  /**
+   * Charges the point of sale for an activation the provider carried out and whose money was given back (spec DB.5
+   * P.9, ADR 0027), from the marked operation itself: the branch only, as the manual deduction. One transaction: the
+   * point of sale's wallet locked, the mark turned `given_back` → `charged_later` (one row, or 409: charged already),
+   * then the sale debited through `move` (the held money and the ceiling as any sale: `BALANCE_CEILING` refuses it and
+   * nothing is written). The sale entry names the marked row (`chargesEntryId`, unique), its provider with cost 0 (the
+   * purchase is the marked row's), and the ladder on the point of sale's path now at the package's prices now with
+   * the provider's cost at the branch 0. The amount is never typed: the package price and the eSIM fee the row stores.
+   */
+  async chargeGivenBack(actor: Actor, entryId: string) {
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
+    const entry = await this.repo.markedEntry(entryId);
+    if (!entry) fail(404, 'NOT_FOUND');
+    // Sold at 0 by the price list: there is nothing to charge; the fix is the price.
+    if (entry.providerLoss === 'priced_zero') fail(400, 'INVALID');
+    if (entry.providerLoss !== 'given_back' || entry.kind !== 'activate' || !entry.providerId) fail(409, 'DUPLICATE_REQUEST');
+    const amount = chargeAmountOf(entry);
+    // A task priced 0 held nothing and gave nothing back.
+    if (amount <= 0) fail(400, 'INVALID');
+    // No line was made: the package is the one the row names, by its provider, name and company.
+    const named = await this.repo.packagesNamed(entry.providerId, entry.packageName ?? '', entry.companyName ?? '');
+    if (named.length === 0) fail(404, 'NOT_FOUND');
+    if (named.length > 1) fail(400, 'INVALID');
+    // The point of sale's path, read before the transaction; the ledger confirms it under the wallet lock (DB.9).
+    const path = this.tree.pathOf(entry.userId, await this.tree.accounts());
+    const sale = {
+      msisdn: entry.msisdn ?? '',
+      lineId: '',
+      companyName: entry.companyName ?? '',
+      packageName: entry.packageName ?? '',
+      packagePrice: entry.packagePrice ?? 0,
+      providerId: entry.providerId,
+      providerCost: 0,
+      ...(entry.esimPrice ? { esimPrice: entry.esimPrice } : {}),
+      path,
+      charges: { entryId: entry.id, packageCode: named[0].code },
+    } satisfies Sale;
+    await this.uow.runTx((tx) => this.money.chargeLater(tx, entry.userId, amount, actor.operatorId, PROVIDER_CHARGED_LATER_NOTE, sale));
+    return { ok: true, amount };
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
@@ -261,13 +313,16 @@ export class WalletsService {
     for (const row of losses) {
       const group = groupOf(row);
       const margin = row._sum.branchMargin ?? 0;
-      group.losses += row._count._all;
-      group.lossAmount -= margin;
+      // Every marked row's margin stays in the profit; only the open marks are losses to count (P.9).
+      if (isOpenLoss(row.providerLoss)) {
+        group.losses += row._count._all;
+        group.lossAmount -= margin;
+      }
       group.profit += margin;
       group.newest = Math.max(group.newest, row._max.createdAt?.getTime() ?? 0);
     }
     // The package sold, given back or lost most recently first.
-    const list = [...packages.values()].sort((a, b) => b.newest - a.newest).map(({ newest: _newest, ...row }) => row);
+    const list = [...packages.values()].sort((a, b) => b.newest - a.newest).map(({ packageName, companyName, sales, refunds, profit, losses, lossAmount }) => ({ packageName, companyName, sales, refunds, profit, losses, lossAmount }));
     const totals = list.reduce(
       (sum, row) => ({ sales: sum.sales + row.sales, refunds: sum.refunds + row.refunds, profit: sum.profit + row.profit, losses: sum.losses + row.losses, lossAmount: sum.lossAmount + row.lossAmount }),
       { sales: 0, refunds: 0, profit: 0, losses: 0, lossAmount: 0 },
@@ -297,8 +352,11 @@ export class WalletsService {
       this.repo.marginsByKind({ AND: [marginWhere(view), saleOrRefundWhere(), { createdAt: { gte: windowStart(now, days) } }] }, view.margin),
       view.layer === 'branch' ? this.repo.lossTotal(windowStart(now, days)) : null,
     ]);
-    const losses = lost ? { count: lost._count._all, amount: -(lost._sum.branchMargin ?? 0) } : null;
-    const profit = byKind.reduce((sum, row) => sum + ((row._sum as Record<string, number | null>)[view.margin] ?? 0), 0) - (losses?.amount ?? 0);
+    // Every marked row's margin (− its cost) is in the profit; the losses told are the open marks only (P.9).
+    const marked = (lost ?? []).reduce((sum, row) => sum + (row._sum.branchMargin ?? 0), 0);
+    const open = (lost ?? []).filter((row) => isOpenLoss(row.providerLoss));
+    const losses = lost ? { count: open.reduce((sum, row) => sum + row._count._all, 0), amount: open.reduce((sum, row) => sum - (row._sum.branchMargin ?? 0), 0) } : null;
+    const profit = byKind.reduce((sum, row) => sum + ((row._sum as Record<string, number | null>)[view.margin] ?? 0), 0) + marked;
     const sales = byKind.filter((row) => SALE_KINDS[row.kind]).reduce((sum, row) => sum + row._count._all, 0);
     return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, losses, ...walletSummary(entries, balance, now, days) };
   }

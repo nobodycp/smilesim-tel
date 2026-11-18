@@ -1,4 +1,4 @@
-import { lossWhere, operationColumns } from './provider-cost';
+import { isOpenLoss, lossWhere, operationColumns } from './provider-cost';
 import type { Sale } from './sale';
 import { lossMargins, marginBreaks } from './stored-margins';
 
@@ -38,9 +38,16 @@ describe('the loss mark (P.7)', () => {
     expect(marginBreaks([{ ...row, providerLoss: null }], () => '')).toEqual([{ id: 'e1', reason: 'no ladder, yet branchMargin stored' }]);
   });
 
-  it('the filter: every mark, one reason, or none', () => {
+  it('the filter: every open mark (a given-back operation charged later is no longer one, P.9), one reason, or none', () => {
     expect(lossWhere(undefined)).toEqual({});
-    expect(lossWhere('any')).toEqual({ providerLoss: { not: null } });
+    expect(lossWhere('any')).toEqual({ providerLoss: { not: null, in: ['given_back', 'priced_zero'] } });
     expect(lossWhere('given_back')).toEqual({ providerLoss: 'given_back' });
+    expect(lossWhere('charged_later')).toEqual({ providerLoss: 'charged_later' });
+    expect([isOpenLoss('given_back'), isOpenLoss('priced_zero'), isOpenLoss('charged_later'), isOpenLoss(null)]).toEqual([true, true, false, false]);
+  });
+
+  it('a row charged later keeps the marked row\'s margin: only branchMargin, minus its cost', () => {
+    const row = { id: 'e2', ladder: null, providerLoss: 'charged_later', providerCost: 2000, chainPosId: null, chainAgentId: null, chainMainAgentId: null, posMargin: null, agentMargin: null, mainAgentMargin: null, branchMargin: -2000 };
+    expect(marginBreaks([row], () => '')).toEqual([]);
   });
 });

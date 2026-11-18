@@ -137,4 +137,14 @@ export class ProviderAccountsController {
   providerOperations(@Actor() actor: ActorShape, @Query() query: ProviderOperationsQuery) {
     return this.accounts.providerOperations(actor, query);
   }
+
+  // Spec DB.5 P.9: a given-back operation charged to its point of sale, from the operation itself.
+  @Post('provider-operations/:entryId/charge')
+  @ApiOperation({ summary: 'Charge the point of sale for an activation the provider ran and whose money was given back (branch only)' })
+  @ApiParam({ name: 'entryId' })
+  @ApiErrorResponse(400, 401, 403, 404, 409)
+  @Activity('provider_charge', 'entry', param('entryId'))
+  chargeGivenBack(@Actor() actor: ActorShape, @Param('entryId') entryId: string) {
+    return this.accounts.chargeGivenBack(actor, entryId);
+  }
 }

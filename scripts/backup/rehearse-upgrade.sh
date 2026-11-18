@@ -75,7 +75,7 @@ check "packages without a provider product code" 'select count(*) from "Package"
 check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
 check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
 # Partial and expression indexes the schema cannot state, so `prisma migrate diff` does not see them either.
-check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id', 'WalletEntry_provider_createdAt_id', 'ProviderOperation_unsettled_id', 'Notice_kind_taskId', 'RequestLog_operatorId_at_idx', 'RequestLog_ip_pattern_at_idx', 'WalletEntry_chainMainAgent_createdAt', 'WalletEntry_chainAgent_createdAt', 'WalletEntry_chainPos_createdAt', 'WalletEntry_provider_loss', 'WalletEntry_loss_createdAt')" 11
+check "raw-SQL indexes" "select count(*) from pg_indexes where indexname in ('WalletEntry_sale_or_refund_createdAt_id', 'WalletEntry_provider_createdAt_id', 'ProviderOperation_unsettled_id', 'Notice_kind_taskId', 'RequestLog_operatorId_at_idx', 'RequestLog_ip_pattern_at_idx', 'WalletEntry_chainMainAgent_createdAt', 'WalletEntry_chainAgent_createdAt', 'WalletEntry_chainPos_createdAt', 'WalletEntry_provider_loss', 'WalletEntry_loss_createdAt', 'WalletEntry_charges_entry')" 12
 # The provider ledger's CHECK (ADR 0025, migrations 20261117210000_provider_ledger_stored and
 # 20261117220100_provider_ledger_validate): validated only when the copy's operation entries all carry a provider and
 # a cost, that is when the backfill ran on the server the backup came from, so only its presence is checked here;
@@ -84,7 +84,8 @@ check "the provider ledger's CHECK" "select count(*) from pg_constraint where co
 # The stored margins' CHECK (ADR 0026, migration 20261117230000_stored_margins): validated by the backfill or the
 # validate migration only when the copy's entries with a ladder all carry their margins, so only its presence here.
 check "the stored margins' CHECK" "select count(*) from pg_constraint where conname = 'WalletEntry_sale_margins'" 1
-# The provider loss mark's CHECK (migration 20261117240000_provider_loss): validated by the migration itself.
+# The provider loss mark's CHECK (migrations 20261117240000_provider_loss, 20261118100000_provider_loss_charged_later):
+# validated by each migration itself.
 check "the provider loss CHECK, validated" "select count(*) from pg_constraint where conname = 'WalletEntry_provider_loss' and convalidated" 1
 # Storage settings the schema cannot state either (migrations 20261117180000_request_log_indexes and
 # 20261117200000_table_settings). The latter's three CHECK validations depend on the copy's old rows, so not checked.
