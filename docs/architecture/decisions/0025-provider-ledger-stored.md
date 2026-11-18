@@ -387,3 +387,10 @@ section "Branch losses in the profit figures (DB.5 P.8)" holds the rule; in shor
   `/provider-operations?loss=any`) or «لا خسائر»; «الأرباح» has a «خسائر» column and the losses under its profit stat.
 - **Proof:** `reporting/desk/branch-losses.db.spec.ts` (each figure for the branch, the lower layers unchanged with no
   loss read, the index chosen by `EXPLAIN` on two years of marked rows); `response-shape.spec.ts` pins the web types.
+
+### P.9: a given-back operation charged later (2026-11-18)
+
+The owner's answer of 2026-11-18 to the question above (a given-back operation's cost): the office charges the point of
+sale again when it sees the warning. Built as ADR 0027: a sale entry naming the marked row (`chargesEntryId`, provider
+cost 0, the ladder with the branch's cost 0) and the mark turned `given_back` → `charged_later`; the warnings count
+the open marks only, every profit sum keeps every marked row's margin.

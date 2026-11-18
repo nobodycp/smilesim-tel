@@ -324,7 +324,7 @@ updated; the books become SQL sums of them. Built in slices, each one commit:
 | P.6 | **A disconnect lowers the purchases** (owner, 2026-11-17, answer 3): the provider gives back the unused days less the 0.5 ₪ fee. The section "A disconnect lowers the purchases (DB.5 P.6)" below; the stored disconnects are corrected by the P.4b command (trial data). | done |
 | P.7 | **Done at the provider, given back to the customer** (owner, answer 4): an operation carried out at the provider whose money was given back (`release-after-success`, ADR 0019) is a purchase, a loss of the branch, with a visible mark so the office finds where it went wrong. Today it writes no operation entry and is in no provider's books. Section "Paid at the provider, not charged to the point of sale (DB.5 P.7)" below; with it, an activation or renewal priced 0. | done |
 | P.8 | **Branch losses in the profit figures** (owner, 2026-11-17): the losses show on the home and are subtracted from the branch's profit on the home, the profit report and the finance summary. Section "Branch losses in the profit figures (DB.5 P.8)" below. | done |
-| P.9 | **A given-back operation charged later** (owner, 2026-11-18): a button on the marked operation charges the point of sale its price; the warning goes and the profit is put right. Section "A given-back operation charged later (DB.5 P.9)" below. | open |
+| P.9 | **A given-back operation charged later** (owner, 2026-11-18): a button on the marked operation charges the point of sale its price; the warning goes and the profit is put right. Section "A given-back operation charged later (DB.5 P.9)" below; ADR 0027. | done |
 
 P.5 (closed monthly totals) only if P.4 measures over budget. Not measured: no database at the audit's sizes exists
 (the scratch database was dropped), so P.5 waits for a measurement of the grouped sum on one; on the local data
@@ -724,6 +724,17 @@ ordinary sale's margin; the home's and the report's losses no longer count it wh
 at the first date; a second charge is refused (409) and so is a concurrent one (two at once: one entry); `priced_zero`
 and an unmarked row refused; a debit over the ceiling refused and nothing written; another layer refused (403).
 `response-shape.spec.ts`, `marginBreaks` on the result, `sale-lock-tree.db.spec.ts` unchanged.
+
+### As built (2026-11-18)
+
+ADR 0027 holds the detail. Beyond the text above: the given-back entry did not store the eSIM fee the task held; it now
+does (`esimPrice`, at the approval and in the backfill's given-back pass), so the amount is `packagePrice` +
+`esimPrice`. The package of the charge's ladder is the one the row names (its provider, package name and company
+name; none 404, several 400 `INVALID`). A given-back row of amount 0 (a task priced 0) is refused 400 `INVALID`. An
+unknown id is 404 `NOT_FOUND`; an entered branch account is refused 403 as a lower layer. The lock order inside the
+transaction: the wallet, then the guarded UPDATE, then `move`. `GET provider-operations` items gain `loginName` (the
+point of sale) and `chargeAmount` (on a `given_back` row) for the confirmation. «المالية»'s loss filter gains
+«خُصم لاحقاً» too. Activity `provider_charge`, subject the entry. Proof: `wallets/charged-later.db.spec.ts`.
 
 ## Stored margin an entry (DB.12)
 

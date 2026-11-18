@@ -396,6 +396,19 @@ SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_loss_createdAt';
 
 ما يراه المكتب: «دليل تسليم العميل» §12. ⏳ لم يُنشر على أي خادم.
 
+**خصم مبلغ عملية أُعيد مبلغها (المواصفة DB.5 P.9، ADR 0027، 2026-11-18).** الفرع يخصم من نقطة البيع، من العملية المعلَّمة `given_back` نفسها (`POST /v1/provider-operations/:entryId/charge`، سجل النشاط `provider_charge`)، ما حُجز ثم أُعيد: قيد بيع جديد (`kind` `activate`، `chargesEntryId` = رقم صف العملية، كلفة المزوّد 0) وتصير علامة الصف `charged_later` (لا يُلمس أي عمود مال فيه). ما يلزم في التحديث:
+
+1. مع النشر تُطبَّق `20261118100000_provider_loss_charged_later`: عمود `WalletEntry.chargesEntryId` (فارغ، لا يعيد كتابة الجدول)، وقيد `WalletEntry_provider_loss` يُستبدل بآخر يقبل القيمة الثالثة `charged_later` (يُضاف `NOT VALID` ثم يُفعَّل في الـmigration نفسها: كل العلامات المحفوظة من القيمتين الأوليين)، وفهرس فريد جزئي `WalletEntry_charges_entry` على (`chargesEntryId`) حيث ليس فارغاً: قاعدة البيانات ترفض خصم العملية مرتين. لا أمر يُشغَّل بعده.
+2. أمر `provider-ledger-backfill` يكتب من الآن رسم eSIM (`esimPrice`) على قيد الإرجاع القديم الذي يكتبه، ولا يعيد كتابة قيد عملية خُصمت (`charged_later`).
+3. الفحص (الجواب المتوقَّع `1` ثم `true`):
+```sql
+SELECT count(*) FROM pg_indexes WHERE indexname = 'WalletEntry_charges_entry';
+SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_provider_loss';
+```
+   `scripts/backup/rehearse-upgrade.sh` يفحص الفهرس مع بقية الفهارس الجزئية (12).
+
+ما يراه المكتب: «دليل تسليم العميل» §12. ⏳ لم يُنشر على أي خادم، ولم تُطبَّق الـmigration على قاعدة التطوير المحلية (طُبِّقت على قاعدة الاختبار فقط): تُطبَّق عند تشغيل النسخة المحلية التالي (`npm run dev:local` يشغّل `prisma migrate deploy`).
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال
