@@ -70,8 +70,10 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
 });
 
-// An action on the sheet asks again for what belongs to this package, not the shared shelf and accounts.
-test('a mode change re-reads the sheet, its numbers and its custom prices, not the companies or the accounts', async ({ page }) => {
+// An action on the sheet asks again for what belongs to this package, not the shared shelf and accounts. The numbers
+// are read only by their own tab (speed PF.8, 4166ebb4: opening the sheet reads no line), so an action on another tab
+// does not read them; the tab reads them when it opens.
+test('a mode change re-reads the sheet and its custom prices, not the companies, the accounts or the closed numbers tab', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const calls = await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: base }),
@@ -88,9 +90,11 @@ test('a mode change re-reads the sheet, its numbers and its custom prices, not t
   const before = Object.fromEntries(keys.map((key) => [key, count(key)]));
   await page.getByRole('radiogroup', { name: 'التشغيل شحن' }).getByRole('radio', { name: 'مهمة فرع' }).click();
   await expect.poll(() => count('GET /packages/lian-wecom-500/sheet')).toBe(before['GET /packages/lian-wecom-500/sheet'] + 1);
-  await expect.poll(() => count('GET /lines')).toBe(before['GET /lines'] + 1);
   await expect.poll(() => count('GET /packages/lian-wecom-500/custom-prices')).toBe(before['GET /packages/lian-wecom-500/custom-prices'] + 1);
   await page.waitForTimeout(300);
+  expect(count('GET /lines')).toBe(0);
   expect(count('GET /directory?mine=1')).toBe(before['GET /directory?mine=1']);
   expect(count('GET /companies')).toBe(before['GET /companies']);
+  await page.getByRole('tab', { name: 'الأرقام' }).click();
+  await expect.poll(() => count('GET /lines')).toBe(1);
 });
