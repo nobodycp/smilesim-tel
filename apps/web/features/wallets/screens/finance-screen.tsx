@@ -192,6 +192,7 @@ export function FinanceScreen() {
               <SelectItem value="any">{t.lossAny}</SelectItem>
               <SelectItem value="given_back">{t.lossGivenBack}</SelectItem>
               <SelectItem value="priced_zero">{t.lossPricedZero}</SelectItem>
+              <SelectItem value="charged_later">{t.lossChargedLater}</SelectItem>
             </Select>
           </label>
         ) : null}

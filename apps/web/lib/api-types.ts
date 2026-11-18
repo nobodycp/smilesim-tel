@@ -517,17 +517,20 @@ export type ActivityRow = {
 /**
  * Why an operation the provider was paid for charged the point of sale nothing (spec DB.5 P.7): the money was given
  * back after the provider's success, or the package was sold at 0. The branch's loss; the branch alone reads it.
+ * `charged_later`: a given-back one the branch charged the point of sale for afterwards (P.9), no longer a loss.
  */
-export type ProviderLoss = 'given_back' | 'priced_zero';
+export type ProviderLoss = 'given_back' | 'priced_zero' | 'charged_later';
 /**
  * `matched`, `differences`, `pending`, `differenceAmount`: the simulated matching (spec E), over the dated rows.
- * `losses`: the operations of the window marked as the branch's loss (P.7).
+ * `losses`: the operations of the window marked as the branch's loss (P.7), still open (P.9).
  */
 export type ProviderOpStats = { count: number; cost: number; monthCost: number; matched?: number; differences?: number; pending?: number; differenceAmount?: number; losses?: number };
 export type ProviderOpRow = {
   id: string;
   at: string;
   kind: string;
+  /** The point of sale the operation was for. */
+  loginName: string;
   msisdn: string;
   providerCode: string;
   providerName: string;
@@ -538,6 +541,8 @@ export type ProviderOpRow = {
   esimPrice: number | null;
   /** The branch's loss on it, and why (P.7); null for every other operation. */
   loss: ProviderLoss | null;
+  /** What charging a given-back operation takes (P.9): what the task held and gave back; null on any other row. */
+  chargeAmount: number | null;
   /** Matching, simulated until real providers are connected (spec E). */
   matchSource?: 'api' | 'statement';
   matchState?: 'matched' | 'difference' | 'pending';

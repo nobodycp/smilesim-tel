@@ -21,6 +21,9 @@ export const walletsApi = {
     request<Page<FinanceRow>>('GET', `/v1/finance${queryString(query)}`),
   providerOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string; loss?: string; cursor?: string | null }) =>
     request<Page<ProviderOpRow> & { stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/v1/provider-operations${queryString(query)}`),
+  /** Charges the point of sale for an operation given back after the provider's success (spec DB.5 P.9): no body, the amount is the row's. */
+  chargeGivenBack: (entryId: string) =>
+    request<{ ok: true; amount: number }>('POST', `/v1/provider-operations/${segment(entryId)}/charge`),
   /** The signed-in account's own wallet ledger. */
   ledger: (query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
     request<Page<LedgerRow>>('GET', `/v1/ledger${queryString(query)}`),

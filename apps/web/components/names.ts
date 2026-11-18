@@ -89,6 +89,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'package_renewals') return t.actPackageRenewals;
   if (action === 'package_switches') return t.actPackageSwitches;
   if (action === 'provider_credit') return t.actProviderCredit;
+  if (action === 'provider_charge') return t.actProviderCharge;
   if (action === 'provider_matching') return t.actProviderMatching;
   if (action === 'provider_payment') return t.actProviderPayment;
   if (action === 'provider_reconcile') return t.actProviderReconcile;

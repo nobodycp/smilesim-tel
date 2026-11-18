@@ -29,7 +29,7 @@ const ACTIONS = [
   'task_take', 'task_release', 'task_note', 'task_complete', 'task_reject', 'task_cancel', 'provider_decision', 'provider_decision_approval',
   'company_add', 'company_sim', 'company_image', 'package_add', 'package_mode', 'package_price', 'package_chain', 'package_details', 'package_reprice',
   'package_renewals', 'package_switches', 'package_addon', 'user_package', 'user_ops', 'sell_price', 'offer',
-  'provider_mode', 'provider_esim_price', 'provider_payment', 'provider_credit', 'provider_matching', 'provider_statement', 'provider_reconcile', 'provider_reconcile_item',
+  'provider_mode', 'provider_esim_price', 'provider_payment', 'provider_credit', 'provider_matching', 'provider_statement', 'provider_reconcile', 'provider_reconcile_item', 'provider_charge',
   'provider_dispatch_approve', 'provider_dispatch_pause', 'provider_dispatch_resume', 'provider_credential',
   'request_log_clear', 'alert_clear',
 ] as const;

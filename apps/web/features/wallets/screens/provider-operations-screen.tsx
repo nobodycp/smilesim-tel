@@ -17,6 +17,10 @@ import { Badge } from '../../../components/ui/badge';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { LossBadge } from '../../../components/loss-badge';
+import { Button } from '../../../components/ui/button';
+import { Dialog } from '../../../components/dialog';
+import { useAction } from '../../../lib/use-action';
+import { formatShekel } from '../../../lib/money';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
 
@@ -36,8 +40,8 @@ export function ProviderOperationsScreen() {
   const from = periodFrom(days);
   const to = '';
   const [match, setMatch] = useState('');
-  // The operations marked as the branch's loss (spec DB.5 P.7): all of them, or one reason.
-  const [loss, setLoss] = useState(() => (['any', 'given_back', 'priced_zero'].includes(asked('loss')) ? asked('loss') : ''));
+  // The operations marked as the branch's loss (spec DB.5 P.7): all of them, or one reason; or charged later (P.9).
+  const [loss, setLoss] = useState(() => (['any', 'given_back', 'priced_zero', 'charged_later'].includes(asked('loss')) ? asked('loss') : ''));
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
     `${provider}|${kind}|${q}|${from}|${to}|${match}|${loss}`,
     async (cursor) => pick(await api.providerOperations({ provider, kind, q, from, to, match, loss, cursor }), (data) => ({
@@ -47,6 +51,14 @@ export function ProviderOperationsScreen() {
   );
   const stats = list.extra?.stats ?? EMPTY_STATS;
   const providers = list.extra?.providers ?? [];
+  // A given-back operation charged to its point of sale from here (spec DB.5 P.9): the row asked about, and the answer.
+  const [charging, setCharging] = useState<ProviderOpRow | null>(null);
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const { run, busy } = useAction({ setError, setNote, onDone: list.reload });
+  const charge = (row: ProviderOpRow) => {
+    void run(() => api.chargeGivenBack(row.id), { note: t.chargeLaterDone, then: () => setCharging(null) });
+  };
 
   const columns: Column<ProviderOpRow>[] = [
     { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
@@ -75,6 +87,13 @@ export function ProviderOperationsScreen() {
     { key: 'source', header: t.matchSource, render: (row) => (row.matchSource === 'api' ? t.matchSourceApi : t.matchSourceStatement) },
     { key: 'charged', header: t.providerCharged, num: true, render: (row) => (row.providerAmount == null ? '—' : <Money value={row.providerAmount} />) },
     {
+      key: 'charge',
+      header: '',
+      render: (row) => row.loss === 'given_back' && row.chargeAmount ? (
+        <Button type="button" size="sm" variant="secondary" onClick={() => { setError(''); setCharging(row); }}>{t.chargeLater}</Button>
+      ) : null,
+    },
+    {
       key: 'match',
       header: t.matchState,
       render: (row) => row.matchState === 'pending'
@@ -86,7 +105,7 @@ export function ProviderOperationsScreen() {
   ];
 
   return (
-    <Desk title={t.navProviderOps} lede={t.providerOpsLede} error="" note="">
+    <Desk title={t.navProviderOps} lede={t.providerOpsLede} error={charging ? '' : error} note={note}>
       <ReportFilters>
         <Period days={days} onPick={setDays} />
         <FilterBar loose onClear={() => { setProvider(''); setKind(''); setQ(''); setMatch(''); setLoss(''); }} clearLabel={t.clearFilters}>
@@ -124,6 +143,7 @@ export function ProviderOperationsScreen() {
               <SelectItem value="any">{t.lossAny}</SelectItem>
               <SelectItem value="given_back">{t.lossGivenBack}</SelectItem>
               <SelectItem value="priced_zero">{t.lossPricedZero}</SelectItem>
+              <SelectItem value="charged_later">{t.lossChargedLater}</SelectItem>
             </Select>
           </label>
         </FilterBar>
@@ -136,8 +156,34 @@ export function ProviderOperationsScreen() {
         <Stat tone="danger" label={t.providerLosses} value={<span className={stats.losses ? 'text-danger' : undefined}>{stats.losses ?? 0}</span>} />
       </StatRow>
       <Pane>
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 9 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 10 }} />
       </Pane>
+      <Dialog
+        open={charging !== null}
+        size="confirm"
+        title={t.chargeLater}
+        lede={t.chargeLaterLede}
+        mark="wallet"
+        closeLabel={t.closeMenu}
+        error={error}
+        onClose={() => { if (!busy) setCharging(null); }}
+        footer={(
+          <>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => setCharging(null)}>{t.cancel}</Button>
+            <Button type="button" loading={busy} onClick={() => charging && charge(charging)}>{t.chargeLaterConfirm}</Button>
+          </>
+        )}
+      >
+        {charging ? (
+          <p className="m-0 text-md text-ink" data-testid="charge-later-sentence">
+            {t.chargeLaterSentence
+              .replace('{pos}', charging.loginName || '—')
+              .replace('{number}', charging.msisdn || '—')
+              .replace('{package}', charging.packageName || '—')
+              .replace('{amount}', formatShekel(charging.chargeAmount ?? 0))}
+          </p>
+        ) : null}
+      </Dialog>
     </Desk>
   );
 }
