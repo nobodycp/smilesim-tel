@@ -92,7 +92,9 @@ jobs:
       - run: npm run prisma:generate
       - run: npx prisma migrate deploy
         working-directory: apps/api
-      - run: npm test --workspace api -- '\.db\.spec\.ts$'
+      # One file at a time: every db spec shares this one database, and the branch's figures are whole-database
+      # reads (the overview, the desk), so two files writing sales or lines at once change each other's counts.
+      - run: npm test --workspace api -- --runInBand '\.db\.spec\.ts$'
 
   # Playwright runs the web app against a mock api in a real browser.
   # continue-on-error is deliberate for now: these tests have never run in CI, and a browser,

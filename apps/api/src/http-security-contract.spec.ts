@@ -177,8 +177,9 @@ describe('the write routes, as the source has them', () => {
     // 78 since package plan D.3a (`PUT packages/:code/durations`, `DELETE packages/:code/durations/:id`; the pin
     // was left at 76 then and corrected in system monitor M.1); 79 since M.2 (`DELETE system/requests`); 80 since M.4
     // (`DELETE system/errors`); 82 since M.6 (`POST system/alerts/:id/seen`, `DELETE system/alerts`); 83 since M.11
-    // (`POST system/versions/check`). `auth` 23 since clean-up CL.4 (three owner writes no client called).
-    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 83, auth: 23, branding: 1, all: 107 });
+    // (`POST system/versions/check`); 84 since DB.5 P.9 (`POST provider-operations/:entryId/charge`). `auth` 23 since
+    // clean-up CL.4 (three owner writes no client called).
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 84, auth: 23, branding: 1, all: 108 });
   });
 
   it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
@@ -220,12 +221,13 @@ describe('the duplicate guard and the idempotency key', () => {
 
   it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
     // A move made on the real routes: every `/v1/` route given another path. The guard is decided by the
-    // controller, so the same 83 are guarded (79 before system monitor M.4's `DELETE system/errors`, 80 before M.6's
-    // two alert routes, 82 before M.11's `POST system/versions/check`) and nothing new is unguarded.
+    // controller, so the same 84 are guarded (79 before system monitor M.4's `DELETE system/errors`, 80 before M.6's
+    // two alert routes, 82 before M.11's `POST system/versions/check`, 83 before DB.5 P.9's charge route) and nothing
+    // new is unguarded.
     const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
     const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/v1\//, '/elsewhere/') }));
     expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
-    expect(moved.filter(guarded)).toHaveLength(83);
+    expect(moved.filter(guarded)).toHaveLength(84);
   });
 });
 
