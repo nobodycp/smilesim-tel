@@ -1,6 +1,11 @@
 # Coolify upgrade preparation — from the deployed commits to `3a2a3c1`
 
-Prepared 2026-11-12. **A plan for review: nothing here has been carried out.** No deploy, no setting, no key, no
+**Carried out on the trial server on 2026-11-18** (commit `25516af9`, on the owner's word, as an integration
+environment, in one window without the nightly backup, the health checks and the separate backfill day this plan
+proposes): what was done, checked and left is in `docs/handover/technical-operations-ar.md`, section 18. The plan
+below is kept as written, for the production server.
+
+Prepared 2026-11-12. **A plan for review: nothing here had been carried out when it was written.** No deploy, no setting, no key, no
 migration, no backup and no account was changed while preparing it. What is stated about the server was read on
 2026-11-12 with read-only commands (container state, `SELECT`s, booleans and lengths of settings, never a value).
 

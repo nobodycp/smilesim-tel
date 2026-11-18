@@ -16,7 +16,7 @@
 #
 # Settings: BACKUP_PRIVATE_KEY (path to the exported private key; never on the production host),
 #           BACKUP_KEY_PASSPHRASE_FILE (optional, a file holding the key's passphrase),
-#           VERIFY_IMAGE (default postgres:16), VERIFY_PORT (with --keep: publish on 127.0.0.1:<port>),
+#           VERIFY_IMAGE (default postgres:18), VERIFY_PORT (with --keep: publish on 127.0.0.1:<port>),
 #           VERIFY_URL_FILE (with --keep: where the throwaway database's address is written, mode 600).
 # `--keep` leaves the restored container running for the upgrade rehearsal and prints its name.
 . "$(dirname "$0")/lib.sh"
@@ -30,7 +30,7 @@ file="${1:-}"; manifest="${2:-}"; keep=0
 [ -r "$manifest" ] || die "the manifest cannot be read"
 : "${BACKUP_PRIVATE_KEY:?set BACKUP_PRIVATE_KEY}"
 [ -r "$BACKUP_PRIVATE_KEY" ] || die "the private key file cannot be read"
-image="${VERIFY_IMAGE:-postgres:16}"
+image="${VERIFY_IMAGE:-postgres:18}"
 
 id=$(sed -n 's/^id|//p' "$manifest")
 want=$(sed -n 's/^sha256|//p' "$manifest")
