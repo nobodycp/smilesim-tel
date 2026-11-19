@@ -64,11 +64,14 @@ every viewer**; the balance before and after are before and after it; everything
   the order package, sell, margin, account, cost. The time, the reason, the number, the amount and the two balances
   never leave: on a phone the row is those six and the arrow. No horizontal scrolling at any width.
 - **What the list holds** (owner's point 7: «المالية» is the movements on the wallets). By default, the money: an
-  entry whose amount is not 0; a hold and a release (money held and freed, with the held figure); for the branch the
-  entries marked as its loss (they move 0 but are the branch's money, and its loss filter keeps finding them). The
-  «العرض» filter: «الحركات المالية» (the default, also `?scope=money`), «كل العمليات» (`scope=all`: every entry, the
-  operations that moved nothing — a refresh, a freeze — included), «العمليات فقط» (`scope=operations`: the line
-  operations, as the home's link opens it). Filtered in the database; the CSV follows the same filter.
+  entry whose amount is not 0; for the branch the entries marked as its loss (they move 0 but are the branch's money,
+  and its loss filter keeps finding them). **A hold and its release are not in it** (the owner, 2026-11-19: they move
+  no wallet, and holds by the thousand are not workable in this list; they stay reachable for tracing an error until
+  a better way to show them is found): they are read on their own. The «العرض» filter: «الحركات المالية» (the
+  default, also `?scope=money`), «كل العمليات» (`scope=all`: every entry, the holds and the operations that moved
+  nothing — a refresh, a freeze — included), «العمليات فقط» (`scope=operations`: the line operations, as the home's
+  link opens it), «الحجوزات» (`scope=holds`: the holds and their releases alone). Filtered in the database; the CSV
+  follows the same filter. The package column stays under the arrow for the branch (the owner, same day).
 - Sorting, paging, the other filters, the CSV link, the loss filter and the empty and loading states are as today.
   The CSV gains the two figures as columns.
 

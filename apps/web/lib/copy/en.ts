@@ -354,6 +354,7 @@ export const en: Copy = {
   financeScopeAll: 'All operations',
   financeScopeMoney: 'Money movements',
   financeScopeOperations: 'Operations only',
+  financeScopeHolds: 'Holds',
   sharesTitle: 'Chain profits',
   navProfits: 'Profits',
   profitsLede: 'Your profit by package and period.',

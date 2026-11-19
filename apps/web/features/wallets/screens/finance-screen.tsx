@@ -68,7 +68,7 @@ export function FinanceScreen() {
   // `?scope=money` is the default.
   const [scope, setScope] = useState(() => {
     const asked = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('scope') ?? '';
-    return asked === 'all' || asked === 'operations' ? asked : '';
+    return asked === 'all' || asked === 'operations' || asked === 'holds' ? asked : '';
   });
   const { me } = useDesk();
   // The operations marked as the branch's loss (spec DB.5 P.7): a filter of the branch's only (the API refuses it to
@@ -189,6 +189,7 @@ export function FinanceScreen() {
             <SelectItem value="">{t.financeScopeMoney}</SelectItem>
             <SelectItem value="all">{t.financeScopeAll}</SelectItem>
             <SelectItem value="operations">{t.financeScopeOperations}</SelectItem>
+            <SelectItem value="holds">{t.financeScopeHolds}</SelectItem>
           </Select>
         </label>
         <label>

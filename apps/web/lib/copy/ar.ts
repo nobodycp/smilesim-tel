@@ -354,6 +354,7 @@ export const ar = {
   financeScopeAll: 'كل العمليات',
   financeScopeMoney: 'الحركات المالية',
   financeScopeOperations: 'العمليات فقط',
+  financeScopeHolds: 'الحجوزات',
   sharesTitle: 'أرباح السلسلة',
   navProfits: 'الأرباح',
   profitsLede: 'ربحك حسب الرزمة والفترة.',

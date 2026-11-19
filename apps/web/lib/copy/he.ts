@@ -354,6 +354,7 @@ export const he: Copy = {
   financeScopeAll: 'כל הפעולות',
   financeScopeMoney: 'תנועות כספיות',
   financeScopeOperations: 'פעולות בלבד',
+  financeScopeHolds: 'הקפאות',
   sharesTitle: 'רווחי השרשרת',
   navProfits: 'רווחים',
   profitsLede: 'הרווח שלך לפי חבילה ותקופה.',

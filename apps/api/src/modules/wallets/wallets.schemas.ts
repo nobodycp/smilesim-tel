@@ -46,7 +46,7 @@ export const FinanceQuery = z.object({
   q: queryText(),
   from: queryDay,
   to: queryDay,
-  scope: queryOneOf(['money', 'all', 'operations']),
+  scope: queryOneOf(['money', 'all', 'operations', 'holds']),
   /** The operations marked as the branch's loss (spec DB.5 P.7): the branch only; another layer is refused. */
   loss: queryOneOf(LOSS_FILTERS),
 });

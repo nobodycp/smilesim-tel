@@ -45,12 +45,12 @@ const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickna
 
 describe('WalletsService.finance', () => {
   // The owner's point 7 (spec 2026-11-19-finance-ledger-columns): «المالية» is the movements on the wallets. By default
-  // (or `scope=money`) an entry that moved money, a hold or a release, and for the branch its loss marks; `all` keeps
-  // every entry, the operations that moved nothing included.
+  // (or `scope=money`) an entry that moved money, and for the branch its loss marks; a hold and its release move no
+  // balance and are read on their own (`holds`); `all` keeps every entry, the operations that moved nothing included.
   it('reads the money by default and with scope=money, and every entry with scope=all', async () => {
     const seen: { where?: Record<string, unknown> } = {};
     const wallets = service(seen);
-    const money = [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }];
+    const money = [{ amount: { not: 0 } }];
     await wallets.finance(actor('agent', 'agent'), {});
     expect(seen.where?.AND).toEqual(money);
     expect(seen.where?.userId).toEqual({ in: expect.arrayContaining(['agent', 'pos']) });
@@ -59,23 +59,25 @@ describe('WalletsService.finance', () => {
     expect(seen.where?.AND).toEqual(money);
     await wallets.finance(actor('agent', 'agent'), { scope: 'all' });
     expect(seen.where?.AND).toBeUndefined();
+    await wallets.finance(actor('agent', 'agent'), { scope: 'holds' });
+    expect(seen.where?.AND).toEqual([{ kind: { in: ['hold', 'release'] } }]);
   });
 
   it('keeps the branch\'s loss marks, which move 0, in its money view, so its loss filter still finds them', async () => {
     const seen: { where?: Record<string, unknown> } = {};
     const wallets = service(seen);
     await wallets.finance(actor('branch', 'branch'), {});
-    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, { providerLoss: { not: null } }] }]);
+    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { providerLoss: { not: null } }] }]);
     await wallets.finance(actor('branch', 'branch'), { loss: 'any' });
     expect(seen.where?.providerLoss).toEqual(expect.anything());
-    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, { providerLoss: { not: null } }] }]);
+    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { providerLoss: { not: null } }] }]);
   });
 
   it('writes the CSV with the same filter as the page', async () => {
     const seen: { where?: Record<string, unknown> } = {};
     const wallets = service(seen);
     await wallets.financeCsv(actor('agent', 'agent'), {});
-    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }]);
+    expect(seen.where?.AND).toEqual([{ amount: { not: 0 } }]);
     await wallets.financeCsv(actor('agent', 'agent'), { scope: 'all' });
     expect(seen.where?.AND).toBeUndefined();
   });

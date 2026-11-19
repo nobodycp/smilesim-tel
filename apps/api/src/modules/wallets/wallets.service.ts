@@ -458,7 +458,10 @@ export class WalletsService {
 function scopeWhere(scope: string | undefined, branch: boolean): Prisma.WalletEntryWhereInput | null {
   if (scope === 'all') return null;
   if (scope === 'operations') return { providerId: { not: null } };
-  return { OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, ...(branch ? [{ providerLoss: { not: null } }] : [])] };
+  // A hold and its release move no balance (the owner, 2026-11-19): they are out of the money view, and read on their
+  // own («الحجوزات») when something has to be traced.
+  if (scope === 'holds') return { kind: { in: ['hold', 'release'] } };
+  return branch ? { OR: [{ amount: { not: 0 } }, { providerLoss: { not: null } }] } : { amount: { not: 0 } };
 }
 
 /** The viewer's `cost` and `sell` on an entry (`storedPricesOf`), both null when it has none. */
