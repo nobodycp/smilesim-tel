@@ -72,8 +72,8 @@ export function AddPackageScreen() {
   const company = shelf.data?.companies.find((row) => row.code === params.code) ?? null;
   usePageTitle(t.addPackage);
   useCrumbs({
-    [`/companies/${encodeURIComponent(params.code)}`]: company?.name,
-    [`/companies/${encodeURIComponent(params.code)}/packages`]: t.packagesTab,
+    [`/postpaid/companies/${encodeURIComponent(params.code)}`]: company?.name,
+    [`/postpaid/companies/${encodeURIComponent(params.code)}/packages`]: t.packagesTab,
   });
   const factLine = useFactLine();
 
@@ -273,7 +273,7 @@ export function AddPackageScreen() {
           </Pane>
 
           <div className={addActionsClass}>
-            <Button type="button" variant="secondary" onClick={() => router.push(`/companies/${encodeURIComponent(params.code)}`)}>{t.cancel}</Button>
+            <Button type="button" variant="secondary" onClick={() => router.push(`/postpaid/companies/${encodeURIComponent(params.code)}`)}>{t.cancel}</Button>
             <Button type="button" disabled={busy || !canEdit} onClick={() => void save()}>{t.savePackage}</Button>
           </div>
         </>

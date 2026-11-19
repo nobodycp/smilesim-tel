@@ -184,7 +184,7 @@ export function LineCardScreen() {
     reload: numberRead.reload,
   };
   const line = numberRead.data?.line ?? null;
-  useCrumbs({ [`/numbers/${encodeURIComponent(params.id)}`]: line?.msisdn });
+  useCrumbs({ [`/postpaid/numbers/${encodeURIComponent(params.id)}`]: line?.msisdn });
   const history = numberRead.data?.history ?? [];
   const packages = catalogRead.data?.packages ?? NO_PACKAGES;
   const companies = catalogRead.data?.companies ?? NO_COMPANIES;

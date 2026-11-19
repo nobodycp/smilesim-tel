@@ -112,7 +112,7 @@ export function AddCompanyScreen() {
       setError(apiText(result));
       return;
     }
-    router.push(`/companies/${encodeURIComponent(result.data.code)}`);
+    router.push(`/postpaid/companies/${encodeURIComponent(result.data.code)}`);
   }
 
   if (!allowed) return null;
@@ -199,7 +199,7 @@ export function AddCompanyScreen() {
             </div>
           </Pane>
           <div className={addActionsClass}>
-            <Button type="button" variant="secondary" onClick={() => router.push('/companies')}>{t.cancel}</Button>
+            <Button type="button" variant="secondary" onClick={() => router.push('/postpaid/companies')}>{t.cancel}</Button>
             <Button type="button" disabled={busy || !canEdit} onClick={() => void save()}>{t.saveCompany}</Button>
           </div>
         </>

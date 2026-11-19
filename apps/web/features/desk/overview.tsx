@@ -69,11 +69,11 @@ export function LinesCard({ data }: { data: OverviewPayload }) {
         label={t.overviewLines}
         total={String(total)}
         slices={[
-          { key: 'active', label: t.lineActive, value: lines.active, tone: '--rd-success', href: '/numbers?status=active', change: change?.active },
-          { key: 'expiring', label: t.expiringSoon, value: lines.expiring, tone: '--rd-warning', href: '/numbers?status=expiring', change: change?.expiring },
-          { key: 'frozen', label: t.lineFrozen, value: lines.frozen, tone: '--rd-chart-frozen', href: '/numbers?status=frozen', change: change?.frozen },
-          { key: 'suspended', label: t.lineSuspended, value: lines.suspended, tone: '--rd-chart-suspended', href: '/numbers?status=suspended', change: change?.suspended },
-          { key: 'disconnected', label: t.lineDisconnected, value: lines.disconnected, tone: '--rd-danger', href: '/numbers?status=disconnected', change: change?.disconnected },
+          { key: 'active', label: t.lineActive, value: lines.active, tone: '--rd-success', href: '/postpaid/numbers?status=active', change: change?.active },
+          { key: 'expiring', label: t.expiringSoon, value: lines.expiring, tone: '--rd-warning', href: '/postpaid/numbers?status=expiring', change: change?.expiring },
+          { key: 'frozen', label: t.lineFrozen, value: lines.frozen, tone: '--rd-chart-frozen', href: '/postpaid/numbers?status=frozen', change: change?.frozen },
+          { key: 'suspended', label: t.lineSuspended, value: lines.suspended, tone: '--rd-chart-suspended', href: '/postpaid/numbers?status=suspended', change: change?.suspended },
+          { key: 'disconnected', label: t.lineDisconnected, value: lines.disconnected, tone: '--rd-danger', href: '/postpaid/numbers?status=disconnected', change: change?.disconnected },
         ]}
       />
     </Card>
@@ -124,7 +124,7 @@ export function ProvidersCard({ data }: { data: OverviewPayload }) {
           rows={data.providers}
           rowKey={(row) => row.code}
           columns={[
-            { key: 'name', header: t.provider, render: (row) => <Link href={`/provider-accounts/${encodeURIComponent(row.code)}`}>{row.name}</Link> },
+            { key: 'name', header: t.provider, render: (row) => <Link href={`/postpaid/provider-accounts/${encodeURIComponent(row.code)}`}>{row.name}</Link> },
             {
               key: 'status',
               header: t.status,

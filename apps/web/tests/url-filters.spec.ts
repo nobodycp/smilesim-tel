@@ -14,7 +14,7 @@ test('numbers read their filters from the address, write them back, and follow b
     },
     'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
   });
-  await page.goto(`${admin}/numbers?status=frozen`);
+  await page.goto(`${admin}/postpaid/numbers?status=frozen`);
   const status = page.getByLabel('الحالة');
   await expectChosen(status, 'frozen');
   await expect.poll(() => asked.at(-1)).toBe('frozen');
@@ -22,7 +22,7 @@ test('numbers read their filters from the address, write them back, and follow b
   await expect(page).toHaveURL(/status=active/);
   await expect.poll(() => asked.at(-1)).toBe('active');
   // A status the list does not know is ignored, not sent.
-  await page.goto(`${admin}/numbers?status=bogus`);
+  await page.goto(`${admin}/postpaid/numbers?status=bogus`);
   await expectChosen(status, '');
   await page.goBack();
   await expectChosen(status, 'active');

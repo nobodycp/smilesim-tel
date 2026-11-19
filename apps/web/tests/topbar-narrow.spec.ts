@@ -67,7 +67,7 @@ for (const locale of ['ar', 'en']) {
     const at = '2026-10-02T10:30:00.000Z';
     const items = Array.from({ length: 10 }, (_, i) => ({
       id: `n${i}`, kind: 'transfer.in', payload: { kind: 'line', subject: `05210000${10 + i}`, fromLoginName: 'pos1', actorName: 'الإدارة' },
-      actorName: 'الإدارة', href: '/numbers', read: false, createdAt: at,
+      actorName: 'الإدارة', href: '/postpaid/numbers', read: false, createdAt: at,
     }));
     const lines = Array.from({ length: 8 }, (_, i) => ({
       id: `ln${i}`, msisdn: `05500000${10 + i}`, status: 'active', companyName: 'Cellcom', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z',
@@ -144,7 +144,7 @@ test('the topbar language is the login page\'s menu: the current language, a men
 test('the topbar fits a 1280px screen without a sideways scroll', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: { companies: [] } }) });
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('http://admin.localhost:3910/companies');
+  await page.goto('http://admin.localhost:3910/postpaid/companies');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   const report = await page.evaluate(() => {
     const de = document.documentElement;

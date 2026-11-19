@@ -22,7 +22,7 @@ const shelf = {
   ],
 };
 
-// The company is the catalog's root for the branch (spec 2026-11-09-admin-review, 4): /packages sends it to the
+// The company is the catalog's root for the branch (spec 2026-11-09-admin-review, 4): /postpaid/packages sends it to the
 // companies, and a company lists its packages in one table — provider, the main agent's price and renewal, the margin,
 // on or off as a badge (the switch lives on the package's own head) — with a provider filter.
 const twoProviders = {
@@ -34,8 +34,8 @@ const twoProviders = {
 
 test('the branch reaches packages through their company: one table, provider, prices, margin, status', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: twoProviders }) });
-  await page.goto(`${admin}/packages`);
-  await expect(page).toHaveURL(`${admin}/companies`);
+  await page.goto(`${admin}/postpaid/packages`);
+  await expect(page).toHaveURL(`${admin}/postpaid/companies`);
   await expect(page.getByTestId('sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
   await page.getByTestId('sidebar').getByRole('link', { name: 'الشركات والرزم' }).click();
   await page.getByRole('link', { name: 'ويكوم' }).first().click();
@@ -53,13 +53,12 @@ test('the branch reaches packages through their company: one table, provider, pr
   await expect(page.locator('tr', { hasText: '200 جيجا' })).toContainText('سكاي');
 
   await page.getByRole('link', { name: '500 جيجا', exact: true }).click();
-  await expect(page).toHaveURL(`${admin}/companies/wecom/packages/lian-wecom-500`);
+  await expect(page).toHaveURL(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
 });
 
-test('the provider filter narrows a company\'s packages, and the old company-provider page lands on it', async ({ page }) => {
+test('the provider filter narrows a company\'s packages', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: twoProviders }) });
-  await page.goto(`${admin}/companies/wecom/sky`);
-  await expect(page).toHaveURL(`${admin}/companies/wecom?provider=sky`);
+  await page.goto(`${admin}/postpaid/companies/wecom?provider=sky`);
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await expect(page.locator('tbody tr')).toContainText('200 جيجا');
   await page.getByRole('button', { name: /امسح الاختيار/ }).click();
@@ -89,9 +88,7 @@ test('the package page edits its details', async ({ page }) => {
     'PATCH /postpaid/packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
     'PATCH /postpaid/packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
-  // The package page's old address moves to its company's (spec 2026-11-09-admin-review, 4).
-  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
-  await expect(page).toHaveURL(`${admin}/companies/wecom/packages/lian-wecom-500`);
+  await page.goto(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
   // The page opens on the price chain (as in the design); the facts are on the overview.
   await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('500 جيجا · دقائق غير محدودة')).toBeVisible();
@@ -136,7 +133,7 @@ test('the point of sale sees the details on the package card and the subscribe s
     price: 2700, renewalPrice: 2700, canActivate: true, sellPrice: null, sellRenewalPrice: null, sellDefault: null, sellRenewalDefault: null,
   };
   await serveApi(page, 'pos', { 'GET /postpaid/packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
-  await page.goto('/packages');
+  await page.goto('/postpaid/packages');
   await page.getByRole('button', { name: /ويكوم/ }).click();
   const card = page.getByTestId('pack-card');
   // The card draws the data as a ring and names the rest (spec 2026-11-16-package-page, P.6).
@@ -154,7 +151,7 @@ test('the company list turns a package on and off, and the package page only sho
     'GET /postpaid/companies': () => ({ body: twoProviders }),
     'PATCH /postpaid/packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
   });
-  await page.goto(`${admin}/companies/wecom`);
+  await page.goto(`${admin}/postpaid/companies/wecom`);
   const sent = page.waitForRequest((request) => request.url().endsWith('/postpaid/packages/lian-wecom-300/mode') && request.method() === 'PATCH');
   await page.locator('tr', { hasText: '300 جيجا' }).getByRole('switch').click();
   expect((await sent).postDataJSON()).toEqual({ enabled: true });

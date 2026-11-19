@@ -14,7 +14,7 @@ import { Input } from './ui/input';
 // (`.pane input`), 13px bold ink (the size from `.pane input`), tabular, left to right, the
 // placeholder `--rd-muted` medium, the crimson focus thread, `--rd-surface-2` and `--rd-muted` when disabled.
 // `data-slot="price-field"` is the handle the phone-card cap in app/tailwind.css (`max-inline-size: 100%`) reads.
-// `priceFieldClass` is the same look for a price field the caller keeps in its own draft (the sell cell on /packages).
+// `priceFieldClass` is the same look for a price field the caller keeps in its own draft (the sell cell on /postpaid/packages).
 export const priceFieldClass = {
   label: 'inline-flex flex-col gap-1 text-start text-xs font-semibold text-muted',
   hint: 'text-2xs font-semibold text-muted',

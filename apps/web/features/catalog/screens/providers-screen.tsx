@@ -50,7 +50,7 @@ export function ProvidersScreen() {
     return { label: t.mixedMode, tone: 'mute' as const };
   };
   const columns: Column<ProviderRow>[] = [
-    { key: 'provider', header: t.provider, render: (provider) => <Link className="font-bold" href={`/providers/${provider.code}`}>{provider.name}</Link> },
+    { key: 'provider', header: t.provider, render: (provider) => <Link className="font-bold" href={`/postpaid/providers/${provider.code}`}>{provider.name}</Link> },
     { key: 'companies', header: t.companiesColumn, render: (provider) => <span className="text-muted">{provider.companies.map((company) => company.name).join(' · ') || '—'}</span> },
     { key: 'packages', header: t.navPlans, num: true, render: (provider) => provider.companies.reduce((sum, company) => sum + company.packages.length, 0) },
     {
@@ -64,8 +64,8 @@ export function ProvidersScreen() {
     ...(canAccount ? [
       // Read-only here, each a link to the provider's account, the one place that changes them (spec
       // 2026-11-09-admin-review, 4).
-      { key: 'balance', header: t.balanceWithProvider, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="font-bold" href={`/provider-accounts/${provider.code}`}><Money value={row.balance} /></Link> : '—'; } },
-      { key: 'credit', header: t.creditLimit, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="font-bold" href={`/provider-accounts/${provider.code}`}><Money value={row.creditLimit} muted /></Link> : '—'; } },
+      { key: 'balance', header: t.balanceWithProvider, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="font-bold" href={`/postpaid/provider-accounts/${provider.code}`}><Money value={row.balance} /></Link> : '—'; } },
+      { key: 'credit', header: t.creditLimit, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="font-bold" href={`/postpaid/provider-accounts/${provider.code}`}><Money value={row.creditLimit} muted /></Link> : '—'; } },
     ] : []),
     {
       key: 'ops',
@@ -75,8 +75,8 @@ export function ProvidersScreen() {
         <RowMenu
           label={`${t.rowActions} ${provider.name}`}
           items={[
-            { label: t.providerSettingsTab, icon: 'enter', onClick: () => router.push(`/providers/${provider.code}`) },
-            ...(canAccount ? [{ label: t.providerAccountLink, icon: 'enter' as const, onClick: () => router.push(`/provider-accounts/${provider.code}`) }] : []),
+            { label: t.providerSettingsTab, icon: 'enter', onClick: () => router.push(`/postpaid/providers/${provider.code}`) },
+            ...(canAccount ? [{ label: t.providerAccountLink, icon: 'enter' as const, onClick: () => router.push(`/postpaid/provider-accounts/${provider.code}`) }] : []),
           ]}
         />
       ),

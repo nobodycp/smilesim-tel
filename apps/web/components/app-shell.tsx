@@ -269,7 +269,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const desk = ['branch', 'main_agent', 'agent'] as const;
   // «التقارير» (spec 2026-11-08-overview-and-reports-nav, C): every report is its own page, folded in one group
   // that starts closed and opens by itself on one of its pages. Each layer sees the reports its data allows. Five
-  // since spec 2026-11-09-admin-review, 1: «العمليات», «المبيعات» and «الطلبات» repeated «المالية» and «المهام».
+  // since spec 2026-11-09-admin-review, 1: «العمليات», «المبيعات» and «الطلبات» repeated «المالية» and «المهام»;
+  // four since F.7c, when «عمليات المزودين» went to the postpaid line's heading.
   const reportsGroup: NavGroup = {
     key: 'reports',
     label: t.navReports,
@@ -279,7 +280,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       { label: t.navProfits, href: '/profits', icon: TrendingUp },
       { label: t.balancesTitle, href: '/reports/balances', icon: Wallet, layers: desk },
       { label: t.reportProviders, href: '/reports/supply', icon: Truck, layers: ['branch'], grant: 'reports' },
-      { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
+    ],
+  };
+  // The postpaid line's heading «الفواتير» (spec 2026-11-19-business-lines-foundation, F.7c; ADR 0028, 2a): its pages
+  // live under `/postpaid/…` and its companies and providers sit with it, so a next line is a second heading of its
+  // own. The branch reaches packages through their company, the catalog's root (spec 2026-11-09-admin-review, 4);
+  // the agents and the point of sale keep their own «الرزم» catalog. «المهام» stays shared until the owner decides.
+  const postpaidGroup: { title: string; items: NavEntry[] } = {
+    title: t.navPostpaid,
+    items: [
+      { label: t.navNumbers, href: '/postpaid/numbers', icon: Phone },
+      { label: t.navPlans, href: '/postpaid/packages', icon: Package, layers: ['main_agent', 'agent', 'pos'] },
+      { label: t.navCompanies, href: '/postpaid/companies', icon: Layers, layers: ['branch'] },
+      { label: t.providersTitle, href: '/postpaid/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
+      { label: t.providerAccounts, href: '/postpaid/provider-accounts', icon: Wallet, layers: ['branch'], grant: 'accounting' },
+      { label: t.navProviderOps, href: '/postpaid/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
     ],
   };
   const posGroups: { title: string; items: NavEntry[] }[] = [
@@ -287,13 +302,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       title: '',
       items: [
         { label: t.homeTitle, href: '/', icon: Home },
-        { label: t.navNumbers, href: '/numbers', icon: Phone },
-        { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navTasks, href: '/tasks', icon: ClipboardList, count: openTasks },
         reportsGroup,
         { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
     },
+    postpaidGroup,
   ];
   const deskGroups: { title: string; items: NavEntry[] }[] = [
     {
@@ -304,23 +318,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         { label: t.navNotices, href: '/notices', icon: Bell },
       ],
     },
+    postpaidGroup,
     {
       title: t.navDesk,
       items: [
-        { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
         reportsGroup,
-      ],
-    },
-    {
-      title: t.navOps,
-      items: [
-        // The branch reaches packages through their company, the catalog's root (spec 2026-11-09-admin-review, 4);
-        // the agents keep their own «الرزم» catalog.
-        { label: t.navPlans, href: '/packages', icon: Package, layers: ['main_agent', 'agent'] },
-        { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'] },
-        { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
-        { label: t.providerAccounts, href: '/provider-accounts', icon: Wallet, layers: ['branch'], grant: 'accounting' },
       ],
     },
     {

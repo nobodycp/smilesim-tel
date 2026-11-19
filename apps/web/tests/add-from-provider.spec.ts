@@ -26,9 +26,9 @@ test('a package is added from a provider product: details, add-ons, inherited mo
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/packages')) sent.push(request.postDataJSON());
   });
-  await page.goto(`${admin}/companies/cellcom`);
+  await page.goto(`${admin}/postpaid/companies/cellcom`);
   await page.getByRole('link', { name: 'إضافة رزمة' }).click();
-  await expect(page).toHaveURL(`${admin}/companies/cellcom/packages/new`);
+  await expect(page).toHaveURL(`${admin}/postpaid/companies/cellcom/packages/new`);
 
   await pickName(page.getByRole('combobox', { name: 'المزود' }), 'سكاي');
   await page.getByRole('button', { name: 'استعلام' }).click();
@@ -64,7 +64,7 @@ test('a package is added from a provider product: details, add-ons, inherited mo
     addons: [{ name: '10 جيجا إضافية', price: 1500 }],
   });
   expect((sent[0] as { modes: Record<string, string> }).modes).toMatchObject({ charge: 'auto', activate: 'inherit', extend: 'inherit' });
-  await expect(page).toHaveURL(`${admin}/companies/cellcom/packages/sky-cellcom-250`);
+  await expect(page).toHaveURL(`${admin}/postpaid/companies/cellcom/packages/sky-cellcom-250`);
 });
 
 test('a company is added from the provider with its SIM rules', async ({ page }) => {
@@ -81,7 +81,7 @@ test('a company is added from the provider with its SIM rules', async ({ page })
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/companies')) sent.push(request.postDataJSON());
   });
-  await page.goto(`${admin}/companies`);
+  await page.goto(`${admin}/postpaid/companies`);
   await page.getByRole('link', { name: 'إضافة شركة' }).click();
   await pickName(page.getByRole('combobox', { name: 'المزود' }), 'ليان');
   await page.getByRole('button', { name: 'استعلام' }).click();
@@ -92,11 +92,11 @@ test('a company is added from the provider with its SIM rules', async ({ page })
   await page.getByLabel('مقدّمة الشريحة').fill('8997');
   await page.getByRole('button', { name: 'إضافة الشركة' }).click();
   await expect.poll(() => sent).toEqual([{ providerCode: 'lian', companyCode: 'golan', name: 'جولان تليكوم', simLength: 19, simPrefix: '8997', esim: true, esimPrice: 500 }]);
-  await expect(page).toHaveURL(`${admin}/companies/golan`);
+  await expect(page).toHaveURL(`${admin}/postpaid/companies/golan`);
 });
 
 test('an agent cannot open the add pages', async ({ page }) => {
   await serveApi(page, 'agent');
-  await page.goto('http://agent.localhost:3910/companies/new');
-  await expect(page).not.toHaveURL(/\/companies\/new$/);
+  await page.goto('http://agent.localhost:3910/postpaid/companies/new');
+  await expect(page).not.toHaveURL(/\/postpaid\/companies\/new$/);
 });

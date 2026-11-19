@@ -22,7 +22,7 @@ test('the branch uploads a statement, compares it and handles a difference', asy
     'GET /reconciliations/r1': () => ({ body: run }),
     'PATCH /reconciliation-items/i1': () => ({ body: { ok: true } }),
   });
-  await page.goto('http://admin.localhost:3910/provider-accounts/sky');
+  await page.goto('http://admin.localhost:3910/postpaid/provider-accounts/sky');
   await page.getByRole('tab', { name: 'المطابقة' }).click();
   await page.locator('input[type=file]').setInputFiles({ name: 'sky.csv', mimeType: 'text/csv', buffer: Buffer.from('رقم,تاريخ,مبلغ\n0521000001,06/11/2026,35\n') });
   await expect(page.getByText('sky.csv: 4 سطراً')).toBeVisible();

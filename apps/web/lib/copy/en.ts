@@ -95,7 +95,7 @@ export const en: Copy = {
   logout: 'Sign out',
   accountSettings: 'Profile',
   navDesk: 'Desk',
-  navOps: 'Providers & companies',
+  navPostpaid: 'Bills',
   navAdmin: 'Admin',
   navPlans: 'Packages',
   navNumbers: 'Numbers',

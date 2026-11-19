@@ -23,7 +23,7 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
     'PUT /postpaid/sell-prices/lian-wecom-400': () => ({ body: { price: 3900, renewalPrice: null } }),
     'DELETE /postpaid/sell-prices/lian-wecom-150': () => ({ body: { ok: true } }),
   });
-  await page.goto('http://agent.localhost:3910/packages');
+  await page.goto('http://agent.localhost:3910/postpaid/packages');
 
   const table = page.getByTestId('data-table');
   await expect(table.locator('thead th').first()).toHaveText('الرزمة');
@@ -66,7 +66,7 @@ test('on a phone the sell cell takes the card row and keeps its fields inside', 
       },
     }),
   });
-  await page.goto('http://agent.localhost:3910/packages');
+  await page.goto('http://agent.localhost:3910/postpaid/packages');
 
   const row = page.getByTestId('data-table').locator('tbody tr', { hasText: '150 جيجا' });
   await expect(row.getByRole('textbox', { name: /اشتراك/ })).toHaveValue('1234.56');
@@ -99,7 +99,7 @@ test('the point of sale sees its effective price and a stopped activation', asyn
       },
     }),
   });
-  await page.goto('http://pos.localhost:3910/packages');
+  await page.goto('http://pos.localhost:3910/postpaid/packages');
   await page.getByRole('button', { name: 'ويكوم' }).click();
   await expect(page.getByTestId('pack-card').getByTestId('money')).toHaveText('37.00 ₪');
   await page.getByTestId('pack-card').click();

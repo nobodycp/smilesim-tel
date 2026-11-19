@@ -25,7 +25,7 @@ async function serve(page: Page, answer: unknown) {
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/lines')) sent.push(request.postDataJSON());
   });
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button', { name: 'تفعيل رقم' }).first().click();
   await expect(page.locator('#activate-line')).toBeVisible();
@@ -62,7 +62,7 @@ test('an eSIM activated at once shows the code its own answer carries, asks for 
   }));
   for (const text of Object.values(kept)) expect(text).not.toContain(QR.slice(30));
   // Back on the numbers page, the result does not come back and no code is on screen.
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   await expect(result(page)).toHaveCount(0);
   await expect(page.getByTestId('qr-tile')).toHaveCount(0);

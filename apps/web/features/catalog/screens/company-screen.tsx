@@ -59,8 +59,8 @@ export function CompanyScreen() {
   const params = useParams<{ code: string }>();
   const allowed = useRequireLayer(BRANCH);
   const { me } = useDesk();
-  // The tab and the provider filter live in the address: `/companies/[c]?provider=[p]` opens its packages filtered
-  // (the old `/companies/[c]/[p]` page lands there; spec 2026-11-09-admin-review, 4).
+  // The tab and the provider filter live in the address: `/postpaid/companies/[c]?provider=[p]` opens its packages filtered
+  // (spec 2026-11-09-admin-review, 4).
   const [filters, setFilters] = useUrlFilters(URL_KEYS);
   const tab: Tab = TABS.includes(filters.tab as Tab) ? (filters.tab as Tab) : 'packages';
   const setTab = (next: Tab) => setFilters({ tab: next === 'packages' ? '' : next });
@@ -115,7 +115,7 @@ export function CompanyScreen() {
       key: 'provider',
       header: t.provider,
       render: (provider) => (
-        <Link className="font-bold" href={`/providers/${encodeURIComponent(provider.code)}`}>{provider.name}</Link>
+        <Link className="font-bold" href={`/postpaid/providers/${encodeURIComponent(provider.code)}`}>{provider.name}</Link>
       ),
     },
     {
@@ -164,7 +164,7 @@ export function CompanyScreen() {
       lede={company ? [t.coPackages.replace('{n}', String(packageCount)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
       // A package from one of the providers' products (spec 2026-11-09-admin-review, 3): owner or the edit grant.
       action={canEdit ? (
-        <Button asChild><Link href={`/companies/${encodeURIComponent(params.code)}/packages/new`}><Plus size={16} aria-hidden="true" />{t.addPackage}</Link></Button>
+        <Button asChild><Link href={`/postpaid/companies/${encodeURIComponent(params.code)}/packages/new`}><Plus size={16} aria-hidden="true" />{t.addPackage}</Link></Button>
       ) : undefined}
       error={error}
       note={note}

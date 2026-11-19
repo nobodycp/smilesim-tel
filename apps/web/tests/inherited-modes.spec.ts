@@ -28,7 +28,7 @@ test('the run tab shows which modes follow the provider and sends «inherit» to
   page.on('request', (request) => {
     if (request.method() === 'PATCH' && request.url().endsWith('/v1/postpaid/packages/lian-wecom-500/mode')) sent.push(request.postDataJSON());
   });
-  await page.goto('http://admin.localhost:3910/companies/wecom/packages/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
   const fold = page.getByTestId('inherit-fold');
   await expect(fold.locator('summary')).toContainText('8 موروثة من المزود · 1 مخصصة');

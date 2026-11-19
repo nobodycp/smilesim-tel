@@ -16,7 +16,7 @@ test('line card keeps its tabs and stretches the pane', async ({ page }) => {
       }),
     }),
   );
-  await page.goto('/numbers/ln1');
+  await page.goto('/postpaid/numbers/ln1');
   await expect(page.getByRole('tablist')).toBeVisible();
   const box = await page.getByTestId('line-pane').boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(700);

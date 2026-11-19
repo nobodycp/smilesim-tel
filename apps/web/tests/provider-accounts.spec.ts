@@ -14,18 +14,18 @@ test('the branch reads its provider accounts, opens one, and records a payment a
     ] } }),
     'POST /provider-accounts/sky/entries': () => ({ body: { ok: true } }),
   });
-  await page.goto('http://admin.localhost:3910/provider-accounts');
+  await page.goto('http://admin.localhost:3910/postpaid/provider-accounts');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   await expect(page.getByTestId('stat-row').getByTestId('stat').nth(1)).toContainText('20.00 ₪');
   // Paid at the provider, not charged to the point of sale (spec DB.5 P.7): sky's one loss links to the operations list.
-  await expect(page.getByRole('link', { name: '1' })).toHaveAttribute('href', '/provider-operations?provider=sky&loss=any');
+  await expect(page.getByRole('link', { name: '1' })).toHaveAttribute('href', '/postpaid/provider-operations?provider=sky&loss=any');
   await page.getByRole('link', { name: 'سكاي' }).click();
-  await expect(page).toHaveURL(/\/provider-accounts\/sky$/);
+  await expect(page).toHaveURL(/\/postpaid\/provider-accounts\/sky$/);
   await expect(page.getByTestId('stat-row').getByTestId('stat').nth(3)).toContainText('595.00 ₪');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('دفعة');
   await expect(page.getByTestId('data-table').locator('tbody tr').nth(1).getByTestId('loss-badge')).toHaveText('خسارة: أُعيد المبلغ');
-  await expect(page.getByRole('link', { name: /1 عمليات بخسارة/ })).toHaveAttribute('href', '/provider-operations?provider=sky&loss=any');
+  await expect(page.getByRole('link', { name: /1 عمليات بخسارة/ })).toHaveAttribute('href', '/postpaid/provider-operations?provider=sky&loss=any');
 
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dialog = page.getByRole('dialog');

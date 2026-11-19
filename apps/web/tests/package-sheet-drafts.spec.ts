@@ -28,7 +28,7 @@ test('a reload keeps typed chain prices and refreshes untouched ones', async ({ 
     'GET /postpaid/companies': () => ({ body: { companies: [] } }),
     'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'الأسعار' }).click();
   const board = page.getByLabel('السلسلة');
   await board.getByLabel('وكيل رئيسي').first().fill('30');
@@ -65,7 +65,7 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
         : { items: [line('01'), line('02')], poses: [], nextCursor: 'p2', total: 3 },
     }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'الأرقام' }).click();
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
 });
@@ -83,7 +83,7 @@ test('a mode change re-reads the sheet and its custom prices, not the companies,
     'GET /postpaid/companies': () => ({ body: { companies: [] } }),
     'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
   const count = (key: string) => calls.filter((call) => call.startsWith(key)).length;
   const keys = ['GET /postpaid/packages/lian-wecom-500/sheet', 'GET /postpaid/lines', 'GET /postpaid/packages/lian-wecom-500/custom-prices', 'GET /directory?mine=1', 'GET /postpaid/companies'];

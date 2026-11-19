@@ -1,3 +1,4 @@
+import { hrefFor } from './notice-kinds';
 import { NoticeService, type NoticeBus } from './notice.service';
 
 type Created = { userId: string; kind: string; payload: unknown; actorId: string | null; actorName: string; href: string };
@@ -87,5 +88,15 @@ describe('notice writer', () => {
     await service.publish(rows);
     expect(bus.published.map((item) => item.channel).sort()).toEqual(['notice:u1', 'notice:u2']);
     expect(JSON.parse(received[0])).toMatchObject({ kind: 'task.opened', href: '/tasks/t1', read: false });
+  });
+});
+
+describe('the page a notice opens', () => {
+  it('opens a task on its own page, and a provider\'s notice on the postpaid line\'s provider account (F.7c)', () => {
+    expect(hrefFor({ kind: 'task.opened', payload: { taskId: 't1' } as never })).toBe('/tasks/t1');
+    const provider = { code: 'sky one', name: 'سكاي', reason: 'balance' as const, failures: 0, available: 0, alertFloor: 100 };
+    expect(hrefFor({ kind: 'provider.problem', payload: provider })).toBe('/postpaid/provider-accounts/sky%20one');
+    expect(hrefFor({ kind: 'provider.recovered', payload: provider })).toBe('/postpaid/provider-accounts/sky%20one');
+    expect(hrefFor({ kind: 'provider.match_overdue', payload: { code: 'sky', name: 'سكاي', matchEveryDays: 7, lastMatchedAt: null } })).toBe('/postpaid/provider-accounts/sky');
   });
 });

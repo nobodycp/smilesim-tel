@@ -153,7 +153,7 @@ export function ProviderPackagesScreen() {
       key: 'company',
       header: t.company,
       render: (row) => (row.code
-        ? <Link className="font-bold" href={`/companies/${encodeURIComponent(row.code)}?provider=${encodeURIComponent(params.code)}`}>{row.name}</Link>
+        ? <Link className="font-bold" href={`/postpaid/companies/${encodeURIComponent(row.code)}?provider=${encodeURIComponent(params.code)}`}>{row.name}</Link>
         : row.name),
     },
     { key: 'packages', header: t.navPlans, num: true, render: (row) => row.packages },
@@ -176,7 +176,7 @@ export function ProviderPackagesScreen() {
       ].filter(Boolean).join(' · ')}
       action={canAccount ? (
         <Button asChild variant="secondary">
-          <Link href={`/provider-accounts/${params.code}`}>
+          <Link href={`/postpaid/provider-accounts/${params.code}`}>
             <Link2 size={16} strokeWidth={1.9} aria-hidden="true" />
             {t.providerAccountLink}
           </Link>

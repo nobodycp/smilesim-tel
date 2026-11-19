@@ -404,12 +404,12 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
 
 /**
  * The branch has no packages list of its own (spec 2026-11-09-admin-review, 4): the company is the catalog's root,
- * and each company's page lists its packages. `/packages` moves the branch to «الشركات والرزم».
+ * and each company's page lists its packages. `/postpaid/packages` moves the branch to «الشركات والرزم».
  */
 function BranchToCompanies() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/companies');
+    router.replace('/postpaid/companies');
   }, [router]);
   return <PageSkeleton />;
 }

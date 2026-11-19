@@ -202,7 +202,7 @@ export function NumbersScreen() {
       kind: 'msisdn',
       render: (line) => (
         <span className="inline-flex items-center gap-2.5" data-testid="line-cell">
-          <Link className="text-start font-bold text-ink no-underline" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
+          <Link className="text-start font-bold text-ink no-underline" href={`/postpaid/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
           <SimBadge line={{ esim: line.esim }} label={`${t.showQr} ${line.msisdn}`} busy={qr !== null && 'asking' in qr && qr.asking === line.id} onOpen={() => void openQr(line)} />
         </span>
       ),

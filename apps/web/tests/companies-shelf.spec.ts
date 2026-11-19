@@ -26,7 +26,7 @@ test('the branch opens the company shelf', async ({ page }) => {
     'GET /postpaid/companies': () => ({ body: shelf }),
   });
 
-  await page.goto(`${admin}/companies`);
+  await page.goto(`${admin}/postpaid/companies`);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('الشركات');
   await expect(page.getByRole('link', { name: 'كلام' })).toBeVisible();
@@ -47,11 +47,11 @@ test('the branch opens the company shelf', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('link', { name: 'ويكوم' }).click();
   // The company lists its packages first (spec 2026-11-09-admin-review, 4); each opens under the company.
-  await expect(page.getByRole('link', { name: '500 جيجا', exact: true })).toHaveAttribute('href', '/companies/wecom/packages/lian-wecom-500');
+  await expect(page.getByRole('link', { name: '500 جيجا', exact: true })).toHaveAttribute('href', '/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: /Providers/ }).click();
   await expect(page.getByRole('tab', { name: /Providers/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('columnheader', { name: 'Active numbers' })).toBeVisible();
-  await expect(page.locator('tbody tr').filter({ hasText: 'ليان' }).getByRole('link', { name: 'ليان' })).toHaveAttribute('href', '/providers/lian');
+  await expect(page.locator('tbody tr').filter({ hasText: 'ليان' }).getByRole('link', { name: 'ليان' })).toHaveAttribute('href', '/postpaid/providers/lian');
   expect(calls).toContain('GET /postpaid/companies');
 });
 
@@ -62,7 +62,7 @@ test('an agent is sent away without loading the company shelf', async ({ page })
     }),
   });
 
-  await page.goto(`${admin}/companies`);
+  await page.goto(`${admin}/postpaid/companies`);
 
   await expect(page).toHaveURL(`${admin}/`);
   expect(calls).not.toContain('GET /postpaid/companies');
@@ -129,7 +129,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
     'PUT /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 1 } }),
   });
 
-  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.goto(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
   await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('عدد الأرقام', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();

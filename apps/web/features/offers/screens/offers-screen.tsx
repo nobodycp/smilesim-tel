@@ -213,7 +213,7 @@ export function OffersScreen() {
               </Label>
               <Label tone="dialog">
                 {t.offerActionHref}
-                <Input dir="ltr" value={draft.actionHref} placeholder="/packages" onChange={(event) => setDraft({ ...draft, actionHref: event.target.value })} />
+                <Input dir="ltr" value={draft.actionHref} placeholder="/postpaid/packages" onChange={(event) => setDraft({ ...draft, actionHref: event.target.value })} />
               </Label>
             </div>
             <div className={PAIR}>

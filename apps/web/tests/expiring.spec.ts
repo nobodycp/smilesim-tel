@@ -23,7 +23,7 @@ test('numbers show the days left and filter the lines ending soon; the home coun
     'GET /home': () => ({ body: { pendingTasks: 1, activeLines: 2, inactiveLines: 1, expiringLines: 1, operations: [] } }),
     'GET /overview': () => ({ body: overview }),
   });
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(3);
   // Graphite: what is left turns crimson and says so when the number ends soon.
@@ -36,7 +36,7 @@ test('numbers show the days left and filter the lines ending soon; the home coun
 
   // The home's numbers donut carries «ينتهي قريباً» as a slice that links to the filter.
   await page.goto('http://admin.localhost:3910/');
-  const slice = page.getByTestId('donut-legend').locator('a[href="/numbers?status=expiring"]');
+  const slice = page.getByTestId('donut-legend').locator('a[href="/postpaid/numbers?status=expiring"]');
   await expect(slice).toContainText('ينتهي قريباً');
   await expect(slice.getByTestId('donut-value')).toHaveText('1');
 });

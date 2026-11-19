@@ -95,7 +95,7 @@ export const he: Copy = {
   logout: 'יציאה',
   accountSettings: 'פרופיל',
   navDesk: 'המשרד',
-  navOps: 'ספקים וחברות',
+  navPostpaid: 'חשבוניות',
   navAdmin: 'ניהול',
   navPlans: 'חבילות',
   navNumbers: 'מספרים',

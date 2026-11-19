@@ -21,7 +21,7 @@ test('a number asks for one of its package\'s extra operations, which becomes a 
   page.on('request', (request) => {
     if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/lines/ln1/addon')) sent.push(request.postDataJSON());
   });
-  await page.goto(`${admin}/numbers/ln1`);
+  await page.goto(`${admin}/postpaid/numbers/ln1`);
   await page.getByRole('button', { name: 'العمليات الإضافية' }).click();
   const dialog = page.getByRole('dialog', { name: 'العمليات الإضافية' });
   await expect(dialog.getByRole('radio')).toHaveCount(2);
@@ -37,7 +37,7 @@ test('a number with no extra operations shows no such tile', async ({ page }) =>
     'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
   });
-  await page.goto(`${admin}/numbers/ln1`);
+  await page.goto(`${admin}/postpaid/numbers/ln1`);
   await expect(page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'العمليات الإضافية' })).toHaveCount(0);
 });

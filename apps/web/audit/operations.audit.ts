@@ -115,7 +115,7 @@ function expectNote(label: string, text: string, delta: number) {
 }
 
 async function openCard(page: Page, door: Door, line: Line) {
-  await page.goto(`${DOORS[door]}/numbers/${line.id}`);
+  await page.goto(`${DOORS[door]}/postpaid/numbers/${line.id}`);
   await expect(page.getByTestId('line-number')).toHaveText(line.msisdn);
 }
 
@@ -199,7 +199,7 @@ async function lineCount(owner: string) {
 
 /** The point of sale activates from its catalog: company, package, then the SIM. */
 async function posActivate(pack: Pack, sim: { esim: true } | { iccid: string }) {
-  await pos.goto(`${DOORS.pos}/packages`);
+  await pos.goto(`${DOORS.pos}/postpaid/packages`);
   await pos.getByTestId('company-card').filter({ hasText: pack.company }).click();
   const price = `${Math.floor(pack.posPrice / 100)}.${String(pack.posPrice % 100).padStart(2, '0')} ₪`;
   await pos.getByTestId('pack-card').filter({ hasText: pack.name }).filter({ hasText: price }).first().click();
@@ -214,7 +214,7 @@ async function posActivate(pack: Pack, sim: { esim: true } | { iccid: string }) 
 
 /** The branch activates from the numbers list dialog for a point of sale. */
 async function branchActivate(pack: Pack, posLoginName: string, iccid: string, outcome: 'نجاح' | 'فشل') {
-  await admin.goto(`${DOORS.admin}/numbers`);
+  await admin.goto(`${DOORS.admin}/postpaid/numbers`);
   await admin.getByRole('button', { name: 'تفعيل رقم' }).click();
   const dialog = admin.getByRole('dialog');
   await dialog.getByLabel('نقطة البيع').selectOption(posLoginName);
@@ -469,7 +469,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
   const PREFIX = '8997202';
   const good = (n: number) => `${PREFIX}${String(n).padStart(LENGTH - PREFIX.length, '0')}`;
   try {
-    await admin.goto(`${DOORS.admin}/companies/${P.companyCode}`);
+    await admin.goto(`${DOORS.admin}/postpaid/companies/${P.companyCode}`);
     await expect(admin.getByRole('tab', { name: 'إعدادات الشركة', exact: true })).toHaveAttribute('aria-selected', 'true');
     await admin.getByLabel('عدد خانات الشريحة').fill(String(LENGTH));
     await admin.getByLabel('مقدّمة الشريحة').fill(PREFIX);
@@ -490,7 +490,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     await expect(apiCall(pos, 'pos', 'POST', '/v1/postpaid/lines', { ...body, esim: true, iccid: '' }), 'eSIM where the company has none').rejects.toThrow(/400 .*ESIM_UNSUPPORTED/);
     expect.soft(await balance('pos'), 'a refused SIM moves no money').toBe(startBalance);
 
-    await pos.goto(`${DOORS.pos}/packages`);
+    await pos.goto(`${DOORS.pos}/postpaid/packages`);
     await pos.getByTestId('company-card').filter({ hasText: P.company }).click();
     const price = `${Math.floor(P.posPrice / 100)}.${String(P.posPrice % 100).padStart(2, '0')} ₪`;
     await pos.getByTestId('pack-card').filter({ hasText: P.name }).filter({ hasText: price }).first().click();

@@ -12,7 +12,7 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   await request.post(`${mock}/__lines/reset`);
   const log = async () => (await (await request.get(`${mock}/__lines/log`)).json()) as Record<string, string>[];
 
-  await page.goto(`${desk}/numbers`);
+  await page.goto(`${desk}/postpaid/numbers`);
   const rows = page.getByTestId('data-table').locator('tbody tr');
   const pager = page.getByTestId('table-pager');
   await expect(rows).toHaveCount(10);

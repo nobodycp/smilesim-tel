@@ -28,7 +28,7 @@ test('the custom prices tab lists priced accounts and edits them inline', async 
     'GET /postpaid/companies': () => ({ body: { companies: [] } }),
     'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
   const row = page.getByTestId('data-table').locator('tbody tr', { hasText: 'pos1' });
@@ -62,7 +62,7 @@ test('the custom prices table sorts by each account own price and by a signed di
     'GET /postpaid/companies': () => ({ body: { companies: [] } }),
     'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
   const table = page.getByTestId('data-table');
@@ -93,7 +93,7 @@ test('on a phone the custom price cells take the card row and keep their fields 
     'GET /postpaid/companies': () => ({ body: { companies: [] } }),
     'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
-  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.goto('http://admin.localhost:3910/postpaid/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
   const row = page.getByTestId('data-table').locator('tbody tr', { hasText: 'pos1' });

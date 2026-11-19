@@ -6,7 +6,7 @@ import { serveApi } from './desk';
 const home = { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] };
 const picture = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 const offer = (id: string, title: string, seconds = 3) => ({
-  id, title, body: `${title} — تفاصيل`, image: picture, actionLabel: 'اطلب الآن', actionHref: '/packages', seconds, active: true,
+  id, title, body: `${title} — تفاصيل`, image: picture, actionLabel: 'اطلب الآن', actionHref: '/postpaid/packages', seconds, active: true,
   position: 0, layers: ['pos', 'agent', 'main_agent', 'branch'], startsAt: null, endsAt: null,
 });
 
@@ -18,7 +18,7 @@ test('the home hero shows the live offers, moves by dot and key, and moves on by
   await page.goto('http://agent.localhost:3910/');
   const hero = page.getByTestId('offer-hero');
   await expect(hero.getByRole('heading', { name: 'عرض الشتاء' })).toBeVisible();
-  await expect(hero.getByRole('link', { name: 'اطلب الآن' })).toHaveAttribute('href', '/packages');
+  await expect(hero.getByRole('link', { name: 'اطلب الآن' })).toHaveAttribute('href', '/postpaid/packages');
   const dots = hero.getByRole('tab');
   await expect(dots).toHaveCount(2);
   await expect(dots.first()).toHaveAttribute('aria-selected', 'true');

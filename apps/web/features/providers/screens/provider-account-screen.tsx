@@ -66,7 +66,7 @@ export function ProviderAccountScreen() {
   const query = { from, to };
   const read = useApiQuery(['api', 'provider-account', params.code, query], () => api.providerAccount(params.code, query), { enabled: allowed });
   const summary = read.data?.summary;
-  useCrumbs({ [`/provider-accounts/${encodeURIComponent(params.code)}`]: summary?.name });
+  useCrumbs({ [`/postpaid/provider-accounts/${encodeURIComponent(params.code)}`]: summary?.name });
   const { run, busy } = useAction({ setError, setNote, onDone: read.reload });
 
   function open(which: 'entry' | 'credit') {
@@ -161,7 +161,7 @@ export function ProviderAccountScreen() {
         </label>
         {/* Paid at the provider, not charged to the point of sale (spec DB.5 P.7): the count, linking to the list of them. */}
         {summary?.losses ? (
-          <Link className="no-underline" href={`/provider-operations?provider=${encodeURIComponent(summary.code)}&loss=any`}>
+          <Link className="no-underline" href={`/postpaid/provider-operations?provider=${encodeURIComponent(summary.code)}&loss=any`}>
             <Badge variant="danger" dot>{t.providerLossesCount.replace('{n}', String(summary.losses))}</Badge>
           </Link>
         ) : null}

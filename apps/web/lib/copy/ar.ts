@@ -95,7 +95,7 @@ export const ar = {
   logout: 'تسجيل الخروج',
   accountSettings: 'الملف الشخصي',
   navDesk: 'المكتب',
-  navOps: 'المزودون والشركات',
+  navPostpaid: 'الفواتير',
   navAdmin: 'الإدارة',
   navPlans: 'الرزم',
   navNumbers: 'الأرقام',

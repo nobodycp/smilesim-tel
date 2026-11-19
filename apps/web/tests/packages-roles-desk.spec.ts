@@ -15,7 +15,7 @@ test('package steps stay on the point-of-sale door', async ({ page }) => {
   await page.route('**/v1/postpaid/packages**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
-  await page.goto('/packages');
+  await page.goto('/postpaid/packages');
   // The steps are one question at a time, not three tabs (efe9190c, spec 2026-11-16-package-page, P.6).
   await expect(page.getByRole('heading', { level: 2, name: 'أي شركة؟' })).toBeVisible();
 });

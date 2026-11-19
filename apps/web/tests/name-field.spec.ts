@@ -59,7 +59,7 @@ test('Esc closes the list and leaves a dialog around the field open', async ({ p
     'GET /postpaid/lines': () => ({ body: { items: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
     'GET /postpaid/packages': () => ({ body: { packages: packages.map((row) => ({ ...row, forSale: true, enabled: true })), companies: [] } }),
   });
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await page.getByRole('button', { name: 'تفعيل رقم' }).first().click();
   const dialog = page.getByRole('dialog');
   const pos = dialog.getByRole('combobox', { name: 'نقطة البيع' });

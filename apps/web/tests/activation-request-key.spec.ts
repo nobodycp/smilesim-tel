@@ -40,7 +40,7 @@ const serialField = (page: Page) => form(page).getByLabel('رقم الشريحة
 
 test('an activation sent again carries the same key; the next activation carries a new one', async ({ page }) => {
   const sent = await serve(page, 'branch', [down, { body: opened }]);
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await openForm(page);
   await serialField(page).fill('8997202000000000011');
   await submit(page);
@@ -59,7 +59,7 @@ test('an activation sent again carries the same key; the next activation carries
   // result leaves for the home page, so the form is opened anew.
   await page.getByTestId('activation-result').getByRole('button', { name: 'موافق' }).last().click();
   await expect(page).toHaveURL('http://admin.localhost:3910/');
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await openForm(page);
   await serialField(page).fill('8997202000000000011');
   await submit(page);
@@ -71,7 +71,7 @@ test('an activation sent again carries the same key; the next activation carries
 
 test('a form changed after a refusal is another activation, with another key', async ({ page }) => {
   const sent = await serve(page, 'branch', [{ status: 409, body: { message: 'x', code: 'SIM_TAKEN' } }, { body: opened }]);
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await openForm(page);
   await serialField(page).fill('8997202000000000011');
   await submit(page);
@@ -86,7 +86,7 @@ test('a form changed after a refusal is another activation, with another key', a
 
 test('the key is kept nowhere but the page’s memory', async ({ page }) => {
   const sent = await serve(page, 'branch', [down]);
-  await page.goto('http://admin.localhost:3910/numbers');
+  await page.goto('http://admin.localhost:3910/postpaid/numbers');
   await openForm(page);
   await serialField(page).fill('8997202000000000011');
   await submit(page);
@@ -98,7 +98,7 @@ test('the key is kept nowhere but the page’s memory', async ({ page }) => {
 
 test('the point of sale’s own activation form does the same', async ({ page }) => {
   const sent = await serve(page, 'pos', [down, { body: opened }, { body: { ...opened, taskId: 'task-2' } }]);
-  await page.goto('http://pos.localhost:3910/packages');
+  await page.goto('http://pos.localhost:3910/postpaid/packages');
   await page.getByTestId('company-card').first().click();
   await page.getByTestId('pack-card').first().click();
   const join = page.getByTestId('subscribe-form');
@@ -115,7 +115,7 @@ test('the point of sale’s own activation form does the same', async ({ page })
   // Answered: the same serial typed again is a new activation. Closing the result leaves for the home page.
   await page.getByTestId('activation-result').getByRole('button', { name: 'موافق' }).last().click();
   await expect(page).toHaveURL('http://pos.localhost:3910/');
-  await page.goto('http://pos.localhost:3910/packages');
+  await page.goto('http://pos.localhost:3910/postpaid/packages');
   await page.getByTestId('company-card').first().click();
   await page.getByTestId('pack-card').first().click();
   await serial.fill('8997202000000000011');

@@ -31,7 +31,7 @@ test('numbers row actions live in the menu', async ({ page }) => {
       body: JSON.stringify({ packages: [], companies: [] }),
     }),
   );
-  await page.goto('/numbers');
+  await page.goto('/postpaid/numbers');
   await expectFullTable(page, 'الأرقام');
   await expect(page.getByLabel('الرقم')).toBeVisible();
   await page.getByRole('button', { name: /إجراءات/ }).click();
@@ -48,7 +48,7 @@ test('a row menu opens on its first item, walks with the arrows, and Escape give
   await page.route('**/v1/postpaid/packages', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
-  await page.goto('/numbers');
+  await page.goto('/postpaid/numbers');
   await expectFullTable(page, 'الأرقام');
   const trigger = page.getByRole('button', { name: /إجراءات/ });
   await trigger.click();
@@ -71,19 +71,19 @@ test('the SIM / eSIM filter is sent with the others, and an empty answer under i
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   // No filter: the list is simply empty.
-  await page.goto('/numbers');
+  await page.goto('/postpaid/numbers');
   await expect(page.getByText('لا أرقام بعد.')).toBeVisible();
   // Only the SIM filter: it is a filter like the others.
-  await page.goto('/numbers?sim=esim');
+  await page.goto('/postpaid/numbers?sim=esim');
   await expect(page.getByText('لا نتائج لهذا التصفية')).toBeVisible();
   await expect(page.getByText('لا أرقام بعد.')).toHaveCount(0);
   expect(asked.at(-1)).toContain('sim=esim');
   // With a status beside it, both travel; a kind that is not one of the two is not sent at all.
-  await page.goto('/numbers?sim=sim&status=frozen');
+  await page.goto('/postpaid/numbers?sim=sim&status=frozen');
   await expect(page.getByText('لا نتائج لهذا التصفية')).toBeVisible();
   expect(asked.at(-1)).toContain('sim=sim');
   expect(asked.at(-1)).toContain('status=frozen');
-  await page.goto('/numbers?sim=card');
+  await page.goto('/postpaid/numbers?sim=card');
   await expect(page.getByText('لا أرقام بعد.')).toBeVisible();
   expect(asked.at(-1)).not.toContain('sim=');
 });

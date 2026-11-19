@@ -408,7 +408,7 @@ function serveNumber(page: Page, patch: Record<string, unknown> = {}, extra: Rou
 for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const) {
   test(`number detail sends linePrices ${wire} with the transfer`, async ({ page }) => {
     await serveNumber(page, {}, { 'POST /postpaid/lines/ln1/transfer': () => ({ body: { ok: true } }) });
-    await page.goto(`${agent}/numbers/ln1`);
+    await page.goto(`${agent}/postpaid/numbers/ln1`);
     await page.getByRole('button', { name: 'نقل', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'نقل', exact: true });
     const submit = dialog.getByRole('button', { name: 'نقل', exact: true });
@@ -431,7 +431,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
 
 test('the number card has no «نقل» tile when transfer is stopped on the actor path', async ({ page }) => {
   await serveNumber(page, { stops: ['transfer'] });
-  await page.goto(`${agent}/numbers/ln1`);
+  await page.goto(`${agent}/postpaid/numbers/ln1`);
   await expect(page.getByTestId('line-number')).toHaveText('0550246962');
   await expect(page.getByTestId('line-ops')).toBeVisible();
   await expect(page.getByRole('button', { name: 'نقل', exact: true })).toHaveCount(0);

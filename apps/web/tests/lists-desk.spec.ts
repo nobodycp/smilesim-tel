@@ -18,13 +18,13 @@ test('finance, audit, and providers fill the desk', async ({ page }) => {
   await page.route('**/v1/postpaid/companies', empty(JSON.stringify({ companies: [] })));
   await page.goto('http://admin.localhost:3910/finance');
   await expectFullTable(page, 'المالية');
-  await page.goto('http://admin.localhost:3910/provider-operations');
+  await page.goto('http://admin.localhost:3910/postpaid/provider-operations');
   await expectFullTable(page, 'عمليات المزودين');
   await page.goto('http://admin.localhost:3910/audit');
   await expectFullTable(page, 'سجل النشاط');
-  await page.goto('http://admin.localhost:3910/providers');
+  await page.goto('http://admin.localhost:3910/postpaid/providers');
   await expectFullTable(page, 'المزودون');
-  await page.goto('http://admin.localhost:3910/providers/cell');
+  await page.goto('http://admin.localhost:3910/postpaid/providers/cell');
   await expectFullTable(page, 'سلكوم');
   await expect(page.getByRole('heading', { level: 2, name: 'الرزم' })).toHaveCount(0);
 });

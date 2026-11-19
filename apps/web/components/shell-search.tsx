@@ -96,7 +96,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
         for (const row of lines.data.items) {
           next.push({
             key: `line-${row.id}`,
-            href: `/numbers/${row.id}`,
+            href: `/postpaid/numbers/${row.id}`,
             label: row.msisdn,
             sub: [row.companyName, row.packageName].filter(Boolean).join(' · '),
             group: t.navNumbers,

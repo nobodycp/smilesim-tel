@@ -205,7 +205,7 @@ export function UserPackagesTab({
           // Numbers that already renewed under another price change only here, never by writing a price above.
           ...(canEdit && row.lines > 0 ? [{ label: t.linePricesMenu, icon: 'receipt' as const, onClick: () => setPricing(row) }] : []),
           ...(opensPackage && row.companyCode
-            ? [{ label: t.openPackagePage, icon: 'enter' as const, onClick: () => router.push(`/companies/${encodeURIComponent(row.companyCode)}/packages/${encodeURIComponent(row.code)}`) }]
+            ? [{ label: t.openPackagePage, icon: 'enter' as const, onClick: () => router.push(`/postpaid/companies/${encodeURIComponent(row.companyCode)}/packages/${encodeURIComponent(row.code)}`) }]
             : []),
         ];
         return <RowMenu label={`${t.rowActions} ${row.name}`} items={items} />;

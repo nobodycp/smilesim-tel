@@ -42,15 +42,15 @@ test.describe('layer guard', () => {
 
   test('a branch page closes for another layer on the branch door, and opens for the branch', async ({ page }) => {
     const calls = await serveApi(page, 'agent', { 'GET /providers': () => ({ body: { providers: [] } }) });
-    await page.goto(`${admin}/providers`);
+    await page.goto(`${admin}/postpaid/providers`);
     await page.waitForURL((url) => url.pathname === '/');
     expect(calls.filter((call) => call.startsWith('GET /providers'))).toEqual([]);
 
     const open = await page.context().newPage();
     const branchCalls = await serveApi(open, 'branch', { 'GET /providers': () => ({ body: { providers: [] } }) });
-    await open.goto(`${admin}/providers`);
+    await open.goto(`${admin}/postpaid/providers`);
     await expect(open.getByRole('heading', { level: 1, name: 'المزودون' })).toBeVisible();
-    expect(new URL(open.url()).pathname).toBe('/providers');
+    expect(new URL(open.url()).pathname).toBe('/postpaid/providers');
     expect(branchCalls.filter((call) => call.startsWith('GET /providers'))).toHaveLength(1);
   });
 });
@@ -86,7 +86,7 @@ test.describe('DataTable and EmptyState', () => {
       'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /finance': () => ({ body: { items: [], nextCursor: null } }),
     });
-    await page.goto(`${admin}/numbers`);
+    await page.goto(`${admin}/postpaid/numbers`);
     const empty = page.locator('#lines > [data-testid="empty-state"]');
     await expect(empty).toHaveText('لا أرقام بعد.');
     await expect(empty).not.toHaveAttribute('style', /./);
@@ -104,7 +104,7 @@ test.describe('DataTable and EmptyState', () => {
 test.describe('usePaged', () => {
   for (const [path, route, key, name] of [
     ['finance', 'GET /finance', 'items', 'المالية'],
-    ['provider-operations', 'GET /provider-operations', 'items', 'عمليات المزودين'],
+    ['postpaid/provider-operations', 'GET /provider-operations', 'items', 'عمليات المزودين'],
     ['audit', 'GET /audit', 'items', 'سجل النشاط'],
   ] as const) {
     // The first answer fills one page of the saved size (10) and names a cursor; page 2 reads it.
@@ -183,7 +183,7 @@ test.describe('useAction and lineActions', () => {
       'GET /users': () => ({ body: { users: [] } }),
       'POST /postpaid/lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
     });
-    await page.goto(`${admin}/numbers/ln1`);
+    await page.goto(`${admin}/postpaid/numbers/ln1`);
     const extend = page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true });
     await expect(extend).toBeVisible();
     // The card reads once per load (the session answer can re-run the load once); the action adds exactly one reload.
@@ -203,7 +203,7 @@ test.describe('useAction and lineActions', () => {
       'GET /users': () => ({ body: { users: [] } }),
       'POST /postpaid/lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
     });
-    await page.goto(`${admin}/numbers/ln1`);
+    await page.goto(`${admin}/postpaid/numbers/ln1`);
     await expect(page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
     const before = { line: count('GET /postpaid/lines/ln1'), packages: count('GET /postpaid/packages'), users: count('GET /directory?mine=1') };
@@ -224,7 +224,7 @@ test.describe('useAction and lineActions', () => {
       'GET /postpaid/lines/ln1/disconnect-quote': () => ({ body: { amount: 2850, runsNow: true } }),
       'POST /postpaid/lines/ln1/disconnect': () => { tries += 1; return { status: 400, body: { message: 'بيانات غير صالحة' } }; },
     });
-    await page.goto(`${admin}/numbers/ln1`);
+    await page.goto(`${admin}/postpaid/numbers/ln1`);
     const disconnect = async () => {
       await page.getByTestId('line-op-grid').getByRole('button', { name: 'فصل', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'فصل الرقم' });
@@ -249,14 +249,14 @@ test.describe('useAction and lineActions', () => {
       'GET /users': () => ({ body: { users: [] } }),
     });
     const listItems = async (n: number) => {
-      await page.goto(`${admin}/numbers`);
+      await page.goto(`${admin}/postpaid/numbers`);
       await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(4);
       await page.getByTestId('data-table').locator('tbody tr').nth(n).getByRole('button', { name: /إجراءات/ }).click();
       await expect(page.getByRole('menu')).toBeVisible();
       return page.getByRole('menuitem').allTextContents();
     };
     const cardItems = async (id: string) => {
-      await page.goto(`${admin}/numbers/${id}`);
+      await page.goto(`${admin}/postpaid/numbers/${id}`);
       await expect(page.getByTestId('line-number')).toBeVisible();
       return page.getByTestId('line-op').and(page.locator('[data-now]')).locator('b').allTextContents();
     };
@@ -268,7 +268,7 @@ test.describe('useAction and lineActions', () => {
     expect((await listItems(2)).map((text) => text.trim())).toEqual(['شحن']);
     expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['شحن']);
     // A number locked for a package switch has no immediate action on either screen.
-    await page.goto(`${admin}/numbers`);
+    await page.goto(`${admin}/postpaid/numbers`);
     await expect(page.getByTestId('data-table').locator('tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);
     expect(await cardItems('ln4')).toEqual([]);
     await expect(page.getByTestId('line-op').and(page.locator('[data-now]'))).toHaveCount(0);

@@ -16,7 +16,7 @@ type Row = Company['providers'][number]['packages'][number] & { providerCode: st
 
 /** A package's own page: under its company, the catalog's root (spec 2026-11-09-admin-review, 4). */
 export const packageHref = (companyCode: string, packageCode: string) =>
-  `/companies/${encodeURIComponent(companyCode)}/packages/${encodeURIComponent(packageCode)}`;
+  `/postpaid/companies/${encodeURIComponent(companyCode)}/packages/${encodeURIComponent(packageCode)}`;
 
 /**
  * The company's «الرزم» tab (spec 2026-11-09-admin-review, 4): every package of the company in one table — its
@@ -51,7 +51,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
         </span>
       ),
     },
-    { key: 'provider', header: t.provider, render: (row) => <Link className="font-bold" href={`/providers/${encodeURIComponent(row.providerCode)}`}>{row.providerName}</Link> },
+    { key: 'provider', header: t.provider, render: (row) => <Link className="font-bold" href={`/postpaid/providers/${encodeURIComponent(row.providerCode)}`}>{row.providerName}</Link> },
     {
       key: 'child',
       header: t.mainSellPair,

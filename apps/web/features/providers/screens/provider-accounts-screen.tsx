@@ -24,7 +24,7 @@ export function ProviderAccountsScreen() {
   const read = useApiQuery(['api', 'provider-accounts'], () => api.providerAccounts(), { enabled: allowed });
   const data = read.data;
   const columns: Column<ProviderAccount>[] = [
-    { key: 'name', header: t.provider, render: (row) => <Link className={ROW_LINK} href={`/provider-accounts/${row.code}`}>{row.name}</Link> },
+    { key: 'name', header: t.provider, render: (row) => <Link className={ROW_LINK} href={`/postpaid/provider-accounts/${row.code}`}>{row.name}</Link> },
     { key: 'purchases', header: t.purchases, num: true, sortValue: (row) => row.purchases, render: (row) => <Money value={row.purchases} /> },
     { key: 'paid', header: t.paidTotal, num: true, sortValue: (row) => row.payments + row.settlements, render: (row) => <Money value={row.payments + row.settlements} /> },
     { key: 'balance', header: t.balance, num: true, sortValue: (row) => row.balance, render: (row) => <Money value={row.balance} /> },
@@ -48,7 +48,7 @@ export function ProviderAccountsScreen() {
       num: true,
       sortValue: (row) => row.losses,
       render: (row) => (row.losses
-        ? <Link className={ROW_LINK} href={`/provider-operations?provider=${encodeURIComponent(row.code)}&loss=any`}><Badge variant="danger" dot>{row.losses}</Badge></Link>
+        ? <Link className={ROW_LINK} href={`/postpaid/provider-operations?provider=${encodeURIComponent(row.code)}&loss=any`}><Badge variant="danger" dot>{row.losses}</Badge></Link>
         : '0'),
     },
   ];

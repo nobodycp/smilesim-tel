@@ -26,7 +26,7 @@ async function serve(page: Page, onDetail: (id: string, route: Route) => Promise
     await onDetail(id, route);
   });
   await page.route('**/v1/postpaid/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
-  await page.goto('/numbers');
+  await page.goto('/postpaid/numbers');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
   return asked;
 }
@@ -175,7 +175,7 @@ test('the line page shows the code from its own detail, and asks again after it 
     asked += 1;
     return route.fulfill(json({ line: { ...row('ln1', '0550000001', true), esimQr: QR_A }, history: [] }));
   });
-  await page.goto('/numbers/ln1');
+  await page.goto('/postpaid/numbers/ln1');
   await page.getByRole('tab', { name: 'التفاصيل' }).click();
   await page.getByRole('button', { name: /رمز QR/ }).first().click();
   await expect(picture(page)).toHaveAttribute('src', QR_A);
@@ -185,7 +185,7 @@ test('the line page shows the code from its own detail, and asks again after it 
   // Left and opened again: the answer was not kept in the shared cache, so the page waits for a new one.
   await page.goto('/settings');
   await expect(page.getByTestId('settings-grid')).toBeVisible();
-  await page.goto('/numbers/ln1');
+  await page.goto('/postpaid/numbers/ln1');
   await page.getByRole('tab', { name: 'التفاصيل' }).click();
   await expect(page.getByRole('button', { name: /رمز QR/ }).first()).toBeVisible();
   expect(asked).toBeGreaterThan(first);
@@ -222,7 +222,7 @@ const mark = (page: Page) => page.evaluate(() => { (window as unknown as { sameL
 const sameLoad = (page: Page) => page.evaluate(() => (window as unknown as { sameLoad?: boolean }).sameLoad === true);
 
 for (const [name, path, first, second] of [
-  ['line', '/numbers/ln1', { line: { ...row('ln1', '0550000001', true), esimQr: QR_A }, history: [] }, { line: { ...row('ln1', '0550000001', true), esimQr: QR_B }, history: [] }],
+  ['line', '/postpaid/numbers/ln1', { line: { ...row('ln1', '0550000001', true), esimQr: QR_A }, history: [] }, { line: { ...row('ln1', '0550000001', true), esimQr: QR_B }, history: [] }],
   ['task', '/tasks/t1', { task: taskOf(QR_A), events: [] }, { task: taskOf(QR_B), events: [] }],
 ] as const) {
   test(`the ${name} page keeps no code in the shared cache: left and opened again in the same load, it shows nothing until a new answer`, async ({ page }) => {
@@ -314,7 +314,7 @@ test('signing out with a code on screen leaves nothing of it for whoever signs i
   }));
   for (const text of Object.values(kept)) expect(text).not.toContain(QR_A.slice(30));
   // The next account opens the numbers page: no code is there until it asks for one itself.
-  await page.goto('/numbers');
+  await page.goto('/postpaid/numbers');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
   await page.waitForTimeout(400);
   expect(await page.content()).not.toContain(QR_A.slice(30));

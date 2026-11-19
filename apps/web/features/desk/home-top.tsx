@@ -163,7 +163,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
         {/* The branch's profit is net of its losses (spec DB.5 P.8): the line names them and links to them. */}
         <div className={cn(TILE_META, OVER_TREND)}>{branch && losses ? (
           <>{periodName} · {losses.count ? (
-            <Link className="pointer-events-auto font-bold text-danger no-underline" href="/provider-operations?loss=any" data-testid="home-losses">
+            <Link className="pointer-events-auto font-bold text-danger no-underline" href="/postpaid/provider-operations?loss=any" data-testid="home-losses">
               {t.homeLossesMeta.replace('{n}', String(losses.count)).replace('{amount}', formatShekel(losses.amount))}
             </Link>
           ) : t.homeNoLosses}</>
@@ -174,7 +174,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
         <span className={TILE_LABEL}>{t.homeActiveLines}</span>
         <div className={TILE_VALUE}>{home ? home.activeLines : '—'}</div>
         <div className={TILE_META}>
-          {home ? <><span className={home.expiringLines ? 'text-accent' : undefined}>{t.expiringMeta.replace('{n}', String(home.expiringLines))}</span> · <Link className="font-bold text-inherit no-underline" href="/numbers?status=expiring">{t.showThem}</Link></> : null}
+          {home ? <><span className={home.expiringLines ? 'text-accent' : undefined}>{t.expiringMeta.replace('{n}', String(home.expiringLines))}</span> · <Link className="font-bold text-inherit no-underline" href="/postpaid/numbers?status=expiring">{t.showThem}</Link></> : null}
         </div>
       </div>}
     </section>

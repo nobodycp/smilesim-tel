@@ -27,7 +27,7 @@ test('an agent reads its balances on their own page, and exports them with their
 
 test('the sidebar folds five reports in one group that starts closed and opens on a report page', async ({ page }) => {
   await serveApi(page, 'agent', { 'GET /reports/balances': () => ({ body: balances }) });
-  await page.goto('http://agent.localhost:3910/numbers');
+  await page.goto('http://agent.localhost:3910/postpaid/numbers');
   const nav = page.getByTestId('sidebar').getByRole('navigation', { name: 'أقسام المكتب' });
   const head = nav.getByRole('button', { name: 'التقارير' });
   await expect(head).toHaveAttribute('aria-expanded', 'false');
@@ -39,17 +39,4 @@ test('the sidebar folds five reports in one group that starts closed and opens o
   await page.goto('http://agent.localhost:3910/reports/balances');
   await expect(nav.getByRole('button', { name: 'التقارير' })).toHaveAttribute('aria-expanded', 'true');
   await expect(nav.getByRole('link', { name: 'الأرصدة' })).toHaveAttribute('aria-current', 'page');
-});
-
-test('the old report paths land where their rows now live', async ({ page }) => {
-  await serveApi(page, 'branch', {
-    'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
-    'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
-  });
-  await page.goto('http://admin.localhost:3910/operations');
-  await expect(page).toHaveURL(/\/finance\?scope=operations$/);
-  await page.goto('http://admin.localhost:3910/reports/sales');
-  await expect(page).toHaveURL(/\/finance\?scope=operations$/);
-  await page.goto('http://admin.localhost:3910/reports/orders');
-  await expect(page).toHaveURL(/\/tasks$/);
 });

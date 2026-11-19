@@ -90,7 +90,7 @@ export function HomeScreen() {
           {layer && layer !== 'pos' && !branch ? (
             <Button asChild variant="secondary"><Link href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link></Button>
           ) : null}
-          {layer && !branch ? <Button asChild><Link href="/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link></Button> : null}
+          {layer && !branch ? <Button asChild><Link href="/postpaid/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link></Button> : null}
         </div>
       </header>
       {offers.length > 0 ? <OfferHero offers={offers} /> : null}

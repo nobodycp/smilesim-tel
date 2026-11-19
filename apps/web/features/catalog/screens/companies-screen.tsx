@@ -81,7 +81,7 @@ export function CompaniesScreen() {
       <article key={company.code} className={CARD} data-slot="company-card">
         {/* The whole picture, centred, as on the point of sale's company card (owner, 2026-11-16). */}
         <CompanyPicture name={company.name} image={company.image} className="mb-1.5" />
-        <Link className={cn(CARD_LINK, 'text-center')} href={`/companies/${company.code}`}>{company.name}</Link>
+        <Link className={cn(CARD_LINK, 'text-center')} href={`/postpaid/companies/${company.code}`}>{company.name}</Link>
         <div className="mt-2 flex flex-wrap justify-center gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-caption">
           <span>{counted(t.coPackages, sums.packages)}</span>
           <span>{counted(t.coProviders, company.providers.length)}</span>
@@ -97,7 +97,7 @@ export function CompaniesScreen() {
       title={allowed ? t.companiesTitle : ''}
       lede={t.companiesLede}
       // A company the provider sells (spec 2026-11-09-admin-review, 3): owner or the edit grant.
-      action={canAdd ? <Button asChild><Link href="/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link></Button> : undefined}
+      action={canAdd ? <Button asChild><Link href="/postpaid/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link></Button> : undefined}
       error=""
       note=""
     >

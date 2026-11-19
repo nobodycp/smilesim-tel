@@ -11,10 +11,10 @@ const combos = (process.env.COMBOS ?? 'ar-dark,en-light').split(',');
 const only = process.env.ONLY;
 
 const ROUTES = [
-  '/', '/numbers', '/numbers/:line', '/users', '/users/main', '/users/pos', '/tasks', '/tasks/:task', '/packages',
-  '/companies', '/companies/:company', '/companies/:company/packages/:package', '/providers', '/providers/sky',
-  '/provider-accounts', '/provider-accounts/sky', '/finance', '/profits', '/reports/balances', '/reports/supply',
-  '/provider-operations', '/audit', '/notices', '/settings', '/wallet', '/offers', '/roles', '/branding',
+  '/', '/postpaid/numbers', '/postpaid/numbers/:line', '/users', '/users/main', '/users/pos', '/tasks', '/tasks/:task', '/postpaid/packages',
+  '/postpaid/companies', '/postpaid/companies/:company', '/postpaid/companies/:company/packages/:package', '/postpaid/providers', '/postpaid/providers/sky',
+  '/postpaid/provider-accounts', '/postpaid/provider-accounts/sky', '/finance', '/profits', '/reports/balances', '/reports/supply',
+  '/postpaid/provider-operations', '/audit', '/notices', '/settings', '/wallet', '/offers', '/roles', '/branding',
 ];
 
 type Finding = { route: string; view: string; width: number; combo: string; kind: string; detail: string };

@@ -59,7 +59,7 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(cards.nth(2).getByTestId('pulse-change')).toHaveText('10%');
   // The branch's profit is net of its losses (spec DB.5 P.8): the meta line names them and links to the marked operations.
   await expect(cards.nth(2).getByTestId('home-losses')).toHaveText('خسائر: 2 بقيمة 32.00 ₪');
-  await expect(cards.nth(2).getByTestId('home-losses')).toHaveAttribute('href', '/provider-operations?loss=any');
+  await expect(cards.nth(2).getByTestId('home-losses')).toHaveAttribute('href', '/postpaid/provider-operations?loss=any');
   await expect(band.getByTestId('trend-line')).toHaveCount(3);
   // The branch's home, trimmed (spec 2026-11-09-admin-review, 6.3): the three period cards alone in the band, no
   // «آخر العمليات» or «مهام بانتظارك», no «تمويل حساب» or «تفعيل رقم» in the head.
@@ -72,10 +72,10 @@ test('the branch reads the full overview, switches the period, and sees its prov
   const legend = page.getByTestId('donut-legend').locator('li');
   await expect(legend).toHaveCount(5);
   await expect(page.getByTestId('donut-total')).toHaveText('13');
-  await expect(page.getByTestId('donut-legend').locator('a[href="/numbers?status=suspended"]')).toContainText('معلق');
+  await expect(page.getByTestId('donut-legend').locator('a[href="/postpaid/numbers?status=suspended"]')).toContainText('معلق');
   // Each slice's change over the period (spec 2026-11-09-admin-review, 6.4): green ↑3, red ↓2, nothing for 0.
   await expect(legend.nth(0).getByTestId('donut-change-up')).toHaveText('3');
-  await expect(page.getByTestId('donut-legend').locator('a[href="/numbers?status=frozen"]').getByTestId('donut-change-down')).toHaveText('2');
+  await expect(page.getByTestId('donut-legend').locator('a[href="/postpaid/numbers?status=frozen"]').getByTestId('donut-change-down')).toHaveText('2');
   await expect(legend.nth(1).getByTestId(/^donut-change-(up|down)$/)).toHaveCount(0);
   // The count closes the line, the change before it (spec 2026-11-09-admin-review, 8.2).
   await expect(legend.nth(0).locator('a > *').last()).toHaveAttribute('data-testid', 'donut-value');

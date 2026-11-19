@@ -198,7 +198,7 @@ test('the package sheet opens the table for the whole system and then for one ac
         : { current: 3200, groups: [{ price: 2900, count: 1 }] },
     }),
   });
-  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.goto(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
   // Re-pricing the numbers already on the package has its own tab: a row per point of sale, and the whole system
   // from the button at the top (spec 2026-11-16-package-page, P.3).
   await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
@@ -230,7 +230,7 @@ test('on a phone the line prices dialog keeps its price fields at their width', 
     ...sheetRoutes(),
     'GET /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3200, count: 1 }, { price: 123456, count: 12 }] } }),
   });
-  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.goto(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
   await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
   await page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' }).getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
@@ -245,7 +245,7 @@ test('a custom price row opens the table for its account', async ({ page }) => {
     'GET /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { current: 2900, groups: [{ price: 3200, count: 2 }] } }),
     'PUT /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 2 } }),
   });
-  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.goto(`${admin}/postpaid/companies/wecom/packages/lian-wecom-500`);
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
   await page.getByRole('button', { name: /إجراءات pos1/ }).click();
