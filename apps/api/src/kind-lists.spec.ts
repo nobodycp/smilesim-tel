@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { REFUND_KINDS, SALE_KINDS } from './modules/pricing';
 import { PROVIDER_OPERATION_KINDS } from './modules/wallets/provider-cost';
-import { BILLS_KINDS, MONEY_KINDS, MOVES_NO_PROFIT, OFF_THE_STATEMENT, isLineKind } from './modules/wallets/entry-kinds';
+import { POSTPAID_KINDS, MONEY_KINDS, MOVES_NO_PROFIT, OFF_THE_STATEMENT, isLineKind } from './modules/wallets/entry-kinds';
 import { WALLET_ENTRY_KINDS } from './modules/wallets/wallets.schemas';
 
 // Guards on the wallet-entry kind lists (spec 2026-11-19 business-lines foundation, F.4; ADR 0028, decision 5), so a
@@ -127,10 +127,10 @@ const copyKeys = (language: string) => new Set([...readFileSync(join(WEB, 'lib',
 describe('every kind the API can write is whole', () => {
   const written = writtenKinds(production);
 
-  it('is in WALLET_ENTRY_KINDS (what the filters accept), which is the bills\' words and the shared money words', () => {
+  it('is in WALLET_ENTRY_KINDS (what the filters accept), which is the postpaid line\'s words and the shared money words', () => {
     expect(written.size).toBeGreaterThanOrEqual(15);
     expect(sorted(written).filter((kind) => !(WALLET_ENTRY_KINDS as readonly string[]).includes(kind))).toEqual([]);
-    expect(sorted(WALLET_ENTRY_KINDS)).toEqual(sorted([...BILLS_KINDS, ...MONEY_KINDS]));
+    expect(sorted(WALLET_ENTRY_KINDS)).toEqual(sorted([...POSTPAID_KINDS, ...MONEY_KINDS]));
   });
 
   it('has a name in the web\'s copy, in Arabic, English and Hebrew', () => {
@@ -150,7 +150,7 @@ describe('every kind the API can write is whole', () => {
     const placed = (kind: string) => summed.has(kind) !== MOVES_NO_PROFIT.includes(kind);
     expect(WALLET_ENTRY_KINDS.filter((kind) => !placed(kind))).toEqual([]);
     // It would catch a kind in neither, and one in both.
-    expect(placed('cards.topup')).toBe(false);
+    expect(placed('prepaid.topup')).toBe(false);
     expect([...summed].filter((kind) => MOVES_NO_PROFIT.includes(kind))).toEqual([]);
   });
 
@@ -193,19 +193,19 @@ describe('a statement lists by exclusion; nothing else does', () => {
 // --- The reserved words (ADR 0028, decision 5) ---------------------------------------------------------------------
 
 describe('the words are reserved', () => {
-  it('names the bills\' bare kinds of ADR 0028; a bare kind that is in no list is refused', () => {
-    expect(sorted(BILLS_KINDS)).toEqual(sorted(['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'switch', 'esim', 'sim', 'refresh', 'transfer', 'rename', 'freeze', 'unfreeze', 'addon']));
+  it('names the postpaid line\'s bare kinds of ADR 0028; a bare kind that is in no list is refused', () => {
+    expect(sorted(POSTPAID_KINDS)).toEqual(sorted(['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'switch', 'esim', 'sim', 'refresh', 'transfer', 'rename', 'freeze', 'unfreeze', 'addon']));
     const bare = WALLET_ENTRY_KINDS.filter((kind) => !isLineKind(kind));
-    expect(bare.filter((kind) => !BILLS_KINDS.includes(kind) && !MONEY_KINDS.includes(kind))).toEqual([]);
+    expect(bare.filter((kind) => !POSTPAID_KINDS.includes(kind) && !MONEY_KINDS.includes(kind))).toEqual([]);
   });
 
   it('tells a new line\'s kind by its prefix and dot', () => {
-    expect(isLineKind('cards.topup')).toBe(true);
+    expect(isLineKind('prepaid.topup')).toBe(true);
     expect(isLineKind('travel-esim.issue')).toBe(true);
     expect(isLineKind('esim')).toBe(false);
     expect(isLineKind('.topup')).toBe(false);
-    // A new line's kind never takes a bare word of bills or of money as its prefix.
+    // A new line's kind never takes a bare word of postpaid or of money as its prefix.
     const prefixOf = (kind: string) => kind.split('.')[0];
-    expect(WALLET_ENTRY_KINDS.filter(isLineKind).filter((kind) => [...BILLS_KINDS, ...MONEY_KINDS].includes(prefixOf(kind)))).toEqual([]);
+    expect(WALLET_ENTRY_KINDS.filter(isLineKind).filter((kind) => [...POSTPAID_KINDS, ...MONEY_KINDS].includes(prefixOf(kind)))).toEqual([]);
   });
 });

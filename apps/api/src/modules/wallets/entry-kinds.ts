@@ -10,11 +10,11 @@
 export const OFF_THE_STATEMENT: readonly string[] = ['hold', 'release'];
 
 /**
- * The bills line's kinds (ADR 0028, decision 5): a wallet-entry kind names one thing for ever, so these bare words
- * belong to bills — `charge` is a renewal, `esim` the local eSIM swap. A new line's kinds carry its prefix and a dot
- * (`cards.…`, `games.…`); kind-lists.spec.ts refuses a new bare kind that is in neither list.
+ * The postpaid line's kinds («الفواتير»; ADR 0028, decision 5): a wallet-entry kind names one thing for ever, so these
+ * bare words belong to postpaid — `charge` is a renewal, `esim` the local eSIM swap. A new line's kinds carry its
+ * prefix and a dot (`prepaid.…`, `games.…`); kind-lists.spec.ts refuses a new bare kind that is in neither list.
  */
-export const BILLS_KINDS: readonly string[] = [
+export const POSTPAID_KINDS: readonly string[] = [
   'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'switch', 'esim', 'sim', 'refresh', 'transfer', 'rename', 'freeze', 'unfreeze', 'addon',
 ];
 
