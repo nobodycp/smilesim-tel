@@ -10,16 +10,14 @@ import { ProviderOperationsRepository } from './integration/operations/provider-
 import { ProviderOperationsService } from './integration/operations/provider-operations.service';
 import { ProviderAccountsController } from './account/provider-accounts.controller';
 import { ProviderAccountsService } from './account/provider-accounts.service';
-import { ProviderCatalogController } from './directory/provider-catalog.controller';
-import { ProviderCatalogService } from './directory/provider-catalog.service';
 import { ProviderHealthService } from './directory/provider-health.service';
 import { ProvidersController } from './directory/providers.controller';
 import { ProvidersService } from './directory/providers.service';
 import { Module } from '@nestjs/common';
 
-/** Providers: settings, what they sell, what the office owes them, their health, and the gateway line operations go through. */
-export const PROVIDERS_CONTROLLERS = [ProvidersController, ProviderCatalogController, ProviderAccountsController];
-export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, ProviderCatalogService, ProviderAccountsService, ProviderHealthService, ProviderOperationsRepository, ProviderOperationsService, ProviderDispatchRepository, ProviderDispatchService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }];
+/** Providers: settings, what the office owes them, their health, and the gateway line operations go through. */
+export const PROVIDERS_CONTROLLERS = [ProvidersController, ProviderAccountsController];
+export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, ProviderAccountsService, ProviderHealthService, ProviderOperationsRepository, ProviderOperationsService, ProviderDispatchRepository, ProviderDispatchService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }];
 
 @Module({
   imports: [PlatformModule, AccessModule, WalletsModule],

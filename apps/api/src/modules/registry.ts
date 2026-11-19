@@ -1,12 +1,13 @@
 // apps/api/src/modules/registry.ts
 import { AuthModule } from './auth/auth.module';
-import { BrandingModule } from './branding/branding.module';
+import { BrandingModule } from './site/branding/branding.module';
 import { ActivityModule } from './auditing/activity.module';
 import { NoticeWriterModule } from './notifications/notice-writer.module';
 import { RolesModule } from './access/roles/roles.module';
 import { CompaniesModule } from './catalog/companies/companies.module';
-import { OffersModule } from './catalog/offers/offers.module';
+import { OffersModule } from './site/offers/offers.module';
 import { PicturesModule } from './catalog/pictures/pictures.module';
+import { OfferPicturesModule } from './site/pictures/offer-pictures.module';
 import { AuditModule } from './auditing/audit.module';
 import { NoticesModule } from './notifications/notices.module';
 import { CatalogModule } from './catalog/shipped/catalog.module';
@@ -16,6 +17,7 @@ import { PackagesModule } from './catalog/packages/packages.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ProvidersModule } from './providers/providers.module';
+import { ProviderCatalogModule } from './catalog/provider-catalog/provider-catalog.module';
 import { LinesModule } from './sales/lines.module';
 import { TransfersModule } from './sales/transfers/transfers.module';
 import { ReportsModule } from './reporting/reports/reports.module';
@@ -31,8 +33,9 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 // The two global writers first: the activity log and the notice writer, each the one implementation of a port of
 // the platform (ADR 0020, slice R.2).
 // Then the bindings of access's two ports (slice R.8), global like the writers.
-// The public picture routes beside the branding's (speed plan PF.7).
+// The public picture routes beside the branding's (speed plan PF.7): the company mark's, then the offer picture's.
+// Adding to the catalog from a provider right after the providers, where its controller was until slice F.7e.
 // The system monitor last (ADR 0020, amended 2026-11-17): it reads the others and none imports it.
 // The extension contract requires `any[]` here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, PicturesModule, MonitoringModule];
+export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, ProviderCatalogModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule, PicturesModule, OfferPicturesModule, MonitoringModule];

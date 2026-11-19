@@ -7,7 +7,7 @@ import {
   ActivityRecorder,
   ApiFailure,
   NotDuplicateGuarded,
-} from '../platform';
+} from '../../platform';
 import { Body, Controller, Get, Param, Put, Query, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags, ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';

@@ -4,7 +4,7 @@ import { UnitOfWork, type Db } from '../platform';
 import { companyMarkUrls } from '../catalog';
 
 /**
- * The database as this domain reads and writes it: providers, their ledger entries, reconciliations and the catalog rows made from them. One method per query, named for what it
+ * The database as this domain reads and writes it: providers, their ledger entries and reconciliations (adding to the catalog from a provider is the postpaid catalog's since slice F.7e). One method per query, named for what it
  * returns or changes; a method that may run inside a transaction takes the client (`db`). No rule and no
  * permission lives here (backend-engineering.mdc 5.1).
  */
@@ -56,45 +56,6 @@ export class ProvidersRepository {
     await this.uow.runTx(async (tx) => {
       await tx.provider.update({ where: { code }, data: { actionModes: modes } });
       for (const pkg of packages) await tx.postpaidPackage.update({ where: { id: pkg.id }, data: pkg.data });
-    });
-  }
-
-  // ── Catalog made from a provider ───────────────────────────────────────────────────────────────────────────
-
-  /** Which of these company codes the office already has. */
-  storedCompanyCodes(codes: string[]) {
-    return this.uow.prisma.postpaidCompany.findMany({ where: { code: { in: codes } }, select: { code: true } });
-  }
-
-  /** The packages already made from these product codes of this provider. */
-  packagesOfProducts(providerId: string, codes: string[]) {
-    return this.uow.prisma.postpaidPackage.findMany({
-      where: { providerId, providerProductCode: { in: codes } },
-      select: { providerProductCode: true },
-    });
-  }
-
-  companyByCode(code: string) {
-    return this.uow.prisma.postpaidCompany.findUnique({ where: { code } });
-  }
-
-  addCompany(data: Prisma.PostpaidCompanyCreateInput) {
-    return this.uow.prisma.postpaidCompany.create({
-      data,
-    });
-  }
-
-  /** A package already made from this product of this provider. */
-  packageOfProduct(providerId: string, productCode: string) {
-    return this.uow.prisma.postpaidPackage.findFirst({
-      where: { providerId, providerProductCode: productCode },
-      select: { id: true },
-    });
-  }
-
-  addPackage(data: Prisma.PostpaidPackageUncheckedCreateInput) {
-    return this.uow.prisma.postpaidPackage.create({
-      data,
     });
   }
 

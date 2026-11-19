@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUTH_STORE, AuthStore } from '../auth';
-import { ApiFailure } from '../platform';
+import { AUTH_STORE, AuthStore } from '../../auth';
+import { ApiFailure } from '../../platform';
 import {
   brandingSummary,
   decodeImage,
@@ -12,7 +12,7 @@ import {
 } from './branding-rules';
 import { BRANDING_STORE, BrandingStore } from './branding.store';
 
-import type { Gate } from '../platform';
+import type { Gate } from '../../platform';
 
 @Injectable()
 export class BrandingService {

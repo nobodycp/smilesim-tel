@@ -1,6 +1,6 @@
 import { UnitOfWork } from './unit-of-work';
 import 'reflect-metadata';
-import { PrismaBrandingStore } from '../branding/prisma-branding.store';
+import { PrismaBrandingStore } from '../site/branding/prisma-branding.store';
 import { PrismaActivityRecorder } from '../auditing/activity-recorder';
 import type { NoticeService } from '../notifications/notice.service';
 import { PrismaService } from './prisma.service';

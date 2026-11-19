@@ -11,10 +11,14 @@ import { TasksRepository } from '../../tasks/tasks.repository';
 import { CompaniesRepository } from '../companies/companies.repository';
 import { PackagesRepository } from '../packages/packages.repository';
 import { companyMarkUrls } from '../companies/company-marks';
-import { companyMarkUrl, markVersion, offerPictureUrl } from '../rules/pictures';
+import { companyMarkUrl, markVersion } from '../rules/pictures';
+import { offerPictureUrl } from '../../site/rules/pictures';
 import { PICTURES_CONTROLLERS, PICTURES_PROVIDERS } from './pictures.module';
+import { OFFER_PICTURES_CONTROLLERS, OFFER_PICTURES_PROVIDERS } from '../../site/pictures/offer-pictures.module';
 
 // Company marks and offer pictures by URL (speed plan PF.7, spec 2026-11-17-scale-speed-cleanup "Pictures by URL").
+// The two routes share the `/pictures` prefix: the company mark is the postpaid catalog's, the offer picture the
+// site's (slice F.7e); both are served here, as by the app.
 
 const webpBytes = Buffer.alloc(64, 9);
 const jpegBytes = Buffer.alloc(48, 5);
@@ -39,8 +43,8 @@ describe('the picture routes', () => {
       offer: { findUnique: async ({ where, select }: { where: { id: string }; select: Record<string, boolean> }) => (selects.push(select), offers[where.id] ?? null) },
     };
     const moduleRef = await Test.createTestingModule({
-      controllers: PICTURES_CONTROLLERS,
-      providers: [...PICTURES_PROVIDERS, { provide: UnitOfWork, useValue: { prisma } }],
+      controllers: [...PICTURES_CONTROLLERS, ...OFFER_PICTURES_CONTROLLERS],
+      providers: [...PICTURES_PROVIDERS, ...OFFER_PICTURES_PROVIDERS, { provide: UnitOfWork, useValue: { prisma } }],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();

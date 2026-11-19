@@ -79,9 +79,10 @@ describe('the target graph (ADR 0020)', () => {
     }
   });
 
-  it('names thirteen modules, and every one may use the platform', () => {
-    // Thirteen since the system monitor (2026-11-17): `monitoring`, above the others; none imports it.
-    expect(MODULES).toHaveLength(13);
+  it('names fourteen modules, and every one may use the platform', () => {
+    // Thirteen since the system monitor (2026-11-17): `monitoring`, above the others; none imports it. Fourteen since
+    // slice F.7e (2026-11-19): `site`, what every business line shares, taken out of the postpaid catalog.
+    expect(MODULES).toHaveLength(14);
     for (const module of MODULES) expect(allowedFor(module).has('platform')).toBe(true);
   });
 
@@ -125,14 +126,15 @@ describe('module boundaries, on the source as it is', () => {
     // IN FORCE for every module: a module is imported by other modules through its `index.ts` only. Five were
     // given theirs in R.9 and the other seven in R.12; the type holds the list to the modules, so a new module
     // cannot be added without its surface. The platform's surface also hands the platform's files at the root
-    // (`errors.ts`, `config.ts`, `db.ts`, `doors.ts`); identity's is in `modules/auth`, and catalog's hands
-    // `modules/branding` too. A composition root (`app`) may reach inside any module.
+    // (`errors.ts`, `config.ts`, `db.ts`, `doors.ts`); identity's is in `modules/auth`. The site identity
+    // (`branding/`) is the site's since slice F.7e. A composition root (`app`) may reach inside any module.
     const surfaces: Record<ModuleName, string> = {
       platform: 'modules/platform/index.ts',
       identity: 'modules/auth/index.ts',
       access: 'modules/access/index.ts',
       auditing: 'modules/auditing/index.ts',
       notifications: 'modules/notifications/index.ts',
+      site: 'modules/site/index.ts',
       catalog: 'modules/catalog/index.ts',
       pricing: 'modules/pricing/index.ts',
       wallets: 'modules/wallets/index.ts',

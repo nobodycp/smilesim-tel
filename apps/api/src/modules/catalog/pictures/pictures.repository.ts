@@ -2,8 +2,8 @@ import { UnitOfWork } from '../../platform';
 import { Injectable } from '@nestjs/common';
 
 /**
- * The database as the picture routes read it: one picture column of one row, with what its version is made of.
- * No rule and no permission lives here (backend-engineering.mdc 5.1).
+ * The database as the company mark route reads it: one picture column of one row. No rule and no permission lives
+ * here (backend-engineering.mdc 5.1).
  */
 @Injectable()
 export class PicturesRepository {
@@ -13,10 +13,5 @@ export class PicturesRepository {
   async companyImage(code: string): Promise<string | null> {
     const row = await this.uow.prisma.postpaidCompany.findUnique({ where: { code }, select: { image: true } });
     return row?.image ?? null;
-  }
-
-  /** An offer's stored picture and its `updatedAt` (its version), or null when the offer does not exist. */
-  offerImage(id: string) {
-    return this.uow.prisma.offer.findUnique({ where: { id }, select: { image: true, updatedAt: true } });
   }
 }

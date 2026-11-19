@@ -1,4 +1,4 @@
-import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
+import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from './provider-catalog.schemas';
 import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, bodyField, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';

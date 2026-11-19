@@ -164,7 +164,9 @@ describe('the write routes, as the source has them', () => {
     // M.11: the versions' controller (monitoring). Twenty-nine since speed PF.7: the public pictures' controller
     // (`/pictures`, two reads, no write). 32 `/auth` routes since clean-up CL.4 removed three that no client
     // called (`POST users/:loginName/password`, `POST users/:loginName/disable`, `PATCH exemptions/:loginName`).
-    expect(controllers).toHaveLength(29);
+    // Thirty since slice F.7e: the pictures' controller is two, the company mark's (the postpaid catalog's) and the
+    // offer picture's (the site's), the same two routes under the same prefix.
+    expect(controllers).toHaveLength(30);
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(32);
     // The empty prefix is the health probe: one read, no write. `pictures` is two public reads (speed PF.7).
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'pictures', 'v1']);
@@ -201,7 +203,7 @@ describe('the duplicate guard and the idempotency key', () => {
   it('every write route is guarded, or is stated here with its reason, and only the auth and branding controllers say otherwise', () => {
     const stray = writes.filter((route) => !guarded(route) && !(named(route) in UNGUARDED_WRITES)).map(named);
     expect(stray).toEqual([]);
-    expect([...new Set(writes.filter((route) => !guarded(route)).map((route) => route.file))].sort()).toEqual([...AUTH_CONTROLLERS, 'modules/branding/branding.controller.ts']);
+    expect([...new Set(writes.filter((route) => !guarded(route)).map((route) => route.file))].sort()).toEqual([...AUTH_CONTROLLERS, 'modules/site/branding/branding.controller.ts']);
   });
 
   it('the stated list holds no route that does not exist, and none that is guarded', () => {
@@ -248,9 +250,10 @@ describe('authorization and activity follow the controller, not the path', () =>
     expect(others.map((controller) => [controller.file, controller.interceptors])).toEqual([
       ['health.controller.ts', ''],
       ...AUTH_CONTROLLERS.map((file) => [file, '']),
-      ['modules/branding/branding.controller.ts', ''],
       // Public reads (speed PF.7): no session to check, nothing to record.
       ['modules/catalog/pictures/pictures.controller.ts', ''],
+      ['modules/site/branding/branding.controller.ts', ''],
+      ['modules/site/pictures/offer-pictures.controller.ts', ''],
     ]);
   });
 

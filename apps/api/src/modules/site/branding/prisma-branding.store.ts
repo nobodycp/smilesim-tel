@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
-import { createPrismaClient, PrismaService } from '../platform';
-import { PrismaClient } from '../../generated/prisma/client';
+import { createPrismaClient, PrismaService } from '../../platform';
+import { PrismaClient } from '../../../generated/prisma/client';
 import type { BrandingBody, BrandingFacts, BrandingImageRow, BrandingRow, ImageKind } from './branding-rules';
 import { imageSource, type BrandingStore } from './branding.store';
 

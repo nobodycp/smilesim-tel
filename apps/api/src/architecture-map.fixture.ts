@@ -7,7 +7,7 @@ import { dirname, join, normalize } from 'node:path';
 //
 // Test-only (`*.fixture.ts`): the build leaves it out.
 
-export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'catalog', 'pricing', 'wallets', 'providers', 'tasks', 'sales', 'reporting', 'monitoring'] as const;
+export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'site', 'catalog', 'pricing', 'wallets', 'providers', 'tasks', 'sales', 'reporting', 'monitoring'] as const;
 export type ModuleName = (typeof MODULES)[number];
 /** `app`: the composition roots (bootstrap, middleware, the worker's start). It may import any module; no module imports it. */
 export type Owner = ModuleName | 'app';
@@ -27,7 +27,11 @@ export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   access: ['identity', 'platform'],
   auditing: ['access', 'identity', 'platform'],
   notifications: ['access', 'platform'],
-  catalog: ['access', 'platform'],
+  // ADR 0020, amended 2026-11-19 (slice F.7e): what every business line shares on the site — the site identity, the
+  // offers and their pictures, how a picture is served. Taken out of the catalog, which is the postpaid line's; the
+  // catalog's company marks are served through it.
+  site: ['access', 'platform'],
+  catalog: ['site', 'access', 'platform'],
   pricing: ['catalog', 'access', 'platform'],
   wallets: ['pricing', 'platform'],
   providers: ['wallets', 'catalog', 'notifications', 'platform'],
@@ -67,9 +71,10 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/notifications\//, 'notifications'],
   // ── access (the actor, grants, roles, the account tree, accounts) ────────────────────────────────
   [/^modules\/access\//, 'access'],
+  // ── site (shared by every line: the site identity, offers, pictures) ─────────────────────────────────────
+  [/^modules\/site\//, 'site'],
   // ── catalog, pricing ──────────────────────────────────────────────────────────────────────────────
   [/^modules\/catalog\//, 'catalog'],
-  [/^modules\/branding\//, 'catalog'],
   [/^modules\/pricing\//, 'pricing'],
   // ── wallets, providers, tasks, sales, reporting ───────────────────────────────────────────────────
   [/^modules\/wallets\//, 'wallets'],

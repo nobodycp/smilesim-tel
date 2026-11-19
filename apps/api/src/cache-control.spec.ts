@@ -12,8 +12,8 @@ import { ActivityModule } from './modules/auditing/activity.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AUTH_STORE } from './modules/auth/auth.store';
 import { MemoryAuthStore } from './modules/auth/testing/memory-auth.store';
-import { BrandingModule } from './modules/branding/branding.module';
-import { BRANDING_STORE, MemoryBrandingStore } from './modules/branding/branding.store';
+import { BrandingModule } from './modules/site/branding/branding.module';
+import { BRANDING_STORE, MemoryBrandingStore } from './modules/site/branding/branding.store';
 import { apiTestApp } from './modules/testing/api-test-app';
 
 // What every answer says about caching (speed plan PF.11, spec decision 12): one route of each class, served

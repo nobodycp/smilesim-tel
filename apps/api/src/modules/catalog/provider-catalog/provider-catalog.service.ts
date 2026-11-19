@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { publicPackageCode, chainHolds, mirroredDuration, ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog';
-import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
-import { ProvidersRepository } from '../providers.repository';
+import { publicPackageCode } from '../rules/package-code';
+import { chainHolds, mirroredDuration } from '../rules/package-prices';
+import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/run-modes';
+import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from './provider-catalog.schemas';
+import { ProviderCatalogRepository } from './provider-catalog.repository';
 import { refuseEntered, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import { fail, parseInput } from '../../platform';
@@ -31,7 +33,7 @@ function canEdit(actor: Actor) {
  */
 @Injectable()
 export class ProviderCatalogService {
-  constructor(private readonly repo: ProvidersRepository) {}
+  constructor(private readonly repo: ProviderCatalogRepository) {}
 
   private async provider(code: string) {
     const row = await this.repo.providerByCode(code);

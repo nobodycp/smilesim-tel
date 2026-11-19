@@ -2,15 +2,15 @@ import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthModule } from '../auth/auth.module';
-import { ActivityModule } from '../auditing/activity.module';
-import { AUTH_STORE, StoredUser } from '../auth/auth.store';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { hashPassword } from '../auth/password';
+import { AuthModule } from '../../auth/auth.module';
+import { ActivityModule } from '../../auditing/activity.module';
+import { AUTH_STORE, StoredUser } from '../../auth/auth.store';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { hashPassword } from '../../auth/password';
 import { BrandingModule } from './branding.module';
 import { BRANDING_STORE, MemoryBrandingStore } from './branding.store';
 import { PrismaBrandingStore } from './prisma-branding.store';
-import type { PrismaService } from '../platform';
+import type { PrismaService } from '../../platform';
 
 function cookieOf(response: request.Response): string {
   const header = response.headers['set-cookie'];

@@ -1,4 +1,4 @@
-import { ProvidersRepository } from '../providers.repository';
+import { ProviderCatalogRepository } from './provider-catalog.repository';
 import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
@@ -41,7 +41,7 @@ function world() {
       },
     },
   } as unknown as ServiceGraph['prismaClient'];
-  return { service: new ProviderCatalogService(new ProvidersRepository(kernel.uow)), created, companies };
+  return { service: new ProviderCatalogService(new ProviderCatalogRepository(kernel.uow)), created, companies };
 }
 
 describe('ProviderCatalogService', () => {
