@@ -303,11 +303,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       items: [
         { label: t.homeTitle, href: '/', icon: Home },
         { label: t.navTasks, href: '/tasks', icon: ClipboardList, count: openTasks },
-        reportsGroup,
-        { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
     },
+    // The line's pages right under the top, as on the desk: numbers and packages are what a point of sale opens most.
     postpaidGroup,
+    { title: t.navDesk, items: [reportsGroup] },
+    { title: t.navAdmin, items: [{ label: t.navAudit, href: '/audit', icon: ListChecks }] },
   ];
   const deskGroups: { title: string; items: NavEntry[] }[] = [
     {
