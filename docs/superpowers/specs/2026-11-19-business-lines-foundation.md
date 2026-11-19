@@ -104,7 +104,7 @@ Proposed (the owner prefers the clearest contract even when the rename is wide; 
 bookmark exists before launch — after it, a rename breaks both):
 
 - **API:** the postpaid-only routes move under `/v1/postpaid/…` (`/v1/postpaid/packages`, `/v1/postpaid/lines`,
-  `/v1/postpaid/companies`, `/v1/postpaid/sell-prices`, `/v1/postpaid/offers`), no alias kept. Shared routes stay.
+  `/v1/postpaid/companies`, `/v1/postpaid/sell-prices`; the exact list is F.7a's), no alias kept. Shared routes stay.
 - **Web:** the postpaid pages move under `/postpaid/…` (`/postpaid/numbers`, `/postpaid/packages`, `/postpaid/companies`); the
   sidebar groups them under one heading, so the next line is a second heading and not a reshuffle. **What the
   user reads stays «الفواتير»** (the owner, 2026-11-19: `postpaid` is the word of the API and of the backend's names;
@@ -129,6 +129,53 @@ bookmark exists before launch — after it, a rename breaks both):
 
 The slice, once approved, starts with the inventory: every route and page classified shared or postpaid, the mixed ones
 (`tasks`, `home`, `overview`, `provider-operations`) decided one by one in the plan before any file moves.
+
+### F.7a The inventory (2026-11-19)
+
+Every Prisma model (39), route (202), page (48) and module was classified from the code; the full tables are the
+slice's working paper, the decisions are here.
+
+**Models and tables.** Postpaid, take the prefix `Postpaid` (model name = table name, as today): `Company`,
+`Package`, `PackageDuration`, `PackageRenewal`, `PackageSwitch`, `PackageAddon`, `UserPackage`, `SellPrice`, `Line`,
+`LineCountSnapshot`; and `Task`, `TaskNote` **if the owner answers that each line has its own tasks** (below). Every
+other model is shared and keeps its name, `Provider` and `Offer` included (**`Offer` is shared**: it has no package or
+company link — the earlier text of this spec that listed offers as postpaid was wrong). The postpaid columns of shared
+tables stay as they are (`WalletEntry.lineId` / `msisdn` / `packageName` / `companyName`,
+`ProviderOperation.packageCode`, …): they describe what an entry or an operation was for.
+
+**API routes.** Under `/v1/postpaid/…` (the controllers keep the `v1` prefix; each route's path gains `postpaid/`):
+the lines (`lines…`, 18 with the line transfer), the activation settlement (`tasks/:id/complete`,
+`provider-decisions`, `tasks/:id/provider-decision[/approval]`), the packages and their settings, the companies, the
+provider's catalog (`providers/:code/catalog/…`, `POST companies`, `POST packages`), the shelf and sell prices, the
+per-account package terms (`packages/:code/…`, `users/:login/packages…`, `users/:login/ops`); the company picture
+becomes `/pictures/postpaid/companies/:code`. 57 routes and the picture; the 8 routes of the tasks list with them if
+tasks are per line. **Stay:** accounts, auth, wallets, finance, the ledger, the provider machinery (`providers`,
+`provider-accounts`, `reconciliations`, `provider-operations`), `reports/*`, `home` / `overview` / `me` (the one place
+that reads across lines: a new line adds its part to the answer), offers, notices, system, the account transfer
+(`users/:login/transfer…`: the tree is shared, the lines travel with it).
+
+**Pages.** Under `/postpaid/…`: numbers, packages, companies, and the line's providers, provider accounts and provider
+operations (their API stays shared: a provider record belongs to one line, ADR 0028 decision 2a, so its pages sit with
+its line); tasks with them if per line. The redirect aliases of old addresses (`/operations`, `/reports/orders`,
+`/reports/sales`, `/companies/[code]/[provider]`, `/providers/[code]/[packageCode]`) are deleted: nothing is kept in
+an old form (the owner's standing rule). Stored page paths (`Notice.href`, `Offer.actionHref`) are rewritten by the
+slice's migration.
+
+**Modules.** `sales` is postpaid; `catalog` and `pricing` are mixed: the shared parts leave first (offers and
+branding to a shared module; the profit ladder's type and `marginOf` are shared, the package terms and sell prices
+postpaid); then the postpaid modules move under `modules/postpaid/…`. `reporting` stays shared. Two known edges from
+shared to postpaid stay and are named in the module map: the ledger builds the postpaid ladder itself (`wallets` →
+`pricing`), and the provider settings read postpaid rules (`providers` → `catalog` / `pricing`); the first new line
+turns the first into "the line hands the ledger its ladder" (ADR 0028, decision 3).
+
+**Never renamed** (stored values and history): wallet-entry kinds, activity actions and subject kinds, notice kinds,
+grant codes, written migrations, response JSON keys, relation field names, queue names, environment variables. A new
+line's activity actions and notice kinds carry its prefix, as its entry kinds do.
+
+**The one question for the owner — tasks.** `Task` is shaped for postpaid (a package, a number, an activation kind),
+so a new line cannot reuse it; what is open is how the office works: one «المهام» inbox with every line's tasks, or
+each line's tasks under its own heading. Recommended: per line (`PostpaidTask`, `/v1/postpaid/tasks`, «المهام» under
+«الفواتير»), as with companies and providers; the count on the heading stays.
 
 ## Out of scope
 

@@ -29,7 +29,8 @@ point they left open.
   the package.
 - **The provider's books** (ADR 0025): `providerId` and `providerCost` on the entry; `ProviderEntry`. The machinery
   (balance, ledger, reconciliation, gate, credentials) serves a provider of any line.
-- Tasks, notices, the activity log, grants (a list that only grows), the request log.
+- Notices, the activity log, grants (a list that only grows), the request log. (Not `Task`: it is shaped for
+  postpaid — a package, a number, an activation kind — so by decision 2 a new line has its own.)
 
 What is postpaid-only: `Line` (`msisdn` unique, `endsAt`), `Package` (renewal prices, durations, the `auto*` / `allow*`
 flags), `Company` (a telecom operator), `periods.ts`, the provider adapter's `products()`, the reconciliation's match
@@ -40,7 +41,7 @@ key (number, day, amount).
 1. **One wallet an account, for every line** (the owner). One balance, one ceiling, one held amount. Nothing changes.
 2. **A new line gets its own tables** for its products and its orders (and its stock of codes, if it has one). It
    never reuses `Package`, `Line` or `Task` with made-up values: no dummy renewal price, no fake number. The shared
-   part is what it writes: wallet entries through `WalletLedger`, provider operations, tasks, notices.
+   part is what it writes: wallet entries through `WalletLedger`, provider operations, notices.
 2a. **Companies and providers are kept apart by line** (the owner, 2026-11-19: Cellcom sells cards as it sells
    subscriptions, but the two are not related; cards hardly ever change while postpaid is the daily work; mixing them
    would confuse — "separate the providers and the companies for each line, even in the same place, with tabs and
