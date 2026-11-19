@@ -15,8 +15,9 @@ test('an agent reads its balances on their own page, and exports them with their
     'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
     'GET /reports/balances': () => ({ body: balances }),
   });
-  await page.goto('http://agent.localhost:3910/reports');
-  await expect(page).toHaveURL(/\/finance$/);
+  // The reports open from their own pages: the old hub address `/reports` (a redirect to finance) went with the other
+  // old addresses in F.7c.
+  await page.goto('http://agent.localhost:3910/finance');
   const nav = page.getByTestId('sidebar').getByRole('navigation', { name: 'أقسام المكتب' });
   await nav.getByRole('link', { name: 'الأرصدة' }).click();
   await expect(page).toHaveURL(/\/reports\/balances$/);

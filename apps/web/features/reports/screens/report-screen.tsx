@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { REPORT_KINDS, type ReportKind } from '../report-kinds';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column, type PagedView } from '../../../components/data-table';
 import { Desk, Money, Pane, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
@@ -12,14 +13,9 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
 
-const kinds = {
-  providers: 'reportProviders',
-  tasks: 'reportTasks',
-  numbers: 'reportNumbers',
-  operations: 'reportOperations',
-} as const;
+const kinds = REPORT_KINDS;
 
-type Kind = keyof typeof kinds;
+type Kind = ReportKind;
 
 // Each report reads its own list of the API; the kind says which table to draw.
 type ProviderLine = ProviderReportRow;
