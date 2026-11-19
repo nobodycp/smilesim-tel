@@ -3,7 +3,7 @@ import { ServiceGraph } from '../testing/service-graph';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import type { Actor } from '../access/types';
 import { WalletsService } from './wallets.service';
-import { chainIdsOf, marginColumns, marginViewOf, marginWhere, storedMarginOf } from './stored-margins';
+import { chainIdsOf, lossMargins, marginColumns, marginViewOf, marginWhere, storedMarginOf, storedPricesOf } from './stored-margins';
 
 // Each account reads what it earned on a sale (roadmap N4) from the margins stored on the entry (ADR 0026): its own
 // layer's column, over the sales whose chain held it at the time of the sale (the owner's answer 1); the branch, the
@@ -42,6 +42,42 @@ describe('the margins stored on an entry (ADR 0026)', () => {
     expect(storedMarginOf(marginViewOf(actor('pos', 'pos')), { ...row, chainPosId: null, posMargin: null, branchMargin: null })).toBeNull();
     expect(marginWhere(marginViewOf(actor('agent', 'agent')))).toEqual({ chainAgentId: 'agent' });
     expect(marginWhere(marginViewOf(actor('staff', 'branch')))).toEqual({});
+  });
+
+  // FL.1: each viewer's own cost and sell price on the entry, from its ladder; `sell − cost` is the stored margin.
+  it('reads each viewer\'s own cost and sell from the ladder, the branch\'s for the owner and its staff', () => {
+    const row = { ladder, ...marginColumns(ladder, chainIdsOf(path)) };
+    const prices = (id: string, layer: string) => storedPricesOf(marginViewOf(actor(id, layer)), row);
+    // The point of sale paid 3500 and sold at its 4000; the agent paid 3100 and sold to the point of sale at 3500; …
+    expect(prices('pos', 'pos')).toEqual({ cost: 3500, sell: 4000 });
+    expect(prices('agent', 'agent')).toEqual({ cost: 3100, sell: 3500 });
+    expect(prices('main', 'main_agent')).toEqual({ cost: 2700, sell: 3100 });
+    // … the branch paid the provider 2200 and sold to the main agent at 2700.
+    expect(prices('branch', 'branch')).toEqual({ cost: 2200, sell: 2700 });
+    expect(prices('staff', 'branch')).toEqual({ cost: 2200, sell: 2700 });
+    expect(prices('agent2', 'agent')).toBeNull();
+    // No ladder (a fund, a switch): nothing.
+    expect(storedPricesOf(marginViewOf(actor('branch', 'branch')), { ladder: null, ...marginColumns(ladder, chainIdsOf(path)), chainPosId: null, chainAgentId: null, chainMainAgentId: null, posMargin: null, agentMargin: null, mainAgentMargin: null, branchMargin: null })).toBeNull();
+  });
+
+  it('scales a refund\'s cost and sell by its share, so sell − cost is its stored margin to the agora', () => {
+    for (const share of [-1 / 3, -0.5, -2 / 7, -1]) {
+      const refund = { ...ladder, share };
+      const row = { ladder: refund, ...marginColumns(refund, chainIdsOf(path)) };
+      for (const [id, layer] of [['pos', 'pos'], ['agent', 'agent'], ['main', 'main_agent'], ['branch', 'branch']]) {
+        const view = marginViewOf(actor(id, layer));
+        const prices = storedPricesOf(view, row);
+        expect(prices).not.toBeNull();
+        expect((prices?.sell ?? 0) - (prices?.cost ?? 0)).toBe(storedMarginOf(view, row));
+        expect(prices?.cost).toBe(Math.round(refund.costs[id as keyof typeof refund.costs] * share));
+      }
+    }
+  });
+
+  it('reads an operation marked as the branch\'s loss as the provider\'s cost sold at 0, for the branch only', () => {
+    const row = { ladder: null, providerLoss: 'given_back', providerCost: 1800, ...lossMargins(1800) };
+    expect(storedPricesOf(marginViewOf(actor('branch', 'branch')), row)).toEqual({ cost: 1800, sell: 0 });
+    expect(storedPricesOf(marginViewOf(actor('pos', 'pos')), row)).toBeNull();
   });
 });
 

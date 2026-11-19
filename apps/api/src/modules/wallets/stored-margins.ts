@@ -164,3 +164,38 @@ export function storedMarginOf(view: MarginView, row: MarginRow): number | null 
   if (!view.chain) return row.branchMargin ?? null;
   return row[view.chain] === view.viewerId ? (row[view.margin] ?? null) : null;
 }
+
+type PricedRow = MarginRow & {
+  ladder: unknown;
+  /** The loss mark and the cost (P.7): a marked row stores only `branchMargin` = − `providerCost`, and no ladder. */
+  providerLoss?: string | null;
+  providerCost?: number | null;
+};
+
+/**
+ * The viewer's own cost and sell price on one entry (spec 2026-11-19-finance-ledger-columns, FL.1), from the entry's
+ * stored ladder and margin; nothing is priced again, and no other account's figure is read out. The viewer's account
+ * is the one its margin is (`storedMarginOf`): its own for a lower layer, the chain's last (the branch) for the branch
+ * and its staff. `cost` is what that account paid (`ladder.costs`), `sell` what the next account in the chain paid —
+ * the subscriber's price (`posSell`) for the point of sale — as `marginOf` reads them. A refund's figures are its
+ * sale's scaled by its `share` (negative), as its margin is: `cost` rounded the way `marginOf` rounds, and `sell` the
+ * cost plus the stored margin, so `sell − cost` is the stored margin on every row. An operation marked as the
+ * branch's loss (P.7) keeps no ladder and stores the branch's margin as − its provider cost: for the branch it reads
+ * as the provider's cost sold at 0. Null when the entry has no margin for the viewer.
+ */
+export function storedPricesOf(view: MarginView, row: PricedRow): { cost: number; sell: number } | null {
+  const margin = storedMarginOf(view, row);
+  if (margin === null) return null;
+  if (!row.ladder) {
+    if (view.layer === 'branch' && row.providerLoss) return { cost: row.providerCost ?? 0, sell: 0 };
+    return null;
+  }
+  const ladder = row.ladder as Ladder;
+  const id = view.chain ? view.viewerId : ladder.chain[ladder.chain.length - 1];
+  const at = id === undefined ? -1 : ladder.chain.indexOf(id);
+  if (at < 0) return null;
+  const mine = ladder.costs[id] ?? 0;
+  if (ladder.share === undefined) return { cost: mine, sell: mine + margin };
+  const cost = Math.round(mine * ladder.share);
+  return { cost, sell: cost + margin };
+}

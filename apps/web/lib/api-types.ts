@@ -501,6 +501,9 @@ export type LedgerRow = {
   layer: string;
   /** What the viewer earned on this operation; null when it is not a sale in its chain. */
   margin: number | null;
+  /** The account's own cost and sell price on a sale or refund of its chain (FL.1); null on any other entry. */
+  cost: number | null;
+  sell: number | null;
 };
 export type ActivityRow = {
   id: string;
@@ -560,6 +563,12 @@ export type FinanceRow = {
   held: number | null;
   /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
   margin: number | null;
+  /**
+   * The signed-in account's own cost and sell price on that sale (FL.1): what it paid, and what the next account in
+   * the chain paid (the subscriber's price for a point of sale); `sell − cost` is `margin`. Null when `margin` is.
+   */
+  cost: number | null;
+  sell: number | null;
   id: string;
   at: string;
   loginName: string;

@@ -85,4 +85,25 @@ describe('WalletsService.finance', () => {
     expect(sale?.shares).toBeNull();
     expect(sale?.margin).toBe(300);
   });
+
+  // FL.1: each viewer's own cost and sell price on a sale (spec 2026-11-19-finance-ledger-columns), from its ladder.
+  it('gives each viewer its own cost and sell on a sale, sell − cost its margin, and none on other entries', async () => {
+    const expected = { pos: { cost: 3800, sell: 4500 }, agent: { cost: 3500, sell: 3800 }, main_agent: { cost: 3000, sell: 3500 }, branch: { cost: 2500, sell: 3000 } };
+    for (const [id, layer] of [['pos', 'pos'], ['agent', 'agent'], ['main', 'main_agent'], ['branch', 'branch']] as const) {
+      const result = await service({}).finance(actor(id, layer), {});
+      const sale = result.items.find((row) => row.id === 'e1');
+      expect({ layer, cost: sale?.cost, sell: sale?.sell }).toEqual({ layer, ...expected[layer] });
+      expect((sale?.sell ?? 0) - (sale?.cost ?? 0)).toBe(sale?.margin);
+      for (const other of result.items.filter((row) => row.id !== 'e1')) expect([other.cost, other.sell]).toEqual([null, null]);
+    }
+  });
+
+  it('writes the viewer\'s cost and sell into the CSV, empty where the row has none', async () => {
+    const csv = await service({}).financeCsv(actor('agent', 'agent'), {});
+    const [head, ...lines] = csv.replace('\uFEFF', '').split('\r\n');
+    const cost = head.split(',').indexOf('cost');
+    expect(head.split(',').indexOf('sell')).toBe(cost + 1);
+    expect(lines[0].split(',').slice(cost, cost + 2)).toEqual(['35.00', '38.00']);
+    expect(lines[1].split(',').slice(cost, cost + 2)).toEqual(['', '']);
+  });
 });

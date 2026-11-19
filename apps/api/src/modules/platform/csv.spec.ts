@@ -17,7 +17,7 @@ const before = {
     for (const row of rows) lines.push(row.map((value) => before.cell(typeof value === 'object' ? before.shekels(value.money) : value)).join(','));
     return `\uFEFF${lines.join('\r\n')}\r\n`;
   },
-  ledgerHead: ['at', 'account', 'layer', 'actor', 'kind', 'amount', 'balance_before', 'balance_after', 'number', 'company', 'package', 'note'],
+  ledgerHead: ['at', 'account', 'layer', 'actor', 'kind', 'amount', 'balance_before', 'balance_after', 'number', 'company', 'package', 'cost', 'sell', 'note'],
 };
 
 /** Cells that test every rule: Arabic, commas, quotes, line breaks, the four formula starts, numbers that start with a sign. */
@@ -60,10 +60,12 @@ describe('the CSV writer is the one it replaced, byte for byte', () => {
       at: '2026-11-14T10:00:00.000Z', loginName: `acc-${index}`, layer: 'pos', actorLoginName: String(value ?? ''), kind: 'fund',
       amount: AMOUNTS[index % AMOUNTS.length], balanceBefore: -AMOUNTS[index % AMOUNTS.length], balanceAfter: 0,
       msisdn: '0591234567', companyName: 'سلكوم', packageName: String(value ?? ''), note: String(value ?? ''),
+      // The viewer's own prices (FL.1): a figure in shekels, or an empty cell where the row has none.
+      cost: index % 2 ? AMOUNTS[index % AMOUNTS.length] : null, sell: index % 2 ? AMOUNTS[(index + 1) % AMOUNTS.length] : null,
     }));
     const lines = [before.ledgerHead.join(',')];
     for (const row of rows) {
-      lines.push([row.at, row.loginName, row.layer, row.actorLoginName, row.kind, before.shekels(row.amount), before.shekels(row.balanceBefore), before.shekels(row.balanceAfter), row.msisdn, row.companyName, row.packageName, row.note].map(before.cell).join(','));
+      lines.push([row.at, row.loginName, row.layer, row.actorLoginName, row.kind, before.shekels(row.amount), before.shekels(row.balanceBefore), before.shekels(row.balanceAfter), row.msisdn, row.companyName, row.packageName, row.cost === null ? '' : before.shekels(row.cost), row.sell === null ? '' : before.shekels(row.sell), row.note].map(before.cell).join(','));
     }
     expect(bytes(ledgerCsv(rows))).toEqual(bytes(`\uFEFF${lines.join('\r\n')}\r\n`));
   });

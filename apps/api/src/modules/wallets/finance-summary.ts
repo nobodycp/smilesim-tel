@@ -45,7 +45,8 @@ export function windowStart(now: Date, days = SUMMARY_DAYS): Date {
   return new Date(`${dayKey(start)}T00:00:00.000Z`);
 }
 
-const CSV_HEAD = ['at', 'account', 'layer', 'actor', 'kind', 'amount', 'balance_before', 'balance_after', 'number', 'company', 'package', 'note'];
+// `cost` and `sell`: the viewer's own prices on a sale or refund (FL.1), empty on any other row.
+const CSV_HEAD = ['at', 'account', 'layer', 'actor', 'kind', 'amount', 'balance_before', 'balance_after', 'number', 'company', 'package', 'cost', 'sell', 'note'];
 
 /** One CSV cell (the platform's `csvCell`; kept under this name for the code that read it here). */
 export const cell = csvCell;
@@ -55,11 +56,12 @@ export const shekels = (agorot: number) => (agorot / 100).toFixed(2);
 /** The ledger rows as a UTF-8 CSV with a BOM (Excel reads Arabic then). Amounts in shekels. */
 export function ledgerCsv(rows: {
   at: string; loginName: string; layer: string; actorLoginName: string; kind: string; amount: number; balanceBefore: number;
-  balanceAfter: number; msisdn: string; companyName: string; packageName: string; note: string;
+  balanceAfter: number; msisdn: string; companyName: string; packageName: string; cost: number | null; sell: number | null; note: string;
 }[]): string {
+  const figure = (agorot: number | null) => (agorot === null ? '' : shekels(agorot));
   return csvDocument(CSV_HEAD, rows.map((row) => [
     row.at, row.loginName, row.layer, row.actorLoginName, row.kind, shekels(row.amount), shekels(row.balanceBefore),
-    shekels(row.balanceAfter), row.msisdn, row.companyName, row.packageName, row.note,
+    shekels(row.balanceAfter), row.msisdn, row.companyName, row.packageName, figure(row.cost), figure(row.sell), row.note,
   ]));
 }
 

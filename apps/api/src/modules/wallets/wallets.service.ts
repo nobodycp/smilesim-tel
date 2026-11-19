@@ -11,7 +11,7 @@ import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, L
 import { isOpenLoss, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
 import { OFF_THE_STATEMENT } from './entry-kinds';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
-import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
+import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, storedPricesOf, type MarginView } from './stored-margins';
 import type { Sale } from './sale';
 
 /** What a given-back operation's charge takes (spec DB.5 P.9): the package price and the eSIM fee its row stores. */
@@ -115,12 +115,15 @@ export class WalletsService {
       countUpTo((take) => this.repo.countEntries(where, take)),
     ]);
     const { items: rows, nextCursor } = page(read, FEED_PAGE);
+    const view = marginViewOf(actor);
     return {
       items: rows.map((row) => ({
         /** The wallet's account; `margin` stays in the shape and is null (the viewer's own wallet carries none). */
         loginName: row.user?.loginName ?? actor.loginName,
         layer: row.user?.layer ?? actor.layer,
         margin: null as number | null,
+        /** The account's own cost and sell price on a sale or refund of its chain (FL.1); null on any other entry. */
+        ...pricesOf(view, row),
         id: row.id,
         at: row.createdAt.toISOString(),
         kind: row.kind,
@@ -373,7 +376,9 @@ export class WalletsService {
   async financeCsv(actor: Actor, input: FinanceQuery = {}) {
     const query = parseInput(FinanceQuery, input);
     const rows = await this.repo.entriesWithAccounts(await this.financeWhere(actor, query), FINANCE_CSV_LIMIT);
+    const view = marginViewOf(actor);
     return ledgerCsv(rows.map((row) => ({
+      ...pricesOf(view, row),
       at: row.createdAt.toISOString(),
       loginName: row.user.loginName,
       layer: row.user.layer,
@@ -412,6 +417,11 @@ export class WalletsService {
         shares: actor.layer === 'branch' && row.ladder && typeof row.branchMargin === 'number' ? sharesOf(row, byId) : null,
         /** What the signed-in account earned on this sale, as stored on it (ADR 0026); null when it is not a sale in its chain. */
         margin: storedMarginOf(view, row),
+        /**
+         * The signed-in account's own cost and sell price on that sale (FL.1), from its stored ladder: `sell − cost` is
+         * `margin`. Null when `margin` is; never another account's figure.
+         */
+        ...pricesOf(view, row),
         id: row.id,
         at: row.createdAt.toISOString(),
         loginName: row.user.loginName,
@@ -436,6 +446,12 @@ export class WalletsService {
       nextCursor,
     };
   }
+}
+
+/** The viewer's `cost` and `sell` on an entry (`storedPricesOf`), both null when it has none. */
+function pricesOf(view: MarginView, row: Parameters<typeof storedPricesOf>[1]): { cost: number | null; sell: number | null } {
+  const prices = storedPricesOf(view, row);
+  return { cost: prices?.cost ?? null, sell: prices?.sell ?? null };
 }
 
 type SharedEntry = {

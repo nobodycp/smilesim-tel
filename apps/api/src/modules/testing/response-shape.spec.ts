@@ -731,6 +731,15 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toMatch(/export type ProviderOpStats = \{[^}]*\blosses\?: number[^}]*\};/);
   });
 
+  // Spec 2026-11-19-finance-ledger-columns, FL.1: the viewer's own cost and sell price on a finance row and a statement
+  // row (`wallets/finance-prices.db.spec.ts` pins what the API answers, for every layer).
+  it('the viewer\'s cost and sell on FinanceRow and LedgerRow', () => {
+    for (const name of ['FinanceRow', 'LedgerRow']) {
+      expect(typeBody(source, name)).toMatch(/\n {2}cost: number \| null;/);
+      expect(typeBody(source, name)).toMatch(/\n {2}sell: number \| null;/);
+    }
+  });
+
   // Spec DB.5 P.9: a given-back operation charged later (`wallets/charged-later.db.spec.ts` pins what the API answers).
   it('the charge of a given-back operation: the row\'s account and what charging it takes on ProviderOpRow', () => {
     expect(PROVIDER_LOSSES).toContain('charged_later');

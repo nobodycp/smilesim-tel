@@ -42,10 +42,10 @@ describe('ledgerCsv', () => {
     const csv = ledgerCsv([{
       at: '2026-11-06T09:00:00.000Z', loginName: 'pos1', layer: 'pos', actorLoginName: 'admin', kind: 'activate',
       amount: -1898, balanceBefore: 30000, balanceAfter: 28102, msisdn: '0550000001', companyName: 'سلكوم, بارتنر',
-      packageName: '150 جيجا', note: '=HYPERLINK("x")',
+      packageName: '150 جيجا', cost: 1650, sell: 1898, note: '=HYPERLINK("x")',
     }]);
     expect(csv.startsWith('\uFEFFat,account,layer,')).toBe(true);
     const line = csv.split('\r\n')[1];
-    expect(line).toBe('2026-11-06T09:00:00.000Z,pos1,pos,admin,activate,-18.98,300.00,281.02,0550000001,"سلكوم, بارتنر",150 جيجا,"\'=HYPERLINK(""x"")"');
+    expect(line).toBe('2026-11-06T09:00:00.000Z,pos1,pos,admin,activate,-18.98,300.00,281.02,0550000001,"سلكوم, بارتنر",150 جيجا,16.50,18.98,"\'=HYPERLINK(""x"")"');
   });
 });
