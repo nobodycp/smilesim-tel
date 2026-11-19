@@ -95,7 +95,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   const operation = (id: string) => prisma.providerOperation.findUniqueOrThrow({ where: { id } });
   const entries = () => prisma.walletEntry.findMany({ where: { userId: ids.pos }, orderBy: { createdAt: 'asc' } });
   const kinds = async () => (await entries()).map((row) => row.kind).sort();
-  const lines = () => prisma.line.findMany({ where: { posId: ids.pos } });
+  const lines = () => prisma.postpaidLine.findMany({ where: { posId: ids.pos } });
   const messages = async (operationId: string, topic = OPERATION_SETTLED) => prisma.outboxMessage.findMany({ where: { aggregateId: operationId, topic }, orderBy: { sequence: 'asc' } });
   const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
   const told = (kind: string, taskId: string) => notices.filter((notice) => notice.kind === kind && notice.payload.taskId === taskId);
@@ -152,10 +152,10 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `s8-${tag}`, name: 's8' } });
-    await prisma.company.create({ data: { id: ids.company, code: `s8-${tag}`, name: 's8' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `s8-${tag}`, name: 's8' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code: `s8-${tag}`, name: 's8 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `s8-${tag}`, name: 's8 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     // The real notice writer, so who is left out and who is told is the production rule. A real notice goes to
     // every branch user in the database, the accounts of other spec files included: the audience is narrowed to
     // this spec's own accounts before it is written, and what was written is kept in `notices`.
@@ -188,15 +188,15 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     await prisma.notice.deleteMany({ where: { userId: { in: [ids.owner, ids.accountant, ids.clerk, ids.pos] } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
 
   afterAll(async () => {
     await dispatch.publisher.close();
     redis?.disconnect();
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.accountant, ids.clerk, ids.pos] } } });
     for (const id of [ids.pos, ids.clerk, ids.accountant, ids.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -401,7 +401,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
         // The line of an earlier application of the very same task: its number and its serial.
         const { taskId, operationId } = await succeeded();
         const opened = await task(taskId);
-        await prisma.line.create({ data: { msisdn: opened.msisdn as string, iccid: opened.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+        await prisma.postpaidLine.create({ data: { msisdn: opened.msisdn as string, iccid: opened.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
         expect(await settlement.apply(operationId)).toBe('exception');
         expect(await lines()).toHaveLength(1);
         expect(await kinds()).toEqual(['hold']);
@@ -450,7 +450,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     it('keeps the verdict, its result, the task, the hold and the reservation, records why once, and tells those who may decide (spec 13)', async () => {
       // The number the provider assigned belongs to a line by now.
       const taken = number();
-      await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       const { taskId, operationId } = await succeeded({}, { msisdn: taken });
       const opened = await task(taskId);
       notices = [];
@@ -483,7 +483,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
 
     it('records a serial the provider issued that a line already carries as sim-taken, once, however many workers meet it', async () => {
       const taken = serial();
-      await prisma.line.create({ data: { msisdn: number(), iccid: taken, esim: true, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: number(), iccid: taken, esim: true, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       const { taskId, operationId } = await succeeded({ esim: true }, { iccid: taken, esimCode: CODE });
       const held = (await task(taskId)).held;
       notices = [];
@@ -556,7 +556,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
 
     it('tells an exception and an unknown answer to the accounts that may decide and to nobody else, the submitter among them only when it may decide', async () => {
       const taken = number();
-      await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       // Submitted by the point of sale: it may not decide, so it is not told.
       const byPos = await succeeded({}, { msisdn: taken });
       // Submitted by the owner, who may decide: told, though the note is in the owner's own name.
@@ -789,7 +789,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   describe('the sweeper and a worker that stops', () => {
     it('applies a verdict whose message was never delivered, hands over a failure, and leaves an exception and an unknown alone (spec 11)', async () => {
       const taken = number();
-      await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       const lost = await succeeded();
       const exception = await succeeded({}, { msisdn: taken });
       expect(await settlement.apply(exception.operationId)).toBe('exception');
@@ -841,7 +841,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
 
   it('keeps the money right through everything at once, with no deadlock: settlements, sweeps, hands, claims and verdicts on one wallet (specs 27, 29)', async () => {
     const taken = number();
-    await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+    await prisma.postpaidLine.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
     const crashed: string[] = [];
     const quiet = (run: Promise<unknown>) => run.catch((error: unknown) => { if (!(error instanceof ApiFailure)) crashed.push(String((error as Error)?.message ?? error).slice(0, 200)); });
     const untouched: string[] = [];

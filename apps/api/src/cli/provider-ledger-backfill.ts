@@ -351,7 +351,7 @@ async function writeOldGivenBack(tx: Prisma.TransactionClient, scope: BackfillSc
   for (const approval of approvals) {
     const task = approval.operation.task;
     if (!task) continue;
-    const pkg = await tx.package.findUniqueOrThrow({ where: { id: task.packageId }, include: { company: true, provider: true } });
+    const pkg = await tx.postpaidPackage.findUniqueOrThrow({ where: { id: task.packageId }, include: { company: true, provider: true } });
     const msisdn = approval.operation.resultMsisdn ?? task.msisdn ?? '';
     // Already recorded (by the approval since P.7, or by an earlier run): a number given back once for that package,
     // charged to the point of sale later or not (P.9).

@@ -72,11 +72,11 @@ suite('a renewal onto another package is priced on that package (PostgreSQL)', (
     pos = { sessionId: await auth.saveSession({ userId: u.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: u.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: code('p'), name: code('p') } });
-    await prisma.company.create({ data: { id: ids.company, code: code('c'), name: code('c') } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: code('c'), name: code('c') } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
-    await prisma.package.create({ data: { id: ids.a, code: code('a'), name: code('a'), providerId: ids.provider, companyId: ids.company, ...A, ...auto } });
-    await prisma.package.create({ data: { id: ids.b, code: code('b'), name: code('b'), providerId: ids.provider, companyId: ids.company, ...B, ...auto } });
-    await prisma.packageRenewal.create({ data: { packageId: ids.a, targetPackageId: ids.b } });
+    await prisma.postpaidPackage.create({ data: { id: ids.a, code: code('a'), name: code('a'), providerId: ids.provider, companyId: ids.company, ...A, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.b, code: code('b'), name: code('b'), providerId: ids.provider, companyId: ids.company, ...B, ...auto } });
+    await prisma.postpaidPackageRenewal.create({ data: { packageId: ids.a, targetPackageId: ids.b } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
   });
@@ -85,10 +85,10 @@ suite('a renewal onto another package is priced on that package (PostgreSQL)', (
     const all = Object.values(u);
     await prisma.walletEntry.deleteMany({ where: { userId: { in: all } } });
     await prisma.task.deleteMany({ where: { posId: u.pos } });
-    await prisma.line.deleteMany({ where: { posId: u.pos } });
-    await prisma.packageRenewal.deleteMany({ where: { packageId: ids.a } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.a, ids.b] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: u.pos } });
+    await prisma.postpaidPackageRenewal.deleteMany({ where: { packageId: ids.a } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.a, ids.b] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: all } } });
     for (const id of [u.pos, u.agent, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -100,7 +100,7 @@ suite('a renewal onto another package is priced on that package (PostgreSQL)', (
   it('the immediate renewal stores the target\'s ladder and margins, as the task path does', async () => {
     const now = await lineOnA();
     expect(await service.extend(pos, now, { outcome: 'success', targetCode: code('b') })).toEqual({ applied: true, debited: true });
-    expect(await prisma.line.findUniqueOrThrow({ where: { id: now } })).toMatchObject({ packageId: ids.b });
+    expect(await prisma.postpaidLine.findUniqueOrThrow({ where: { id: now } })).toMatchObject({ packageId: ids.b });
     const immediate = stored(await extendOf(now));
 
     const byTask = await lineOnA();
@@ -114,7 +114,7 @@ suite('a renewal onto another package is priced on that package (PostgreSQL)', (
 
   it('a renewal onto the target that the ceiling refuses leaves the line\'s package, terms and end date as they were', async () => {
     const lineId = await lineOnA();
-    const before = await prisma.line.findUniqueOrThrow({ where: { id: lineId } });
+    const before = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: lineId } });
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: u.pos } });
     await prisma.wallet.update({ where: { userId: u.pos }, data: { balance: B.renewalPosPrice - 1 } });
     try {
@@ -122,7 +122,7 @@ suite('a renewal onto another package is priced on that package (PostgreSQL)', (
     } finally {
       await prisma.wallet.update({ where: { userId: u.pos }, data: { balance: wallet.balance } });
     }
-    const after = await prisma.line.findUniqueOrThrow({ where: { id: lineId } });
+    const after = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: lineId } });
     expect({ packageId: after.packageId, terms: after.terms, endsAt: after.endsAt }).toEqual({ packageId: ids.a, terms: before.terms, endsAt: before.endsAt });
     expect(await prisma.walletEntry.count({ where: { lineId, kind: 'extend' } })).toBe(0);
   });

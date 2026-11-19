@@ -348,7 +348,7 @@ export class WalletLedger {
     const path = await this.tree.confirmedPath(db, posId, sale.path);
     const [rows, subscriber] = await Promise.all([
       this.ladder.ladderRows([code], path.map((node) => node.id), db),
-      db.package.findUnique({ where: { code }, select: { subscriberPrice: true, renewalSubscriberPrice: true } }),
+      db.postpaidPackage.findUnique({ where: { code }, select: { subscriberPrice: true, renewalSubscriberPrice: true } }),
     ]);
     const pkg = rows.packages[0];
     if (!pkg || !subscriber || path.length === 0) return null;
@@ -369,7 +369,7 @@ export class WalletLedger {
   /** The package a line's terms name, or null when there is no line. */
   private async packageCodeOf(db: Db, lineId: string): Promise<string | null> {
     if (!lineId) return null;
-    const line = await db.line.findUnique({ where: { id: lineId }, select: { terms: true } });
+    const line = await db.postpaidLine.findUnique({ where: { id: lineId }, select: { terms: true } });
     return (line?.terms as { packageCode?: string } | null)?.packageCode ?? null;
   }
 

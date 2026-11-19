@@ -224,7 +224,7 @@ describe('writing user terms', () => {
     const { service, gates, userPackages } = await tree();
     userPackages.push(row('pos1', { hidden: true }));
     userPackages.push({ ...row('pos1', { hidden: true }), packageId: 'pb' });
-    const table = (service as unknown as { prismaClient: { userPackage: { delete: (args: { where: { packageId_userId: { packageId: string } } }) => Promise<unknown> } } }).prismaClient.userPackage;
+    const table = (service as unknown as { prismaClient: { postpaidUserPackage: { delete: (args: { where: { packageId_userId: { packageId: string } } }) => Promise<unknown> } } }).prismaClient.postpaidUserPackage;
     const real = table.delete;
     table.delete = async (args) => {
       if (args.where.packageId_userId.packageId === 'pb') throw new Error('connection lost');
@@ -578,7 +578,7 @@ describe('prices on existing numbers', () => {
     );
     // The transaction hands out the same table objects as the client, so counting on them counts the save's reads.
     const client = (service as unknown as { prismaClient: Record<string, { findMany: (args?: unknown) => Promise<unknown> }> }).prismaClient;
-    const tables = ['package', 'packageRenewal', 'userPackage', 'sellPrice'];
+    const tables = ['postpaidPackage', 'postpaidPackageRenewal', 'postpaidUserPackage', 'postpaidSellPrice'];
     const reads: Record<string, number> = {};
     const reset = () => {
       for (const table of tables) reads[table] = 0;
@@ -596,7 +596,7 @@ describe('prices on existing numbers', () => {
 
     await expect(save([{ from: 4500, to: 'current' }, { from: 4100, to: 'current' }])).resolves.toEqual({ ok: true, lines: 8 });
     // One read of each table for the whole save, not one per point of sale.
-    expect(reads).toEqual({ package: 1, packageRenewal: 1, userPackage: 1, sellPrice: 1 });
+    expect(reads).toEqual({ postpaidPackage: 1, postpaidPackageRenewal: 1, postpaidUserPackage: 1, postpaidSellPrice: 1 });
     // Each number carries the ladder of its own path: pos1 3000 and 2950, pos3 3400 and the layer's 3200, pos2 3100 and 3300.
     const current = [3200, 3000, 3000, 3000, 9900, 3400, 3400, 3100, 3100, 3200];
     expect(prices()).toEqual(current);
@@ -606,11 +606,11 @@ describe('prices on existing numbers', () => {
     // 2900 for pos1 and pos3 (ma1's sell price), 3050 for pos2 (ag2's own price), cost for the point of sale that left the tree.
     reset();
     await expect(save([{ from: 3100, to: 3000 }])).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
-    expect(reads).toEqual({ package: 1, packageRenewal: 0, userPackage: 1, sellPrice: 1 });
+    expect(reads).toEqual({ postpaidPackage: 1, postpaidPackageRenewal: 0, postpaidUserPackage: 1, postpaidSellPrice: 1 });
     expect(prices()).toEqual(current);
     reset();
     await expect(save([{ from: 3200, to: 2900 }, { from: 3100, to: 3050 }])).resolves.toEqual({ ok: true, lines: 4 });
-    expect(reads).toEqual({ package: 1, packageRenewal: 0, userPackage: 1, sellPrice: 1 });
+    expect(reads).toEqual({ postpaidPackage: 1, postpaidPackageRenewal: 0, postpaidUserPackage: 1, postpaidSellPrice: 1 });
     expect(prices()).toEqual([2900, 3000, 3000, 3000, 9900, 3400, 3400, 3050, 3050, 2900]);
   });
 });

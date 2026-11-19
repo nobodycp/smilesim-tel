@@ -134,10 +134,10 @@ suite('the database settings on PostgreSQL (plan DB.15)', () => {
   it('the storage parameters and the validated checks of migration 20261117200000_table_settings are in place', async () => {
     const rows = await uow.prisma.$queryRaw<{ relname: string; reloptions: string[] }[]>`
       SELECT relname, reloptions FROM pg_class
-      WHERE relkind = 'r' AND relname IN ('Wallet', 'Session', 'ActivityEvent', 'RequestLog', 'WalletEntry', 'Line') ORDER BY relname`;
+      WHERE relkind = 'r' AND relname IN ('Wallet', 'Session', 'ActivityEvent', 'RequestLog', 'WalletEntry', 'PostpaidLine') ORDER BY relname`;
     expect(Object.fromEntries(rows.map((row) => [row.relname, row.reloptions]))).toEqual({
       ActivityEvent: ['autovacuum_vacuum_scale_factor=0.02'],
-      Line: ['autovacuum_analyze_scale_factor=0.02'],
+      PostpaidLine: ['autovacuum_analyze_scale_factor=0.02'],
       RequestLog: ['autovacuum_vacuum_scale_factor=0.02'],
       Session: ['fillfactor=80'],
       Wallet: ['fillfactor=70'],
@@ -145,9 +145,9 @@ suite('the database settings on PostgreSQL (plan DB.15)', () => {
     });
     const checks = await uow.prisma.$queryRaw<{ conname: string; convalidated: boolean }[]>`
       SELECT conname, convalidated FROM pg_constraint
-      WHERE conname IN ('Wallet_held_not_negative', 'Line_status_known', 'Task_status_known') ORDER BY conname`;
+      WHERE conname IN ('Wallet_held_not_negative', 'PostpaidLine_status_known', 'Task_status_known') ORDER BY conname`;
     expect(checks).toEqual([
-      { conname: 'Line_status_known', convalidated: true },
+      { conname: 'PostpaidLine_status_known', convalidated: true },
       { conname: 'Task_status_known', convalidated: true },
       { conname: 'Wallet_held_not_negative', convalidated: true },
     ]);

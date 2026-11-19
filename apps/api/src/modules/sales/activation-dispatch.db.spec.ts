@@ -87,7 +87,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
   const outbox = async (topic?: string) => prisma.outboxMessage.findMany({ where: { aggregateId: { in: (await operations()).map((row) => row.id) }, ...(topic ? { topic } : {}) } });
   const entries = (userId: string = ids.pos) => prisma.walletEntry.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
   const kinds = async () => (await entries()).map((row) => row.kind).sort();
-  const lines = () => prisma.line.findMany({ where: { posId: { in: people } } });
+  const lines = () => prisma.postpaidLine.findMany({ where: { posId: { in: people } } });
   /** Everything a request that must change nothing leaves as it was. */
   const everything = async () => ({ tasks: await tasks(), operations: await operations(), outbox: (await outbox()).length, wallet: await wallet(), entries: (await entries()).length, lines: (await lines()).length, notices: await prisma.notice.count({ where: { userId: { in: people } } }) });
   /**
@@ -142,13 +142,13 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     // Two providers: the spec's gateway takes the first on the dispatch route and not the second.
     await prisma.provider.create({ data: { id: ids.provider, code: name('pkg'), name: 's11' } });
     await prisma.provider.create({ data: { id: ids.plain, code: name('plain'), name: 's11 plain' } });
-    await prisma.company.create({ data: { id: ids.company, code: name('pkg'), name: 's11', esim: true } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: name('pkg'), name: 's11', esim: true } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code: name('pkg'), name: 's11 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: name('pkg'), name: 's11 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     // The same provider, a package the office runs by hand; and an automatic package at the other provider.
-    await prisma.package.create({ data: { id: ids.manual, code: name('manual'), name: 's11 manual', providerId: ids.provider, companyId: ids.company, ...prices, ...auto, autoActivate: false } });
-    await prisma.package.create({ data: { id: ids.elsewhere, code: name('elsewhere'), name: 's11 elsewhere', providerId: ids.plain, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.manual, code: name('manual'), name: 's11 manual', providerId: ids.provider, companyId: ids.company, ...prices, ...auto, autoActivate: false } });
+    await prisma.postpaidPackage.create({ data: { id: ids.elsewhere, code: name('elsewhere'), name: 's11 elsewhere', providerId: ids.plain, companyId: ids.company, ...prices, ...auto } });
     const own = new Set<string>(people);
     const writer = new NoticeService();
     const notice = {
@@ -179,7 +179,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
     await prisma.task.deleteMany({ where: { posId: { in: people } } });
-    await prisma.line.deleteMany({ where: { posId: { in: people } } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: { in: people } } });
     for (const id of [ids.pos, ids.other]) await prisma.wallet.update({ where: { userId: id }, data: { balance: START, held: 0, ceiling: 0 } });
     await prisma.wallet.update({ where: { userId: ids.poor }, data: { balance: 100, held: 0, ceiling: 0 } });
   });
@@ -187,8 +187,8 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
   afterAll(async () => {
     await app.close();
     await real.close();
-    await prisma.package.deleteMany({ where: { id: { in: [ids.pkg, ids.manual, ids.elsewhere] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.pkg, ids.manual, ids.elsewhere] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.provider, ids.plain] } } });
     await prisma.wallet.deleteMany({ where: { userId: { in: people } } });
     await prisma.user.deleteMany({ where: { id: { in: people.filter((id) => id !== ids.owner) } } });
@@ -436,7 +436,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
 
     it('a serial or a number that is taken, by a line or by an open task, refuses before anything is held or recorded', async () => {
       const [takenNumber, takenSerial] = [number(), serial()];
-      await prisma.line.create({ data: { msisdn: takenNumber, iccid: takenSerial, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: takenNumber, iccid: takenSerial, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       const reserved = sale({ msisdn: number() });
       expect(said(await activate('pos', reserved, key()))).toBe('ok task');
       const start = await everything();
@@ -574,14 +574,14 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       const row = await task(taskId);
       expect(await dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       // The number went to a line meanwhile, past the reservation.
-      await prisma.line.create({ data: { msisdn: `${(row.msisdn as string).slice(0, 9)}${(Number((row.msisdn as string).slice(9)) + 1) % 10}`, iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: `${(row.msisdn as string).slice(0, 9)}${(Number((row.msisdn as string).slice(9)) + 1) % 10}`, iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       expect(await dispatch.settlement.apply(operationId)).toBe('exception');
       expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
       expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.excerpt])).toEqual([['task.note', [ids.owner], PROVIDER_EXCEPTION_NOTES['sim-taken']]]);
       expect(JSON.stringify(notices)).not.toContain(row.iccid as string);
       expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
-      await prisma.line.deleteMany({ where: { posId: ids.other } });
+      await prisma.postpaidLine.deleteMany({ where: { posId: ids.other } });
     });
 
     it('the submitter cancels while nothing has left: the operation is abandoned, the hold released, and a late message sends nothing', async () => {

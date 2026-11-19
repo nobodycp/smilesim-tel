@@ -50,9 +50,9 @@ suite('task counts by status (PostgreSQL)', () => {
       sessions[person.name] = { sessionId: await auth.saveSession({ userId: person.id, scope: 'full', userAgent: '', ip: '' }) };
     }
     await prisma.provider.create({ data: { id: ids.provider, code: `cnt-${tag}`, name: 'cnt' } });
-    await prisma.company.create({ data: { id: ids.company, code: `cnt-${tag}`, name: 'cnt' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `cnt-${tag}`, name: 'cnt' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code: `cnt-${tag}`, name: 'cnt', providerId: ids.provider, companyId: ids.company, ...prices, autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `cnt-${tag}`, name: 'cnt', providerId: ids.provider, companyId: ids.company, ...prices, autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true } });
     await prisma.task.createMany({
       data: [
         ...['working', 'working', 'working', 'done', 'done', 'rejected', 'cancelled'].map((status) => task(ids.pos1, ids.pos1, status)),
@@ -68,8 +68,8 @@ suite('task counts by status (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.task.deleteMany({ where: { packageId: ids.pkg } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     const people = [ids.pos1, ids.pos2, ids.agent, ids.main, ids.owner];
     await prisma.wallet.deleteMany({ where: { userId: { in: people } } });

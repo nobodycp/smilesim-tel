@@ -44,23 +44,23 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
     await prisma.user.create({ data: { ...user(ids.pos, 'pos', ids.owner), wallet: { create: { balance: 0, ceiling: 0 } } } });
     await prisma.provider.create({ data: { id: ids.providerA, code: `pl-${tag}-a`, name: `pl-${tag}-A` } });
     await prisma.provider.create({ data: { id: ids.providerB, code: `pl-${tag}-b`, name: `pl-${tag}-B` } });
-    await prisma.company.create({ data: { id: ids.company, code: `pl-${tag}`, name: `pl-${tag}-co` } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `pl-${tag}`, name: `pl-${tag}-co` } });
     const flags = { autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
     const prices = (branchCost: number, renewalBranchCost: number) => ({
       branchCost, mainPrice: branchCost + 500, agentPrice: branchCost + 1000, posPrice: branchCost + 1500, subscriberPrice: branchCost + 2000,
       renewalBranchCost, renewalMainPrice: renewalBranchCost + 500, renewalAgentPrice: renewalBranchCost + 1000, renewalPosPrice: renewalBranchCost + 1500, renewalSubscriberPrice: renewalBranchCost + 2000,
     });
     // The same name and company under two providers, as on the dev data («500 جيجا», ويكوم).
-    await prisma.package.create({ data: { id: ids.a1, code: `pl-${tag}-A1`, name: A1, providerId: ids.providerA, companyId: ids.company, ...prices(2000, 1800), ...flags } });
-    await prisma.package.create({ data: { id: ids.b1, code: `pl-${tag}-B1`, name: A1, providerId: ids.providerB, companyId: ids.company, ...prices(3000, 2500), ...flags } });
+    await prisma.postpaidPackage.create({ data: { id: ids.a1, code: `pl-${tag}-A1`, name: A1, providerId: ids.providerA, companyId: ids.company, ...prices(2000, 1800), ...flags } });
+    await prisma.postpaidPackage.create({ data: { id: ids.b1, code: `pl-${tag}-B1`, name: A1, providerId: ids.providerB, companyId: ids.company, ...prices(3000, 2500), ...flags } });
     const line = (id: string, n: number, packageId: string, terms: object) => ({ id, msisdn: `05${tag.replace(/\D/g, '2').slice(0, 7)}${n}`, status: 'active', endsAt: new Date('2027-01-01T00:00:00Z'), packageId, posId: ids.pos, terms });
-    await prisma.line.create({ data: line(ids.lineA, 1, ids.a1, { subscription: { branchCost: 2100 }, renewal: { branchCost: 1700 } }) });
-    await prisma.line.create({ data: line(ids.lineB, 2, ids.b1, { subscription: { branchCost: 3100 }, renewal: { branchCost: 2600 } }) });
+    await prisma.postpaidLine.create({ data: line(ids.lineA, 1, ids.a1, { subscription: { branchCost: 2100 }, renewal: { branchCost: 1700 } }) });
+    await prisma.postpaidLine.create({ data: line(ids.lineB, 2, ids.b1, { subscription: { branchCost: 3100 }, renewal: { branchCost: 2600 } }) });
     // Two lines sold on 2026-10-11 for a 30-day period that cost the branch 3000, disconnected ten days in (10 days used).
     const priced = { branchCost: 3000, mainPrice: 3100, agentPrice: 3200, posPrice: 3500, subscriberPrice: 4000 };
     const terms = { packageCode: `pl-${tag}-A1`, months: 1, subscription: priced, renewal: priced, renewalTargets: [] };
-    await prisma.line.create({ data: { ...line(ids.lineC, 3, ids.a1, terms), status: 'disconnected', endsAt: new Date('2026-11-10T10:00:00Z') } });
-    await prisma.line.create({ data: { ...line(ids.lineD, 4, ids.a1, terms), status: 'disconnected', endsAt: new Date('2026-11-10T10:00:00Z') } });
+    await prisma.postpaidLine.create({ data: { ...line(ids.lineC, 3, ids.a1, terms), status: 'disconnected', endsAt: new Date('2026-11-10T10:00:00Z') } });
+    await prisma.postpaidLine.create({ data: { ...line(ids.lineD, 4, ids.a1, terms), status: 'disconnected', endsAt: new Date('2026-11-10T10:00:00Z') } });
     const sold = { periodCost: 3000, periodDays: 30, periodEndsAt: new Date('2026-11-10T10:00:00Z'), packagePrice: 3500 };
     const ladder = { kind: 'subscription', chain: [ids.pos, ids.owner], costs: { [ids.pos]: 3500, [ids.owner]: 1950 }, posSell: 4000 };
     await entriesStoredBeforeTheCheck(prisma, [
@@ -89,9 +89,9 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
   afterAll(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await theCheckValidatedAgain(prisma);
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.a1, ids.b1] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.a1, ids.b1] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.providerA, ids.providerB] } } });
     await prisma.wallet.deleteMany({ where: { userId: ids.pos } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });

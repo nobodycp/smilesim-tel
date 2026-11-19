@@ -69,13 +69,13 @@ suite('the tree out of the wallet lock (PostgreSQL)', () => {
     }
     gate = { sessionId: await auth.saveSession({ userId: u.pos, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code, name: 'tree' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 'tree' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 'tree' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = {
       branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
     };
-    await prisma.package.create({ data: { id: ids.pkg, code, name: 'tree', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code, name: 'tree', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     service.prismaClient = prisma;
@@ -86,16 +86,16 @@ suite('the tree out of the wallet lock (PostgreSQL)', () => {
     // The tree as it was set up, for the next case.
     await prisma.user.update({ where: { id: u.pos }, data: { parentId: u.agent } });
     await prisma.user.update({ where: { id: u.agent }, data: { parentId: u.main, disabledAt: null } });
-    await prisma.sellPrice.deleteMany({ where: { packageId: ids.pkg } });
+    await prisma.postpaidSellPrice.deleteMany({ where: { packageId: ids.pkg } });
   });
 
   afterAll(async () => {
     const all = Object.values(u);
     await prisma.walletEntry.deleteMany({ where: { userId: { in: all } } });
-    await prisma.line.deleteMany({ where: { posId: u.pos } });
-    await prisma.sellPrice.deleteMany({ where: { packageId: ids.pkg } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: u.pos } });
+    await prisma.postpaidSellPrice.deleteMany({ where: { packageId: ids.pkg } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: all } } });
     for (const id of [u.pos, u.agent2, u.agent, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -131,11 +131,11 @@ suite('the tree out of the wallet lock (PostgreSQL)', () => {
 
   it('refuses the sale, and changes nothing, when the point of sale was moved after its path was read', async () => {
     const before = await balance();
-    const lines = await prisma.line.count({ where: { posId: u.pos } });
+    const lines = await prisma.postpaidLine.count({ where: { posId: u.pos } });
     beforeTheLock(() => prisma.user.update({ where: { id: u.pos }, data: { parentId: u.agent2 } }));
     await expect(activate()).rejects.toMatchObject({ status: 409, code: 'DUPLICATE_REQUEST' });
     expect(await balance()).toBe(before);
-    expect(await prisma.line.count({ where: { posId: u.pos } })).toBe(lines);
+    expect(await prisma.postpaidLine.count({ where: { posId: u.pos } })).toBe(lines);
     // Asked again, the sale reads the new path and goes through on it.
     const sold = await activate();
     const entry = await prisma.walletEntry.findFirstOrThrow({ where: { lineId: sold.line.id, kind: 'activate' } });
@@ -164,7 +164,7 @@ suite('the tree out of the wallet lock (PostgreSQL)', () => {
   it('charges the price it quoted when a price above changed after the read; the ladder reads the price rows under the lock, as before', async () => {
     const before = await balance();
     // The main agent now sells to its agents at 3100 instead of the agent column's 3000.
-    beforeTheLock(() => prisma.sellPrice.create({ data: { packageId: ids.pkg, ownerId: u.main, price: 3100 } }));
+    beforeTheLock(() => prisma.postpaidSellPrice.create({ data: { packageId: ids.pkg, ownerId: u.main, price: 3100 } }));
     const sold = await activate();
     expect(await balance()).toBe(before - 3500);
     const entry = await prisma.walletEntry.findFirstOrThrow({ where: { lineId: sold.line.id, kind: 'activate' } });

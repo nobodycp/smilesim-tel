@@ -52,7 +52,7 @@ suite('the stored margins\' backfill (PostgreSQL)', () => {
     await prisma.notice.create({ data: { userId: u.agent1, kind: 'transfer.out', payload: { kind: 'pos', subject: login('pos'), actorName: 'x', toLoginName: login('agent2') }, href: '/', createdAt: new Date('2026-10-10T00:00:00Z') } });
     await prisma.provider.create({ data: { id: ids.provider, code, name: code } });
     const flags = { autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
-    await prisma.package.create({
+    await prisma.postpaidPackage.create({
       data: {
         id: ids.pkg, code, name: code, providerId: ids.provider, ...flags,
         branchCost: 2000, mainPrice: 2400, agentPrice: 2900, posPrice: 3500, subscriberPrice: 4000,
@@ -60,10 +60,10 @@ suite('the stored margins\' backfill (PostgreSQL)', () => {
       },
     });
     const line = (id: string, n: number, posId: string, packageCode: string) => ({ id, msisdn: `05${tag.replace(/\D/g, '3').slice(0, 7)}${n}`, status: 'active', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkg, posId, terms: { packageCode } });
-    await prisma.line.create({ data: line(ids.lineA, 1, u.pos, code) });
-    await prisma.line.create({ data: line(ids.lineB, 2, u.pos2, code) });
-    await prisma.line.create({ data: line(ids.lineC, 3, u.pos, `${code}-gone`) });
-    await prisma.line.create({ data: line(ids.lineD, 4, u.pos3, code) });
+    await prisma.postpaidLine.create({ data: line(ids.lineA, 1, u.pos, code) });
+    await prisma.postpaidLine.create({ data: line(ids.lineB, 2, u.pos2, code) });
+    await prisma.postpaidLine.create({ data: line(ids.lineC, 3, u.pos, `${code}-gone`) });
+    await prisma.postpaidLine.create({ data: line(ids.lineD, 4, u.pos3, code) });
     await entriesStoredBeforeTheCheck(prisma, [
       entry('kept', u.pos, 'activate', ids.lineA, -3500, 3500, '2026-10-01T10:00:00.000Z', { ladder: keptLadder }),
       entry('old', u.pos, 'activate', ids.lineA, -3500, 3500, '2026-10-02T10:00:00.000Z'),
@@ -83,8 +83,8 @@ suite('the stored margins\' backfill (PostgreSQL)', () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: all } } });
     await theCheckValidatedAgain(prisma).catch(() => undefined);
     await prisma.notice.deleteMany({ where: { userId: { in: all } } });
-    await prisma.line.deleteMany({ where: { id: { in: [ids.lineA, ids.lineB, ids.lineC, ids.lineD] } } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidLine.deleteMany({ where: { id: { in: [ids.lineA, ids.lineB, ids.lineC, ids.lineD] } } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     for (const id of [u.pos3, u.pos2, u.pos, u.agentX, u.agent2, u.agent1, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });
     await prisma.$disconnect();

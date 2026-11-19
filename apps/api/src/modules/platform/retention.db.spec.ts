@@ -136,11 +136,11 @@ suite('the office\'s retention in PostgreSQL: the daily purges (plan DB.13)', ()
       const counts = { active: 1, expiring: 0, frozen: 0, disconnected: 0, suspended: 0 };
       const keptDays = [day(0), day(31), day(399)];
       const goneDays = [day(401), day(402), day(500), day(800), day(1200)];
-      await tx.lineCountSnapshot.createMany({ data: [...keptDays, ...goneDays].map((value) => ({ userId, day: value, ...counts })) });
+      await tx.postpaidLineCountSnapshot.createMany({ data: [...keptDays, ...goneDays].map((value) => ({ userId, day: value, ...counts })) });
 
       // Five past the limit, two a statement: three statements.
       expect(await purgeLineSnapshots(tx, now, 2)).toBe(5);
-      const left = await tx.lineCountSnapshot.findMany({ where: { userId }, select: { day: true }, orderBy: { day: 'desc' } });
+      const left = await tx.postpaidLineCountSnapshot.findMany({ where: { userId }, select: { day: true }, orderBy: { day: 'desc' } });
       expect(left.map((row) => row.day)).toEqual(keptDays);
     });
   });

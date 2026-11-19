@@ -80,10 +80,10 @@ suite('one activation task per request key (PostgreSQL)', () => {
     for (const [name, id] of Object.entries(u)) cookie[name as keyof typeof u] = `sid=${await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' })}`;
     otherSession = `sid=${await auth.saveSession({ userId: u.posA, scope: 'full', userAgent: '', ip: '' })}`;
     await prisma.provider.create({ data: { id: ids.provider, code: `rk-${tag}`, name: 'rk' } });
-    await prisma.company.create({ data: { id: ids.company, code: `rk-${tag}`, name: 'rk' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `rk-${tag}`, name: 'rk' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
-    await prisma.package.create({ data: { id: ids.pkg, code: `rk-${tag}`, name: 'rk', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `rk-${tag}`, name: 'rk', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = { write: async () => { noticeWrites += 1; return []; }, publish: async () => undefined } as unknown as NoticeService;
     ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
     // The guard reads REDIS_URL when it is made.
@@ -106,7 +106,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
     // Each test starts from no tasks, no lines, nothing held and full wallets.
     await prisma.walletEntry.deleteMany({ where: { userId: { in: Object.values(u) } } });
     await prisma.task.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
-    await prisma.line.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
     await prisma.wallet.updateMany({ where: { userId: { in: Object.values(u) } }, data: { balance: 1_000_000, held: 0, ceiling: 0 } });
   });
 
@@ -116,8 +116,8 @@ suite('one activation task per request key (PostgreSQL)', () => {
     await guard.onModuleDestroy();
     if (before.redis === undefined) delete process.env.REDIS_URL;
     else process.env.REDIS_URL = before.redis;
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: Object.values(u) } } });
     for (const id of [u.posA, u.posB, u.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -381,7 +381,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
       expect(responses.filter((response) => response.headers['idempotent-replay'] === 'true')).toHaveLength(9);
       const code: string = responses[0].body.line.esimQr;
       expect(code).toMatch(/^data:image\/png;base64,/);
-      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
+      expect(await prisma.postpaidLine.count({ where: { posId: u.posA } })).toBe(1);
       expect(await entries()).toBe(1);
       expect(kept).toHaveLength(1);
       expect(kept[0].startsWith('v1:')).toBe(true);
@@ -414,7 +414,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
       const other = summary(await Promise.all(Array.from({ length: 5 }, () => post('posA', sent, requestKey, guarded))));
       expect([none.status, none.body.code]).toEqual([409, 'DUPLICATE_REQUEST']);
       expect(other.statuses).toEqual(Array.from({ length: 5 }, () => '409 DUPLICATE_REQUEST'));
-      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
+      expect(await prisma.postpaidLine.count({ where: { posId: u.posA } })).toBe(1);
       expect(await entries()).toBe(1);
     });
 

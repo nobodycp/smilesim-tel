@@ -95,7 +95,7 @@ async function stage() {
     },
     // No open activation task has reserved the serial a SIM swap asks for.
     task: { findFirst: async () => null },
-    line: {
+    postpaidLine: {
       findUnique: async () => line,
       findFirst: async () => null,
       update: async ({ data }: { data: Row }) => Object.assign(line, data),
@@ -114,17 +114,17 @@ async function stage() {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
       findMany: async () => accounts,
     },
-    line: {
+    postpaidLine: {
       findUnique: async () => line,
       findMany: async () => [{ ...line, package: pkg }],
       count: async () => 1,
-      update: tx.line.update,
+      update: tx.postpaidLine.update,
     },
     task: { findMany: async () => [] },
-    package: { findMany: async () => [pkg], findFirst: async () => null },
-    company: { findFirst: async () => null },
-    packageAddon: { findMany: async () => [] },
-    packageSwitch: { findMany: async () => [] },
+    postpaidPackage: { findMany: async () => [pkg], findFirst: async () => null },
+    postpaidCompany: { findFirst: async () => null },
+    postpaidPackageAddon: { findMany: async () => [] },
+    postpaidPackageSwitch: { findMany: async () => [] },
     provider: { findMany: async () => [{ code: 'sky', name: 'سكاي' }] },
     walletEntry: {
       findMany: async (args?: { where?: { amount?: { not?: number }; kind?: { in?: string[] }; msisdn?: { contains?: string }; AND?: unknown[] } }) => {

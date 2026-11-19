@@ -14,7 +14,7 @@ import { transaction } from '../modules/platform/unit-of-work';
 // - It ends by counting the clear values left. A dry run only counts.
 // - Nothing of a code is returned, thrown or logged: only counts.
 
-const TABLES = ['Line', 'Task'] as const;
+const TABLES = ['PostpaidLine', 'Task'] as const;
 export type CodeTable = (typeof TABLES)[number];
 export type TableCount = { clear: number; sealed: number };
 export type SealRun = {

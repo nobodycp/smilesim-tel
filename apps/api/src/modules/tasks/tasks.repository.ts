@@ -45,14 +45,14 @@ export class TasksRepository {
 
   /** Every package's name with its company's and its provider's: what the inbox names a task's package by. */
   packageNames() {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       select: { id: true, name: true, company: { select: { name: true } }, provider: { select: { name: true } } },
     });
   }
 
   /** The ids of the packages a list filter names. */
-  packageIdsMatching(where: Prisma.PackageWhereInput) {
-    return this.uow.prisma.package.findMany({ where, select: { id: true } });
+  packageIdsMatching(where: Prisma.PostpaidPackageWhereInput) {
+    return this.uow.prisma.postpaidPackage.findMany({ where, select: { id: true } });
   }
 
   /** One task as its page shows it: its people, the notes `notes` lets through, and its number with the package. */
@@ -71,7 +71,7 @@ export class TasksRepository {
 
   /** The package of a task that has no number yet. */
   packageOfTask(packageId: string) {
-    return this.uow.prisma.package.findUnique({
+    return this.uow.prisma.postpaidPackage.findUnique({
       where: { id: packageId },
       include: { company: { select: TASK_COMPANY }, provider: true },
     });
@@ -142,7 +142,7 @@ export class TasksRepository {
   }
 
   packageName(db: Db, id: string) {
-    return db.package.findUnique({ where: { id }, select: { name: true } });
+    return db.postpaidPackage.findUnique({ where: { id }, select: { name: true } });
   }
 
   /** The branch's enabled users with their roles: who may be told about a task. */

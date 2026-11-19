@@ -74,7 +74,7 @@ export async function outcomeText(page: Page): Promise<string> {
 
 export async function lineByMsisdn(msisdn: string) {
   const rows = await sql<{ id: string; status: string; iccid: string | null; posId: string; packageId: string; endsAt: Date }>(
-    `SELECT id, status, iccid, "posId", "packageId", "endsAt" FROM "Line" WHERE msisdn = $1`,
+    `SELECT id, status, iccid, "posId", "packageId", "endsAt" FROM "PostpaidLine" WHERE msisdn = $1`,
     [msisdn],
   );
   return rows[0] ?? null;

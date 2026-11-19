@@ -45,17 +45,17 @@ export class ProvidersRepository {
 
   /** The provider's packages that follow its mode for this action. */
   packagesInheriting(providerId: string, action: string) {
-    return this.uow.prisma.package.findMany({ where: { providerId, inheritedModes: { has: action } } });
+    return this.uow.prisma.postpaidPackage.findMany({ where: { providerId, inheritedModes: { has: action } } });
   }
 
   /**
    * The provider's action modes and the packages that follow them, in one transaction. Slice R.7: the unit of work's
    * (before it, an array transaction on the root client), the same updates in the same order.
    */
-  async saveModes(code: string, modes: Prisma.ProviderUpdateInput['actionModes'], packages: Array<{ id: string; data: Prisma.PackageUpdateInput }>): Promise<void> {
+  async saveModes(code: string, modes: Prisma.ProviderUpdateInput['actionModes'], packages: Array<{ id: string; data: Prisma.PostpaidPackageUpdateInput }>): Promise<void> {
     await this.uow.runTx(async (tx) => {
       await tx.provider.update({ where: { code }, data: { actionModes: modes } });
-      for (const pkg of packages) await tx.package.update({ where: { id: pkg.id }, data: pkg.data });
+      for (const pkg of packages) await tx.postpaidPackage.update({ where: { id: pkg.id }, data: pkg.data });
     });
   }
 
@@ -63,37 +63,37 @@ export class ProvidersRepository {
 
   /** Which of these company codes the office already has. */
   storedCompanyCodes(codes: string[]) {
-    return this.uow.prisma.company.findMany({ where: { code: { in: codes } }, select: { code: true } });
+    return this.uow.prisma.postpaidCompany.findMany({ where: { code: { in: codes } }, select: { code: true } });
   }
 
   /** The packages already made from these product codes of this provider. */
   packagesOfProducts(providerId: string, codes: string[]) {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       where: { providerId, providerProductCode: { in: codes } },
       select: { providerProductCode: true },
     });
   }
 
   companyByCode(code: string) {
-    return this.uow.prisma.company.findUnique({ where: { code } });
+    return this.uow.prisma.postpaidCompany.findUnique({ where: { code } });
   }
 
-  addCompany(data: Prisma.CompanyCreateInput) {
-    return this.uow.prisma.company.create({
+  addCompany(data: Prisma.PostpaidCompanyCreateInput) {
+    return this.uow.prisma.postpaidCompany.create({
       data,
     });
   }
 
   /** A package already made from this product of this provider. */
   packageOfProduct(providerId: string, productCode: string) {
-    return this.uow.prisma.package.findFirst({
+    return this.uow.prisma.postpaidPackage.findFirst({
       where: { providerId, providerProductCode: productCode },
       select: { id: true },
     });
   }
 
-  addPackage(data: Prisma.PackageUncheckedCreateInput) {
-    return this.uow.prisma.package.create({
+  addPackage(data: Prisma.PostpaidPackageUncheckedCreateInput) {
+    return this.uow.prisma.postpaidPackage.create({
       data,
     });
   }
@@ -127,7 +127,7 @@ export class ProvidersRepository {
   }
 
   packagesWithProvider() {
-    return this.uow.prisma.package.findMany({ include: { provider: true } });
+    return this.uow.prisma.postpaidPackage.findMany({ include: { provider: true } });
   }
 
   addEntry(data: Prisma.ProviderEntryUncheckedCreateInput) {

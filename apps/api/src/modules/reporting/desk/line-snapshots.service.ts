@@ -59,7 +59,7 @@ export class LineSnapshotsService implements OnModuleInit, OnModuleDestroy {
     return open.length;
   }
 
-  private async byPos(where: Prisma.LineWhereInput): Promise<Map<string, number>> {
+  private async byPos(where: Prisma.PostpaidLineWhereInput): Promise<Map<string, number>> {
     return new Map((await this.repo.lineCountsByPos(where)).map((row) => [row.posId, row._count._all]));
   }
 }

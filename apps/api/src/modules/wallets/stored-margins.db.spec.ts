@@ -64,16 +64,16 @@ suite('each sale\'s margins stored on its entry (PostgreSQL)', () => {
     pos = { sessionId: await auth.saveSession({ userId: u.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: u.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code, name: 'sm' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 'sm' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 'sm' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     // Each layer earns a different amount, so a margin stored in the wrong column shows.
     const prices = {
       branchCost: 2000, mainPrice: 2400, agentPrice: 2900, posPrice: 3500, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2100, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
     };
-    await prisma.package.create({ data: { id: ids.pkg, code, name: 'sm', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code, name: 'sm', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     // The point of sale sells to its customers at 4000 (its own sell price), renewals at the subscriber price.
-    await prisma.sellPrice.create({ data: { packageId: ids.pkg, ownerId: u.pos, price: 4000 } });
+    await prisma.postpaidSellPrice.create({ data: { packageId: ids.pkg, ownerId: u.pos, price: 4000 } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: { ledger: WalletLedger; uow: { runTx: typeof runTx } } }).graph;
@@ -85,10 +85,10 @@ suite('each sale\'s margins stored on its entry (PostgreSQL)', () => {
     const all = Object.values(u);
     await prisma.walletEntry.deleteMany({ where: { userId: { in: all } } });
     await prisma.task.deleteMany({ where: { posId: u.pos } });
-    await prisma.line.deleteMany({ where: { posId: u.pos } });
-    await prisma.sellPrice.deleteMany({ where: { packageId: ids.pkg } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: u.pos } });
+    await prisma.postpaidSellPrice.deleteMany({ where: { packageId: ids.pkg } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: all } } });
     for (const id of [u.pos, u.agent2, u.agent, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -136,7 +136,7 @@ suite('each sale\'s margins stored on its entry (PostgreSQL)', () => {
   it('a task\'s capture stores the margins of the sale it completes', async () => {
     const opened = (await sell('fail')) as { taskId: string };
     await service.completeTask(owner, opened.taskId, {});
-    const line = await prisma.line.findFirstOrThrow({ where: { posId: u.pos }, orderBy: { createdAt: 'desc' } });
+    const line = await prisma.postpaidLine.findFirstOrThrow({ where: { posId: u.pos }, orderBy: { createdAt: 'desc' } });
     const entry = await entryOf(line.id, 'activate');
     expect(columns(entry)).toEqual({ ...chain, posMargin: 500, agentMargin: 600, mainAgentMargin: 500, branchMargin: 400 });
     const renewal = (await service.extend(pos, line.id, { outcome: 'fail' })) as { taskId: string };

@@ -95,8 +95,8 @@ suite('a given-back operation charged later (PostgreSQL)', () => {
       await prisma.user.create({ data: { ...user(id, parent), wallet: { create: { balance: id === u.pos ? START : 0, ceiling: 0 } } } });
     }
     await prisma.provider.create({ data: { id: ids.provider, code: name('A'), name: name('A') } });
-    await prisma.company.create({ data: { id: ids.company, code: name('co'), name: name('co') } });
-    await prisma.package.create({ data: { id: ids.pkg, code: name('p'), name: name('p'), providerId: ids.provider, companyId: ids.company, ...P, autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: name('co'), name: name('co') } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: name('p'), name: name('p'), providerId: ids.provider, companyId: ids.company, ...P, autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false } });
     g = {
       plain: await givenBack(u.pos, '0599100001', false),
       esim: await givenBack(u.pos, '0599100002', true),
@@ -117,8 +117,8 @@ suite('a given-back operation charged later (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: Object.values(u) } } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: Object.values(u) } } });
     for (const id of [u.poor, u.pos, u.agent, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });

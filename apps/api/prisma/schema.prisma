@@ -8,55 +8,57 @@ datasource db {
 }
 
 model User {
-  id                     String           @id @default(uuid())
-  loginName              String           @unique
+  id                     String                @id @default(uuid())
+  loginName              String                @unique
   nickname               String
   email                  String?
   phone                  String?
   city                   String?
   address                String?
   passwordHash           String
-  mustChangePassword     Boolean          @default(false)
+  mustChangePassword     Boolean               @default(false)
   layer                  String
   parentId               String?
-  parent                 User?            @relation("UserTree", fields: [parentId], references: [id])
-  children               User[]           @relation("UserTree")
-  isBranchOwner          Boolean          @default(false)
+  parent                 User?                 @relation("UserTree", fields: [parentId], references: [id])
+  children               User[]                @relation("UserTree")
+  isBranchOwner          Boolean               @default(false)
   roleId                 String?
-  role                   Role?            @relation(fields: [roleId], references: [id])
-  liveGrants             String           @default("")
-  extraGrants            String           @default("")
-  deniedGrants           String           @default("")
-  deniedOps              String           @default("")
+  role                   Role?                 @relation(fields: [roleId], references: [id])
+  liveGrants             String                @default("")
+  extraGrants            String                @default("")
+  deniedGrants           String                @default("")
+  deniedOps              String                @default("")
   extraRoles             UserRole[]
   disabledAt             DateTime?
   /// Two-step mode of this account: exempt = optional, required = must enrol, neither = follow the layer.
-  twoFactorExempt        Boolean          @default(false)
-  twoFactorRequired      Boolean          @default(false)
+  twoFactorExempt        Boolean               @default(false)
+  twoFactorRequired      Boolean               @default(false)
   /// The method this account must enrol with when required; null follows its layer's default method.
   requiredMethod         String?
-  twoFactorEnabled       Boolean          @default(false)
+  twoFactorEnabled       Boolean               @default(false)
   twoFactorSecret        String?
   pendingTwoFactorSecret String?
-  /** How the second factor is proven: app (default), sms or email (roadmap N9). */
-  twoFactorMethod        String           @default("app")
+  /**
+   * How the second factor is proven: app (default), sms or email (roadmap N9).
+   */
+  twoFactorMethod        String                @default("app")
   /// Sessions allowed and idle minutes for this account; null follows its layer.
   maxSessions            Int?
   sessionMinutes         Int?
   passkeys               Passkey[]
   sessions               Session[]
   wallet                 Wallet?
-  walletEntries          WalletEntry[]    @relation("WalletOwner")
-  actedEntries           WalletEntry[]    @relation("WalletActor")
-  posLines               Line[]           @relation("LinePos")
-  posTasks               Task[]     @relation("TaskPos")
-  submittedTasks         Task[]     @relation("TaskSubmitter")
-  assignedTasks          Task[]     @relation("TaskAssignee")
+  walletEntries          WalletEntry[]         @relation("WalletOwner")
+  actedEntries           WalletEntry[]         @relation("WalletActor")
+  posLines               PostpaidLine[]        @relation("LinePos")
+  posTasks               Task[]                @relation("TaskPos")
+  submittedTasks         Task[]                @relation("TaskSubmitter")
+  assignedTasks          Task[]                @relation("TaskAssignee")
   taskNotes              TaskNote[]
   notices                Notice[]
   accessLogs             AccessLog[]
-  packageTerms           UserPackage[]
-  sellPrices             SellPrice[]
+  packageTerms           PostpaidUserPackage[]
+  sellPrices             PostpaidSellPrice[]
   activityEvents         ActivityEvent[]
 
   // Tree walks: children of an account.
@@ -72,9 +74,13 @@ model Session {
   ip         String
   scope      String
   kind       String
-  /** SHA-256 of the cookie token. The token itself is stored nowhere; `id` is the public handle. */
+  /**
+   * SHA-256 of the cookie token. The token itself is stored nowhere; `id` is the public handle.
+   */
   tokenHash  String    @unique
-  /** On an entered (impersonation) session: the branch account that entered. Who acted is read from here. */
+  /**
+   * On an entered (impersonation) session: the branch account that entered. Who acted is read from here.
+   */
   operatorId String?
   createdAt  DateTime  @default(now())
   lastSeenAt DateTime  @default(now())
@@ -113,11 +119,11 @@ model UserRole {
 }
 
 model LayerPolicy {
-  id       String  @id @default(uuid())
-  layer    String  @unique
-  required Boolean @default(false)
+  id             String  @id @default(uuid())
+  layer          String  @unique
+  required       Boolean @default(false)
   /// The method accounts of the layer enrol with while it is required (app, sms or email).
-  method   String  @default("app")
+  method         String  @default("app")
   /// Sessions allowed and idle minutes for the layer; null follows the default (session rules spec).
   maxSessions    Int?
   sessionMinutes Int?
@@ -130,7 +136,9 @@ model Wallet {
   user    User   @relation(fields: [userId], references: [id])
   balance Int    @default(0)
   ceiling Int    @default(0)
-  /** Money held for open tasks: not spendable until they close (roadmap N6). */
+  /**
+   * Money held for open tasks: not spendable until they close (roadmap N6).
+   */
   held    Int    @default(0)
 }
 
@@ -138,23 +146,25 @@ model Wallet {
 // The CHECK `WalletEntry_operation_priced` (migration 20261117210000_provider_ledger_stored, NOT VALID until the
 // provider ledger's backfill has run, ADR 0025): an operation kind's entry carries `providerId` and `providerCost`.
 model WalletEntry {
-  id           String    @id @default(uuid())
-  userId       String
-  user         User      @relation("WalletOwner", fields: [userId], references: [id])
-  actorId      String
-  actor        User      @relation("WalletActor", fields: [actorId], references: [id])
-  amount       Int
-  balanceAfter Int
-  kind         String
-  note         String?
-  msisdn       String?
-  lineId       String?
-  line         Line?     @relation(fields: [lineId], references: [id], onDelete: SetNull)
-  companyName  String?
-  packageName  String?
-  packagePrice Int?
-  /** What this operation adds to what the branch owes the provider, signed agorot, fixed at the write (ADR 0025). */
-  providerCost Int?
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation("WalletOwner", fields: [userId], references: [id])
+  actorId          String
+  actor            User          @relation("WalletActor", fields: [actorId], references: [id])
+  amount           Int
+  balanceAfter     Int
+  kind             String
+  note             String?
+  msisdn           String?
+  lineId           String?
+  line             PostpaidLine? @relation(fields: [lineId], references: [id], onDelete: SetNull)
+  companyName      String?
+  packageName      String?
+  packagePrice     Int?
+  /**
+   * What this operation adds to what the branch owes the provider, signed agorot, fixed at the write (ADR 0025).
+   */
+  providerCost     Int?
   /**
    * The provider of the package the operation was carried out on, fixed at the write (ADR 0025). No relation and
    * no foreign key on purpose: the key's lock on the provider's row would wait on the send gate under the wallet lock.
@@ -165,23 +175,31 @@ model WalletEntry {
    * CONCURRENTLY (migration `20261119110000_operations_newest_first`). The CHECK `WalletEntry_operation_priced` is validated by
    * `20261117220100_provider_ledger_validate` when no stored row breaks it.
    */
-  providerId   String?
-  /** The eSIM fee folded into `amount`, when this entry sold or issued one. */
-  esimPrice    Int?
-  periodDays   Int?
-  periodEndsAt DateTime?
-  /** What the branch pays the provider for the whole period this row bought (or, for a switch, reprices to), without the eSIM fee. Empty on rows written before it was kept. */
-  periodCost   Int?
+  providerId       String?
+  /**
+   * The eSIM fee folded into `amount`, when this entry sold or issued one.
+   */
+  esimPrice        Int?
+  periodDays       Int?
+  periodEndsAt     DateTime?
+  /**
+   * What the branch pays the provider for the whole period this row bought (or, for a switch, reprices to), without the eSIM fee. Empty on rows written before it was kept.
+   */
+  periodCost       Int?
   /**
    * A sale's price chain at the time (profit-ladder.ts `Ladder`): what each layer paid and the sell price. A sale kind
    * that moves money out always has one: `WalletLedger.post` refuses it otherwise, and so does the CHECK
    * `WalletEntry_sale_has_ladder` (raw SQL, migration `20261119100000_sale_has_ladder`; spec 2026-11-19 F.3).
    */
-  ladder       Json?
-  /** Why a manual movement was made: deposit, return, correction or settlement. */
-  reason       String?
-  /** For a hold or a release: the amount held (positive) or released (negative). */
-  held         Int?
+  ladder           Json?
+  /**
+   * Why a manual movement was made: deposit, return, correction or settlement.
+   */
+  reason           String?
+  /**
+   * For a hold or a release: the amount held (positive) or released (negative).
+   */
+  held             Int?
   /**
    * A sale's and a refund's chain by layer and what each layer earned on it (ADR 0026), written in the entry's own
    * INSERT from its `ladder` by `marginOf` and never updated: the point of sale (`chain[0]`), the agent and the main
@@ -193,6 +211,7 @@ model WalletEntry {
    * `20261117230100_stored_margins_indexes`, `20261117230200_stored_margins_validate`).
    */
   /**
+   * /**
    * Why an operation the provider was paid for charged the point of sale nothing (ADR 0025, answer 4; spec DB.5 P.7):
    * `given_back` (the provider succeeded, the money was given back: `release-after-success`) or `priced_zero` (an
    * activation or renewal sold at 0). Null on every other row. Such a row moves 0, keeps its provider and cost, and
@@ -205,13 +224,13 @@ model WalletEntry {
    * ADR 0027; the CHECK takes it since `20261118100000_provider_loss_charged_later`): its purchase and its margin
    * stay, and it is no longer a loss the warnings count.
    */
-  providerLoss String?
+  providerLoss     String?
   /**
    * On the sale entry that charged a given-back operation later (spec DB.5 P.9): the marked row's id. Null on every
    * other row. One charge per operation: the unique partial index `WalletEntry_charges_entry` WHERE it is not null is
    * raw SQL (migration `20261118100000_provider_loss_charged_later`). No relation and no foreign key, as `providerId`.
    */
-  chargesEntryId String?
+  chargesEntryId   String?
   chainPosId       String?
   chainAgentId     String?
   chainMainAgentId String?
@@ -219,7 +238,7 @@ model WalletEntry {
   agentMargin      Int?
   mainAgentMargin  Int?
   branchMargin     Int?
-  createdAt    DateTime  @default(now())
+  createdAt        DateTime      @default(now())
 
   // An account's own entries and the finance page under it, newest first (NEWEST_FIRST, paging.ts).
   @@index([userId, createdAt(sort: Desc), id(sort: Desc)], map: "WalletEntry_userId_createdAt_id_idx")
@@ -237,69 +256,91 @@ model WalletEntry {
 }
 
 model Provider {
-  id          String          @id @default(uuid())
-  code        String          @unique
-  name        String
-  actionModes Json            @default("{}")
-  esimPrice   Int?
-  /** How far we may owe this provider, in agorot (roadmap N7). */
-  creditLimit Int             @default(0)
-  /** Which statement columns hold the number, date, amount and reference (roadmap N8). */
-  statementMap Json?
-  /** Alert when the available balance falls under this, in agorot (spec 2026-11-08-overview-and-reports-nav, G). */
-  alertFloor  Int             @default(0)
-  /** Last known status, `working` or `problem`, so a change writes its notice once. */
-  health      String          @default("working")
-  healthReason String?
-  healthAt    DateTime?
-  /** `api`: each operation matched at once; `statement`: matched every `matchEveryDays` (simulated for now, spec E). */
-  matchSource    String       @default("statement")
-  matchEveryDays Int          @default(7)
-  lastMatchedAt  DateTime?
-  /** When «مطابقة متأخرة» was sent for this lapse; cleared once the provider is matched again. */
-  matchOverdueNoticeAt DateTime?
-  /** When the owner approved dispatching this provider's operations on this deployment, and who (ADR 0019, D18). Empty: never approved, nothing is dispatched for it. */
+  id                          String                      @id @default(uuid())
+  code                        String                      @unique
+  name                        String
+  actionModes                 Json                        @default("{}")
+  esimPrice                   Int?
+  /**
+   * How far we may owe this provider, in agorot (roadmap N7).
+   */
+  creditLimit                 Int                         @default(0)
+  /**
+   * Which statement columns hold the number, date, amount and reference (roadmap N8).
+   */
+  statementMap                Json?
+  /**
+   * Alert when the available balance falls under this, in agorot (spec 2026-11-08-overview-and-reports-nav, G).
+   */
+  alertFloor                  Int                         @default(0)
+  /**
+   * Last known status, `working` or `problem`, so a change writes its notice once.
+   */
+  health                      String                      @default("working")
+  healthReason                String?
+  healthAt                    DateTime?
+  /**
+   * `api`: each operation matched at once; `statement`: matched every `matchEveryDays` (simulated for now, spec E).
+   */
+  matchSource                 String                      @default("statement")
+  matchEveryDays              Int                         @default(7)
+  lastMatchedAt               DateTime?
+  /**
+   * When «مطابقة متأخرة» was sent for this lapse; cleared once the provider is matched again.
+   */
+  matchOverdueNoticeAt        DateTime?
+  /**
+   * When the owner approved dispatching this provider's operations on this deployment, and who (ADR 0019, D18). Empty: never approved, nothing is dispatched for it.
+   */
   dispatchApprovedAt          DateTime?
   dispatchApprovedByLoginName String?
-  /** The target (`sandbox` or `live`) the approval was given for: it does not stand for the other one. */
+  /**
+   * The target (`sandbox` or `live`) the approval was given for: it does not stand for the other one.
+   */
   dispatchApprovedTarget      String?
-  /** The deployment (`DEPLOYMENT_ID`) the approval was given on: it does not stand for another one, even on the same database. */
+  /**
+   * The deployment (`DEPLOYMENT_ID`) the approval was given on: it does not stand for another one, even on the same database.
+   */
   dispatchApprovedDeployment  String?
-  /** Set while the owner has paused the provider: new sales take the manual route. */
+  /**
+   * Set while the owner has paused the provider: new sales take the manual route.
+   */
   dispatchPausedAt            DateTime?
-  packages    Package[]
-  entries     ProviderEntry[]
-  reconciliations ProviderReconciliation[]
-  operations  ProviderOperation[]
-  credentials ProviderCredential[]
-  /** What each running worker says it holds for this provider (ADR 0019, D18). */
-  attestations ProviderWorkerAttestation[]
+  packages                    PostpaidPackage[]
+  entries                     ProviderEntry[]
+  reconciliations             ProviderReconciliation[]
+  operations                  ProviderOperation[]
+  credentials                 ProviderCredential[]
+  /**
+   * What each running worker says it holds for this provider (ADR 0019, D18).
+   */
+  attestations                ProviderWorkerAttestation[]
 }
 
 /// One operation asked of a provider, from the request to its settled answer (ADR 0017). It holds what was asked
 /// and where it stands, never a credential and never the provider's raw message.
 model ProviderOperation {
-  id             String    @id @default(uuid())
+  id             String                  @id @default(uuid())
   /// The caller's key: one operation per key, sent to the provider with every attempt.
-  idempotencyKey String    @unique
+  idempotencyKey String                  @unique
   /// SHA-256 of the request, so a key that comes back with another request is refused.
   requestHash    String
   action         String
   providerId     String
-  provider       Provider  @relation(fields: [providerId], references: [id])
+  provider       Provider                @relation(fields: [providerId], references: [id])
   packageCode    String
   msisdn         String?
   iccid          String?
   lineId         String?
-  line           Line?     @relation(fields: [lineId], references: [id], onDelete: SetNull)
+  line           PostpaidLine?           @relation(fields: [lineId], references: [id], onDelete: SetNull)
   /// `requested`, `pending`, `succeeded`, `failed` or `unknown` (provider-operation.rules.ts).
   status         String
   /// The provider's own reference for the operation, once it gives one.
   providerRef    String?
   /// The number of the current attempt. It only grows: it fences old answers and orders the outbox messages.
-  attempts       Int       @default(0)
+  attempts       Int                     @default(0)
   /// Attempts handed back unsent while the provider's gate was closed: not counted against `MAX_ATTEMPTS`.
-  waivedAttempts Int       @default(0)
+  waivedAttempts Int                     @default(0)
   /// A code from `OPERATION_ERRORS`, never free text.
   lastError      String?
   lastAttemptAt  DateTime?
@@ -308,8 +349,8 @@ model ProviderOperation {
   /// Written just before the provider is called for the current attempt; empty means the request never left.
   sentAt         DateTime?
   /// The activation task this operation settles (ADR 0019, D3): at most one operation per task, for ever.
-  taskId         String?   @unique
-  task           Task? @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  taskId         String?                 @unique
+  task           Task?                   @relation(fields: [taskId], references: [id], onDelete: Restrict)
   /// When the verdict was applied to the task and the money (the line and the capture, or the task left to the
   /// branch). Empty on a settled operation means the settlement still has to run.
   appliedAt      DateTime?
@@ -322,17 +363,17 @@ model ProviderOperation {
   /// An eSIM's activation code, sealed (`v1:`…): the database refuses it in clear (D17).
   resultEsimCode String?
   decisions      ProviderDecisionEvent[]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  // The sweeper's unsettled walk (`unsettledPage`) has a partial index Prisma cannot state:
+  // `ProviderOperation_unsettled_id` on (id) WHERE taskId IS NOT NULL AND appliedAt IS NULL
+  // (migration `20261117160000_lookup_indexes`).
 
   @@index([status, updatedAt])
   /// The pass over operations that wait to be sent walks them by id.
   @@index([status, id])
   @@index([providerId, createdAt])
   @@index([lineId])
-  // The sweeper's unsettled walk (`unsettledPage`) has a partial index Prisma cannot state:
-  // `ProviderOperation_unsettled_id` on (id) WHERE taskId IS NOT NULL AND appliedAt IS NULL
-  // (migration `20261117160000_lookup_indexes`).
 }
 
 /// One step of a decision a person takes on a provider operation (ADR 0019, D15): proposed, approved, refused or
@@ -403,14 +444,14 @@ model ProviderWorkerAttestation {
 /// A message written in the same transaction as the change it announces; a relay publishes it afterwards and
 /// stamps `publishedAt`. A rolled-back transaction leaves no message.
 model OutboxMessage {
-  id          String    @id @default(uuid())
-  topic       String
-  aggregateId String
-  payload     Json
+  id           String    @id @default(uuid())
+  topic        String
+  aggregateId  String
+  payload      Json
   /// Which send of the aggregate this announces: the attempts already made (0 for the first). One message each.
-  sequence    Int       @default(0)
-  createdAt   DateTime  @default(now())
-  publishedAt DateTime?
+  sequence     Int       @default(0)
+  createdAt    DateTime  @default(now())
+  publishedAt  DateTime?
   /// Until when the relay that took the message may still be publishing it; afterwards another may take it.
   claimedUntil DateTime?
 
@@ -419,58 +460,62 @@ model OutboxMessage {
   @@index([aggregateId])
 }
 
-/** A payment to a provider or a settlement with it (roadmap N7). Purchases come from our operations' provider cost. */
+/**
+ * A payment to a provider or a settlement with it (roadmap N7). Purchases come from our operations' provider cost.
+ */
 model ProviderEntry {
-  id         String   @id @default(uuid())
-  providerId String
-  provider   Provider @relation(fields: [providerId], references: [id])
-  /** `payment` (positive) or `settlement` (positive or negative). */
-  kind       String
-  amount     Int
-  note       String
-  actorLoginName String @map("actorLogin")
-  createdAt  DateTime @default(now())
+  id             String   @id @default(uuid())
+  providerId     String
+  provider       Provider @relation(fields: [providerId], references: [id])
+  /**
+   * `payment` (positive) or `settlement` (positive or negative).
+   */
+  kind           String
+  amount         Int
+  note           String
+  actorLoginName String   @map("actorLogin")
+  createdAt      DateTime @default(now())
 
   @@index([providerId, createdAt])
 }
 
-model Company {
-  id          String    @id @default(uuid())
-  code        String    @unique
+model PostpaidCompany {
+  id          String            @id @default(uuid())
+  code        String            @unique
   name        String
   image       String?
   iccidLength Int?
   iccidPrefix String?
-  esim        Boolean   @default(true)
-  esimPrice   Int       @default(500)
-  packages    Package[]
+  esim        Boolean           @default(true)
+  esimPrice   Int               @default(500)
+  packages    PostpaidPackage[]
 }
 
-model Package {
-  id                     String           @id @default(uuid())
-  code                   String           @unique
+model PostpaidPackage {
+  id                     String                    @id @default(uuid())
+  code                   String                    @unique
   name                   String
   providerId             String
-  provider               Provider         @relation(fields: [providerId], references: [id])
+  provider               Provider                  @relation(fields: [providerId], references: [id])
   companyId              String?
   // RESTRICT as the database has it since 20261030010000_catalog: a company with packages cannot be deleted.
-  company                Company?         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  company                PostpaidCompany?          @relation(fields: [companyId], references: [id], onDelete: Restrict)
   dataGb                 Int?
   /// Package details (spec 2026-11-08-branch-packages-and-details): null = not stated, -1 = unlimited.
   smsCount               Int?
   minutes                Int?
   details                String?
   /// Days after the subscription ends before the line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I).
-  suspendAfterDays       Int      @default(90)
+  suspendAfterDays       Int                       @default(90)
   /// Whether this package may be sold or served as an eSIM; the company must allow it too (spec 2026-11-09, 5).
-  esimAvailable          Boolean  @default(true)
-  months                 Int              @default(1)
+  esimAvailable          Boolean                   @default(true)
+  months                 Int                       @default(1)
   branchCost             Int
   mainPrice              Int
   agentPrice             Int
   posPrice               Int
   subscriberPrice        Int
-  forSale                Boolean          @default(true)
+  forSale                Boolean                   @default(true)
   renewalBranchCost      Int
   renewalMainPrice       Int
   renewalAgentPrice      Int
@@ -481,124 +526,124 @@ model Package {
   autoDisconnect         Boolean
   autoFreeze             Boolean
   autoSwitch             Boolean
-  autoExtend             Boolean          @default(false)
-  autoRename             Boolean          @default(false)
-  autoSim                Boolean          @default(false)
-  allowActivate          Boolean          @default(true)
-  allowCharge            Boolean          @default(true)
-  allowDisconnect        Boolean          @default(true)
-  allowFreeze            Boolean          @default(true)
-  allowSwitch            Boolean          @default(true)
-  allowExtend            Boolean          @default(true)
-  allowRename            Boolean          @default(true)
-  allowSim               Boolean          @default(true)
-  enabled                Boolean          @default(true)
-  actionModes            Json             @default("{}")
+  autoExtend             Boolean                   @default(false)
+  autoRename             Boolean                   @default(false)
+  autoSim                Boolean                   @default(false)
+  allowActivate          Boolean                   @default(true)
+  allowCharge            Boolean                   @default(true)
+  allowDisconnect        Boolean                   @default(true)
+  allowFreeze            Boolean                   @default(true)
+  allowSwitch            Boolean                   @default(true)
+  allowExtend            Boolean                   @default(true)
+  allowRename            Boolean                   @default(true)
+  allowSim               Boolean                   @default(true)
+  enabled                Boolean                   @default(true)
+  actionModes            Json                      @default("{}")
   /// The actions whose run mode follows the provider (spec 2026-11-09-admin-review, 3): the stored mode is the
   /// provider's, written again whenever the provider changes it. Empty = every mode is the package's own.
-  inheritedModes         String[]         @default([])
+  inheritedModes         String[]                  @default([])
   /// The package is shown as an offer («عرض») wherever it is picked, with a short line that says what the offer is
   /// (spec 2026-11-16-package-page, P.7). A mark only: prices and renewals are the package's own.
-  offer                  Boolean          @default(false)
+  offer                  Boolean                   @default(false)
   offerNote              String?
   /// Number porting («نيود») and converting a prepaid card to a bill, as ways to activate a number on this package
   /// (spec 2026-11-16-package-page, P.5): `off` (the default for every package), `manual` (a branch task) or `auto`
   /// (to the provider; a branch task until a provider carries it). A CHECK in the database.
-  portMode               String           @default("off")
-  convertMode            String           @default("off")
+  portMode               String                    @default("off")
+  convertMode            String                    @default("off")
   /// The provider's own product this package was added from; one package per product and provider.
   providerProductCode    String?
   esimPrice              Int?
-  lines                  Line[]
-  tasks                  Task[]     @relation("TaskPackage")
-  nextTasks              Task[]     @relation("TaskNextPackage")
-  userTerms              UserPackage[]
-  sellPrices             SellPrice[]
-  renewals               PackageRenewal[]
-  renewalTargets         PackageRenewal[] @relation("RenewalTarget")
-  switches               PackageSwitch[]
-  switchTargets          PackageSwitch[]  @relation("SwitchTarget")
-  addons                 PackageAddon[]
-  durations              PackageDuration[]
+  lines                  PostpaidLine[]
+  tasks                  Task[]                    @relation("TaskPackage")
+  nextTasks              Task[]                    @relation("TaskNextPackage")
+  userTerms              PostpaidUserPackage[]
+  sellPrices             PostpaidSellPrice[]
+  renewals               PostpaidPackageRenewal[]
+  renewalTargets         PostpaidPackageRenewal[]  @relation("RenewalTarget")
+  switches               PostpaidPackageSwitch[]
+  switchTargets          PostpaidPackageSwitch[]   @relation("SwitchTarget")
+  addons                 PostpaidPackageAddon[]
+  durations              PostpaidPackageDuration[]
 
   @@unique([providerId, providerProductCode])
 }
 
 /// One duration a package is sold or renewed for, with its own price ladder (spec 2026-11-15-package-durations-and-deals).
-/// Until the old columns go (plan D.10) every package has one row that mirrors `Package.months` and its renewal
+/// Until the old columns go (plan D.10) every package has one row that mirrors `PostpaidPackage.months` and its renewal
 /// prices, written with them in the same statement.
-model PackageDuration {
-  id              String   @id @default(uuid())
-  packageId       String
-  package         Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+model PostpaidPackageDuration {
+  id                  String          @id @default(uuid())
+  packageId           String
+  package             PostpaidPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   /// `day` or `month` (a CHECK in the database); a month is 30 days.
-  unit            String
-  count           Int
-  branchCost      Int
-  mainPrice       Int
-  agentPrice      Int
-  posPrice        Int
-  subscriberPrice Int
+  unit                String
+  count               Int
+  branchCost          Int
+  mainPrice           Int
+  agentPrice          Int
+  posPrice            Int
+  subscriberPrice     Int
   /// A period of this duration cannot be disconnected: buying it locks the number to the period's end (plan D.4).
-  noDisconnect    Boolean  @default(false)
+  noDisconnect        Boolean         @default(false)
   /// May start a new number.
-  forSale         Boolean  @default(true)
+  forSale             Boolean         @default(true)
   /// May renew a number.
-  enabled         Boolean  @default(true)
+  enabled             Boolean         @default(true)
   /// The provider's own code for this duration of the product, when it has one.
   providerProductCode String?
-  position        Int      @default(0)
-  createdAt       DateTime @default(now())
+  position            Int             @default(0)
+  createdAt           DateTime        @default(now())
 
   @@unique([packageId, unit, count])
 }
 
-model PackageRenewal {
-  id              String  @id @default(uuid())
+model PostpaidPackageRenewal {
+  id              String          @id @default(uuid())
   packageId       String
-  package         Package @relation(fields: [packageId], references: [id])
+  package         PostpaidPackage @relation(fields: [packageId], references: [id])
   targetPackageId String
-  target          Package @relation("RenewalTarget", fields: [targetPackageId], references: [id])
+  target          PostpaidPackage @relation("RenewalTarget", fields: [targetPackageId], references: [id])
 
   @@unique([packageId, targetPackageId])
 }
 
-model PackageSwitch {
-  id              String  @id @default(uuid())
+model PostpaidPackageSwitch {
+  id              String          @id @default(uuid())
   packageId       String
-  package         Package @relation(fields: [packageId], references: [id])
+  package         PostpaidPackage @relation(fields: [packageId], references: [id])
   targetPackageId String
-  target          Package @relation("SwitchTarget", fields: [targetPackageId], references: [id])
+  target          PostpaidPackage @relation("SwitchTarget", fields: [targetPackageId], references: [id])
 
   @@unique([packageId, targetPackageId])
 }
 
 // What one account may sell and at what price, written by its parent or the branch.
 // `hidden` turns the package off for the account and everyone under it. A null price inherits.
-model UserPackage {
-  id           String   @id @default(uuid())
+model PostpaidUserPackage {
+  id           String          @id @default(uuid())
   packageId    String
   // CASCADE as the database has it since 20261030090000_package_sheet (then PackageOffer).
-  package      Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  package      PostpaidPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hidden       Boolean  @default(false)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hidden       Boolean         @default(false)
   price        Int?
   renewalPrice Int?
-  setById      String   @default("")
-  updatedAt    DateTime @default(now()) @updatedAt
+  setById      String          @default("")
+  updatedAt    DateTime        @default(now()) @updatedAt
 
   @@unique([packageId, userId])
 }
 
 // A main agent's or agent's default sell price to the accounts directly under it.
-// The branch has none: its defaults are the Package columns.
-model SellPrice {
-  id           String  @id @default(uuid())
+// The branch has none: its defaults are the PostpaidPackage columns.
+model PostpaidSellPrice {
+  id           String          @id @default(uuid())
   packageId    String
-  package      Package @relation(fields: [packageId], references: [id])
+  package      PostpaidPackage @relation(fields: [packageId], references: [id])
   ownerId      String
-  owner        User    @relation(fields: [ownerId], references: [id])
+  owner        User            @relation(fields: [ownerId], references: [id])
   price        Int
   renewalPrice Int?
 
@@ -607,78 +652,86 @@ model SellPrice {
 
 // Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_analyze_scale_factor 0.02; the CHECK
 // `Line_status_known` validated there.
-model Line {
-  id            String       @id @default(uuid())
-  msisdn        String       @unique
-  iccid         String?
-  esim          Boolean      @default(false)
-  esimQr        String?
-  status        String
-  endsAt        DateTime
-  opsLocked     Boolean      @default(false)
-  originAgentId String?
-  packageId     String
-  package       Package      @relation(fields: [packageId], references: [id])
-  posId         String
-  pos           User         @relation("LinePos", fields: [posId], references: [id])
-  terms         Json
-  createdAt     DateTime     @default(now())
-  tasks         Task[]
-  entries       WalletEntry[]
+model PostpaidLine {
+  id                 String              @id @default(uuid())
+  msisdn             String              @unique
+  iccid              String?
+  esim               Boolean             @default(false)
+  esimQr             String?
+  status             String
+  endsAt             DateTime
+  opsLocked          Boolean             @default(false)
+  originAgentId      String?
+  packageId          String
+  package            PostpaidPackage     @relation(fields: [packageId], references: [id])
+  posId              String
+  pos                User                @relation("LinePos", fields: [posId], references: [id])
+  terms              Json
+  createdAt          DateTime            @default(now())
+  tasks              Task[]
+  entries            WalletEntry[]
   providerOperations ProviderOperation[]
 
   @@index([posId, createdAt])
   // The numbers list of the branch, newest first (NEWEST_FIRST, paging.ts).
-  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "Line_createdAt_id_idx")
+  @@index([createdAt(sort: Desc), id(sort: Desc)], map: "PostpaidLine_createdAt_id_idx")
   @@index([status])
   @@index([packageId])
   @@index([iccid])
   // Search (plan 2026-11-17-database-scale, DB.6): a part of the number or of the serial, `contains` (LIKE '%…%'),
   // served by trigram indexes. `pg_trgm` is created by migration `20261117170000_search_trigram`.
-  @@index([msisdn(ops: raw("gin_trgm_ops"))], type: Gin, map: "Line_msisdn_trgm_idx")
-  @@index([iccid(ops: raw("gin_trgm_ops"))], type: Gin, map: "Line_iccid_trgm_idx")
+  @@index([msisdn(ops: raw("gin_trgm_ops"))], type: Gin, map: "PostpaidLine_msisdn_trgm_idx")
+  @@index([iccid(ops: raw("gin_trgm_ops"))], type: Gin, map: "PostpaidLine_iccid_trgm_idx")
 }
 
 // The CHECK `Task_status_known`, validated in migration 20261117200000_table_settings.
 /// A branch task. The table was `OfficeTask` until migration `20261116100000_task_table_names`.
 model Task {
-  id            String           @id @default(uuid())
-  action        String
-  status        String
-  posId         String
-  packageId     String
-  lineId        String?
-  line          Line?            @relation(fields: [lineId], references: [id])
-  pos           User             @relation("TaskPos", fields: [posId], references: [id])
-  package       Package          @relation("TaskPackage", fields: [packageId], references: [id])
-  nextPackage   Package?         @relation("TaskNextPackage", fields: [nextPackageId], references: [id], onDelete: SetNull)
-  submitterId   String
-  submitter     User             @relation("TaskSubmitter", fields: [submitterId], references: [id])
-  assigneeId    String?
-  assignee      User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  posDelta      Int
-  /** What opening this task held on the point of sale's wallet, released when it closes. */
-  held          Int              @default(0)
-  /** The price of what the task sells, fixed when it opened; null on tasks that sell nothing new. */
-  unitPrice     Int?
-  msisdn        String?
-  iccid         String?
+  id                String             @id @default(uuid())
+  action            String
+  status            String
+  posId             String
+  packageId         String
+  lineId            String?
+  line              PostpaidLine?      @relation(fields: [lineId], references: [id])
+  pos               User               @relation("TaskPos", fields: [posId], references: [id])
+  package           PostpaidPackage    @relation("TaskPackage", fields: [packageId], references: [id])
+  nextPackage       PostpaidPackage?   @relation("TaskNextPackage", fields: [nextPackageId], references: [id], onDelete: SetNull)
+  submitterId       String
+  submitter         User               @relation("TaskSubmitter", fields: [submitterId], references: [id])
+  assigneeId        String?
+  assignee          User?              @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  posDelta          Int
+  /**
+   * What opening this task held on the point of sale's wallet, released when it closes.
+   */
+  held              Int                @default(0)
+  /**
+   * The price of what the task sells, fixed when it opened; null on tasks that sell nothing new.
+   */
+  unitPrice         Int?
+  msisdn            String?
+  iccid             String?
   /// For an activation: `port` (the number comes from another company) or `convert` (a prepaid card becomes a
   /// bill). Empty for an ordinary activation and for every other action.
-  activationKind String?
-  esim          Boolean          @default(false)
-  esimQr        String?
-  nextPackageId String?
-  note          String?
-  resultNote    String?
-  log           String           @default("")
-  /** SHA-256 of the submitter and the request's `Idempotency-Key`: one task per request (ADR 0019, D14). */
-  requestKey    String?          @unique
-  /** The fingerprint of the request's body, so a key that comes back with another request is refused. */
-  requestHash   String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  notes         TaskNote[]
+  activationKind    String?
+  esim              Boolean            @default(false)
+  esimQr            String?
+  nextPackageId     String?
+  note              String?
+  resultNote        String?
+  log               String             @default("")
+  /**
+   * SHA-256 of the submitter and the request's `Idempotency-Key`: one task per request (ADR 0019, D14).
+   */
+  requestKey        String?            @unique
+  /**
+   * The fingerprint of the request's body, so a key that comes back with another request is refused.
+   */
+  requestHash       String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  notes             TaskNote[]
   providerOperation ProviderOperation?
 
   @@index([status, createdAt])
@@ -697,15 +750,15 @@ model Task {
 
 /// A note on a task.
 model TaskNote {
-  id        String     @id @default(uuid())
+  id        String   @id @default(uuid())
   taskId    String
-  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User       @relation(fields: [authorId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
   body      String
   /// Only branch accounts (the owner and the staff) read an internal note (spec 2026-11-09, 2).
-  internal  Boolean    @default(false)
-  createdAt DateTime   @default(now())
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   @@index([taskId, createdAt])
   // The foreign key of the note's author: deleting an account checks it.
@@ -714,18 +767,18 @@ model TaskNote {
 
 // Storage, raw SQL in migration 20261117200000_table_settings: autovacuum_vacuum_scale_factor 0.02.
 model ActivityEvent {
-  id          String   @id @default(uuid())
-  at          DateTime @default(now())
-  actorId     String?
-  actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  actorLoginName  String   @default("") @map("actorLogin")
-  actorLayer  String   @default("")
-  action      String
-  result      String
-  reason      String   @default("")
-  ip          String   @default("")
-  subjectKind String   @default("")
-  subjectRef  String   @default("")
+  id             String   @id @default(uuid())
+  at             DateTime @default(now())
+  actorId        String?
+  actor          User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorLoginName String   @default("") @map("actorLogin")
+  actorLayer     String   @default("")
+  action         String
+  result         String
+  reason         String   @default("")
+  ip             String   @default("")
+  subjectKind    String   @default("")
+  subjectRef     String   @default("")
 
   @@index([at])
   @@index([actorId, at])
@@ -740,30 +793,52 @@ model ActivityEvent {
  */
 model RequestLog {
   id             String   @id @default(uuid())
-  /** When the request arrived. */
+  /**
+   * When the request arrived.
+   */
   at             DateTime
   durationMs     Int
   method         String
-  /** The route pattern (`/v1/lines/:id`); empty when no route matched (an unknown path, a refusal before routing). */
+  /**
+   * The route pattern (`/v1/lines/:id`); empty when no route matched (an unknown path, a refusal before routing).
+   */
   route          String   @default("")
-  /** The path as sent, without its query. */
+  /**
+   * The path as sent, without its query.
+   */
   path           String
   status         Int
-  /** The API's refusal code (`LOGIN_REQUIRED`, `RATE_LIMITED`, …); empty for an answer that is not an error. */
+  /**
+   * The API's refusal code (`LOGIN_REQUIRED`, `RATE_LIMITED`, …); empty for an answer that is not an error.
+   */
   code           String   @default("")
-  /** The signed-in account (for an entered session: the entered one). */
+  /**
+   * The signed-in account (for an entered session: the entered one).
+   */
   actorId        String?
   actorLoginName String   @default("")
-  /** Who entered, for an entered (impersonation) session; null otherwise. */
+  /**
+   * Who entered, for an entered (impersonation) session; null otherwise.
+   */
   operatorId     String?
   layer          String   @default("")
   ip             String   @default("")
-  /** The first 200 characters of the caller's user agent. */
+  /**
+   * The first 200 characters of the caller's user agent.
+   */
   userAgent      String   @default("")
-  /** Also sent back as `X-Request-Id`. */
+  /**
+   * Also sent back as `X-Request-Id`.
+   */
   requestId      String
   bytesIn        Int      @default(0)
   bytesOut       Int      @default(0)
+  // Two indexes are raw SQL in that migration, which the schema cannot state and `prisma migrate diff` does not see:
+  // - the account filter's third branch, `RequestLog_operatorId_at_idx` on (operatorId, at) WHERE operatorId IS NOT
+  //   NULL (entered sessions only);
+  // - the start of an address (`LIKE 'x%'`), `RequestLog_ip_pattern_at_idx` on (ip text_pattern_ops, at) WHERE ip IS
+  //   NOT NULL: the database's collation cannot serve a prefix from a plain btree; Prisma cannot read a btree's
+  //   operator class back, so the predicate (true of every row) keeps it out of the schema's diff.
 
   // Which read each index serves (database scale DB.14, migration `20261117180000_request_log_indexes`):
   // a time window (the lists, the summary, the status's last 15 minutes, the alert rules' windows, the purge).
@@ -775,12 +850,6 @@ model RequestLog {
   // The account filter, one index a branch: the account by login name, by id, and (below) as the one who entered.
   @@index([actorLoginName, at])
   @@index([actorId, at])
-  // Two indexes are raw SQL in that migration, which the schema cannot state and `prisma migrate diff` does not see:
-  // - the account filter's third branch, `RequestLog_operatorId_at_idx` on (operatorId, at) WHERE operatorId IS NOT
-  //   NULL (entered sessions only);
-  // - the start of an address (`LIKE 'x%'`), `RequestLog_ip_pattern_at_idx` on (ip text_pattern_ops, at) WHERE ip IS
-  //   NOT NULL: the database's collation cannot serve a prefix from a plain btree; Prisma cannot read a btree's
-  //   operator class back, so the predicate (true of every row) keeps it out of the schema's diff.
 }
 
 /// A request that ended in a server error (5xx), beside its row in `RequestLog` (the same `requestId`; system
@@ -856,12 +925,12 @@ model Alert {
 }
 
 model AccessLog {
-  id          String   @id @default(uuid())
-  actorId     String
-  actor       User     @relation(fields: [actorId], references: [id])
-  targetLoginName String @map("targetLogin")
-  ip          String   @default("")
-  createdAt   DateTime @default(now())
+  id              String   @id @default(uuid())
+  actorId         String
+  actor           User     @relation(fields: [actorId], references: [id])
+  targetLoginName String   @map("targetLogin")
+  ip              String   @default("")
+  createdAt       DateTime @default(now())
 
   @@index([actorId, createdAt])
 }
@@ -877,18 +946,18 @@ model Notice {
   href      String
   readAt    DateTime?
   createdAt DateTime  @default(now())
+  // Whether a task's note was already sent (`taskNoteSent`) has an expression index Prisma cannot state:
+  // `Notice_kind_taskId` on (kind, payload->>'taskId') (migration `20261117160000_lookup_indexes`).
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
   // The daily purge walks notices by age, every account at once (plan DB.13: read ones after 180 days, all after 365).
   @@index([createdAt])
-  // Whether a task's note was already sent (`taskNoteSent`) has an expression index Prisma cannot state:
-  // `Notice_kind_taskId` on (kind, payload->>'taskId') (migration `20261117160000_lookup_indexes`).
 }
 
 /// One viewer's line counts on one UTC day, the last read of that day (spec 2026-11-09-admin-review, 6.4): the home
 /// donut's change is now minus the snapshot before the period.
-model LineCountSnapshot {
+model PostpaidLineCountSnapshot {
   userId       String
   day          String
   active       Int
@@ -904,7 +973,7 @@ model LineCountSnapshot {
 }
 
 // Office identity: one row (id = 1) the branch owner edits from /branding.
-// Images are data URLs, the same storage as Company.image.
+// Images are data URLs, the same storage as PostpaidCompany.image.
 model SiteBranding {
   id        Int      @id @default(1)
   siteName  String   @default("")
@@ -915,26 +984,32 @@ model SiteBranding {
   updatedAt DateTime @updatedAt
 }
 
-/** One comparison of a provider's statement with our operations (roadmap N8). */
+/**
+ * One comparison of a provider's statement with our operations (roadmap N8).
+ */
 model ProviderReconciliation {
-  id             String               @id @default(uuid())
+  id             String              @id @default(uuid())
   providerId     String
-  provider       Provider             @relation(fields: [providerId], references: [id])
+  provider       Provider            @relation(fields: [providerId], references: [id])
   fileName       String
   periodFrom     DateTime?
   periodTo       DateTime?
   statementTotal Int
   ourTotal       Int
-  /** How many rows fell in each class: matched, different, missing_ours, missing_theirs, duplicate. */
+  /**
+   * How many rows fell in each class: matched, different, missing_ours, missing_theirs, duplicate.
+   */
   counts         Json
-  actorLoginName     String @map("actorLogin")
-  createdAt      DateTime             @default(now())
+  actorLoginName String              @map("actorLogin")
+  createdAt      DateTime            @default(now())
   items          ProviderReconItem[]
 
   @@index([providerId, createdAt])
 }
 
-/** A row that did not match, followed until it is handled. */
+/**
+ * A row that did not match, followed until it is handled.
+ */
 model ProviderReconItem {
   id               String                 @id @default(uuid())
   reconciliationId String
@@ -954,7 +1029,9 @@ model ProviderReconItem {
   @@index([reconciliationId])
 }
 
-/** A WebAuthn credential (roadmap N9): signs the user in without a password. */
+/**
+ * A WebAuthn credential (roadmap N9): signs the user in without a password.
+ */
 model Passkey {
   id           String    @id @default(uuid())
   userId       String
@@ -970,35 +1047,47 @@ model Passkey {
   @@index([userId])
 }
 
-/** An extra operation named by hand for a package (spec 2026-11-09, 3): requested on a number, it becomes a manual task. */
-model PackageAddon {
-  id        String   @id @default(uuid())
+/**
+ * An extra operation named by hand for a package (spec 2026-11-09, 3): requested on a number, it becomes a manual task.
+ */
+model PostpaidPackageAddon {
+  id        String          @id @default(uuid())
   packageId String
-  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  package   PostpaidPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
   name      String
-  /** What the point of sale pays, in agorot; 0 for a free one. */
-  price     Int      @default(0)
-  active    Boolean  @default(true)
-  position  Int      @default(0)
-  createdAt DateTime @default(now())
+  /**
+   * What the point of sale pays, in agorot; 0 for a free one.
+   */
+  price     Int             @default(0)
+  active    Boolean         @default(true)
+  position  Int             @default(0)
+  createdAt DateTime        @default(now())
 
   @@index([packageId, position])
 }
 
-/** An offer on the home hero (spec 2026-11-09, 1): a picture and text, for some layers, shown for `seconds`. */
+/**
+ * An offer on the home hero (spec 2026-11-09, 1): a picture and text, for some layers, shown for `seconds`.
+ */
 model Offer {
   id          String    @id @default(uuid())
   title       String
   body        String    @default("")
-  /** A data URL (png, jpeg or webp), at most about 700 KB. */
+  /**
+   * A data URL (png, jpeg or webp), at most about 700 KB.
+   */
   image       String?
   actionLabel String?
-  /** An office path starting with `/`, or an `https://` address. */
+  /**
+   * An office path starting with `/`, or an `https://` address.
+   */
   actionHref  String?
   seconds     Int       @default(7)
   active      Boolean   @default(true)
   position    Int       @default(0)
-  /** Comma-separated layers that see it: branch, main_agent, agent, pos. */
+  /**
+   * Comma-separated layers that see it: branch, main_agent, agent, pos.
+   */
   layers      String    @default("branch,main_agent,agent,pos")
   startsAt    DateTime?
   endsAt      DateTime?

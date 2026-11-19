@@ -14,7 +14,7 @@ export class CompaniesRepository {
 
   /** Every package that belongs to a company, with its provider, its company's code and the status of each of its numbers. */
   shelfPackages() {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       where: { companyId: { not: null } },
       include: {
         provider: true,
@@ -28,7 +28,7 @@ export class CompaniesRepository {
 
   /** Every company with its SIM rules and its eSIM price; not its picture (speed plan PF.7: `markUrls`). */
   storedCompanies() {
-    return this.uow.prisma.company.findMany({
+    return this.uow.prisma.postpaidCompany.findMany({
       select: { code: true, name: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
     });
   }
@@ -39,16 +39,16 @@ export class CompaniesRepository {
   }
 
   companyByCode(code: string) {
-    return this.uow.prisma.company.findUnique({ where: { code } });
+    return this.uow.prisma.postpaidCompany.findUnique({ where: { code } });
   }
 
   /** Stores a company's SIM rules, and its eSIM price when one is sent. */
-  saveSimRules(id: string, data: Prisma.CompanyUpdateArgs['data']) {
-    return this.uow.prisma.company.update({ where: { id }, data });
+  saveSimRules(id: string, data: Prisma.PostpaidCompanyUpdateArgs['data']) {
+    return this.uow.prisma.postpaidCompany.update({ where: { id }, data });
   }
 
   /** Stores or clears a company's mark. */
   setImage(id: string, image: string | null) {
-    return this.uow.prisma.company.update({ where: { id }, data: { image } });
+    return this.uow.prisma.postpaidCompany.update({ where: { id }, data: { image } });
   }
 }

@@ -29,8 +29,8 @@ function setup() {
   const seen = { line: [] as unknown[], entry: [] as unknown[] };
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
-    package: { findMany: async () => [{ suspendAfterDays: 90 }] },
-    line: {
+    postpaidPackage: { findMany: async () => [{ suspendAfterDays: 90 }] },
+    postpaidLine: {
       count: async ({ where }: { where: unknown }) => { seen.line.push(where); return 0; },
       findMany: async ({ where }: { where: unknown }) => { seen.line.push(where); return []; },
       groupBy: async ({ where }: { where: unknown }) => { seen.line.push(where); return []; },
@@ -38,7 +38,7 @@ function setup() {
     walletEntry: { findMany: async ({ where }: { where: unknown }) => { seen.entry.push(where); return []; } },
     wallet: { findMany: async () => [], findUnique: async () => null },
     task: { count: async () => 0, findFirst: async () => null, groupBy: async () => [] },
-    lineCountSnapshot: { findFirst: async () => null },
+    postpaidLineCountSnapshot: { findFirst: async () => null },
     // The company marks the numbers list reads by URL (speed plan PF.7): none.
     $queryRaw: async () => [],
   } as unknown as ServiceGraph['prismaClient'];

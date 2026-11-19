@@ -57,12 +57,12 @@ suite('the overview\'s grouped counts (PostgreSQL)', () => {
       branchCost: 1, mainPrice: 1, agentPrice: 1, posPrice: 1, subscriberPrice: 1, renewalBranchCost: 1, renewalMainPrice: 1, renewalAgentPrice: 1, renewalPosPrice: 1, renewalSubscriberPrice: 1,
       autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false,
     });
-    await prisma.package.createMany({ data: [pkg(ids.short, 30), pkg(ids.long, 90)] });
+    await prisma.postpaidPackage.createMany({ data: [pkg(ids.short, 30), pkg(ids.long, 90)] });
     const day = 86_400_000;
     const now = Date.now();
     let n = 0;
     const line = (posId: string, status: string, packageId: string, endsAt: number) => ({ msisdn: `058${digits}${(n += 1).toString().padStart(2, '0')}`, status, posId, packageId, terms: {}, endsAt: new Date(endsAt) });
-    await prisma.line.createMany({
+    await prisma.postpaidLine.createMany({
       data: [
         line(ids.pos1, 'active', ids.long, now + 30 * day),
         line(ids.pos1, 'active', ids.long, now + 1 * day), // expiring
@@ -94,8 +94,8 @@ suite('the overview\'s grouped counts (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.task.deleteMany({ where: { packageId: { in: [ids.short, ids.long] } } });
-    await prisma.line.deleteMany({ where: { packageId: { in: [ids.short, ids.long] } } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.short, ids.long] } } });
+    await prisma.postpaidLine.deleteMany({ where: { packageId: { in: [ids.short, ids.long] } } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.short, ids.long] } } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos3, ids.pos2, ids.pos1, ids.agent, ids.main, ids.owner] } } });
     await prisma.$disconnect();
@@ -108,13 +108,13 @@ suite('the overview\'s grouped counts (PostgreSQL)', () => {
     const visible = visibleAccountIds(viewer.id, viewer.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const scope = { posId: { in: posIds } };
-    const periods = (await prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
+    const periods = (await prisma.postpaidPackage.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
     const [active, expiring, frozen, disconnected, suspended] = await Promise.all([
-      prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }),
-      prisma.line.count({ where: { AND: [scope, expiringWhere(now)] } }),
-      prisma.line.count({ where: { posId: { in: posIds }, status: 'frozen' } }),
-      prisma.line.count({ where: { posId: { in: posIds }, status: 'disconnected' } }),
-      prisma.line.count({ where: { AND: [scope, suspendedWhere(periods, now)] } }),
+      prisma.postpaidLine.count({ where: { posId: { in: posIds }, status: 'active' } }),
+      prisma.postpaidLine.count({ where: { AND: [scope, expiringWhere(now)] } }),
+      prisma.postpaidLine.count({ where: { posId: { in: posIds }, status: 'frozen' } }),
+      prisma.postpaidLine.count({ where: { posId: { in: posIds }, status: 'disconnected' } }),
+      prisma.postpaidLine.count({ where: { AND: [scope, suspendedWhere(periods, now)] } }),
     ]);
     const where = taskWhereFor(viewer, accounts);
     const counts = await Promise.all(TASK_STATUSES.map((status) => prisma.task.count({ where: { AND: [where, { status }] } })));

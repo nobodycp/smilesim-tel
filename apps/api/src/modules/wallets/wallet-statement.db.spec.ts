@@ -62,14 +62,14 @@ suite('an account\'s wallet page lists everything that moved its balance (Postgr
     pos = { sessionId: await auth.saveSession({ userId: u.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: u.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code, name: 'ws' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 'ws' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 'ws' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = {
       branchCost: 2000, mainPrice: 2400, agentPrice: 2900, posPrice: 3500, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2100, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
     };
-    await prisma.package.create({ data: { id: ids.pkg, code, name: 'ws', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
-    await prisma.packageAddon.create({ data: { id: ids.addon, packageId: ids.pkg, name: 'ws add-on', price: 1500 } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code, name: 'ws', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackageAddon.create({ data: { id: ids.addon, packageId: ids.pkg, name: 'ws add-on', price: 1500 } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: { ledger: WalletLedger; uow: { runTx: typeof runTx } } }).graph;
@@ -81,10 +81,10 @@ suite('an account\'s wallet page lists everything that moved its balance (Postgr
     const all = Object.values(u);
     await prisma.walletEntry.deleteMany({ where: { userId: { in: all } } });
     await prisma.task.deleteMany({ where: { posId: u.pos } });
-    await prisma.line.deleteMany({ where: { posId: u.pos } });
-    await prisma.packageAddon.deleteMany({ where: { id: ids.addon } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: u.pos } });
+    await prisma.postpaidPackageAddon.deleteMany({ where: { id: ids.addon } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: all } } });
     for (const id of [u.pos, u.agent, u.main, u.owner]) await prisma.user.deleteMany({ where: { id } });

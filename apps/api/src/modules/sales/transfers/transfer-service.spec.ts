@@ -155,7 +155,7 @@ describe('transfer preview: what a move would carry', () => {
     const { service, gates, accounts, userPackages, sellPrices, wallets, lines } = await busyAgent();
     const client = (service as unknown as { prismaClient: Record<string, Record<string, (...args: unknown[]) => Promise<unknown>>> }).prismaClient;
     const reads: Record<string, number> = {};
-    for (const table of ['userPackage', 'sellPrice', 'package', 'wallet', 'line']) {
+    for (const table of ['postpaidUserPackage', 'postpaidSellPrice', 'postpaidPackage', 'wallet', 'postpaidLine']) {
       reads[table] = 0;
       for (const method of ['findMany', 'findUnique', 'count']) {
         const original = client[table][method];
@@ -169,7 +169,7 @@ describe('transfer preview: what a move would carry', () => {
     const stored = () => JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
     const before = stored();
     await service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' });
-    expect(reads).toEqual({ userPackage: 1, sellPrice: 1, package: 1, wallet: 1, line: 1 });
+    expect(reads).toEqual({ postpaidUserPackage: 1, postpaidSellPrice: 1, postpaidPackage: 1, wallet: 1, postpaidLine: 1 });
     expect(stored()).toBe(before);
   });
 });
@@ -786,15 +786,15 @@ describe('transfer: a number', () => {
   it('reads the price choice before the number or any account: a word that is not one is INVALID to everyone', async () => {
     const { service, gates } = await tree();
     type Read = (...args: unknown[]) => Promise<unknown>;
-    const client = (service as unknown as { prismaClient: { user: { findMany: Read }; line: { findUnique: Read } } }).prismaClient;
+    const client = (service as unknown as { prismaClient: { user: { findMany: Read }; postpaidLine: { findUnique: Read } } }).prismaClient;
     let reads = 0;
     const listed = client.user.findMany.bind(client.user);
     client.user.findMany = (...args) => {
       reads += 1;
       return listed(...args);
     };
-    const found = client.line.findUnique.bind(client.line);
-    client.line.findUnique = (...args) => {
+    const found = client.postpaidLine.findUnique.bind(client.postpaidLine);
+    client.postpaidLine.findUnique = (...args) => {
       reads += 1;
       return found(...args);
     };

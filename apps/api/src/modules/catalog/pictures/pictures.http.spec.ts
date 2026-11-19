@@ -35,7 +35,7 @@ describe('the picture routes', () => {
 
   beforeAll(async () => {
     const prisma = {
-      company: { findUnique: async ({ where, select }: { where: { code: string }; select: Record<string, boolean> }) => (selects.push(select), companies[where.code] ?? null) },
+      postpaidCompany: { findUnique: async ({ where, select }: { where: { code: string }; select: Record<string, boolean> }) => (selects.push(select), companies[where.code] ?? null) },
       offer: { findUnique: async ({ where, select }: { where: { id: string }; select: Record<string, boolean> }) => (selects.push(select), offers[where.id] ?? null) },
     };
     const moduleRef = await Test.createTestingModule({
@@ -127,10 +127,10 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
       },
     });
     const prisma = {
-      company: table('company'),
-      package: table('package'),
+      postpaidCompany: table('company'),
+      postpaidPackage: table('package'),
       provider: table('provider'),
-      line: table('line'),
+      postpaidLine: table('line'),
       task: table('task'),
       $queryRaw: async (sql: TemplateStringsArray) => {
         statements.push(sql.join('?'));

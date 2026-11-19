@@ -196,11 +196,11 @@ async function readEntries(tx: Prisma.TransactionClient, scope: BackfillScope | 
  */
 async function ladderBuilder(tx: Prisma.TransactionClient, rows: Entry[], tree: Tree): Promise<(row: Entry) => Built> {
   const toBuild = rows.filter((row) => !row.ladder && row.lineId);
-  const lines = toBuild.length ? await tx.line.findMany({ where: { id: { in: [...new Set(toBuild.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } }) : [];
+  const lines = toBuild.length ? await tx.postpaidLine.findMany({ where: { id: { in: [...new Set(toBuild.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } }) : [];
   const codeOf = new Map(lines.map((line) => [line.id, (line.terms as { packageCode?: string } | null)?.packageCode ?? '']));
   const codes = [...new Set([...codeOf.values()].filter(Boolean))];
   const packages = codes.length
-    ? await tx.package.findMany({
+    ? await tx.postpaidPackage.findMany({
         where: { code: { in: codes } },
         select: {
           id: true, code: true, branchCost: true, mainPrice: true, agentPrice: true, posPrice: true, subscriberPrice: true,
@@ -211,8 +211,8 @@ async function ladderBuilder(tx: Prisma.TransactionClient, rows: Entry[], tree: 
   const packageIds = packages.map((row) => row.id);
   const [termRows, sellRows] = packageIds.length
     ? await Promise.all([
-        tx.userPackage.findMany({ where: { packageId: { in: packageIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
-        tx.sellPrice.findMany({ where: { packageId: { in: packageIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
+        tx.postpaidUserPackage.findMany({ where: { packageId: { in: packageIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
+        tx.postpaidSellPrice.findMany({ where: { packageId: { in: packageIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
       ])
     : [[], []];
   const built = new Map<string, Built>();

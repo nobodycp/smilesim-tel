@@ -40,7 +40,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
 
   /** Every stored code, exactly as the database holds it. */
   const stored = async () => ({
-    lines: await prisma.line.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true }, orderBy: { id: 'asc' } }),
+    lines: await prisma.postpaidLine.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true }, orderBy: { id: 'asc' } }),
     tasks: await prisma.task.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } }),
   });
   /** What a list row carries of the code: nothing, ever (S.5c). `null` here means the row has no `esimQr` key at all. */
@@ -97,13 +97,13 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     stranger = { sessionId: await auth.saveSession({ userId: ids.stranger, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `esim-${tag}`, name: 'esim' } });
-    await prisma.company.create({ data: { id: ids.company, code: `esim-${tag}`, name: 'esim' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `esim-${tag}`, name: 'esim' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true };
-    await prisma.package.create({ data: { id: ids.pkg, code: `esim-${tag}`, name: 'esim', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `esim-${tag}`, name: 'esim', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
     const lineRow = (id: string, esimQr: string | null) => ({ id, msisdn: number(), iccid: `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`, esim: true, esimQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} });
-    await prisma.line.createMany({ data: [lineRow(line.clear, QR.clear), lineRow(line.sealed, sealedQr), lineRow(line.damaged, damagedQr), lineRow(line.none, null)] });
+    await prisma.postpaidLine.createMany({ data: [lineRow(line.clear, QR.clear), lineRow(line.sealed, sealedQr), lineRow(line.damaged, damagedQr), lineRow(line.none, null)] });
     const taskRow = (id: string, over: Record<string, unknown>) => ({ id, action: 'sim', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, ...over });
     await prisma.task.createMany({
       data: [
@@ -124,9 +124,9 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   afterAll(async () => {
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos, ids.stranger] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.stranger] } } });
@@ -226,7 +226,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     expect(plain).toMatchObject({ applied: true, debited: true });
     expect(plain.line.esimQr).toMatch(/^data:image\//);
     // Stored sealed (S.5b), and what is stored opens to the code that was answered.
-    const kept = (await prisma.line.findUniqueOrThrow({ where: { id: plain.line.id } })).esimQr ?? '';
+    const kept = (await prisma.postpaidLine.findUniqueOrThrow({ where: { id: plain.line.id } })).esimQr ?? '';
     expect([kept.startsWith('v1:'), open(kept)]).toEqual([true, plain.line.esimQr]);
     const price = start - (await wallet());
     expect(price).toBeGreaterThan(0);
@@ -249,7 +249,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     expect(answer.line.esimQr).not.toBe(plain.line.esimQr);
     expect(before - (await wallet())).toBe(price);
     expect(await entriesOf(answer.line.id)).toHaveLength(1);
-    expect((await prisma.line.findUniqueOrThrow({ where: { id: answer.line.id } })).esimQr).toBe(damagedQr);
+    expect((await prisma.postpaidLine.findUniqueOrThrow({ where: { id: answer.line.id } })).esimQr).toBe(damagedQr);
     expect(output).not.toContain('could not be opened');
     expectNoCode(output);
     // Reading it afterwards is where the fault is seen, and it is not called «no code».
@@ -261,7 +261,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
 
   it('the SIM / eSIM filter narrows in the database, inside what the caller sees, and never answers a sealed text', async () => {
     const card = randomUUID();
-    await prisma.line.create({ data: { id: card, msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, iccid: `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`, esim: false, esimQr: null, status: 'frozen', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+    await prisma.postpaidLine.create({ data: { id: card, msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, iccid: `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`, esim: false, esimQr: null, status: 'frozen', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
     await capturedOutput(async () => {
       const all = await service.lines(pos);
       const esims = await service.lines(pos, { sim: 'esim' });
@@ -283,7 +283,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       // A kind that is not one of the two is refused, not read as «all».
       await expect(service.lines(pos, { sim: 'card' })).rejects.toMatchObject({ status: 400 });
     });
-    await prisma.line.delete({ where: { id: card } });
+    await prisma.postpaidLine.delete({ where: { id: card } });
   });
 
   // Owner's correction, 2026-11-11: an open task that replaces a line's code still opens when the old code does
@@ -295,7 +295,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     /** An active eSIM line whose stored code is sealed and does not open. */
     const damagedLine = async () => {
       const id = randomUUID();
-      await prisma.line.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: damagedQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: damagedQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
       return id;
     };
     const money = async (lineId: string) => {
@@ -305,7 +305,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     };
     const refusalOf = async (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
     const taskAs = (gate: { sessionId: string }, id: string) => answered(async () => (await service.task(gate, id)).task.esimQr);
-    const lineCode = async (id: string) => (await prisma.line.findUniqueOrThrow({ where: { id } })).esimQr;
+    const lineCode = async (id: string) => (await prisma.postpaidLine.findUniqueOrThrow({ where: { id } })).esimQr;
     /** The line's stored code, which must be sealed (S.5b), opened. */
     const storedOpens = async (id: string) => {
       const kept = (await lineCode(id)) ?? '';
@@ -376,7 +376,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     it('a new code that does not open either is never passed over: the detail and the completion are refused, nothing is written, and a code given at completion repairs it', async () => {
       const lineId = await damagedLine();
       const healthyLine = randomUUID();
-      await prisma.line.create({ data: { id: healthyLine, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { id: healthyLine, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
       const open = async (line: string) => ((await service.swapSim(pos, line, { iccid: serial(), esim: true, qr: NEW_QR, outcome: 'fail' })) as { taskId: string }).taskId;
       const onDamaged = await open(lineId);
       const onHealthy = await open(healthyLine);
@@ -415,7 +415,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       const healthy = async (over: { esim: boolean; esimQr: string | null }) => {
         const id = randomUUID();
         const iccid = serial();
-        await prisma.line.create({ data: { id, msisdn: number(), iccid, ...over, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+        await prisma.postpaidLine.create({ data: { id, msisdn: number(), iccid, ...over, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
         return { id, iccid };
       };
       const open = async (lineId: string, body: Record<string, unknown>) => ((await service.swapSim(pos, lineId, { outcome: 'fail', ...body })) as { taskId: string }).taskId;
@@ -462,7 +462,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
 
     it('a new eSIM on a line whose code reads: the open task shows no code, and cancelling it gives the hold back once', async () => {
       const id = randomUUID();
-      await prisma.line.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
       const before = await money(id);
       const taskId = ((await service.requestEsim(pos, id)) as { taskId: string }).taskId;
       expect(await taskAs(owner, taskId)).toBeNull();

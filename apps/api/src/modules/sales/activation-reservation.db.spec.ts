@@ -66,13 +66,13 @@ suite('activation reservations (PostgreSQL)', () => {
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `resv-${tag}`, name: 'resv' } });
-    await prisma.company.create({ data: { id: ids.company, code: `resv-${tag}`, name: 'resv' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `resv-${tag}`, name: 'resv' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = {
       branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
     };
-    await prisma.package.create({ data: { id: ids.pkg, code: `resv-${tag}`, name: 'resv', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `resv-${tag}`, name: 'resv', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = {
       write: async () => {
         if (breakNotices) {
@@ -90,13 +90,13 @@ suite('activation reservations (PostgreSQL)', () => {
     // Each test starts from no tasks, no lines, nothing held and a full wallet.
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: 1_000_000, held: 0, ceiling: 0 } });
   });
 
   afterAll(async () => {
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -153,21 +153,21 @@ suite('activation reservations (PostgreSQL)', () => {
     expect(await outcomes([activateNow({ iccid })])).toMatchObject({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
     expect(await outcomes([activateNow({ iccid: serial(), msisdn })])).toMatchObject({ done: 0, refused: ['409 NUMBER_TAKEN'], crashed: [] });
     // No line, and no money moved beyond the one hold.
-    expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(0);
+    expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(0);
     expect(await wallet()).toMatchObject({ balance: 1_000_000, held: PRICE });
 
     // An existing line may not move onto the reserved serial or the reserved number either. This package leaves a
     // SIM swap and a number change to the branch: the request opens a task that names what it wants (such a task
     // reserves nothing), and the refusal comes when the branch completes it.
     const made = (await activateNow({ iccid: serial() })) as { line: { id: string } };
-    const lineBefore = await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } });
+    const lineBefore = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } });
     const swap = (await service.swapSim(pos, made.line.id, { iccid, outcome: 'success' })) as { applied: boolean; taskId: string };
     const rename = (await service.renameLine(pos, made.line.id, { outcome: 'success' })) as { applied: boolean; taskId: string };
     expect([swap.applied, rename.applied]).toEqual([false, false]);
     expect(await outcomes([service.completeTask(owner, swap.taskId, {})])).toMatchObject({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
     expect(await outcomes([service.completeTask(owner, rename.taskId, { msisdn })])).toMatchObject({ done: 0, refused: ['409 NUMBER_TAKEN'], crashed: [] });
     // The line is as it was, and both tasks are still open for the branch to reject.
-    expect(await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: lineBefore.iccid, msisdn: lineBefore.msisdn });
+    expect(await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: lineBefore.iccid, msisdn: lineBefore.msisdn });
     expect((await prisma.task.findMany({ where: { id: { in: [swap.taskId, rename.taskId] } } })).map((task) => task.status)).toEqual(['working', 'working']);
     // With a free card and a free number the same completions go through: the line's own serial and number do not
     // stand in its way.
@@ -177,7 +177,7 @@ suite('activation reservations (PostgreSQL)', () => {
     const again = (await service.swapSim(pos, made.line.id, { iccid: freeCard, outcome: 'success' })) as { taskId: string };
     await service.completeTask(owner, again.taskId, {});
     await service.completeTask(owner, rename.taskId, { msisdn: freeNumber });
-    expect(await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: freeCard, msisdn: freeNumber });
+    expect(await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: freeCard, msisdn: freeNumber });
   });
 
   it('refuses the same when the package runs a SIM swap and a number change at once, with no task in between', async () => {
@@ -185,20 +185,20 @@ suite('activation reservations (PostgreSQL)', () => {
     const msisdn = number();
     await openTask({ iccid, msisdn });
     const made = (await activateNow({ iccid: serial() })) as { line: { id: string } };
-    const lineBefore = await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } });
-    await prisma.package.update({ where: { id: ids.pkg }, data: { actionModes: { sim: 'auto', rename: 'auto' } } });
+    const lineBefore = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } });
+    await prisma.postpaidPackage.update({ where: { id: ids.pkg }, data: { actionModes: { sim: 'auto', rename: 'auto' } } });
     try {
       expect(await outcomes([service.swapSim(pos, made.line.id, { iccid, outcome: 'success' })])).toEqual({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
       expect(await outcomes([service.renameLine(pos, made.line.id, { msisdn, outcome: 'success' })])).toEqual({ done: 0, refused: ['409 NUMBER_TAKEN'], crashed: [] });
-      expect(await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: lineBefore.iccid, msisdn: lineBefore.msisdn });
+      expect(await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: lineBefore.iccid, msisdn: lineBefore.msisdn });
       // A free card and a free number are taken at once.
       const freeCard = serial();
       const freeNumber = number();
       expect(await service.swapSim(pos, made.line.id, { iccid: freeCard, outcome: 'success' })).toMatchObject({ applied: true });
       expect(await service.renameLine(pos, made.line.id, { msisdn: freeNumber, outcome: 'success' })).toMatchObject({ applied: true });
-      expect(await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: freeCard, msisdn: freeNumber });
+      expect(await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: freeCard, msisdn: freeNumber });
     } finally {
-      await prisma.package.update({ where: { id: ids.pkg }, data: { actionModes: {} } });
+      await prisma.postpaidPackage.update({ where: { id: ids.pkg }, data: { actionModes: {} } });
     }
   });
 
@@ -218,7 +218,7 @@ suite('activation reservations (PostgreSQL)', () => {
       const iccid = serial();
       const result = await outcomes([openTask({ iccid }), activateNow({ iccid })]);
       expect(result).toEqual({ done: 1, refused: ['409 SIM_TAKEN'], crashed: [] });
-      const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, status: 'working' } }), prisma.line.count({ where: { iccid } })]);
+      const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, status: 'working' } }), prisma.postpaidLine.count({ where: { iccid } })]);
       expect(tasks + lines).toBe(1);
     }
   });
@@ -243,7 +243,7 @@ suite('activation reservations (PostgreSQL)', () => {
     const msisdn = number();
     const { taskId } = await openTask({ iccid, msisdn });
     await service.completeTask(owner, taskId, {});
-    expect(await prisma.line.findMany({ where: { posId: ids.pos } })).toMatchObject([{ iccid, msisdn, status: 'active' }]);
+    expect(await prisma.postpaidLine.findMany({ where: { posId: ids.pos } })).toMatchObject([{ iccid, msisdn, status: 'active' }]);
     expect(await wallet()).toMatchObject({ balance: 1_000_000 - PRICE, held: 0 });
     expect(await openTasks()).toHaveLength(0);
     // The reservation is over in the table (a raw row is accepted again); the line is what refuses now.
@@ -261,7 +261,7 @@ suite('activation reservations (PostgreSQL)', () => {
     expect(await outcomes([service.completeTask(owner, waiting.taskId, { iccid })])).toMatchObject({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
     // Nothing of the completion stayed: the task is open, its hold is held, no line was made.
     expect(await prisma.task.findUniqueOrThrow({ where: { id: waiting.taskId } })).toMatchObject({ status: 'working' });
-    expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(0);
+    expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(0);
     expect(await wallet()).toMatchObject({ balance: 1_000_000, held: 2 * PRICE + (await prisma.task.findUniqueOrThrow({ where: { id: waiting.taskId } })).held - PRICE });
   });
 
@@ -320,10 +320,10 @@ suite('activation reservations (PostgreSQL)', () => {
       expect(result.refused.every((refusal) => refusal === '409 SIM_TAKEN' || refusal === '409 NUMBER_TAKEN')).toBe(true);
       // One holder each, whoever won.
       for (const iccid of [shared, handed]) {
-        const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, action: 'activate', status: 'working' } }), prisma.line.count({ where: { iccid, status: { not: 'disconnected' } } })]);
+        const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, action: 'activate', status: 'working' } }), prisma.postpaidLine.count({ where: { iccid, status: { not: 'disconnected' } } })]);
         expect(tasks + lines).toBe(1);
       }
-      const [numberTasks, numberLines] = await Promise.all([prisma.task.count({ where: { msisdn: sharedNumber, action: 'activate', status: 'working' } }), prisma.line.count({ where: { msisdn: sharedNumber } })]);
+      const [numberTasks, numberLines] = await Promise.all([prisma.task.count({ where: { msisdn: sharedNumber, action: 'activate', status: 'working' } }), prisma.postpaidLine.count({ where: { msisdn: sharedNumber } })]);
       expect(numberTasks + numberLines).toBe(1);
       // The wallet adds up: what is held is the open tasks' holds, and the balance fell by the lines sold.
       const [state, open, sold] = await Promise.all([wallet(), prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }), prisma.walletEntry.aggregate({ where: { userId: ids.pos, kind: 'activate' }, _sum: { amount: true } })]);
@@ -331,7 +331,7 @@ suite('activation reservations (PostgreSQL)', () => {
       expect(state.balance).toBe(1_000_000 + (sold._sum.amount ?? 0));
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
       await prisma.task.deleteMany({ where: { posId: ids.pos } });
-      await prisma.line.deleteMany({ where: { posId: ids.pos } });
+      await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
       await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: 1_000_000, held: 0 } });
     }
   });

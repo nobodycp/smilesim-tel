@@ -45,7 +45,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   const operationOf = (taskId: string) => prisma.providerOperation.findUniqueOrThrow({ where: { taskId } });
   const kinds = async () => (await prisma.walletEntry.findMany({ where: { userId: ids.pos } })).map((row) => row.kind).sort();
-  const lines = () => prisma.line.count({ where: { posId: ids.pos } });
+  const lines = () => prisma.postpaidLine.count({ where: { posId: ids.pos } });
   const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
 
   /** Writes the task's operation in the given state, as the dispatcher, a settlement or recovery would have left it. */
@@ -94,10 +94,10 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `top-${tag}`, name: 'top' } });
-    await prisma.company.create({ data: { id: ids.company, code: `top-${tag}`, name: 'top' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `top-${tag}`, name: 'top' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code: `top-${tag}`, name: 'top', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `top-${tag}`, name: 'top', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     // Notices are counted nowhere and written nowhere: a real one goes to every branch user in the database.
     const notice = {
       write: async () => {
@@ -122,13 +122,13 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.provider } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
 
   afterAll(async () => {
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });

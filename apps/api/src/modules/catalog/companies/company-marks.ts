@@ -9,6 +9,6 @@ import { companyMarkUrl } from '../rules/pictures';
  */
 export async function companyMarkUrls(db: Db): Promise<Map<string, string>> {
   const rows = await db.$queryRaw<{ code: string; version: string }[]>`
-    SELECT "code", left(md5("image"), 16) AS "version" FROM "Company" WHERE COALESCE("image", '') <> ''`;
+    SELECT "code", left(md5("image"), 16) AS "version" FROM "PostpaidCompany" WHERE COALESCE("image", '') <> ''`;
   return new Map(rows.map((row) => [row.code, companyMarkUrl(row.code, row.version)]));
 }

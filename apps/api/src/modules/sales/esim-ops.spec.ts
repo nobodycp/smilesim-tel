@@ -128,13 +128,13 @@ async function stage() {
         return row;
       },
     },
-    line: lineModel,
+    postpaidLine: lineModel,
     task: taskModel,
-    package: { findUnique: async () => pkg, findMany: async () => [pkg] },
-    packageAddon: { findMany: async () => [] },
+    postpaidPackage: { findUnique: async () => pkg, findMany: async () => [pkg] },
+    postpaidPackageAddon: { findMany: async () => [] },
     // Closing an activation task stamps the renewal price, which reads the terms tables inside the transaction.
-    userPackage: { findMany: async () => [] },
-    sellPrice: { findMany: async () => [] },
+    postpaidUserPackage: { findMany: async () => [] },
+    postpaidSellPrice: { findMany: async () => [] },
     user: { findUnique: async ({ where }: { where: { id: string } }) => accounts.find((row) => row.id === where.id) ?? null, findMany: async () => accounts },
     notice: { createMany: async () => ({ count: 0 }) },
   };
@@ -145,13 +145,13 @@ async function stage() {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
       findMany: async () => accounts,
     },
-    line: lineModel,
+    postpaidLine: lineModel,
     task: taskModel,
-    package: { findMany: async () => [pkg], findUnique: async () => pkg },
-    packageAddon: { findMany: async () => [] },
-    packageSwitch: { findMany: async () => [] },
-    userPackage: { findUnique: async () => null, findMany: async () => [] },
-    sellPrice: { findMany: async () => [] },
+    postpaidPackage: { findMany: async () => [pkg], findUnique: async () => pkg },
+    postpaidPackageAddon: { findMany: async () => [] },
+    postpaidPackageSwitch: { findMany: async () => [] },
+    postpaidUserPackage: { findUnique: async () => null, findMany: async () => [] },
+    postpaidSellPrice: { findMany: async () => [] },
     provider: { findMany: async () => [provider] },
     walletEntry: {
       findMany: async (args?: { where?: { kind?: { in?: string[] } | string; providerId?: { not: null } | string } }) => {

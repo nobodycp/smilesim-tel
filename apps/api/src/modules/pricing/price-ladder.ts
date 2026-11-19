@@ -32,8 +32,8 @@ export class PriceLadder {
   /** The custom rows and sell prices written on one package. */
   async termsFor(packageId: string, db: Db = this.uow.prisma): Promise<{ terms: TermRow[]; sells: SellRow[] }> {
     const [terms, sells] = await Promise.all([
-      db.userPackage.findMany({ where: { packageId }, select: { userId: true, hidden: true, price: true, renewalPrice: true } }),
-      db.sellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
+      db.postpaidUserPackage.findMany({ where: { packageId }, select: { userId: true, hidden: true, price: true, renewalPrice: true } }),
+      db.postpaidSellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
     ]);
     return { terms, sells };
   }
@@ -44,17 +44,17 @@ export class PriceLadder {
    * however many packages and paths are asked for, so a batch loads once and stamps every number from it.
    */
   async ladderRows(codes: string[], pathIds: string[], db: Db): Promise<LadderRows> {
-    const packages = await db.package.findMany({
+    const packages = await db.postpaidPackage.findMany({
       where: { code: { in: codes } },
       select: { id: true, code: true, ...PRICE_COLUMNS },
     });
     const ids = packages.map((row) => row.id);
     const [termRows, sellRows] = await Promise.all([
-      db.userPackage.findMany({
+      db.postpaidUserPackage.findMany({
         where: { packageId: { in: ids }, userId: { in: pathIds } },
         select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
       }),
-      db.sellPrice.findMany({
+      db.postpaidSellPrice.findMany({
         where: { packageId: { in: ids }, ownerId: { in: pathIds } },
         select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
       }),

@@ -71,10 +71,10 @@ suite('paid at the provider, not charged to the point of sale (PostgreSQL)', () 
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: code('A'), name: code('A') } });
-    await prisma.company.create({ data: { id: ids.company, code: code('co'), name: code('co') } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: code('co'), name: code('co') } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: true, autoSim: true };
-    await prisma.package.create({ data: { id: ids.z, code: code('z'), name: code('z'), providerId: ids.provider, companyId: ids.company, ...Z, ...auto } });
-    await prisma.package.create({ data: { id: ids.p, code: code('p'), name: code('p'), providerId: ids.provider, companyId: ids.company, ...P, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.z, code: code('z'), name: code('z'), providerId: ids.provider, companyId: ids.company, ...Z, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.p, code: code('p'), name: code('p'), providerId: ids.provider, companyId: ids.company, ...P, ...auto } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: ServiceGraph }).graph;
@@ -95,9 +95,9 @@ suite('paid at the provider, not charged to the point of sale (PostgreSQL)', () 
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.provider } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.pos, ids.owner] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.z, ids.p] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.z, ids.p] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });

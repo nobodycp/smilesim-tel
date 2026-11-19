@@ -122,9 +122,9 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
   const events = (operationId: string) => prisma.providerDecisionEvent.findMany({ where: { operationId }, orderBy: { sequence: 'asc' } });
   const steps = async (operationId: string) => (await events(operationId)).map((row) => `${row.sequence} ${row.type} ${row.decision} ${row.accountLoginName.replace(`s9-${tag}-`, '')}`);
   const kinds = async () => (await prisma.walletEntry.findMany({ where: { userId: ids.pos } })).map((row) => row.kind).sort();
-  const lines = () => prisma.line.findMany({ where: { posId: ids.pos } });
+  const lines = () => prisma.postpaidLine.findMany({ where: { posId: ids.pos } });
   const takenLine = (msisdn: string, iccid: string = serial()) =>
-    prisma.line.create({ data: { msisdn, iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+    prisma.postpaidLine.create({ data: { msisdn, iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
   /** Everything a refused or merely proposed decision must leave as it was. */
   const snapshot = async (taskId: string, operationId: string) => ({
     task: await task(taskId), operation: await operation(operationId), wallet: await wallet(), kinds: await kinds(), lines: (await lines()).length,
@@ -173,10 +173,10 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     for (const who of ['owner', 'acc1', 'acc2', 'clerk', 'pos', 'other'] as const) sid[who] = await auth.saveSession({ userId: ids[who], scope: 'full', userAgent: '', ip: '' });
     sid.entered = await auth.saveImpersonation({ userId: ids.acc2, operatorId: ids.owner, userAgent: '', ip: '' });
     await prisma.provider.create({ data: { id: ids.provider, code: name('pkg'), name: 's9' } });
-    await prisma.company.create({ data: { id: ids.company, code: name('pkg'), name: 's9' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: name('pkg'), name: 's9' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code: name('pkg'), name: 's9 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: name('pkg'), name: 's9 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     // The real notice writer, with its audience narrowed to this spec's own accounts: a real notice goes to every
     // branch user in the database, the accounts of other spec files included.
     const own = new Set<string>(people);
@@ -208,14 +208,14 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: { in: [ids.pos, ids.other] } } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: { in: [ids.pos, ids.other] } } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
 
   afterAll(async () => {
     await app.close();
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: people } } });
     await prisma.user.deleteMany({ where: { id: { in: people.filter((id) => id !== ids.owner) } } });
@@ -1239,7 +1239,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
         // Whatever won, a late approval or settlement adds nothing.
         await answer('owner', taskId, true);
         await dispatch.settlement.apply(operationId);
-        expect(await prisma.line.count({ where: { posId: ids.pos, msisdn: current.msisdn as string } })).toBe(row.status === 'succeeded' ? 1 : 0);
+        expect(await prisma.postpaidLine.count({ where: { posId: ids.pos, msisdn: current.msisdn as string } })).toBe(row.status === 'succeeded' ? 1 : 0);
       }
       await expectWalletAddsUp();
     });
@@ -1308,7 +1308,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     for (const { taskId, operationId } of [...unknown, ...exceptions]) {
       const [current, row, sale, releases] = await Promise.all([
         task(taskId), operation(operationId),
-        prisma.line.count({ where: { posId: ids.pos, msisdn: (await task(taskId)).msisdn as string } }),
+        prisma.postpaidLine.count({ where: { posId: ids.pos, msisdn: (await task(taskId)).msisdn as string } }),
         steps(operationId),
       ]);
       const approvedRelease = releases.some((step) => step.includes('approved release-after-success'));

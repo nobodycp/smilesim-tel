@@ -21,7 +21,7 @@ function world() {
   const kernel = new ServiceGraph(new MemoryAuthStore());
   kernel.prismaClient = {
     provider: { findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'sky' ? provider : null) },
-    company: {
+    postpaidCompany: {
       findMany: async ({ where }: { where: { code: { in: string[] } } }) => companies.filter((row) => where.code.in.includes(row.code)),
       findUnique: async ({ where }: { where: { code: string } }) => companies.find((row) => row.code === where.code) ?? null,
       create: async ({ data }: { data: { code: string; name: string } }) => {
@@ -31,7 +31,7 @@ function world() {
         return row;
       },
     },
-    package: {
+    postpaidPackage: {
       findMany: async () => packages,
       findFirst: async ({ where }: { where: { providerId: string; providerProductCode: string } }) =>
         packages.find((row) => row.providerId === where.providerId && row.providerProductCode === where.providerProductCode) ?? null,

@@ -213,10 +213,10 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     sid.entered = await auth.saveImpersonation({ userId: ids.staff, operatorId: ids.owner, userAgent: '', ip: '' });
     await prisma.provider.create({ data: { id: ids.provider, code, name: 's12' } });
     await prisma.provider.create({ data: { id: ids.other, code: `${code}-other`, name: 's12 other' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 's12', esim: true } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 's12', esim: true } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
-    await prisma.package.create({ data: { id: ids.pkg, code, name: 's12 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code, name: 's12 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, quiet));
   });
 
@@ -237,14 +237,14 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
 
   afterAll(async () => {
     await app.close();
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.provider, ids.other] } } });
     await prisma.wallet.deleteMany({ where: { userId: { in: people } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.staff, ids.pos] } } });
@@ -667,13 +667,13 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await settled(worker, silent.operationId)).toBe('applied');
       // 3. Confirmed, and its serial went to a line meanwhile: the exception is recorded, the hold kept.
       const row = await prisma.task.findUniqueOrThrow({ where: { id: taken.taskId } });
-      await prisma.line.create({ data: { msisdn: '0599999999', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: '0599999999', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       expect(await worker.dispatch.operations.settle(taken.operationId, attempts.taken, { kind: 'confirmed', providerRef: 'R-3', result: null })).toBe('succeeded');
       expect(await settled(worker, taken.operationId)).toBe('exception');
       // Nothing of this provider is left undone, and the money is exactly: two captured, one held.
       expect(await prisma.providerOperation.count({ where: { providerId: ids.provider, appliedAt: null, OR: [{ status: 'succeeded', applyError: null }, { status: 'failed' }] } })).toBe(0);
       expect(await wallet()).toMatchObject({ balance: START - 2 * PRICE, held: PRICE });
-      expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(3);
+      expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(3);
       // All the while paused: the adapter was not called by any of it.
       expect((await provider()).dispatchPausedAt).toBeInstanceOf(Date);
       expect(calls).toEqual([]);
@@ -854,7 +854,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       // The money: held is the open tasks' holds, the balance moved by the entries alone, one debit a line.
       const [state, open_, moved, lines, debits] = await Promise.all([
         wallet(), prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
-        prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }), prisma.line.count({ where: { posId: ids.pos } }), prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } }),
+        prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }), prisma.postpaidLine.count({ where: { posId: ids.pos } }), prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } }),
       ]);
       expect(state.held).toBe(open_._sum.held ?? 0);
       expect(state.balance).toBe(START + (moved._sum.amount ?? 0));
@@ -1151,7 +1151,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await settled(worker, silent.operationId)).toBe('applied');
       // 3. Confirmed, and its serial went to a line meanwhile: the exception is recorded and the hold kept.
       const row = await prisma.task.findUniqueOrThrow({ where: { id: exception.taskId } });
-      await prisma.line.create({ data: { msisdn: '0599999998', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      await prisma.postpaidLine.create({ data: { msisdn: '0599999998', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       expect(await operations.settle(exception.operationId, attempts.exception, { kind: 'confirmed', providerRef: 'R-OLD-3', result: null })).toBe('succeeded');
       expect(await settled(worker, exception.operationId)).toBe('exception');
       // Two captured, the exception's and the waiting one's holds kept; the adapter was not called by any of it.
@@ -1525,7 +1525,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect([await sendWaiting(worker), await recoverMine(worker), calls.length]).toEqual([0, 0, 1]);
       expect(await settled(worker, second.operationId)).toBe('applied');
       expect(await wallet()).toMatchObject({ balance: START - 2 * PRICE, held: 0 });
-      expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(2);
+      expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(2);
     });
   });
 
@@ -1849,7 +1849,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const untouched = async () => {
         expect(await operation(esim.operationId)).toMatchObject({ status: 'succeeded', appliedAt: null, applyError: null, resultEsimCode: stored.resultEsimCode });
         expect(await prisma.task.findUniqueOrThrow({ where: { id: esim.taskId } })).toMatchObject({ status: 'working', held: esimHeld });
-        expect(await prisma.line.count({ where: { posId: ids.pos, esim: true } })).toBe(0);
+        expect(await prisma.postpaidLine.count({ where: { posId: ids.pos, esim: true } })).toBe(0);
       };
       // No key, a key that is not one, another deployment's key: the settlement fails by a code and writes nothing.
       for (const key of [undefined, 'not-a-key', OTHER_KEY]) {
@@ -1874,7 +1874,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       for (let again = 0; again < 3; again += 1) await off.dispatch.settle({ operationId: esim.operationId });
       expect(await operation(esim.operationId)).toMatchObject({ status: 'succeeded', applyError: null });
       expect((await operation(esim.operationId)).appliedAt).toBeInstanceOf(Date);
-      const lines = await prisma.line.findMany({ where: { posId: ids.pos, esim: true } });
+      const lines = await prisma.postpaidLine.findMany({ where: { posId: ids.pos, esim: true } });
       expect(lines).toHaveLength(1);
       expect([lines[0].esimQr?.startsWith('v1:'), lines[0].esimQr?.includes('S12A-ESIM')]).toEqual([true, false]);
       expect(await wallet()).toMatchObject({ balance: START - PRICE - esimHeld, held: 0 });
@@ -1894,7 +1894,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const applied = await Promise.allSettled(data.flatMap((job) => Array.from({ length: 5 }, () => [worker.dispatch.settle(job), second.dispatch.settle(job)]).flat()));
       expect(applied.filter((result) => result.status === 'rejected')).toEqual([]);
       for (const { operationId } of sold) expect(await operation(operationId)).toMatchObject({ status: 'succeeded', attempts: 1 });
-      expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(3);
+      expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(3);
       expect(await prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } })).toBe(3);
       expect(await wallet()).toMatchObject({ balance: START - 3 * PRICE, held: 0 });
       // One message a send and one a verdict: none was written twice.

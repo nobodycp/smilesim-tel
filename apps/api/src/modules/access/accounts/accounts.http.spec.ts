@@ -76,11 +76,11 @@ function world() {
       },
       count: async () => counts.tasks,
     },
-    line: { count: async () => counts.lines },
+    postpaidLine: { count: async () => counts.lines },
     walletEntry: { count: async () => counts.entries },
     session: { deleteMany: async () => ({}) },
-    userPackage: { deleteMany: async () => ({}) },
-    sellPrice: { deleteMany: async () => ({}) },
+    postpaidUserPackage: { deleteMany: async () => ({}) },
+    postpaidSellPrice: { deleteMany: async () => ({}) },
     accessLog: { create: async (args: unknown) => void written.push({ op: 'accessLog.create', args }) },
   };
   return { users, roles, tasks, written, counts, tables };

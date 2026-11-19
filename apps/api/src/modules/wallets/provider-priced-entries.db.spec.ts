@@ -75,8 +75,8 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
   };
   /** Puts a line's paid period back by `days`, as if it had been sold that many days ago. */
   const aged = async (lineId: string, days: number) => {
-    const line = await prisma.line.findUniqueOrThrow({ where: { id: lineId } });
-    await prisma.line.update({ where: { id: lineId }, data: { endsAt: new Date(line.endsAt.getTime() - days * DAY) } });
+    const line = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: lineId } });
+    await prisma.postpaidLine.update({ where: { id: lineId }, data: { endsAt: new Date(line.endsAt.getTime() - days * DAY) } });
     for (const row of await prisma.walletEntry.findMany({ where: { lineId, periodEndsAt: { not: null } } })) {
       await prisma.walletEntry.update({ where: { id: row.id }, data: { periodEndsAt: new Date(row.periodEndsAt!.getTime() - days * DAY), createdAt: new Date(row.createdAt.getTime() - days * DAY) } });
     }
@@ -95,15 +95,15 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.providerA, code: code('A'), name: code('A') } });
     await prisma.provider.create({ data: { id: ids.providerB, code: code('B'), name: code('B') } });
-    await prisma.company.create({ data: { id: ids.company, code: code('co'), name: code('co'), esimPrice: ESIM_FEE } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: code('co'), name: code('co'), esimPrice: ESIM_FEE } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: true, autoSim: true };
     const pkg = (id: string, name: string, providerId: string, prices: typeof P1) => ({ id, code: code(name), name: code(name), providerId, companyId: ids.company, ...prices, ...auto });
-    await prisma.package.create({ data: pkg(ids.p1, 'p1', ids.providerA, P1) });
-    await prisma.package.create({ data: pkg(ids.p2, 'p2', ids.providerB, P2) });
-    await prisma.package.create({ data: pkg(ids.p4, 'p4', ids.providerA, P2) });
-    await prisma.package.create({ data: pkg(ids.p5, 'p5', ids.providerA, P1) });
-    await prisma.packageRenewal.create({ data: { packageId: ids.p1, targetPackageId: ids.p2 } });
-    for (const [from, to] of [[ids.p1, ids.p4], [ids.p4, ids.p1], [ids.p1, ids.p5]]) await prisma.packageSwitch.create({ data: { packageId: from, targetPackageId: to } });
+    await prisma.postpaidPackage.create({ data: pkg(ids.p1, 'p1', ids.providerA, P1) });
+    await prisma.postpaidPackage.create({ data: pkg(ids.p2, 'p2', ids.providerB, P2) });
+    await prisma.postpaidPackage.create({ data: pkg(ids.p4, 'p4', ids.providerA, P2) });
+    await prisma.postpaidPackage.create({ data: pkg(ids.p5, 'p5', ids.providerA, P1) });
+    await prisma.postpaidPackageRenewal.create({ data: { packageId: ids.p1, targetPackageId: ids.p2 } });
+    for (const [from, to] of [[ids.p1, ids.p4], [ids.p4, ids.p1], [ids.p1, ids.p5]]) await prisma.postpaidPackageSwitch.create({ data: { packageId: from, targetPackageId: to } });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: ServiceGraph }).graph;
@@ -118,11 +118,11 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.providerA } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.pos, ids.pos2, ids.owner] } } });
     await prisma.task.deleteMany({ where: { posId: { in: [ids.pos, ids.pos2] } } });
-    await prisma.line.deleteMany({ where: { posId: { in: [ids.pos, ids.pos2] } } });
-    await prisma.packageSwitch.deleteMany({ where: { packageId: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
-    await prisma.packageRenewal.deleteMany({ where: { packageId: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: { in: [ids.pos, ids.pos2] } } });
+    await prisma.postpaidPackageSwitch.deleteMany({ where: { packageId: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
+    await prisma.postpaidPackageRenewal.deleteMany({ where: { packageId: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.p1, ids.p2, ids.p4, ids.p5] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.providerA, ids.providerB] } } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos, ids.pos2] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.pos2] } } });
@@ -179,7 +179,7 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
     // No route of the office opens a reactivation task today (a reactivation is deferred as a charge); its handler
     // is kept, so a task of that action is written here as one would be.
     await service.operate(pos, other, 'disconnect', { outcome: 'success' });
-    const reactivation = await prisma.task.create({ data: { action: 'reactivate', status: 'working', posId: ids.pos, packageId: ids.p1, submitterId: ids.pos, lineId: other, posDelta: -P1.renewalPosPrice, msisdn: (await prisma.line.findUniqueOrThrow({ where: { id: other } })).msisdn } });
+    const reactivation = await prisma.task.create({ data: { action: 'reactivate', status: 'working', posId: ids.pos, packageId: ids.p1, submitterId: ids.pos, lineId: other, posDelta: -P1.renewalPosPrice, msisdn: (await prisma.postpaidLine.findUniqueOrThrow({ where: { id: other } })).msisdn } });
     await done(reactivation.id);
     await expectPriced(await last('reactivate'), 'A', P1.renewalBranchCost);
   });
@@ -261,11 +261,11 @@ suite('an operation\'s wallet entry stores its provider and its cost (PostgreSQL
 
   it('an entry that is not an operation carries no provider: a hold, its release, an add-on', async () => {
     const line = await lineNow();
-    await prisma.packageAddon.create({ data: { packageId: ids.p1, name: code('addon'), price: 700 } });
-    const addon = await prisma.packageAddon.findFirstOrThrow({ where: { packageId: ids.p1 } });
+    await prisma.postpaidPackageAddon.create({ data: { packageId: ids.p1, name: code('addon'), price: 700 } });
+    const addon = await prisma.postpaidPackageAddon.findFirstOrThrow({ where: { packageId: ids.p1 } });
     await done(await taskOf(service.requestAddon(pos, line, { addonId: addon.id })));
     for (const kind of ['hold', 'release', 'addon']) expect(await last(kind)).toMatchObject({ providerId: null });
-    await prisma.packageAddon.deleteMany({ where: { packageId: ids.p1 } });
+    await prisma.postpaidPackageAddon.deleteMany({ where: { packageId: ids.p1 } });
   });
 
   it('every operation entry written above carries both; the CHECK lists the same kinds, refuses one without them, and is validated', async () => {

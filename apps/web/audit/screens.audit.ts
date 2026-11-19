@@ -19,14 +19,14 @@ async function settle(page: Page) {
 
 async function sample() {
   const line = await sql<{ id: string }>(
-    `SELECT l.id FROM "Line" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = 'pos' ORDER BY l."createdAt" LIMIT 1`,
+    `SELECT l.id FROM "PostpaidLine" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = 'pos' ORDER BY l."createdAt" LIMIT 1`,
   );
   const active = await sql<{ id: string }>(
-    `SELECT l.id FROM "Line" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = 'pos' AND l.status = 'active' ORDER BY l."createdAt" LIMIT 1`,
+    `SELECT l.id FROM "PostpaidLine" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = 'pos' AND l.status = 'active' ORDER BY l."createdAt" LIMIT 1`,
   );
   const task = await sql<{ id: string }>(`SELECT id FROM "Task" ORDER BY "createdAt" DESC LIMIT 1`);
   const pack = await sql<{ code: string; provider: string; company: string }>(
-    `SELECT p.code, pr.code AS provider, c.code AS company FROM "Package" p JOIN "Provider" pr ON pr.id = p."providerId" JOIN "Company" c ON c.id = p."companyId" WHERE pr.code = 'lian' ORDER BY p.code LIMIT 1`,
+    `SELECT p.code, pr.code AS provider, c.code AS company FROM "PostpaidPackage" p JOIN "Provider" pr ON pr.id = p."providerId" JOIN "PostpaidCompany" c ON c.id = p."companyId" WHERE pr.code = 'lian' ORDER BY p.code LIMIT 1`,
   );
   return { lineId: line[0]?.id, activeId: active[0]?.id, taskId: task[0]?.id, pack: pack[0] };
 }

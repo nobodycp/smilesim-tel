@@ -31,12 +31,12 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
 
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
-  const lineOf = (id: string) => prisma.line.findUniqueOrThrow({ where: { id } });
+  const lineOf = (id: string) => prisma.postpaidLine.findUniqueOrThrow({ where: { id } });
   const taskOf = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   /** A line as it stands, with the code it holds. */
   const newLine = async (over: { esim?: boolean; esimQr?: string | null } = {}) => {
     const id = randomUUID();
-    await prisma.line.create({ data: { id, msisdn: number(), iccid: serial(), esim: over.esim ?? false, esimQr: over.esimQr ?? null, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+    await prisma.postpaidLine.create({ data: { id, msisdn: number(), iccid: serial(), esim: over.esim ?? false, esimQr: over.esimQr ?? null, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
     return id;
   };
   /** Everything money and records: the wallet, the lines, the tasks and the entries of this point of sale. */
@@ -45,7 +45,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
     return {
       balance: wallet.balance,
       held: wallet.held,
-      lines: await prisma.line.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
+      lines: await prisma.postpaidLine.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
       tasks: await prisma.task.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
       entries: await prisma.walletEntry.count({ where: { userId: ids.pos } }),
     };
@@ -81,10 +81,10 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `wr-${tag}`, name: 'wr' } });
-    await prisma.company.create({ data: { id: ids.company, code: `wr-${tag}`, name: 'wr' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `wr-${tag}`, name: 'wr' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoSim: true };
-    await prisma.package.create({ data: { id: ids.pkg, code: `wr-${tag}`, name: 'wr', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `wr-${tag}`, name: 'wr', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     service = new ApiFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
   });
 
@@ -96,9 +96,9 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
   afterAll(async () => {
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -277,7 +277,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
       expect(await refusalOf(run())).toBe('threw An eSIM code must be sealed before it is stored');
     }
     expect(await state()).toEqual(start);
-    const clear = await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "Line" WHERE "posId" = ${ids.pos} AND "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%' AND "esimQr" <> ${QR_OLD}`;
+    const clear = await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM "PostpaidLine" WHERE "posId" = ${ids.pos} AND "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%' AND "esimQr" <> ${QR_OLD}`;
     expect(Number(clear[0].n)).toBe(0);
   });
 });

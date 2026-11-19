@@ -15,7 +15,7 @@ describe('line add-ons', () => {
       findUnique: async ({ where }: { where: { id: string } }) => addons.find((row) => row.id === where.id) ?? null,
       findMany: async ({ where }: { where: { packageId: string; active?: boolean } }) => addons.filter((row) => row.packageId === where.packageId && (where.active === undefined || row.active === where.active)),
     };
-    (world.service as unknown as { prismaClient: { packageAddon: unknown } }).prismaClient.packageAddon = table;
+    (world.service as unknown as { prismaClient: { postpaidPackageAddon: unknown } }).prismaClient.postpaidPackageAddon = table;
     return world;
   }
 

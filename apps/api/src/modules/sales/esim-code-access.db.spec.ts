@@ -75,14 +75,14 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     cookie = {} as typeof cookie;
     for (const [name, id] of Object.entries(u)) cookie[name as keyof typeof u] = `sid=${await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' })}`;
     await prisma.provider.create({ data: { id: ids.provider, code: `acc-${tag}`, name: 'acc' } });
-    await prisma.company.create({ data: { id: ids.company, code: `acc-${tag}`, name: 'acc' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `acc-${tag}`, name: 'acc' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoSim: true };
-    await prisma.package.create({ data: { id: ids.pkg, code: `acc-${tag}`, name: 'acc', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `acc-${tag}`, name: 'acc', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
     const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
     const lineRow = (id: string, esimQr: string | null) => ({ id, msisdn: number(), iccid: serial(), esim: true, esimQr, status: 'active', packageId: ids.pkg, posId: u.posA, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} });
-    await prisma.line.createMany({ data: [lineRow(line.sealed, sealedCode), lineRow(line.clear, CODE.clear), lineRow(line.none, null), lineRow(line.damaged, damaged)] });
+    await prisma.postpaidLine.createMany({ data: [lineRow(line.sealed, sealedCode), lineRow(line.clear, CODE.clear), lineRow(line.none, null), lineRow(line.damaged, damaged)] });
     const taskRow = (id: string, over: Record<string, unknown>) => ({ id, action: 'activate', status: 'working', posId: u.posA, packageId: ids.pkg, submitterId: u.posA, posDelta: 0, esim: true, ...over });
     await prisma.task.createMany({
       data: [
@@ -106,9 +106,9 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     await prisma.session.deleteMany({ where: { userId: { in: Object.values(u) } } });
     await prisma.task.deleteMany({ where: { posId: { in: Object.values(u) } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: Object.values(u) } } });
-    await prisma.line.deleteMany({ where: { posId: { in: Object.values(u) } } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: { in: Object.values(u) } } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: Object.values(u) } } });
     for (const id of [u.posA, u.posB, u.posC, u.agent, u.agent2, u.main, u.staff, u.owner]) await prisma.user.deleteMany({ where: { id } });
@@ -241,7 +241,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     await recorder.recordOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed });
     await recorder.recordOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'task', subjectRef: task.own });
     const stored = await prisma.activityEvent.findMany({ where: { actorId: u.posA, action: 'esim_read' }, orderBy: { at: 'asc' } });
-    const number = (await prisma.line.findUniqueOrThrow({ where: { id: line.sealed } })).msisdn;
+    const number = (await prisma.postpaidLine.findUniqueOrThrow({ where: { id: line.sealed } })).msisdn;
     expect(stored.map((event) => [event.actorLoginName, event.actorLayer, event.action, event.result, event.subjectKind, event.subjectRef, event.ip])).toEqual([
       [`acc-${tag}-posa`, 'pos', 'esim_read', 'ok', 'line', number, '203.0.113.9'],
       [`acc-${tag}-posa`, 'pos', 'esim_read', 'ok', 'task', task.own, '203.0.113.9'],
@@ -250,9 +250,9 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     expectNoCode(JSON.stringify(stored));
     // It moved no money and changed neither the line nor the task.
     expect(await prisma.walletEntry.count({ where: { userId: u.posA } })).toBe(0);
-    expect((await prisma.line.findUniqueOrThrow({ where: { id: line.sealed } })).esimQr).toBe(sealedCode);
+    expect((await prisma.postpaidLine.findUniqueOrThrow({ where: { id: line.sealed } })).esimQr).toBe(sealedCode);
     // The strict recorder does not swallow a failure.
-    await expect(new PrismaActivityRecorder({ client: { session: prisma.session, line: prisma.line, activityEvent: { create: async () => { throw new Error('down'); } } }, available: true } as never).recordOrFail({ sessionId: token }, '', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed })).rejects.toThrow('down');
+    await expect(new PrismaActivityRecorder({ client: { session: prisma.session, postpaidLine: prisma.postpaidLine, activityEvent: { create: async () => { throw new Error('down'); } } }, available: true } as never).recordOrFail({ sessionId: token }, '', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed })).rejects.toThrow('down');
   });
 
   it('an activation that returns a code leaves no part of it in the output, the activity log, the notices, the outbox or the queue', async () => {
@@ -266,7 +266,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
       lineId = response.body.line.id;
     });
     expect(issued).toMatch(/^data:image\/png;base64,/);
-    const stored = (await prisma.line.findUniqueOrThrow({ where: { id: lineId } })).esimQr ?? '';
+    const stored = (await prisma.postpaidLine.findUniqueOrThrow({ where: { id: lineId } })).esimQr ?? '';
     expect(stored.startsWith('v1:')).toBe(true);
     // Sample the issued picture and its sealed form at many places; neither appears anywhere it should not.
     const fragments = (text: string) => Array.from({ length: 12 }, (_, at) => text.slice(60 + at * 97, 60 + at * 97 + 24)).filter((part) => part.length === 24);

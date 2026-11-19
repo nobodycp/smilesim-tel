@@ -19,15 +19,15 @@ function service(snapshots: { userId: string; day: string; active: number; expir
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
-    package: { findMany: async () => [{ suspendAfterDays: 90 }] },
-    line: {
+    postpaidPackage: { findMany: async () => [{ suspendAfterDays: 90 }] },
+    postpaidLine: {
       count: async ({ where }: { where: { status?: string; AND?: unknown[] } }) => (where.status ? lineCounts[where.status] : JSON.stringify(where).includes('suspendAfterDays') ? 1 : 2),
       groupBy: async () => Object.entries(lineCounts).map(([status, count]) => ({ status, _count: { _all: count } })),
     },
     // The overview ranks providers by the provider each entry stored (ADR 0025), named from here.
     provider: { findMany: async () => [{ id: 'p-sky', code: 'sky', name: 'سكاي' }, { id: 'p-lian', code: 'lian', name: 'ليان' }] },
     $queryRaw: async () => [],
-    lineCountSnapshot: {
+    postpaidLineCountSnapshot: {
       upsert: async ({ create }: { create: (typeof snapshots)[number] }) => {
         const index = snapshots.findIndex((row) => row.userId === create.userId && row.day === create.day);
         if (index >= 0) snapshots[index] = create;

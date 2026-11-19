@@ -67,7 +67,7 @@ suite('activation settlement schema (PostgreSQL)', () => {
     const provider = await tx.provider.create({ data: { code: `s1-${id}`, name: 's1' } });
     const prices = { branchCost: 1, mainPrice: 2, agentPrice: 3, posPrice: 4, subscriberPrice: 5, renewalBranchCost: 1, renewalMainPrice: 2, renewalAgentPrice: 3, renewalPosPrice: 4, renewalSubscriberPrice: 5 };
     const flags = { autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
-    const pkg = await tx.package.create({ data: { code: `s1-${id}`, name: 's1', providerId: provider.id, ...prices, ...flags } });
+    const pkg = await tx.postpaidPackage.create({ data: { code: `s1-${id}`, name: 's1', providerId: provider.id, ...prices, ...flags } });
     const task = (key?: string) => tx.task.create({ data: { action: 'activate', status: 'working', posId: user.id, packageId: pkg.id, submitterId: user.id, posDelta: -3500, held: 3500, unitPrice: 3500, msisdn: null, iccid: null, ...(key ? { requestKey: key, requestHash: 'h' } : {}) } });
     const operation = (taskId?: string) => tx.providerOperation.create({ data: { idempotencyKey: `s1:${randomUUID()}`, requestHash: 'h', action: 'activate', providerId: provider.id, packageCode: pkg.code, status: 'unknown', ...(taskId ? { taskId } : {}) } });
     return { user, provider, pkg, task, operation };

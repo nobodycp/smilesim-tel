@@ -87,13 +87,13 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `capt-${tag}`, name: 'capt' } });
-    await prisma.company.create({ data: { id: ids.company, code: `capt-${tag}`, name: 'capt' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `capt-${tag}`, name: 'capt' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = {
       branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: RENEWAL, renewalSubscriberPrice: 3500,
     };
-    await prisma.package.create({ data: { id: ids.pkg, code: `capt-${tag}`, name: 'capt', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: `capt-${tag}`, name: 'capt', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = {
       write: async (_db: unknown, _audience: unknown, _actor: unknown, draft: { kind: string }) => {
         notices.push(draft.kind);
@@ -110,14 +110,14 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   afterEach(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await setWallet({ balance: START, held: 0, ceiling: 0 });
     notices = [];
   });
 
   afterAll(async () => {
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -149,7 +149,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     await service.completeTask(owner, taskId, {});
     expect(await wallet()).toMatchObject({ balance: 1000 - PRICE, held: 0, ceiling: 0 });
     expect(await task(taskId)).toMatchObject({ status: 'done' });
-    expect(await prisma.line.count({ where: { posId: ids.pos, status: 'active' } })).toBe(1);
+    expect(await prisma.postpaidLine.count({ where: { posId: ids.pos, status: 'active' } })).toBe(1);
     expect(await kinds()).toEqual(['activate', 'hold', 'release']);
     // The wallet went below zero: that notice is still written; the ceiling notice is not.
     expect(notices).toContain('wallet.negative');
@@ -164,7 +164,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     expect(await outcomes([service.completeTask(owner, taskId, {})])).toEqual({ done: 0, refused: ['409 DUPLICATE_REQUEST'], crashed: [] });
     // Nothing of the completion stayed: not the claim, not the line, not a release, not a debit.
     expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
-    expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(0);
+    expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(0);
     expect(await wallet()).toMatchObject({ balance: START, held: PRICE - 1 });
     expect(await entryRows()).toEqual(before);
     // With no hold at all in the wallet it is refused the same way.
@@ -236,7 +236,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     expect(result).toEqual({ done: 1, refused: Array.from({ length: 5 }, () => '400 INVALID'), crashed: [] });
 
     // Two tasks, two lines, two charges, two releases; nothing held.
-    expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(2);
+    expect(await prisma.postpaidLine.count({ where: { posId: ids.pos } })).toBe(2);
     expect(await kinds()).toEqual(['activate', 'activate', 'hold', 'hold', 'release', 'release']);
     expect(await wallet()).toMatchObject({ balance: START - 2 * PRICE, held: 0 });
     await expectWalletAddsUp();
@@ -247,7 +247,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     const { taskId } = await openTask({ iccid });
     const opened = await task(taskId);
     // Another line takes the serial behind the reservation's back (written straight to the table).
-    const intruder = await prisma.line.create({ data: { msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, iccid, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(), terms: {} } });
+    const intruder = await prisma.postpaidLine.create({ data: { msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, iccid, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(), terms: {} } });
     const before = await entryRows();
     expect(await outcomes([service.completeTask(owner, taskId, {})])).toEqual({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
     expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
@@ -255,14 +255,14 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     expect(await entryRows()).toEqual(before);
 
     // The same when the number is what was taken: the failure comes from the insert itself, after the checks.
-    await prisma.line.update({ where: { id: intruder.id }, data: { iccid: serial(), msisdn: opened.msisdn as string } });
+    await prisma.postpaidLine.update({ where: { id: intruder.id }, data: { iccid: serial(), msisdn: opened.msisdn as string } });
     expect(await outcomes([service.completeTask(owner, taskId, {})])).toEqual({ done: 0, refused: ['409 NUMBER_TAKEN'], crashed: [] });
     expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
     expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
     expect(await entryRows()).toEqual(before);
 
     // Once the way is clear the task completes and is charged once.
-    await prisma.line.delete({ where: { id: intruder.id } });
+    await prisma.postpaidLine.delete({ where: { id: intruder.id } });
     await service.completeTask(owner, taskId, {});
     expect(await wallet()).toMatchObject({ balance: START - PRICE, held: 0 });
   });
@@ -271,7 +271,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     const made = await activateNow();
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await setWallet({ balance: START, held: 0 });
-    const line = await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } });
+    const line = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: made.line.id } });
     const sale: Sale = { msisdn: line.msisdn, lineId: line.id, companyName: 'capt', packageName: 'capt', packagePrice: RENEWAL, providerId: ids.provider, providerCost: 1800, period: { days: 30, endsAt: new Date('2026-12-10T00:00:00Z') } };
     const ROLLBACK = new Error('rolled back on purpose');
     /** Holds, settles one way or the other, and answers what the transaction would have left; then rolls it back. */
@@ -357,7 +357,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
       expect(charged).toBe(done + 2);
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
       await prisma.task.deleteMany({ where: { posId: ids.pos } });
-      await prisma.line.deleteMany({ where: { posId: ids.pos } });
+      await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
       await setWallet({ balance: START, held: 0 });
     }
   });

@@ -12,7 +12,7 @@ export class PackagesRepository {
   constructor(private readonly uow: UnitOfWork) {}
 
   packageByCode(code: string) {
-    return this.uow.prisma.package.findUnique({ where: { code } });
+    return this.uow.prisma.postpaidPackage.findUnique({ where: { code } });
   }
 
   providerById(id: string) {
@@ -20,13 +20,13 @@ export class PackagesRepository {
   }
 
   /** Writes a package's operation flags and modes. */
-  saveModes(code: string, data: Prisma.PackageUpdateInput) {
-    return this.uow.prisma.package.update({ where: { code }, data });
+  saveModes(code: string, data: Prisma.PostpaidPackageUpdateInput) {
+    return this.uow.prisma.postpaidPackage.update({ where: { code }, data });
   }
 
   /** A package with everything its sheet shows: provider, company, line statuses, renewal and switch targets. */
   packageSheet(code: string) {
-    return this.uow.prisma.package.findUnique({
+    return this.uow.prisma.postpaidPackage.findUnique({
       where: { code },
       include: {
         provider: true,
@@ -41,70 +41,70 @@ export class PackagesRepository {
   }
 
   /** Writes fields of one package: its details, or its price chain. */
-  savePackage(id: string, data: Prisma.PackageUpdateInput) {
-    return this.uow.prisma.package.update({ where: { id }, data });
+  savePackage(id: string, data: Prisma.PostpaidPackageUpdateInput) {
+    return this.uow.prisma.postpaidPackage.update({ where: { id }, data });
   }
 
   durationById(id: string) {
-    return this.uow.prisma.packageDuration.findUnique({ where: { id } });
+    return this.uow.prisma.postpaidPackageDuration.findUnique({ where: { id } });
   }
 
   removeDuration(id: string) {
-    return this.uow.prisma.packageDuration.delete({ where: { id } });
+    return this.uow.prisma.postpaidPackageDuration.delete({ where: { id } });
   }
 
   /** A package with its extra operations in their order. */
   packageWithAddons(code: string) {
-    return this.uow.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
+    return this.uow.prisma.postpaidPackage.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
   }
 
   addonById(id: string) {
-    return this.uow.prisma.packageAddon.findUnique({ where: { id } });
+    return this.uow.prisma.postpaidPackageAddon.findUnique({ where: { id } });
   }
 
-  saveAddon(id: string, data: Prisma.PackageAddonUpdateInput) {
-    return this.uow.prisma.packageAddon.update({ where: { id }, data });
+  saveAddon(id: string, data: Prisma.PostpaidPackageAddonUpdateInput) {
+    return this.uow.prisma.postpaidPackageAddon.update({ where: { id }, data });
   }
 
   /** How many extra operations a package has; a new one takes this as its position. */
   addonCount(packageId: string) {
-    return this.uow.prisma.packageAddon.count({ where: { packageId } });
+    return this.uow.prisma.postpaidPackageAddon.count({ where: { packageId } });
   }
 
-  addAddon(data: Prisma.PackageAddonUncheckedCreateInput) {
-    return this.uow.prisma.packageAddon.create({ data });
+  addAddon(data: Prisma.PostpaidPackageAddonUncheckedCreateInput) {
+    return this.uow.prisma.postpaidPackageAddon.create({ data });
   }
 
   removeAddon(id: string) {
-    return this.uow.prisma.packageAddon.delete({ where: { id } });
+    return this.uow.prisma.postpaidPackageAddon.delete({ where: { id } });
   }
 
   /** A package with the company and provider its targets must share. */
   packageWithCompany(code: string) {
-    return this.uow.prisma.package.findUnique({ where: { code }, include: { company: { select: { code: true } }, provider: true } });
+    return this.uow.prisma.postpaidPackage.findUnique({ where: { code }, include: { company: { select: { code: true } }, provider: true } });
   }
 
   /** The packages named as targets, each with its company's code and its provider. */
   packagesByCodes(codes: string[]) {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       where: { code: { in: codes } },
       include: { company: { select: { code: true } }, provider: true },
     });
   }
 
   clearRenewalTargets(db: Db, packageId: string) {
-    return db.packageRenewal.deleteMany({ where: { packageId } });
+    return db.postpaidPackageRenewal.deleteMany({ where: { packageId } });
   }
 
-  addRenewalTargets(db: Db, data: Prisma.PackageRenewalCreateManyInput[]) {
-    return db.packageRenewal.createMany({ data });
+  addRenewalTargets(db: Db, data: Prisma.PostpaidPackageRenewalCreateManyInput[]) {
+    return db.postpaidPackageRenewal.createMany({ data });
   }
 
   clearSwitchTargets(db: Db, packageId: string) {
-    return db.packageSwitch.deleteMany({ where: { packageId } });
+    return db.postpaidPackageSwitch.deleteMany({ where: { packageId } });
   }
 
-  addSwitchTargets(db: Db, data: Prisma.PackageSwitchCreateManyInput[]) {
-    return db.packageSwitch.createMany({ data });
+  addSwitchTargets(db: Db, data: Prisma.PostpaidPackageSwitchCreateManyInput[]) {
+    return db.postpaidPackageSwitch.createMany({ data });
   }
 }

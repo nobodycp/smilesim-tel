@@ -11,7 +11,7 @@ export class PicturesRepository {
 
   /** A company's stored mark (a data URL), or null when the company has none or does not exist. */
   async companyImage(code: string): Promise<string | null> {
-    const row = await this.uow.prisma.company.findUnique({ where: { code }, select: { image: true } });
+    const row = await this.uow.prisma.postpaidCompany.findUnique({ where: { code }, select: { image: true } });
     return row?.image ?? null;
   }
 

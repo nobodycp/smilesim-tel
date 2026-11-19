@@ -20,7 +20,7 @@ type Tx = Prisma.TransactionClient;
 const ROLLBACK = new Error('rolled back on purpose');
 
 /** The numbers list's search until DB.6. */
-function oldLines(q: string): Prisma.LineWhereInput {
+function oldLines(q: string): Prisma.PostpaidLineWhereInput {
   const text = q.trim();
   const digits = text.replace(/\s/g, '');
   return !text
@@ -88,17 +88,17 @@ suite('search: digits and names (PostgreSQL)', () => {
     const pos2 = await tx.user.create({ data: { loginName: `srch_${mark}_4455`, nickname: 'نقطة ثانية', passwordHash: 'x', layer: 'pos', parentId: owner.id } });
     const code = `srch-${randomUUID()}`;
     const provider = await tx.provider.create({ data: { code, name: 'srch' } });
-    const company = await tx.company.create({ data: { code: `${code}-c1`, name: 'سلكوم-بحث' } });
-    const company2 = await tx.company.create({ data: { code: `${code}-c2`, name: 'بيلفون-بحث' } });
+    const company = await tx.postpaidCompany.create({ data: { code: `${code}-c1`, name: 'سلكوم-بحث' } });
+    const company2 = await tx.postpaidCompany.create({ data: { code: `${code}-c2`, name: 'بيلفون-بحث' } });
     const prices = {
       branchCost: 1, mainPrice: 2, agentPrice: 3, posPrice: 4, subscriberPrice: 5,
       renewalBranchCost: 1, renewalMainPrice: 2, renewalAgentPrice: 3, renewalPosPrice: 4, renewalSubscriberPrice: 5,
       autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false,
     };
-    const giga = await tx.package.create({ data: { code: `${code}-p1`, name: '100 جيجا بحث', providerId: provider.id, companyId: company.id, ...prices } });
-    const monthly = await tx.package.create({ data: { code: `${code}-p2`, name: 'شهري بحث', providerId: provider.id, companyId: company2.id, ...prices } });
+    const giga = await tx.postpaidPackage.create({ data: { code: `${code}-p1`, name: '100 جيجا بحث', providerId: provider.id, companyId: company.id, ...prices } });
+    const monthly = await tx.postpaidPackage.create({ data: { code: `${code}-p2`, name: 'شهري بحث', providerId: provider.id, companyId: company2.id, ...prices } });
     const line = (msisdn: string, iccid: string | null, packageId: string) =>
-      tx.line.create({ data: { msisdn, iccid, status: 'active', endsAt: new Date(Date.now() + 86_400_000), packageId, posId: pos.id, terms: {} } });
+      tx.postpaidLine.create({ data: { msisdn, iccid, status: 'active', endsAt: new Date(Date.now() + 86_400_000), packageId, posId: pos.id, terms: {} } });
     // The numbers are picked so no other spec's rows share them; the lines are found by `posId` anyway.
     await line('0541001234', '8997201000000000001', monthly.id);
     await line('0559876543', '8997202000000000002', giga.id);
@@ -124,8 +124,8 @@ suite('search: digits and names (PostgreSQL)', () => {
     const wallets = new WalletsRepository(uow);
     const terms = searchTerms(q);
     const ids = terms ? await lines.packageIdsNamed(terms.names) : [];
-    const lineIds = async (where: Prisma.LineWhereInput) =>
-      (await tx.line.findMany({ where: { AND: [{ posId: scope.pos.id }, where] }, select: { msisdn: true } })).map((row) => row.msisdn).sort();
+    const lineIds = async (where: Prisma.PostpaidLineWhereInput) =>
+      (await tx.postpaidLine.findMany({ where: { AND: [{ posId: scope.pos.id }, where] }, select: { msisdn: true } })).map((row) => row.msisdn).sort();
     const taskIds = async (where: Prisma.TaskWhereInput) =>
       (await tx.task.findMany({ where: { AND: [{ posId: scope.pos.id }, where] }, select: { msisdn: true } })).map((row) => row.msisdn ?? '').sort();
     const accounts = await tx.user.findMany({ where: { id: { in: [scope.pos.id, scope.pos2.id] } }, select: { id: true, loginName: true } });
@@ -135,7 +135,7 @@ suite('search: digits and names (PostgreSQL)', () => {
       (await tx.walletEntry.findMany({ where: { AND: [{ userId: { in: [scope.pos.id, scope.pos2.id] } }, where] }, select: { kind: true, msisdn: true, note: true, packageName: true, userId: true } }))
         .map((row) => [row.kind, row.msisdn ?? row.note ?? row.packageName ?? (row.userId === scope.pos2.id ? 'pos2' : '')].join(':'))
         .sort();
-    const { posId: _posId, ...newLines } = linesWhere([scope.pos.id], { q }, [], ids) as Prisma.LineWhereInput & { posId?: unknown };
+    const { posId: _posId, ...newLines } = linesWhere([scope.pos.id], { q }, [], ids) as Prisma.PostpaidLineWhereInput & { posId?: unknown };
     void _posId;
     return {
       lines: { now: await lineIds(newLines), before: await lineIds(oldLines(q)) },
@@ -209,22 +209,22 @@ suite('search: digits and names (PostgreSQL)', () => {
   it('keeps the suspended window with a search: a suspended line that matches, never an active one', async () => {
     await scratch(async (tx) => {
       const { pos } = await seed(tx);
-      const pkg = await tx.package.findFirstOrThrow({ where: { lines: { some: { posId: pos.id } } }, select: { id: true, suspendAfterDays: true } });
+      const pkg = await tx.postpaidPackage.findFirstOrThrow({ where: { lines: { some: { posId: pos.id } } }, select: { id: true, suspendAfterDays: true } });
       const ended = new Date(Date.now() - (pkg.suspendAfterDays + 5) * 86_400_000);
       const line = (msisdn: string, endsAt: Date) =>
-        tx.line.create({ data: { msisdn, iccid: null, status: 'active', endsAt, packageId: pkg.id, posId: pos.id, terms: {} } });
+        tx.postpaidLine.create({ data: { msisdn, iccid: null, status: 'active', endsAt, packageId: pkg.id, posId: pos.id, terms: {} } });
       await line('0577700001', ended); // suspended, matches
       await line('0566600001', ended); // suspended, does not match
       await line('0577700002', new Date(Date.now() + 86_400_000)); // active, matches
       const uow = { prisma: tx } as unknown as UnitOfWork;
       const terms = searchTerms('05777');
       const ids = await new LinesRepository(uow).packageIdsNamed(terms!.names);
-      const found = async (where: Prisma.LineWhereInput) =>
-        (await tx.line.findMany({ where, select: { msisdn: true } })).map((row) => row.msisdn).sort();
+      const found = async (where: Prisma.PostpaidLineWhereInput) =>
+        (await tx.postpaidLine.findMany({ where, select: { msisdn: true } })).map((row) => row.msisdn).sort();
       const where = linesWhere([pos.id], { status: 'suspended', q: '05777' }, [pkg.suspendAfterDays], ids);
       expect(await found(where)).toEqual(['0577700001']);
       // The clause before the fix: the search's OR spread over the window's, so the period condition was lost.
-      const { AND: search, ...rest } = where as Prisma.LineWhereInput & { AND: Prisma.LineWhereInput[] };
+      const { AND: search, ...rest } = where as Prisma.PostpaidLineWhereInput & { AND: Prisma.PostpaidLineWhereInput[] };
       expect(await found({ ...rest, ...search[0] })).toEqual(['0577700001', '0577700002']);
       // Each alone still answers its own rows.
       expect(await found(linesWhere([pos.id], { status: 'suspended' }, [pkg.suspendAfterDays]))).toEqual(['0566600001', '0577700001']);
@@ -236,11 +236,11 @@ suite('search: digits and names (PostgreSQL)', () => {
     await scratch(async (tx) => {
       await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off');
       const plan = async (sql: string) => (await tx.$queryRawUnsafe<{ 'QUERY PLAN': string }[]>(`EXPLAIN (COSTS OFF) ${sql}`)).map((row) => row['QUERY PLAN']).join('\n');
-      const line = await plan(`SELECT id FROM "Line" WHERE "msisdn" LIKE '%1001%' OR "iccid" LIKE '%1001%' OR "packageId" IN ('a', 'b')`);
-      expect(line).toContain('Line_msisdn_trgm_idx');
-      expect(line).toContain('Line_iccid_trgm_idx');
-      expect(line).toContain('Line_packageId_idx');
-      expect(await plan(`SELECT id FROM "Line" WHERE "msisdn" LIKE '%0541001234%'`)).toContain('Line_msisdn_trgm_idx');
+      const line = await plan(`SELECT id FROM "PostpaidLine" WHERE "msisdn" LIKE '%1001%' OR "iccid" LIKE '%1001%' OR "packageId" IN ('a', 'b')`);
+      expect(line).toContain('PostpaidLine_msisdn_trgm_idx');
+      expect(line).toContain('PostpaidLine_iccid_trgm_idx');
+      expect(line).toContain('PostpaidLine_packageId_idx');
+      expect(await plan(`SELECT id FROM "PostpaidLine" WHERE "msisdn" LIKE '%0541001234%'`)).toContain('PostpaidLine_msisdn_trgm_idx');
       expect(await plan(`SELECT id FROM "Task" WHERE "msisdn" LIKE '%1001%'`)).toContain('Task_msisdn_trgm_idx');
       const entry = await plan(`SELECT id FROM "WalletEntry" WHERE "msisdn" LIKE '%1001%' OR "userId" IN ('a', 'b')`);
       expect(entry).toContain('WalletEntry_msisdn_trgm_idx');

@@ -37,12 +37,12 @@ describe('providers and companies over HTTP', () => {
         update: async (args: unknown) => void writes.push({ model: 'provider', args }),
       },
       // No package inherits a mode here: a provider change writes the provider alone (spec 2026-11-09-admin-review, 3).
-      package: { findMany: async () => [] },
+      postpaidPackage: { findMany: async () => [] },
       // The marks that are set (speed plan PF.7): code and version, never the picture.
       $queryRaw: async () => [{ code: 'alloha', version: '0123456789abcdef' }],
       // The unit of work's transaction hands the work these same tables (slice R.7: the run modes are saved in `runTx`).
       $transaction: async (work: (tx: unknown) => Promise<unknown>) => work(tables),
-      company: {
+      postpaidCompany: {
         findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'wecom' ? { id: 'c2', code: 'wecom' } : null),
         update: async (args: { data: Record<string, unknown> }) => {
           writes.push({ model: 'company', args });

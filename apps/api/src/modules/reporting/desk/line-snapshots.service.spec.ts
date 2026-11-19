@@ -24,9 +24,9 @@ function service() {
   };
   graph.prismaClient = {
     user: { findMany: async () => accounts },
-    package: { findMany: async () => [{ suspendAfterDays: 90 }] },
-    line: { groupBy: async ({ where }: { where: Record<string, unknown> }) => { groups.push(where); return counted(where); } },
-    lineCountSnapshot: {
+    postpaidPackage: { findMany: async () => [{ suspendAfterDays: 90 }] },
+    postpaidLine: { groupBy: async ({ where }: { where: Record<string, unknown> }) => { groups.push(where); return counted(where); } },
+    postpaidLineCountSnapshot: {
       upsert: async ({ where, create }: { where: { userId_day: { userId: string; day: string } }; create: Snapshot }) => {
         const index = snapshots.findIndex((row) => row.userId === where.userId_day.userId && row.day === where.userId_day.day);
         if (index >= 0) snapshots[index] = create;

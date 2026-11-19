@@ -16,7 +16,7 @@ function oneOf<T extends string>(list: readonly T[], value: string | undefined):
 export const EXPIRING_DAYS = 3;
 
 /** The window of an expiring line: active, ending between now and EXPIRING_DAYS from now. */
-export function expiringWhere(now: Date = new Date()): Prisma.LineWhereInput {
+export function expiringWhere(now: Date = new Date()): Prisma.PostpaidLineWhereInput {
   return { status: 'active', endsAt: { gte: now, lte: new Date(now.getTime() + EXPIRING_DAYS * 86_400_000) } };
 }
 
@@ -33,7 +33,7 @@ export function isSuspended(line: { status: string; endsAt: Date }, suspendAfter
  * The suspended lines (spec 2026-11-08-overview-and-reports-nav, I), one condition per package period in use: the
  * database cannot add a package's days to the end date, so each period gets its own cut-off.
  */
-export function suspendedWhere(periods: number[], now: Date = new Date()): Prisma.LineWhereInput {
+export function suspendedWhere(periods: number[], now: Date = new Date()): Prisma.PostpaidLineWhereInput {
   const days = [...new Set(periods.length ? periods : [SUSPEND_AFTER_DAYS])];
   return {
     status: { in: ['active', 'suspended'] },
@@ -50,7 +50,7 @@ export type LineFilter = { q?: string; status?: string; packageCode?: string; pr
  * contains the text (`LinesRepository.packageIdsNamed`, read from the catalog first). The big table is filtered by
  * trigram indexes and an id list, never joined to the catalog on `ILIKE`.
  */
-export function lineSearch(q: string | undefined, namedPackageIds: string[]): Prisma.LineWhereInput {
+export function lineSearch(q: string | undefined, namedPackageIds: string[]): Prisma.PostpaidLineWhereInput {
   const terms = searchTerms(q);
   if (!terms) return {};
   return {
@@ -69,13 +69,13 @@ export function lineSearch(q: string | undefined, namedPackageIds: string[]): Pr
  * eSIM (`esim`) lines (spec 2026-11-11-ui-consistency-pass, D1). `posIds` null is every point of sale (the branch's
  * own view): no id list is sent (database plan DB.10), as `taskWhereFor` and `financeWhere` already do.
  */
-export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = [], namedPackageIds: string[] = []): Prisma.LineWhereInput {
+export function linesWhere(posIds: string[] | null, filter: LineFilter, suspendPeriods: number[] = [], namedPackageIds: string[] = []): Prisma.PostpaidLineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const search = lineSearch(filter.q, namedPackageIds);
   const packageCode = (filter.packageCode ?? '').trim();
   const provider = (filter.provider ?? '').trim();
   const company = (filter.company ?? '').trim();
-  const pack: Prisma.PackageWhereInput = {
+  const pack: Prisma.PostpaidPackageWhereInput = {
     ...(packageCode ? { code: packageCode } : {}),
     ...(provider ? { provider: { name: provider } } : {}),
     ...(company ? { company: { name: company } } : {}),

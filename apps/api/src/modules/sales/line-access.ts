@@ -14,7 +14,7 @@ export class LineAccess {
    * 403 when it is not theirs. It carries the owner's path and the operations stopped on that path.
    */
   async visibleLine(actor: Actor, lineId: string) {
-    const line = await this.uow.prisma.line.findUnique({
+    const line = await this.uow.prisma.postpaidLine.findUnique({
       where: { id: lineId },
       include: { package: { include: { company: true, provider: true } } },
     });

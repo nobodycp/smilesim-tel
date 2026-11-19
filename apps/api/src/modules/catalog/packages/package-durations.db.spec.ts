@@ -23,9 +23,9 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
   let service: ApiFacade;
   let owner: { sessionId: string };
 
-  const rows = () => prisma.packageDuration.findMany({ where: { packageId: ids.pkg } });
+  const rows = () => prisma.postpaidPackageDuration.findMany({ where: { packageId: ids.pkg } });
   const columns = async () => {
-    const pkg = await prisma.package.findUniqueOrThrow({ where: { id: ids.pkg } });
+    const pkg = await prisma.postpaidPackage.findUniqueOrThrow({ where: { id: ids.pkg } });
     return {
       branchCost: pkg.renewalBranchCost,
       mainPrice: pkg.renewalMainPrice,
@@ -44,8 +44,8 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
     auth.addUser({ ...user, disabledAt: null, mustChangePassword: false, twoFactorExempt: true, twoFactorEnabled: false } as Parameters<MemoryAuthStore['addUser']>[0]);
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code, name: 'dur' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 'dur' } });
-    await prisma.package.create({
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 'dur' } });
+    await prisma.postpaidPackage.create({
       data: {
         id: ids.pkg, code, name: code, providerId: ids.provider, companyId: ids.company, months: 3,
         autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,
@@ -60,8 +60,8 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
   });
 
   afterAll(async () => {
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: ids.owner } });
     await prisma.user.deleteMany({ where: { id: ids.owner } });
@@ -129,15 +129,15 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
 
   it('refuses a second row of the same length, a unit it does not know, and a count below one', async () => {
     const row = { packageId: ids.pkg, ...renewal };
-    await expect(prisma.packageDuration.create({ data: { ...row, unit: 'month', count: 3 } })).rejects.toThrow();
-    await expect(prisma.packageDuration.create({ data: { ...row, unit: 'week', count: 1 } })).rejects.toThrow();
-    await expect(prisma.packageDuration.create({ data: { ...row, unit: 'day', count: 0 } })).rejects.toThrow();
+    await expect(prisma.postpaidPackageDuration.create({ data: { ...row, unit: 'month', count: 3 } })).rejects.toThrow();
+    await expect(prisma.postpaidPackageDuration.create({ data: { ...row, unit: 'week', count: 1 } })).rejects.toThrow();
+    await expect(prisma.postpaidPackageDuration.create({ data: { ...row, unit: 'day', count: 0 } })).rejects.toThrow();
     expect(await rows()).toHaveLength(1);
   });
 
   it('goes with its package when the package is removed', async () => {
     const other = randomUUID();
-    await prisma.package.create({
+    await prisma.postpaidPackage.create({
       data: {
         id: other, code: `${code}-x`, name: 'x', providerId: ids.provider, companyId: ids.company,
         autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,
@@ -146,7 +146,7 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
         durations: { create: mirroredDuration(1, { branchCost: 1, mainPrice: 1, agentPrice: 1, posPrice: 1, subscriberPrice: 1 }) },
       },
     });
-    await prisma.package.delete({ where: { id: other } });
-    expect(await prisma.packageDuration.count({ where: { packageId: other } })).toBe(0);
+    await prisma.postpaidPackage.delete({ where: { id: other } });
+    expect(await prisma.postpaidPackageDuration.count({ where: { packageId: other } })).toBe(0);
   });
 });

@@ -51,8 +51,8 @@ async function signedIn(account: Account) {
   const service = new ApiFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: account.layer === 'branch' }), findMany: async () => accounts },
-    line: { findMany: async () => [line], count: async () => 1 },
-    package: { findMany: async () => [] },
+    postpaidLine: { findMany: async () => [line], count: async () => 1 },
+    postpaidPackage: { findMany: async () => [] },
     // The company marks the list reads by URL (speed plan PF.7): none.
     $queryRaw: async () => [],
   };

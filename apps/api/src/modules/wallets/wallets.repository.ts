@@ -73,8 +73,8 @@ export class WalletsRepository {
   async catalogNamed(texts: string[]): Promise<{ packageNamed: boolean; companyNamed: boolean }> {
     const named = (text: string) => ({ name: { contains: text, mode: 'insensitive' as const } });
     const [pkg, company] = await Promise.all([
-      this.uow.prisma.package.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
-      this.uow.prisma.company.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
+      this.uow.prisma.postpaidPackage.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
+      this.uow.prisma.postpaidCompany.findFirst({ where: { OR: texts.map(named) }, select: { id: true } }),
     ]);
     return { packageNamed: pkg !== null, companyNamed: company !== null };
   }
@@ -129,7 +129,7 @@ export class WalletsRepository {
    * company's name the entry stores. At most two, so the caller can tell one from several.
    */
   packagesNamed(providerId: string, packageName: string, companyName: string) {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       where: { providerId, name: packageName, ...(companyName ? { company: { name: companyName } } : { companyId: null }) },
       select: { code: true },
       take: 2,

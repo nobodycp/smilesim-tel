@@ -153,8 +153,8 @@ async function serviceWith(tables: Record<string, unknown>) {
   const service = new ApiFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
-    userPackage: { findMany: async () => [] },
-    sellPrice: { findMany: async () => [] },
+    postpaidUserPackage: { findMany: async () => [] },
+    postpaidSellPrice: { findMany: async () => [] },
     // The company marks that are set (speed plan PF.7): none unless a spec says so.
     $queryRaw: async () => [],
     ...tables,
@@ -180,8 +180,8 @@ async function posServiceWith(tables: Record<string, unknown>) {
   const service = new ApiFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
-    userPackage: { findMany: async () => [] },
-    sellPrice: { findMany: async () => [] },
+    postpaidUserPackage: { findMany: async () => [] },
+    postpaidSellPrice: { findMany: async () => [] },
     // The company marks that are set (speed plan PF.7): none unless a spec says so.
     $queryRaw: async () => [],
     ...tables,
@@ -204,7 +204,7 @@ describe('office response shapes', () => {
   it('answers /v1/home with the keys of HomePayload and of its rows', async () => {
     const { service, gate } = await serviceWith({
       task: { count: async () => 2 },
-      line: { count: async () => 3 },
+      postpaidLine: { count: async () => 3 },
       walletEntry: {
         findMany: async () => [{ id: 'e1', createdAt: at, kind: 'activate', amount: -5, note: null, user: { loginName: 'pos1' } }],
       },
@@ -236,7 +236,7 @@ describe('office response shapes', () => {
       package: { code: 'pk', name: '400', posPrice: 30, company: { code: 'cellcom', name: 'سلكوم', esim: true } },
       pos: { loginName: 'pos1' },
     };
-    const { service, gate } = await serviceWith({ line: { findMany: async () => [row], count: async () => 1 } });
+    const { service, gate } = await serviceWith({ postpaidLine: { findMany: async () => [row], count: async () => 1 } });
     const listed = await service.lines(gate);
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
     expect(keysOf(listed.items[0])).toEqual(sorted(LINE_KEYS));
@@ -251,7 +251,7 @@ describe('office response shapes', () => {
     expect(keysOf(later.items[0])).toEqual(sorted(LINE_KEYS));
     // A company with a mark: its versioned URL, as the companies shelf carries it.
     const marked = await serviceWith({
-      line: { findMany: async () => [row], count: async () => 1 },
+      postpaidLine: { findMany: async () => [row], count: async () => 1 },
       $queryRaw: async () => [{ code: 'cellcom', version: '0123456789abcdef' }],
     });
     expect((await marked.service.lines(marked.gate)).items[0].companyImage).toBe('/api/pictures/postpaid/companies/cellcom?v=0123456789abcdef');
@@ -271,8 +271,8 @@ describe('office response shapes', () => {
       },
     ];
     const { service, gate } = await serviceWith({
-      package: { findMany: async () => packageRows },
-      company: { findMany: async () => [{ code: 'wecom', iccidLength: 19, iccidPrefix: '8997202', esim: false, esimPrice: 400 }] },
+      postpaidPackage: { findMany: async () => packageRows },
+      postpaidCompany: { findMany: async () => [{ code: 'wecom', iccidLength: 19, iccidPrefix: '8997202', esim: false, esimPrice: 400 }] },
       $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }],
     });
     const shelf = await service.companiesShelf(gate);
@@ -298,8 +298,8 @@ describe('office response shapes', () => {
 
   it('adds the companies stored since the seed after the seeded ones, by name, in the same shape', async () => {
     const { service, gate } = await serviceWith({
-      package: { findMany: async () => [] },
-      company: { findMany: async () => [
+      postpaidPackage: { findMany: async () => [] },
+      postpaidCompany: { findMany: async () => [
         { code: 'zain', name: 'زين', iccidLength: null, iccidPrefix: null, esim: true, esimPrice: 500 },
         { code: 'golan', name: 'جولان', iccidLength: null, iccidPrefix: null, esim: false, esimPrice: 300 },
       ] },
@@ -350,7 +350,7 @@ describe('office response shapes', () => {
       switches: [{ target: { code: 'lian-wecom-500-5g' } }],
       durations: [{ id: 'd1', packageId: 'p1', unit: 'month', count: 1, branchCost: 30, mainPrice: 30, agentPrice: 30, posPrice: 30, subscriberPrice: 30, noDisconnect: false, forSale: true, enabled: true, providerProductCode: null, position: 0, createdAt: new Date() }],
     };
-    const { service, gate } = await serviceWith({ package: { findUnique: async () => pkg } });
+    const { service, gate } = await serviceWith({ postpaidPackage: { findUnique: async () => pkg } });
 
     const sheet = await service.packageSheet(gate, pkg.code);
 
@@ -385,7 +385,7 @@ describe('office response shapes', () => {
     };
     let saved: unknown;
     const { service, gate } = await serviceWith({
-      package: {
+      postpaidPackage: {
         findUnique: async () => pkg,
         update: async ({ data }: { data: unknown }) => {
           saved = data;
@@ -422,7 +422,7 @@ describe('office response shapes', () => {
   it('saves package details: amounts, unlimited as -1, not stated as null, and trimmed extra text', async () => {
     let saved: unknown;
     const { service, gate } = await serviceWith({
-      package: {
+      postpaidPackage: {
         findUnique: async () => ({ id: 'p1', code: 'lian-wecom-500' }),
         update: async ({ data }: { data: unknown }) => {
           saved = data;
@@ -452,7 +452,7 @@ describe('office response shapes', () => {
   it('limits the point-of-sale package catalog to enabled packages for sale', async () => {
     let where: unknown;
     const { service, gate } = await serviceWith({
-      package: {
+      postpaidPackage: {
         findMany: async (query: { where: unknown }) => {
           where = query.where;
           return [];
@@ -584,7 +584,7 @@ describe('office response shapes', () => {
   });
 
   it('answers /v1/postpaid/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
-    const tables = { package: { findMany: async () => [catalogPackage] }, $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }] };
+    const tables = { postpaidPackage: { findMany: async () => [catalogPackage] }, $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }] };
     const asBranch = await serviceWith(tables);
     const branchShelf = await asBranch.service.packages(asBranch.gate);
     // The marks of the listed companies by URL, never their bytes (speed plan PF.7).

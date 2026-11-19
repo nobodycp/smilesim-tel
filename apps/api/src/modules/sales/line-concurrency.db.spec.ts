@@ -36,19 +36,19 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
     }
     gate = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `race-${tag}`, name: 'race' } });
-    await prisma.company.create({ data: { id: ids.company, code: `race-${tag}`, name: 'race' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `race-${tag}`, name: 'race' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = {
       branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800,
       renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
     };
-    const pkg = await prisma.package.create({
+    const pkg = await prisma.postpaidPackage.create({
       data: { id: ids.pkg, code: `race-${tag}`, name: 'race', providerId: ids.provider, companyId: ids.company, ...prices, ...auto },
       include: { company: true, provider: true },
     });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
     service = new ApiFacade(auth, notice);
-    await prisma.line.create({
+    await prisma.postpaidLine.create({
       data: {
         id: ids.line, msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, status: 'active', packageId: ids.pkg, posId: ids.pos,
         endsAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
@@ -60,9 +60,9 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
   afterAll(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { id: ids.line } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidLine.deleteMany({ where: { id: ids.line } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -87,18 +87,18 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
     const activate = () => service.activate(gate, { packageCode: `race-${tag}`, posLoginName: `race-${tag}-pos`, iccid, outcome: 'success' });
     const result = await outcomes([activate(), activate()]);
     expect(result).toEqual({ applied: 1, refused: ['SIM_TAKEN'], crashed: 0 });
-    const made = await prisma.line.findMany({ where: { iccid } });
+    const made = await prisma.postpaidLine.findMany({ where: { iccid } });
     expect(made).toHaveLength(1);
     await prisma.walletEntry.deleteMany({ where: { lineId: made[0].id } });
-    await prisma.line.deleteMany({ where: { id: made[0].id } });
+    await prisma.postpaidLine.deleteMany({ where: { id: made[0].id } });
   });
 
   it('charges one extension when two are sent at once, and the other is refused', async () => {
-    const before = await prisma.line.findUniqueOrThrow({ where: { id: ids.line } });
+    const before = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: ids.line } });
     const result = await outcomes([service.extend(gate, ids.line, { outcome: 'success' }), service.extend(gate, ids.line, { outcome: 'success' })]);
     expect(result).toEqual({ applied: 1, refused: ['DUPLICATE_REQUEST'], crashed: 0 });
     // One period was added, not two.
-    const after = await prisma.line.findUniqueOrThrow({ where: { id: ids.line } });
+    const after = await prisma.postpaidLine.findUniqueOrThrow({ where: { id: ids.line } });
     expect(Math.round((after.endsAt.getTime() - before.endsAt.getTime()) / 86_400_000)).toBe(30);
     expect(await prisma.walletEntry.count({ where: { lineId: ids.line, kind: 'extend' } })).toBe(1);
   });
@@ -110,6 +110,6 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
     ]);
     expect(result).toEqual({ applied: 1, refused: ['DUPLICATE_REQUEST'], crashed: 0 });
     expect(await prisma.walletEntry.count({ where: { lineId: ids.line, kind: 'disconnect' } })).toBe(1);
-    expect((await prisma.line.findUniqueOrThrow({ where: { id: ids.line } })).status).toBe('disconnected');
+    expect((await prisma.postpaidLine.findUniqueOrThrow({ where: { id: ids.line } })).status).toBe('disconnected');
   });
 });

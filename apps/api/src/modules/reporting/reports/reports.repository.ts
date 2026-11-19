@@ -13,7 +13,7 @@ export class ReportsRepository {
 
   /** Every package under a company, with its provider, its company and how many lines it has. */
   packagesByProvider() {
-    return this.uow.prisma.package.findMany({
+    return this.uow.prisma.postpaidPackage.findMany({
       where: { companyId: { not: null } },
       include: { provider: true, company: true, _count: { select: { lines: true } } },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' } ],

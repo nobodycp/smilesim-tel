@@ -130,7 +130,7 @@ export class AccountsRepository {
   }
 
   lineCount(db: Db, id: string) {
-    return db.line.count({ where: { posId: id } });
+    return db.postpaidLine.count({ where: { posId: id } });
   }
 
   /** Tasks the account sent, was the point of sale of, or handled. */
@@ -152,11 +152,11 @@ export class AccountsRepository {
   }
 
   removePackages(db: Db, userId: string) {
-    return db.userPackage.deleteMany({ where: { userId } });
+    return db.postpaidUserPackage.deleteMany({ where: { userId } });
   }
 
   removeSellPrices(db: Db, ownerId: string) {
-    return db.sellPrice.deleteMany({ where: { ownerId } });
+    return db.postpaidSellPrice.deleteMany({ where: { ownerId } });
   }
 
   removeAccount(db: Db, id: string) {

@@ -38,8 +38,8 @@ describe('package catalog routes over HTTP', () => {
     for (const id of ['owner', 'clerk', 'ag1']) sessions[id] = await store.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
     const packages: Record<string, ReturnType<typeof pkg>> = { p1: pkg('p1'), p2: pkg('p2'), other: pkg('other', { company: { ...company, code: 'alloha' } }) };
     const tx = {
-      packageRenewal: { deleteMany: async (args: unknown) => void writes.push({ op: 'renewal.deleteMany', args }), createMany: async (args: unknown) => void writes.push({ op: 'renewal.createMany', args }) },
-      packageSwitch: { deleteMany: async (args: unknown) => void writes.push({ op: 'switch.deleteMany', args }), createMany: async (args: unknown) => void writes.push({ op: 'switch.createMany', args }) },
+      postpaidPackageRenewal: { deleteMany: async (args: unknown) => void writes.push({ op: 'renewal.deleteMany', args }), createMany: async (args: unknown) => void writes.push({ op: 'renewal.createMany', args }) },
+      postpaidPackageSwitch: { deleteMany: async (args: unknown) => void writes.push({ op: 'switch.deleteMany', args }), createMany: async (args: unknown) => void writes.push({ op: 'switch.createMany', args }) },
     };
     const tables = {
       ...tx,
@@ -48,7 +48,7 @@ describe('package catalog routes over HTTP', () => {
         findUnique: async ({ where }: { where: { id: string } }) => grants[where.id],
         findMany: async () => [{ id: 'owner', loginName: 'owner', nickname: 'owner', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null }],
       },
-      package: {
+      postpaidPackage: {
         findUnique: async ({ where, include }: { where: { code: string }; include?: Record<string, unknown> }) => {
           const found = packages[where.code];
           if (!found || !include?.lines) return found ?? null;

@@ -215,7 +215,7 @@ suite('the ports of slice R.2 (PostgreSQL)', () => {
     });
 
     it('the ordinary record swallows a failure to write; the strict one (an eSIM read) throws it', async () => {
-      const broken = new PrismaActivityRecorder({ client: { session: prisma.session, user: prisma.user, line: prisma.line, activityEvent: { create: async () => { throw new Error('the log is down'); } } }, available: true } as never);
+      const broken = new PrismaActivityRecorder({ client: { session: prisma.session, user: prisma.user, postpaidLine: prisma.postpaidLine, activityEvent: { create: async () => { throw new Error('the log is down'); } } }, available: true } as never);
       const token = await session(ids.pos, 'account');
       const output = await capturedOutput(async () => {
         await expect(broken.record({ sessionId: token }, '', { action: 'fund' }, 'ok', '')).resolves.toBeUndefined();

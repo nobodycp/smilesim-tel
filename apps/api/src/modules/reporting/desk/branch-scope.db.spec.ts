@@ -52,7 +52,7 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
       user(ids.pos, 'pos', ids.agent), user(ids.frozen, 'pos', ids.agent, new Date('2026-11-01T00:00:00Z')),
     ]) await prisma.user.create({ data: row });
     await prisma.provider.create({ data: { id: ids.provider, code: `bs-${tag}`, name: `bs-${tag}` } });
-    await prisma.package.create({
+    await prisma.postpaidPackage.create({
       data: {
         id: ids.pkg, code: `bs-${tag}`, name: `bs-${tag}`, providerId: ids.provider, branchCost: 1, mainPrice: 1, agentPrice: 1, posPrice: 1, subscriberPrice: 1,
         renewalBranchCost: 1, renewalMainPrice: 1, renewalAgentPrice: 1, renewalPosPrice: 1, renewalSubscriberPrice: 1, autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false,
@@ -62,13 +62,13 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
     const line = (n: number, posId: string, status: string, endsInDays: number) => ({
       msisdn: `059${digits}${n}`, status, posId, packageId: ids.pkg, terms: {}, endsAt: new Date(Date.now() + endsInDays * day),
     });
-    await prisma.line.createMany({
+    await prisma.postpaidLine.createMany({
       data: [
         line(1, ids.pos, 'active', 30), line(2, ids.pos, 'active', 1), line(3, ids.pos, 'frozen', 30), line(4, ids.pos, 'active', -200),
         line(5, ids.frozen, 'active', 30), line(6, ids.frozen, 'disconnected', -10),
       ],
     });
-    const seeded = await prisma.line.findMany({ where: { packageId: ids.pkg }, select: { id: true, posId: true } });
+    const seeded = await prisma.postpaidLine.findMany({ where: { packageId: ids.pkg }, select: { id: true, posId: true } });
     await prisma.walletEntry.createMany({
       data: seeded.map((row, index) => ({ userId: row.posId, actorId: row.posId, amount: 0, balanceAfter: 0, kind: 'freeze', providerId: ids.provider, providerCost: 0, lineId: row.id, createdAt: new Date(Date.now() + 60_000 + index) })),
     });
@@ -76,8 +76,8 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.pos, ids.frozen] } } });
-    await prisma.line.deleteMany({ where: { packageId: ids.pkg } });
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidLine.deleteMany({ where: { packageId: ids.pkg } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.frozen, ids.pos, ids.agent, ids.main, ids.staff, ids.owner] } } });
     await prisma.$disconnect();
@@ -92,14 +92,14 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
     expect(list).toEqual(expect.arrayContaining([ids.pos, ids.frozen]));
     expect(list).not.toContain(ids.staff);
     // No line and no line operation belongs to an account outside that list: dropping it shows no new row.
-    expect(await prisma.line.count({ where: { posId: { notIn: list } } })).toBe(0);
+    expect(await prisma.postpaidLine.count({ where: { posId: { notIn: list } } })).toBe(0);
     expect(await prisma.walletEntry.count({ where: { userId: { notIn: list }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } } })).toBe(0);
   });
 
   it('the numbers list: the branch\'s total equals the id list\'s, and it holds every seeded line', async () => {
     const list = await everyPos();
     const all = await lines.list(branch, {});
-    expect(all.total).toBe(await prisma.line.count({ where: { posId: { in: list } } }));
+    expect(all.total).toBe(await prisma.postpaidLine.count({ where: { posId: { in: list } } }));
     const found = await lines.list(branch, { q: `059${digits}` });
     expect(found.items.map((row) => row.msisdn).sort()).toEqual([1, 2, 3, 4, 5, 6].map((n) => `059${digits}${n}`));
     for (const status of ['active', 'frozen', 'disconnected', 'expiring', 'suspended']) {
@@ -112,8 +112,8 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
   it('the desk and the overview: the branch\'s counts equal the ones the id list gave', async () => {
     const list = await everyPos();
     const home = await desk.home(branch);
-    expect(home.activeLines).toBe(await prisma.line.count({ where: { posId: { in: list }, status: 'active' } }));
-    expect(home.inactiveLines).toBe(await prisma.line.count({ where: { posId: { in: list }, status: 'disconnected' } }));
+    expect(home.activeLines).toBe(await prisma.postpaidLine.count({ where: { posId: { in: list }, status: 'active' } }));
+    expect(home.inactiveLines).toBe(await prisma.postpaidLine.count({ where: { posId: { in: list }, status: 'disconnected' } }));
     const latest = await prisma.walletEntry.findMany({
       where: { userId: { in: list }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
       orderBy: { createdAt: 'desc' }, take: 8, select: { id: true },
@@ -122,13 +122,13 @@ suite('the branch sends no point-of-sale id list (PostgreSQL)', () => {
     // The overview's donut, the old way: five counts over the id list (the lines' end dates are days from now).
     const now = new Date();
     const scope = { posId: { in: list } };
-    const periods = (await prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
+    const periods = (await prisma.postpaidPackage.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
     const [active, expiring, frozen, disconnected, suspended] = await Promise.all([
-      prisma.line.count({ where: { ...scope, status: 'active' } }),
-      prisma.line.count({ where: { AND: [scope, expiringWhere(now)] } }),
-      prisma.line.count({ where: { ...scope, status: 'frozen' } }),
-      prisma.line.count({ where: { ...scope, status: 'disconnected' } }),
-      prisma.line.count({ where: { AND: [scope, suspendedWhere(periods, now)] } }),
+      prisma.postpaidLine.count({ where: { ...scope, status: 'active' } }),
+      prisma.postpaidLine.count({ where: { AND: [scope, expiringWhere(now)] } }),
+      prisma.postpaidLine.count({ where: { ...scope, status: 'frozen' } }),
+      prisma.postpaidLine.count({ where: { ...scope, status: 'disconnected' } }),
+      prisma.postpaidLine.count({ where: { AND: [scope, suspendedWhere(periods, now)] } }),
     ]);
     const { lines: counts } = await overview.overview(branch, { period: 'all' });
     expect(counts).toEqual({ active: Math.max(0, active - expiring - suspended), expiring, frozen, disconnected, suspended });

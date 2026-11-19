@@ -24,7 +24,7 @@ export class LinesRepository {
 
   /** The distinct suspension periods the packages use. */
   suspendPeriods() {
-    return this.uow.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
+    return this.uow.prisma.postpaidPackage.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
   }
 
   /**
@@ -33,7 +33,7 @@ export class LinesRepository {
    */
   async packageIdsNamed(texts: string[]): Promise<string[]> {
     if (texts.length === 0) return [];
-    const rows = await this.uow.prisma.package.findMany({
+    const rows = await this.uow.prisma.postpaidPackage.findMany({
       where: {
         OR: texts.flatMap((text) => [
           { name: { contains: text, mode: 'insensitive' as const } },
@@ -51,8 +51,8 @@ export class LinesRepository {
   }
 
   /** One page of numbers (and one row more), newest first, each with its package, company and point of sale. */
-  linesPage(where: Prisma.LineWhereInput, take: number) {
-    return this.uow.prisma.line.findMany({
+  linesPage(where: Prisma.PostpaidLineWhereInput, take: number) {
+    return this.uow.prisma.postpaidLine.findMany({
       where,
       // The point of sale's login and nothing else: never its password hash or its two-factor secrets.
       include: { package: { include: { company: { select: LIST_COMPANY } } }, pos: { select: { loginName: true } } },
@@ -62,13 +62,13 @@ export class LinesRepository {
   }
 
   /** How many numbers `where` holds, `take` at most, counted in the page's order (`countUpTo`, plan DB.8). */
-  countLines(where: Prisma.LineWhereInput, take: number) {
-    return this.uow.prisma.line.count({ where, orderBy: [...NEWEST_FIRST], take });
+  countLines(where: Prisma.PostpaidLineWhereInput, take: number) {
+    return this.uow.prisma.postpaidLine.count({ where, orderBy: [...NEWEST_FIRST], take });
   }
 
   /** One number as its card shows it: its package with company and provider, and its point of sale. */
   lineCard(id: string) {
-    return this.uow.prisma.line.findUnique({
+    return this.uow.prisma.postpaidLine.findUnique({
       where: { id },
       include: { package: { include: { company: { select: CARD_COMPANY }, provider: true } }, pos: { select: { loginName: true } } },
     });
@@ -99,7 +99,7 @@ export class LinesRepository {
 
   /** These packages' names with their company's: what the card's history names a task's package by. */
   packagesByIds(ids: string[]) {
-    return this.uow.prisma.package.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, company: { select: { name: true } } } });
+    return this.uow.prisma.postpaidPackage.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, company: { select: { name: true } } } });
   }
 
   /** The newest entry of these kinds on a number: its last recharge. */
@@ -109,7 +109,7 @@ export class LinesRepository {
 
   /** The add-ons of a package a number may ask for, in their saved order. */
   activeAddons(packageId: string) {
-    return this.uow.prisma.packageAddon.findMany({
+    return this.uow.prisma.postpaidPackageAddon.findMany({
       where: { packageId, active: true },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       select: { id: true, name: true, price: true },
@@ -118,7 +118,7 @@ export class LinesRepository {
 
   /** The switch targets saved on a package, with what decides whether an account sees each. */
   switchTargets(packageId: string) {
-    return this.uow.prisma.packageSwitch.findMany({
+    return this.uow.prisma.postpaidPackageSwitch.findMany({
       where: { packageId },
       select: { target: { select: { id: true, code: true, enabled: true, forSale: true } } },
     });
@@ -126,7 +126,7 @@ export class LinesRepository {
 
   /** The terms these accounts hold on these packages. */
   accountTerms(packageIds: string[], userIds: string[]) {
-    return this.uow.prisma.userPackage.findMany({
+    return this.uow.prisma.postpaidUserPackage.findMany({
       where: { packageId: { in: packageIds }, userId: { in: userIds } },
       select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
     });
@@ -136,7 +136,7 @@ export class LinesRepository {
 
   /** The number holding this msisdn, if any. */
   lineByMsisdn(msisdn: string, db: Db = this.uow.prisma) {
-    return db.line.findUnique({ where: { msisdn } });
+    return db.postpaidLine.findUnique({ where: { msisdn } });
   }
 
   /** The open activation task that has reserved this number, if there is one. */
@@ -146,7 +146,7 @@ export class LinesRepository {
 
   /** A package by its code with company and provider, and each renewal target with its own. */
   packageWithRenewals(code: string) {
-    return this.uow.prisma.package.findUnique({
+    return this.uow.prisma.postpaidPackage.findUnique({
       where: { code },
       include: { company: true, provider: true, renewals: { include: { target: { include: { company: true, provider: true } } } } },
     });
@@ -154,16 +154,16 @@ export class LinesRepository {
 
   /** A package by its code, with its company and provider. */
   packageByCode(code: string) {
-    return this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
+    return this.uow.prisma.postpaidPackage.findUnique({ where: { code }, include: { company: true, provider: true } });
   }
 
   /** The switches saved on a package, each with its target's code. */
   switchesOf(packageId: string) {
-    return this.uow.prisma.packageSwitch.findMany({ where: { packageId }, include: { target: { select: { code: true } } } });
+    return this.uow.prisma.postpaidPackageSwitch.findMany({ where: { packageId }, include: { target: { select: { code: true } } } });
   }
 
   addon(id: string) {
-    return this.uow.prisma.packageAddon.findUnique({ where: { id } });
+    return this.uow.prisma.postpaidPackageAddon.findUnique({ where: { id } });
   }
 
   /** The task as it stands before its completion; the claim below decides. */
@@ -173,7 +173,7 @@ export class LinesRepository {
 
   /** A package by its id with its company: the SIM rules a handed-back serial is checked against. */
   packageWithCompany(id: string) {
-    return this.uow.prisma.package.findUnique({ where: { id }, include: { company: true } });
+    return this.uow.prisma.postpaidPackage.findUnique({ where: { id }, include: { company: true } });
   }
 
   /** The wallet entries of these kinds on a number, newest first: the paid periods a refund reads back. */
@@ -200,7 +200,7 @@ export class LinesRepository {
   }
 
   packageName(db: Db, id: string) {
-    return db.package.findUnique({ where: { id }, select: { name: true } });
+    return db.postpaidPackage.findUnique({ where: { id }, select: { name: true } });
   }
 
   /** Writes the note an open task is read by: a provider failure makes it an ordinary branch task. */
@@ -234,12 +234,12 @@ export class LinesRepository {
 
   /** A number with its package and company, as it stands inside the transaction. */
   lineWithCompany(db: Db, id: string) {
-    return db.line.findUnique({ where: { id }, include: { package: { include: { company: true } } } });
+    return db.postpaidLine.findUnique({ where: { id }, include: { package: { include: { company: true } } } });
   }
 
   /** A package by its id with company and provider, and each renewal target with its own. */
   packageWithRenewalsById(db: Db, id: string) {
-    return db.package.findUnique({
+    return db.postpaidPackage.findUnique({
       where: { id },
       include: { company: true, provider: true, renewals: { include: { target: { include: { company: true, provider: true } } } } },
     });
@@ -247,38 +247,38 @@ export class LinesRepository {
 
   /** A package by its id, with its company and provider. */
   packageById(db: Db, id: string) {
-    return db.package.findUnique({ where: { id }, include: { company: true, provider: true } });
+    return db.postpaidPackage.findUnique({ where: { id }, include: { company: true, provider: true } });
   }
 
   /** A package by its id with company, provider and the codes it may switch onto. */
   packageWithSwitches(db: Db, id: string) {
-    return db.package.findUnique({ where: { id }, include: { company: true, provider: true, switches: { include: { target: { select: { code: true } } } } } });
+    return db.postpaidPackage.findUnique({ where: { id }, include: { company: true, provider: true, switches: { include: { target: { select: { code: true } } } } } });
   }
 
   // Writes on a number. Its status is never written here (line-state.ts).
 
-  createLine(db: Db, data: Prisma.LineUncheckedCreateInput) {
+  createLine(db: Db, data: Prisma.PostpaidLineUncheckedCreateInput) {
     assertStoredSealed(data.esimQr);
-    return db.line.create({ data });
+    return db.postpaidLine.create({ data });
   }
 
   /** Puts a number on another package with the terms it now carries, and lifts the switch lock. */
   switchLine(db: Db, id: string, terms: Prisma.InputJsonValue, packageId: string) {
-    return db.line.update({ where: { id }, data: { terms, packageId, opsLocked: false } });
+    return db.postpaidLine.update({ where: { id }, data: { terms, packageId, opsLocked: false } });
   }
 
   /** Extends a number: its new end, the terms it now carries and, when it renews onto one, its new package. */
   extendLine(db: Db, id: string, data: { endsAt: Date; terms: Prisma.InputJsonValue; packageId?: string }) {
-    return db.line.update({ where: { id }, data });
+    return db.postpaidLine.update({ where: { id }, data });
   }
 
   renameLine(db: Db, id: string, msisdn: string) {
-    return db.line.update({ where: { id }, data: { msisdn } });
+    return db.postpaidLine.update({ where: { id }, data: { msisdn } });
   }
 
   /** Puts another SIM on a number. */
   setLineSim(db: Db, id: string, sim: { iccid: string; esim: boolean; esimQr: string | null }) {
     assertStoredSealed(sim.esimQr);
-    return db.line.update({ where: { id }, data: { iccid: sim.iccid, esim: sim.esim, esimQr: sim.esimQr } });
+    return db.postpaidLine.update({ where: { id }, data: { iccid: sim.iccid, esim: sim.esim, esimQr: sim.esimQr } });
   }
 }

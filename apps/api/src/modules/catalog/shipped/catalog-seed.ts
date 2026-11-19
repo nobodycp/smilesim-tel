@@ -34,7 +34,7 @@ export class CatalogSeed implements OnModuleInit {
     const seeded = await this.uow.prisma.provider.count();
     if (seeded > 0) return;
     for (const company of companies) {
-      await this.uow.prisma.company.upsert({
+      await this.uow.prisma.postpaidCompany.upsert({
         where: { code: company.code },
         update: { name: company.name },
         create: { code: company.code, name: company.name },
@@ -49,13 +49,13 @@ export class CatalogSeed implements OnModuleInit {
       // New packages copy provider defaults once; package rows stay independent after create.
       const flags = packageFlagsFromModes(normalizeActionModes(savedProvider.actionModes));
       for (const company of provider.companies) {
-        const savedCompany = await this.uow.prisma.company.findUnique({ where: { code: company.code } });
+        const savedCompany = await this.uow.prisma.postpaidCompany.findUnique({ where: { code: company.code } });
         if (!savedCompany) continue;
         for (const item of company.packages) {
           // The catalog names a package by the provider's product code; its public code never names the provider.
           const productCode = packageCode(provider.code, company.code, item);
           const id = randomUUID();
-          await this.uow.prisma.package.upsert({
+          await this.uow.prisma.postpaidPackage.upsert({
             where: { providerId_providerProductCode: { providerId: savedProvider.id, providerProductCode: productCode } },
             update: {},
             create: {

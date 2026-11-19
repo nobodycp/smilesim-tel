@@ -35,9 +35,9 @@ describe('reports and line refusals over HTTP', () => {
         findUnique: async ({ where }: { where: { id: string } }) => grants[where.id],
         findMany: async () => [{ id: 'owner', loginName: 'owner', nickname: 'owner', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null }],
       },
-      package: { findMany: async () => [pkg] },
+      postpaidPackage: { findMany: async () => [pkg] },
       walletEntry: { findMany: async () => [entry], count: async () => 1 },
-      line: { findUnique: async () => line },
+      postpaidLine: { findUnique: async () => line },
     };
     ({ app } = await apiTestApp(store, tables));
   });

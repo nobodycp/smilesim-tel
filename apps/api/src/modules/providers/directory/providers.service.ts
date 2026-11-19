@@ -103,7 +103,7 @@ export class ProvidersService {
     const following = await this.repo.packagesInheriting(row.id, action);
     await this.repo.saveModes(code, modes, following.map((pkg) => ({
       id: pkg.id,
-      data: packageModeData(pkg.actionModes, pkg, action, mode) as Prisma.PackageUpdateInput,
+      data: packageModeData(pkg.actionModes, pkg, action, mode) as Prisma.PostpaidPackageUpdateInput,
     })));
     return { ok: true as const };
   }

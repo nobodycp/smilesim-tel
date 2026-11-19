@@ -133,10 +133,10 @@ async function serviceWith(tables: Record<string, unknown>) {
       findMany: async () => accounts,
     },
     // An empty catalog unless the spec hands one: the searches read names from it first (plan DB.6).
-    package: table([]),
+    postpaidPackage: table([]),
     // The company marks the numbers list reads by URL (speed plan PF.7): none.
     $queryRaw: async () => [],
-    company: table([]),
+    postpaidCompany: table([]),
     ...tables,
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = prisma;
@@ -167,7 +167,7 @@ describe('numbers list paging', () => {
   async function walk(query: Parameters<ApiFacade['lines']>[1]) {
     const calls: FindArgs[] = [];
     // The catalog the search reads names from first (search, plan DB.6).
-    const { service, gate } = await serviceWith({ line: table(lines, calls), package: table([pkgA, pkgB]) });
+    const { service, gate } = await serviceWith({ postpaidLine: table(lines, calls), postpaidPackage: table([pkgA, pkgB]) });
     const pages: string[][] = [];
     let cursor: string | undefined;
     do {
@@ -196,7 +196,7 @@ describe('numbers list paging', () => {
 
   it('sends no next cursor when the last page is exactly full', async () => {
     const exact = lines.slice(0, 30);
-    const { service, gate } = await serviceWith({ line: table(exact) });
+    const { service, gate } = await serviceWith({ postpaidLine: table(exact) });
     const result = await service.lines(gate);
     expect(result.items).toHaveLength(30);
     expect(result.nextCursor).toBeNull();
@@ -308,7 +308,7 @@ describe('numbers list paging', () => {
 
   it('finds a line by its serial', async () => {
     const serial = { ...lines[0], id: 'by-serial', msisdn: '0590000001', iccid: '8997200000000000001' };
-    const { service, gate } = await serviceWith({ line: table([serial, lines[1]]) });
+    const { service, gate } = await serviceWith({ postpaidLine: table([serial, lines[1]]) });
     const found = await service.lines(gate, { q: '899 7200' });
     expect(found.items.map((line) => line.id)).toEqual(['by-serial']);
   });
@@ -326,7 +326,7 @@ describe('numbers list paging', () => {
       { ...lines[1], id: 'by-number', msisdn: '0540012345', package: pkgB, packageId: 'pb' },
       { ...lines[2], id: 'neither', msisdn: '0550000003', package: pkgB, packageId: 'pb' },
     ];
-    const { service, gate } = await serviceWith({ line: table(mixed), package: table([pkgA, pkgB]) });
+    const { service, gate } = await serviceWith({ postpaidLine: table(mixed), postpaidPackage: table([pkgA, pkgB]) });
     const found = await service.lines(gate, { q: '400' });
     expect(found.items.map((line) => line.id).sort()).toEqual(['by-number', 'by-package']);
     const spaced = await service.lines(gate, { q: '054 0012' });
@@ -466,7 +466,7 @@ describe('time-ordered lists', () => {
       assignee: null,
       notes: [],
     }));
-    const { service, gate } = await serviceWith({ task: table(tasks), package: { findMany: async () => [{ id: 'pa', name: '400' }] } });
+    const { service, gate } = await serviceWith({ task: table(tasks), postpaidPackage: { findMany: async () => [{ id: 'pa', name: '400' }] } });
     const ids: string[] = [];
     const sizes: number[] = [];
     let cursor: string | undefined;
@@ -534,7 +534,7 @@ describe('task reading follows the number', () => {
     (service as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: grants, isBranchOwner: owner }), findMany: async () => chain },
       task: table(rows),
-      package: { findMany: async () => [{ id: 'pa', name: '400' }] },
+      postpaidPackage: { findMany: async () => [{ id: 'pa', name: '400' }] },
     };
     return { service, gate: { sessionId } };
   }
@@ -638,10 +638,10 @@ describe('capped totals (database plan DB.8)', () => {
     const counts: FindArgs[] = [];
     const pages: FindArgs[] = [];
     const rows = stamped('ln', { posId: 'pos1', status: 'active', endsAt: new Date(t0), package: { code: 'pk', name: '400', posPrice: 30, company: null }, pos: { loginName: 'pos1' } });
-    const crowd = await serviceWith({ line: crowded(rows, counts, pages) });
+    const crowd = await serviceWith({ postpaidLine: crowded(rows, counts, pages) });
     expect(await crowd.service.lines(crowd.gate)).toMatchObject(CAPPED);
     expectCapped(counts, pages);
-    const few = await serviceWith({ line: table(rows) });
+    const few = await serviceWith({ postpaidLine: table(rows) });
     expect(await few.service.lines(few.gate)).toMatchObject({ total: 3, totalCapped: false });
   });
 
@@ -650,10 +650,10 @@ describe('capped totals (database plan DB.8)', () => {
     const pages: FindArgs[] = [];
     const rows = stamped('tk', { posId: 'pos1', action: 'extend', status: 'pending', posDelta: 0, packageId: 'pa', submitterId: 'admin', submitter: { loginName: 'admin' }, assignee: null, notes: [] });
     const pkg = { findMany: async () => [{ id: 'pa', name: '400' }] };
-    const crowd = await serviceWith({ task: crowded(rows, counts, pages), package: pkg });
+    const crowd = await serviceWith({ task: crowded(rows, counts, pages), postpaidPackage: pkg });
     expect(await crowd.service.tasks(crowd.gate, {})).toMatchObject(CAPPED);
     expectCapped(counts, pages);
-    const few = await serviceWith({ task: table(rows), package: pkg });
+    const few = await serviceWith({ task: table(rows), postpaidPackage: pkg });
     expect(await few.service.tasks(few.gate, {})).toMatchObject({ total: 3, totalCapped: false });
   });
 

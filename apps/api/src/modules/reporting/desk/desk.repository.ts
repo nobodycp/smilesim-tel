@@ -64,21 +64,21 @@ export class DeskRepository {
 
   /** How many lines of these points of sale (null: of every point of sale, the branch's view) are stored with this status. */
   lineCountInStatus(posIds: string[] | null, status: string) {
-    return this.uow.prisma.line.count({ where: { ...(posIds ? { posId: { in: posIds } } : {}), status } });
+    return this.uow.prisma.postpaidLine.count({ where: { ...(posIds ? { posId: { in: posIds } } : {}), status } });
   }
 
   /** How many lines under `scope` are stored in each status, in one read (database plan DB.11). */
-  lineCountsByStatus(scope: Prisma.LineWhereInput) {
-    return this.uow.prisma.line.groupBy({ by: ['status'], where: scope, _count: { _all: true } });
+  lineCountsByStatus(scope: Prisma.PostpaidLineWhereInput) {
+    return this.uow.prisma.postpaidLine.groupBy({ by: ['status'], where: scope, _count: { _all: true } });
   }
 
-  lineCount(where: Prisma.LineWhereInput) {
-    return this.uow.prisma.line.count({ where });
+  lineCount(where: Prisma.PostpaidLineWhereInput) {
+    return this.uow.prisma.postpaidLine.count({ where });
   }
 
   /** How many lines each point of sale has under the filter: the daily snapshot sums them per account. */
-  lineCountsByPos(where: Prisma.LineWhereInput) {
-    return this.uow.prisma.line.groupBy({ by: ['posId'], where, _count: { _all: true } });
+  lineCountsByPos(where: Prisma.PostpaidLineWhereInput) {
+    return this.uow.prisma.postpaidLine.groupBy({ by: ['posId'], where, _count: { _all: true } });
   }
 
   /** The last eight line operations of these points of sale (null: of every one, the branch's view), with the account that paid. */
@@ -93,17 +93,17 @@ export class DeskRepository {
 
   /** Writes an account's line counts for the day, over the ones already stored for it. */
   saveLineSnapshot(userId: string, day: string, lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number }) {
-    return this.uow.prisma.lineCountSnapshot.upsert({ where: { userId_day: { userId, day } }, update: lines, create: { userId, day, ...lines } });
+    return this.uow.prisma.postpaidLineCountSnapshot.upsert({ where: { userId_day: { userId, day } }, update: lines, create: { userId, day, ...lines } });
   }
 
   /** The viewer's last snapshot before the day. */
   lineSnapshotBefore(userId: string, before: string) {
-    return this.uow.prisma.lineCountSnapshot.findFirst({ where: { userId, day: { lt: before } }, orderBy: { day: 'desc' } });
+    return this.uow.prisma.postpaidLineCountSnapshot.findFirst({ where: { userId, day: { lt: before } }, orderBy: { day: 'desc' } });
   }
 
   /** Every distinct number of days after which a package's line is suspended. */
   suspendPeriods() {
-    return this.uow.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
+    return this.uow.prisma.postpaidPackage.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
   }
 
   /**

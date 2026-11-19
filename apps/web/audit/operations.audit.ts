@@ -52,7 +52,7 @@ let M: Pack;
 async function catalog(): Promise<{ P: Pack; Q: Pack; M: Pack }> {
   const rows = await sql<Pack>(
     `SELECT p.code, p.name, p."posPrice", p."renewalPosPrice", p."branchCost", p.months, c.name AS company, c.code AS "companyCode"
-       FROM "Package" p JOIN "Company" c ON c.id = p."companyId" JOIN "Provider" pr ON pr.id = p."providerId"
+       FROM "PostpaidPackage" p JOIN "PostpaidCompany" c ON c.id = p."companyId" JOIN "Provider" pr ON pr.id = p."providerId"
       WHERE p."forSale" AND p.enabled AND pr.code = 'lian' AND p.months = 1
       ORDER BY c.code, p."posPrice"`,
   );
@@ -185,7 +185,7 @@ async function completeOnScreen(taskId: string) {
 
 async function newestLine(owner: string): Promise<Line> {
   const rows = await sql<{ id: string; msisdn: string }>(
-    `SELECT l.id, l.msisdn FROM "Line" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = $1 ORDER BY l."createdAt" DESC LIMIT 1`,
+    `SELECT l.id, l.msisdn FROM "PostpaidLine" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = $1 ORDER BY l."createdAt" DESC LIMIT 1`,
     [owner],
   );
   if (!rows[0]) throw new Error(`no line for ${owner}`);
@@ -193,7 +193,7 @@ async function newestLine(owner: string): Promise<Line> {
 }
 
 async function lineCount(owner: string) {
-  const rows = await sql<{ n: string }>(`SELECT count(*) AS n FROM "Line" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = $1`, [owner]);
+  const rows = await sql<{ n: string }>(`SELECT count(*) AS n FROM "PostpaidLine" l JOIN "User" u ON u.id = l."posId" WHERE u."loginName" = $1`, [owner]);
   return Number(rows[0]?.n ?? 0);
 }
 
@@ -441,7 +441,7 @@ test('the branch activates for the point of sale, then every failed operation go
     expectRecorded('branch transfer', last, after, 'transfer', 0, 0);
     expect.soft(await balance('pos2'), 'the new point of sale is not charged').toBe(0);
     const owner = await sql<{ loginName: string }>(
-      `SELECT u."loginName" FROM "Line" l JOIN "User" u ON u.id = l."posId" WHERE l.id = $1`,
+      `SELECT u."loginName" FROM "PostpaidLine" l JOIN "User" u ON u.id = l."posId" WHERE l.id = $1`,
       [line.id],
     );
     expect.soft(owner[0]?.loginName, 'the line now belongs to pos2').toBe('pos2');
@@ -478,7 +478,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     await admin.getByRole('button', { name: 'حفظ', exact: true }).click();
     expect.soft(await outcomeText(admin), 'the company page confirms the save').toBe('حُفظت إعدادات الشركة.');
     const stored = await sql<{ iccidLength: number | null; iccidPrefix: string | null; esim: boolean }>(
-      `SELECT "iccidLength", "iccidPrefix", esim FROM "Company" WHERE code = $1`,
+      `SELECT "iccidLength", "iccidPrefix", esim FROM "PostpaidCompany" WHERE code = $1`,
       [P.companyCode],
     );
     expect.soft(stored[0], 'the rule is stored on the company').toEqual({ iccidLength: LENGTH, iccidPrefix: PREFIX, esim: false });

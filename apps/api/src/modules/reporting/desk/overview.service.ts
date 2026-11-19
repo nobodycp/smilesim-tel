@@ -142,7 +142,7 @@ export class OverviewService {
    * `posIds` null is every point of sale (the branch).
    */
   private async lines(posIds: string[] | null, now: Date): Promise<LineCounts> {
-    const scope: Prisma.LineWhereInput = posIds ? { posId: { in: posIds } } : {};
+    const scope: Prisma.PostpaidLineWhereInput = posIds ? { posId: { in: posIds } } : {};
     const periods = (await this.repo.suspendPeriods()).map((row) => row.suspendAfterDays);
     const suspendedScope = { AND: [scope, suspendedWhere(periods, now)] };
     // The stored statuses in one grouped read (database plan DB.11). Expiring and suspended are windows on the end

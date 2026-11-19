@@ -105,7 +105,7 @@ export class PrismaActivityRecorder extends ActivityRecorder {
   private async subjectRef(db: PrismaClient, event: ActivityDraft): Promise<string> {
     const ref = event.subjectRef ?? '';
     if (event.subjectKind !== 'line' || !ref) return ref;
-    const line = await db.line.findUnique({ where: { id: ref }, select: { msisdn: true } });
+    const line = await db.postpaidLine.findUnique({ where: { id: ref }, select: { msisdn: true } });
     return line?.msisdn ?? ref;
   }
 }

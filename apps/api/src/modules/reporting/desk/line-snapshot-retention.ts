@@ -11,7 +11,7 @@ export function purgeLineSnapshots(db: Pick<Prisma.TransactionClient, '$executeR
   // The day is stored as `YYYY-MM-DD`, which orders as the dates do.
   const before = daysBefore(LINE_SNAPSHOT_RETENTION_DAYS, now).toISOString().slice(0, 10);
   return inBatches(
-    (limit) => db.$executeRaw`DELETE FROM "LineCountSnapshot" WHERE ("userId", "day") IN (SELECT "userId", "day" FROM "LineCountSnapshot" WHERE "day" < ${before} LIMIT ${limit})`,
+    (limit) => db.$executeRaw`DELETE FROM "PostpaidLineCountSnapshot" WHERE ("userId", "day") IN (SELECT "userId", "day" FROM "PostpaidLineCountSnapshot" WHERE "day" < ${before} LIMIT ${limit})`,
     batch,
   );
 }

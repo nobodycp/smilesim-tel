@@ -30,7 +30,7 @@ const STATUS_FOR_TASK: Record<Exclude<Action, 'activate'>, readonly LineStatus[]
 
 /** Holds the line's row until the transaction ends. Always before any wallet lock (rule 1.4). */
 export async function lockLine(tx: Prisma.TransactionClient, lineId: string): Promise<void> {
-  await tx.$queryRaw`SELECT "id" FROM "Line" WHERE "id" = ${lineId} FOR UPDATE`;
+  await tx.$queryRaw`SELECT "id" FROM "PostpaidLine" WHERE "id" = ${lineId} FOR UPDATE`;
 }
 
 /** Serialises every transaction that names the same key (a SIM serial has no row of its own to lock). */
@@ -67,14 +67,14 @@ export function unchanged(before: Fingerprint, now: Fingerprint): boolean {
  */
 export async function lockUnchanged(tx: Prisma.TransactionClient, before: Fingerprint & { id: string }): Promise<void> {
   await lockLine(tx, before.id);
-  const now = await tx.line.findUnique({ where: { id: before.id } });
+  const now = await tx.postpaidLine.findUnique({ where: { id: before.id } });
   if (!now || !unchanged(before, now)) fail(409, 'DUPLICATE_REQUEST');
 }
 
 /** The task's line, locked and read with its package, or nothing when the task has no line. */
 export async function lockedTaskLine(tx: Prisma.TransactionClient, action: Action, lineId: string) {
   await lockLine(tx, lineId);
-  const line = await tx.line.findUnique({ where: { id: lineId }, include: { package: { include: { company: true, provider: true } } } });
+  const line = await tx.postpaidLine.findUnique({ where: { id: lineId }, include: { package: { include: { company: true, provider: true } } } });
   if (!line) fail(400, 'INVALID');
   assertTaskFits(action, line);
   return line;
@@ -86,11 +86,11 @@ export async function moveLineStatus(
   lineId: string,
   from: readonly LineStatus[],
   to: LineStatus,
-  data: Omit<Prisma.LineUncheckedUpdateManyInput, 'status'> = {},
+  data: Omit<Prisma.PostpaidLineUncheckedUpdateManyInput, 'status'> = {},
 ): Promise<void> {
   // This write takes any column of a line; a code among them must be sealed like everywhere else (S.5b).
   assertStoredSealed(data.esimQr);
-  const changed = await tx.line.updateMany({ where: { id: lineId, status: { in: [...from] } }, data: { ...data, status: to } });
+  const changed = await tx.postpaidLine.updateMany({ where: { id: lineId, status: { in: [...from] } }, data: { ...data, status: to } });
   if (changed.count !== 1) fail(400, 'INVALID');
 }
 
@@ -115,9 +115,9 @@ export async function assertClaimFree(tx: Prisma.TransactionClient, claim: Claim
   const notThisLine = exceptLineId ? { id: { not: exceptLineId } } : {};
   const openActivation = { action: 'activate', status: 'working' };
   const [serialLine, serialTask, numberLine, numberTask] = await Promise.all([
-    claim.iccid ? tx.line.findFirst({ where: { iccid: claim.iccid, status: { not: 'disconnected' }, ...notThisLine }, select: { id: true } }) : null,
+    claim.iccid ? tx.postpaidLine.findFirst({ where: { iccid: claim.iccid, status: { not: 'disconnected' }, ...notThisLine }, select: { id: true } }) : null,
     claim.iccid ? tx.task.findFirst({ where: { ...openActivation, iccid: claim.iccid }, select: { id: true } }) : null,
-    claim.msisdn ? tx.line.findUnique({ where: { msisdn: claim.msisdn }, select: { id: true } }) : null,
+    claim.msisdn ? tx.postpaidLine.findUnique({ where: { msisdn: claim.msisdn }, select: { id: true } }) : null,
     claim.msisdn ? tx.task.findFirst({ where: { ...openActivation, msisdn: claim.msisdn }, select: { id: true } }) : null,
   ]);
   const numberOnLine = Boolean(numberLine) && numberLine?.id !== exceptLineId;

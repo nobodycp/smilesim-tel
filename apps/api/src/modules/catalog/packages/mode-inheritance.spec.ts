@@ -29,7 +29,7 @@ function world() {
       findUnique: async ({ where }: { where: { code?: string; id?: string } }) => (where.code === provider.code || where.id === provider.id ? provider : null),
       update: async ({ data }: { data: Record<string, unknown> }) => apply(provider, data),
     },
-    package: {
+    postpaidPackage: {
       findUnique: async ({ where }: { where: { code: string } }) => packages.find((row) => row.code === where.code) ?? null,
       findMany: async ({ where }: { where: { providerId: string; inheritedModes: { has: string } } }) =>
         packages.filter((row) => row.providerId === where.providerId && row.inheritedModes.includes(where.inheritedModes.has)),

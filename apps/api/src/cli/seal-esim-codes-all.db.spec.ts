@@ -37,7 +37,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   /** Every row of both tables: its code, and everything else about it as the database holds it. */
   const rows = async () => ({
-    lines: await prisma.$queryRaw<{ id: string; esimQr: string | null; rest: unknown }[]>`SELECT "id", "esimQr", to_jsonb(l) - 'esimQr' AS rest FROM "Line" l ORDER BY "id"`,
+    lines: await prisma.$queryRaw<{ id: string; esimQr: string | null; rest: unknown }[]>`SELECT "id", "esimQr", to_jsonb(l) - 'esimQr' AS rest FROM "PostpaidLine" l ORDER BY "id"`,
     tasks: await prisma.$queryRaw<{ id: string; esimQr: string | null; rest: unknown }[]>`SELECT "id", "esimQr", to_jsonb(t) - 'esimQr' AS rest FROM "Task" t ORDER BY "id"`,
   });
   /** Everything that is not a code: the other tables, whole. */
@@ -45,7 +45,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     users: await prisma.$queryRaw`SELECT to_jsonb(u) AS row FROM "User" u ORDER BY "id"`,
     wallets: await prisma.$queryRaw`SELECT to_jsonb(w) AS row FROM "Wallet" w ORDER BY "userId"`,
     entries: await prisma.$queryRaw`SELECT to_jsonb(e) AS row FROM "WalletEntry" e ORDER BY "id"`,
-    packages: await prisma.$queryRaw`SELECT to_jsonb(p) AS row FROM "Package" p ORDER BY "id"`,
+    packages: await prisma.$queryRaw`SELECT to_jsonb(p) AS row FROM "PostpaidPackage" p ORDER BY "id"`,
     notes: await prisma.$queryRaw`SELECT to_jsonb(n) AS row FROM "TaskNote" n ORDER BY "id"`,
   });
   const isClear = (value: string | null) => Boolean(value) && !value?.startsWith('v1:');
@@ -54,7 +54,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     await prisma.taskNote.deleteMany({});
     await prisma.walletEntry.deleteMany({});
     await prisma.task.deleteMany({});
-    await prisma.line.deleteMany({});
+    await prisma.postpaidLine.deleteMany({});
     let n = 0;
     const line = (posId: string, esimQr: string | null, status = 'active') => ({ id: randomUUID(), msisdn: number(), iccid: serial(), esim: esimQr !== null, esimQr, status, packageId: ids.pkg, posId, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: { stamp: n } });
     const lines = ids.poses.flatMap((posId) => [
@@ -66,7 +66,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
       line(posId, null),
       line(posId, null, 'frozen'),
     ]);
-    await prisma.line.createMany({ data: lines });
+    await prisma.postpaidLine.createMany({ data: lines });
     const task = (posId: string, status: string, action: string, esimQr: string | null, lineId: string | null = null) => ({ id: randomUUID(), action, status, posId, packageId: ids.pkg, submitterId: posId, posDelta: 0, esim: esimQr !== null, esimQr, lineId, note: `note ${n}`, log: 'opened' });
     const tasks = ids.poses.flatMap((posId, at) => {
       const onLine = lines[at * 12].id;
@@ -105,9 +105,9 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     await prisma.taskNote.deleteMany({});
     await prisma.walletEntry.deleteMany({});
     await prisma.task.deleteMany({});
-    await prisma.line.deleteMany({});
-    await prisma.package.deleteMany({});
-    await prisma.company.deleteMany({});
+    await prisma.postpaidLine.deleteMany({});
+    await prisma.postpaidPackage.deleteMany({});
+    await prisma.postpaidCompany.deleteMany({});
     await prisma.provider.deleteMany({});
     await prisma.wallet.deleteMany({});
     await prisma.user.deleteMany({ where: { parentId: { not: null } } });
@@ -118,10 +118,10 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     await prisma.user.create({ data: { ...user(ids.owner, 'owner', 'branch', null), wallet: { create: { balance: 0, ceiling: 0 } } } });
     for (const [at, id] of ids.poses.entries()) await prisma.user.create({ data: { ...user(id, `pos${at}`, 'pos', ids.owner), wallet: { create: { balance: 50_000 + at, held: 700, ceiling: 0 } } } });
     await prisma.provider.create({ data: { id: ids.provider, code: 'whole', name: 'whole' } });
-    await prisma.company.create({ data: { id: ids.company, code: 'whole', name: 'whole' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: 'whole', name: 'whole' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true };
-    await prisma.package.create({ data: { id: ids.pkg, code: 'whole', name: 'whole', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkg, code: 'whole', name: 'whole', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
   });
 
   beforeEach(() => {
@@ -147,7 +147,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     // No `posId`: the scope the command itself uses.
     const done = await sealEsimCodes(prisma, { batchSize: 5 });
     expect(done.tables).toEqual({
-      Line: { sealed: made.clearLines, skipped: 0, clearLeft: 0, sealedNow: made.clearLines + 2 * ids.poses.length },
+      PostpaidLine: { sealed: made.clearLines, skipped: 0, clearLeft: 0, sealedNow: made.clearLines + 2 * ids.poses.length },
       Task: { sealed: made.clearTasks, skipped: 0, clearLeft: 0, sealedNow: made.clearTasks + 2 * ids.poses.length },
     });
 
@@ -172,10 +172,10 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
 
     // A second run finds nothing to do and changes nothing.
     const again = await sealEsimCodes(prisma, { batchSize: 5 });
-    expect([again.tables.Line.sealed, again.tables.Line.skipped, again.tables.Line.clearLeft]).toEqual([0, 0, 0]);
+    expect([again.tables.PostpaidLine.sealed, again.tables.PostpaidLine.skipped, again.tables.PostpaidLine.clearLeft]).toEqual([0, 0, 0]);
     expect([again.tables.Task.sealed, again.tables.Task.skipped, again.tables.Task.clearLeft]).toEqual([0, 0, 0]);
     expect({ rows: await rows(), others: await others() }).toEqual(end);
-    const left = await prisma.$queryRaw<{ n: bigint }[]>`SELECT (SELECT count(*) FROM "Line" WHERE "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%') + (SELECT count(*) FROM "Task" WHERE "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%') AS n`;
+    const left = await prisma.$queryRaw<{ n: bigint }[]>`SELECT (SELECT count(*) FROM "PostpaidLine" WHERE "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%') + (SELECT count(*) FROM "Task" WHERE "esimQr" IS NOT NULL AND "esimQr" NOT LIKE 'v1:%') AS n`;
     expect(Number(left[0].n)).toBe(0);
   });
 
@@ -183,7 +183,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     const made = await fill();
     const start = await rows();
     const [one, two] = await Promise.all([sealEsimCodes(prisma, { batchSize: 3 }), sealEsimCodes(prisma, { batchSize: 4 })]);
-    expect(one.tables.Line.sealed + two.tables.Line.sealed).toBe(made.clearLines);
+    expect(one.tables.PostpaidLine.sealed + two.tables.PostpaidLine.sealed).toBe(made.clearLines);
     expect(one.tables.Task.sealed + two.tables.Task.sealed).toBe(made.clearTasks);
     const end = await rows();
     for (const table of ['lines', 'tasks'] as const) {
@@ -207,7 +207,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
       exit = await run(['--dry-run']);
     });
     expect(exit).toBe(0);
-    expect(dry).toContain(`Line.esimQr: ${made.clearLines} stored clear, ${2 * ids.poses.length} sealed (dry run: nothing was changed)`);
+    expect(dry).toContain(`PostpaidLine.esimQr: ${made.clearLines} stored clear, ${2 * ids.poses.length} sealed (dry run: nothing was changed)`);
     expect(dry).toContain(`Task.esimQr: ${made.clearTasks} stored clear, ${2 * ids.poses.length} sealed (dry run: nothing was changed)`);
     expect({ rows: await rows(), others: await others() }).toEqual(start);
 
@@ -215,7 +215,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
       exit = await run([]);
     });
     expect(exit).toBe(0);
-    expect(real).toContain(`Line.esimQr: sealed ${made.clearLines}, skipped 0 (changed while this ran), 0 left clear`);
+    expect(real).toContain(`PostpaidLine.esimQr: sealed ${made.clearLines}, skipped 0 (changed while this ran), 0 left clear`);
     expect(real).toContain(`Task.esimQr: sealed ${made.clearTasks}, skipped 0 (changed while this ran), 0 left clear`);
     expect(real).toContain('no eSIM code is stored clear');
     for (const text of [dry, real]) {
@@ -234,7 +234,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
   });
 
   it('the writes that take any column of a line or a task refuse a code that is not sealed, before they reach the database', async () => {
-    const untouched = { line: { updateMany: () => { throw new Error('reached the database'); } }, task: { update: () => { throw new Error('reached the database'); } } };
+    const untouched = { postpaidLine: { updateMany: () => { throw new Error('reached the database'); } }, task: { update: () => { throw new Error('reached the database'); } } };
     const repo = new LinesRepository({ prisma } as never);
     expect(() => repo.recordTaskResult(untouched as never, 'task', { esimQr: code(1) })).toThrow('An eSIM code must be sealed before it is stored');
     expect(() => repo.recordTaskResult(untouched as never, 'task', { esimQr: { set: code(1) } })).toThrow('An eSIM code must be sealed before it is stored');

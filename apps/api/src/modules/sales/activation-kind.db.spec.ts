@@ -29,7 +29,7 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
   const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
   const ask = (body: Record<string, unknown>) => service.activate(pos, { packageCode: code, posLoginName: `kind-${tag}-pos`, outcome: 'success', ...body }) as Promise<{ applied: boolean; taskId?: string }>;
-  const modes = (data: { portMode?: string; convertMode?: string }) => prisma.package.update({ where: { id: ids.pkg }, data });
+  const modes = (data: { portMode?: string; convertMode?: string }) => prisma.postpaidPackage.update({ where: { id: ids.pkg }, data });
 
   beforeAll(async () => {
     process.env.DATABASE_URL = url;
@@ -46,8 +46,8 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code, name: 'kind' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 'kind' } });
-    await prisma.package.create({
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code, name: 'kind' } });
+    await prisma.postpaidPackage.create({
       data: {
         id: ids.pkg, code, name: code, providerId: ids.provider, companyId: ids.company,
         // Activations run by themselves on this package: a porting still goes to the branch.
@@ -63,14 +63,14 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
   afterEach(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0 } });
     await modes({ portMode: 'off', convertMode: 'off' });
   });
 
   afterAll(async () => {
-    await prisma.package.deleteMany({ where: { id: ids.pkg } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: ids.pkg } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -81,7 +81,7 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
   });
 
   it('is off for a package until the branch turns it on, each of the two by itself', async () => {
-    expect(await prisma.package.findUniqueOrThrow({ where: { id: ids.pkg } })).toMatchObject({ portMode: 'off', convertMode: 'off' });
+    expect(await prisma.postpaidPackage.findUniqueOrThrow({ where: { id: ids.pkg } })).toMatchObject({ portMode: 'off', convertMode: 'off' });
     for (const kind of ['port', 'convert']) {
       await expect(ask({ kind, msisdn: number(), iccid: serial() })).rejects.toMatchObject({ status: 400, code: 'OPERATION_DISABLED' });
     }
@@ -111,7 +111,7 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
       expect(answer.applied).toBe(false);
       const task = await prisma.task.findUniqueOrThrow({ where: { id: answer.taskId } });
       expect(task).toMatchObject({ action: 'activate', activationKind: kind, status: 'working', msisdn, iccid, esim: false, posDelta: -PRICE, held: PRICE, unitPrice: PRICE });
-      expect(await prisma.line.count({ where: { msisdn } })).toBe(0);
+      expect(await prisma.postpaidLine.count({ where: { msisdn } })).toBe(0);
     }
     expect(await wallet()).toMatchObject({ balance: START, held: 2 * PRICE });
   });
@@ -122,7 +122,7 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
     const iccid = serial();
     const { taskId } = await ask({ kind: 'port', msisdn, iccid });
     await service.completeTask(owner, taskId as string, {});
-    const line = await prisma.line.findUniqueOrThrow({ where: { msisdn } });
+    const line = await prisma.postpaidLine.findUniqueOrThrow({ where: { msisdn } });
     expect(line).toMatchObject({ status: 'active', iccid, esim: false, packageId: ids.pkg, posId: ids.pos });
     expect(await wallet()).toMatchObject({ balance: START - PRICE, held: 0 });
     const debits = await prisma.walletEntry.findMany({ where: { userId: ids.pos, kind: 'activate', amount: { lt: 0 } } });
@@ -141,6 +141,6 @@ suite('activation by porting and by card-to-bill (PostgreSQL)', () => {
 
   it('refuses a kind it does not know, and a kind the database does not know', async () => {
     await expect(ask({ kind: 'steal', msisdn: number(), iccid: serial() })).rejects.toMatchObject({ status: 400 });
-    await expect(prisma.package.update({ where: { id: ids.pkg }, data: { portMode: 'sometimes' } })).rejects.toThrow();
+    await expect(prisma.postpaidPackage.update({ where: { id: ids.pkg }, data: { portMode: 'sometimes' } })).rejects.toThrow();
   });
 });

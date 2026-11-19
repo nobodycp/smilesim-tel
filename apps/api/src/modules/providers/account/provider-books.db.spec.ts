@@ -62,17 +62,17 @@ suite('the provider books (PostgreSQL)', () => {
     await prisma.user.create({ data: user(ids.pos, 'pos', ids.owner) });
     await prisma.provider.create({ data: { id: ids.providerA, code: codeA, name: `bk-${tag}-A`, creditLimit: 50_000 } });
     await prisma.provider.create({ data: { id: ids.providerB, code: codeB, name: `bk-${tag}-B` } });
-    await prisma.company.create({ data: { id: ids.company, code: `bk-${tag}`, name: `bk-${tag}-co` } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `bk-${tag}`, name: `bk-${tag}-co` } });
     const flags = { autoActivate: false, autoCharge: false, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
     const prices = (branchCost: number, renewalBranchCost: number) => ({
       branchCost, mainPrice: branchCost + 500, agentPrice: branchCost + 1000, posPrice: branchCost + 1500, subscriberPrice: branchCost + 2000,
       renewalBranchCost, renewalMainPrice: renewalBranchCost + 500, renewalAgentPrice: renewalBranchCost + 1000, renewalPosPrice: renewalBranchCost + 1500, renewalSubscriberPrice: renewalBranchCost + 2000,
     });
-    await prisma.package.create({ data: { id: ids.pkgA, code: `bk-${tag}-a1`, name: `bk-${tag}-A1`, providerId: ids.providerA, companyId: ids.company, ...prices(2000, 1800), ...flags } });
-    await prisma.package.create({ data: { id: ids.pkgB, code: `bk-${tag}-b1`, name: `bk-${tag}-B1`, providerId: ids.providerB, companyId: ids.company, ...prices(3000, 2500), ...flags } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkgA, code: `bk-${tag}-a1`, name: `bk-${tag}-A1`, providerId: ids.providerA, companyId: ids.company, ...prices(2000, 1800), ...flags } });
+    await prisma.postpaidPackage.create({ data: { id: ids.pkgB, code: `bk-${tag}-b1`, name: `bk-${tag}-B1`, providerId: ids.providerB, companyId: ids.company, ...prices(3000, 2500), ...flags } });
     const msisdn = (n: number) => `05${tag.replace(/\D/g, '0').slice(0, 6)}${n}`.slice(0, 12);
-    await prisma.line.create({ data: { id: ids.lineA, msisdn: msisdn(1), status: 'active', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgA, posId: ids.pos, terms: { subscription: { branchCost: 2100 }, renewal: { branchCost: 1700 } } } });
-    await prisma.line.create({ data: { id: ids.lineB, msisdn: msisdn(2), status: 'disconnected', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgB, posId: ids.pos, terms: {} } });
+    await prisma.postpaidLine.create({ data: { id: ids.lineA, msisdn: msisdn(1), status: 'active', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgA, posId: ids.pos, terms: { subscription: { branchCost: 2100 }, renewal: { branchCost: 1700 } } } });
+    await prisma.postpaidLine.create({ data: { id: ids.lineB, msisdn: msisdn(2), status: 'disconnected', endsAt: new Date('2027-01-01T00:00:00Z'), packageId: ids.pkgB, posId: ids.pos, terms: {} } });
     const entry = (id: string, kind: string, lineId: string | null, pkg: string, providerId: string | null, providerCost: number | null, at: string, number: string) => ({
       id: `${tag}-${id}`, userId: ids.pos, actorId: ids.owner, amount: 0, balanceAfter: 0, kind, lineId, msisdn: number,
       packageName: pkg, companyName: `bk-${tag}-co`, providerId, providerCost, createdAt: new Date(at),
@@ -104,10 +104,10 @@ suite('the provider books (PostgreSQL)', () => {
   afterAll(async () => {
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await prisma.providerEntry.deleteMany({ where: { providerId: { in: [ids.providerA, ids.providerB] } } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.pkgA, ids.pkgB] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.pkgA, ids.pkgB] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: { in: [ids.providerA, ids.providerB] } } });
     await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.owner] } } });
     await prisma.$disconnect();

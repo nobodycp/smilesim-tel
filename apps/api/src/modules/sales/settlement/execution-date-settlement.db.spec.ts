@@ -49,7 +49,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
   const setWallet = (data: { balance?: number; held?: number; ceiling?: number }) => prisma.wallet.update({ where: { userId: ids.pos }, data });
   const entries = () => prisma.walletEntry.findMany({ where: { userId: ids.pos } });
-  const lineOf = (id: string) => prisma.line.findUniqueOrThrow({ where: { id } });
+  const lineOf = (id: string) => prisma.postpaidLine.findUniqueOrThrow({ where: { id } });
   const taskOf = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   /** A new line on the base package, sold at once, with the wallet and the ledger then cleared of that sale. */
   const newLine = async () => {
@@ -62,7 +62,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   /** `days` pass: the paid period and the line end that much sooner. */
   const passDays = async (lineId: string, days: number) => {
     await prisma.$executeRaw`UPDATE "WalletEntry" SET "periodEndsAt" = "periodEndsAt" - make_interval(days => ${days}) WHERE "lineId" = ${lineId} AND "periodEndsAt" IS NOT NULL`;
-    await prisma.$executeRaw`UPDATE "Line" SET "endsAt" = "endsAt" - make_interval(days => ${days}) WHERE "id" = ${lineId}`;
+    await prisma.$executeRaw`UPDATE "PostpaidLine" SET "endsAt" = "endsAt" - make_interval(days => ${days}) WHERE "id" = ${lineId}`;
   };
   const openSwitch = (lineId: string, to: string) => service.switchPackage(pos, lineId, { packageCode: to, outcome: 'fail' }) as Promise<{ applied: false; taskId: string }>;
   const switchNow = (lineId: string, to: string) => service.switchPackage(pos, lineId, { packageCode: to, outcome: 'success' });
@@ -70,7 +70,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   const openDisconnect = (lineId: string) => service.operate(pos, lineId, 'disconnect', { outcome: 'fail' }) as Promise<{ applied: false; taskId: string }>;
   const disconnectNow = (lineId: string) => service.operate(pos, lineId, 'disconnect', { outcome: 'success' });
   const entryOf = async (lineId: string, kind: string) => (await entries()).filter((row) => row.lineId === lineId && row.kind === kind);
-  const priceOf = (id: string, renewalPosPrice: number) => prisma.package.update({ where: { id }, data: { renewalPosPrice } });
+  const priceOf = (id: string, renewalPosPrice: number) => prisma.postpaidPackage.update({ where: { id }, data: { renewalPosPrice } });
   const switchEntry = async () => (await entries()).filter((row) => row.kind === 'switch');
 
   const outcomes = async (runs: Promise<unknown>[]) => {
@@ -111,9 +111,9 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `sw-${tag}`, name: 'sw' } });
-    await prisma.company.create({ data: { id: ids.company, code: `sw-${tag}`, name: 'sw' } });
+    await prisma.postpaidCompany.create({ data: { id: ids.company, code: `sw-${tag}`, name: 'sw' } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
-    const pkg = (id: string, pkgCode: string, pos: number, cost: number) => prisma.package.create({
+    const pkg = (id: string, pkgCode: string, pos: number, cost: number) => prisma.postpaidPackage.create({
       data: {
         id, code: pkgCode, name: pkgCode, providerId: ids.provider, companyId: ids.company, ...auto,
         branchCost: cost, mainPrice: cost + 300, agentPrice: cost + 600, posPrice: pos, subscriberPrice: pos + 300,
@@ -123,7 +123,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     await pkg(ids.base, code.base, 3000, 1800);
     await pkg(ids.dearer, code.dearer, 6000, 3600);
     await pkg(ids.cheaper, code.cheaper, 1500, 900);
-    await prisma.packageSwitch.createMany({ data: [{ packageId: ids.base, targetPackageId: ids.dearer }, { packageId: ids.base, targetPackageId: ids.cheaper }] });
+    await prisma.postpaidPackageSwitch.createMany({ data: [{ packageId: ids.base, targetPackageId: ids.dearer }, { packageId: ids.base, targetPackageId: ids.cheaper }] });
     const notice = {
       write: async () => {
         if (breakNotices) {
@@ -140,7 +140,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   afterEach(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.task.deleteMany({ where: { posId: ids.pos } });
-    await prisma.line.deleteMany({ where: { posId: ids.pos } });
+    await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
     await setWallet({ balance: START, held: 0, ceiling: 0 });
     await priceOf(ids.dearer, 6000);
     await priceOf(ids.cheaper, 1500);
@@ -148,9 +148,9 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   });
 
   afterAll(async () => {
-    await prisma.packageSwitch.deleteMany({ where: { packageId: ids.base } });
-    await prisma.package.deleteMany({ where: { id: { in: [ids.base, ids.dearer, ids.cheaper] } } });
-    await prisma.company.deleteMany({ where: { id: ids.company } });
+    await prisma.postpaidPackageSwitch.deleteMany({ where: { packageId: ids.base } });
+    await prisma.postpaidPackage.deleteMany({ where: { id: { in: [ids.base, ids.dearer, ids.cheaper] } } });
+    await prisma.postpaidCompany.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
     await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
     await prisma.user.deleteMany({ where: { id: ids.pos } });
@@ -364,7 +364,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
       expect(state).toMatchObject({ balance: START - owed(6000, 10) - owed(6000) - owed(1500, 20), held: QUOTED });
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
       await prisma.task.deleteMany({ where: { posId: ids.pos } });
-      await prisma.line.deleteMany({ where: { posId: ids.pos } });
+      await prisma.postpaidLine.deleteMany({ where: { posId: ids.pos } });
       await setWallet({ balance: START, held: 0 });
     }
   });
@@ -486,7 +486,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     const [activation] = await entryOf(lineId, 'activate');
     expect(activation).toMatchObject({ periodDays: 30, periodCost: 1800 });
     // The catalog's cost changes after the sale: the running period is still the one bought at 1800.
-    await prisma.line.update({ where: { id: lineId }, data: { terms: { ...((await lineOf(lineId)).terms as object), subscription: { branchCost: 9999, mainPrice: 9999, agentPrice: 9999, posPrice: 9999, subscriberPrice: 9999 } } } });
+    await prisma.postpaidLine.update({ where: { id: lineId }, data: { terms: { ...((await lineOf(lineId)).terms as object), subscription: { branchCost: 9999, mainPrice: 9999, agentPrice: 9999, posPrice: 9999, subscriberPrice: 9999 } } } });
     await disconnectNow(lineId);
     const [entry] = await entryOf(lineId, 'disconnect');
     expect(entry).toMatchObject({ amount: refund(), providerCost: Math.round((1800 * 1) / 30) + DISCONNECT_FEE - 1800 });
@@ -541,11 +541,11 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     const held = (await taskOf(renewal.taskId)).held;
     expect(held).toBe(BASE_PRICE);
     // The renewal price changes and twenty days pass before the branch gets to it.
-    await prisma.package.update({ where: { id: ids.base }, data: { renewalPosPrice: 4500 } });
+    await prisma.postpaidPackage.update({ where: { id: ids.base }, data: { renewalPosPrice: 4500 } });
     await passDays(lineId, 20);
     await complete(renewal.taskId);
     expect((await entryOf(lineId, 'extend')).map((row) => row.amount)).toEqual([-BASE_PRICE]);
     expect(await wallet()).toMatchObject({ balance: START - BASE_PRICE, held: 0 });
-    await prisma.package.update({ where: { id: ids.base }, data: { renewalPosPrice: 3000 } });
+    await prisma.postpaidPackage.update({ where: { id: ids.base }, data: { renewalPosPrice: 3000 } });
   });
 });
