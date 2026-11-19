@@ -29,8 +29,8 @@ point they left open.
   the package.
 - **The provider's books** (ADR 0025): `providerId` and `providerCost` on the entry; `ProviderEntry`. The machinery
   (balance, ledger, reconciliation, gate, credentials) serves a provider of any line.
-- Notices, the activity log, grants (a list that only grows), the request log. (Not `Task`: it is shaped for
-  postpaid — a package, a number, an activation kind — so by decision 2 a new line has its own.)
+- Tasks, notices, the activity log, grants (a list that only grows), the request log. `Task` carries postpaid
+  columns today (a package, a number, an activation kind); it stays the one inbox of every line (decision 2b).
 
 What is postpaid-only: `Line` (`msisdn` unique, `endsAt`), `Package` (renewal prices, durations, the `auto*` / `allow*`
 flags), `Company` (a telecom operator), `periods.ts`, the provider adapter's `products()`, the reconciliation's match
@@ -53,6 +53,12 @@ key (number, day, amount).
    its own balance and books; if such a supplier keeps one balance for both, the first line that meets it decides how
    its statement is split, in its own spec. On the screens each line has its own «الشركات» and «المزودون»; none lists
    another line's.
+2b. **One tasks inbox for every line** (the owner, 2026-11-19). The other lines are simple by the owner's
+   description: a sale is a direct operation at the provider; there is no number and almost nothing happens to a sale
+   afterwards (a card: one operation, a refund; a game top-up: no cancel; an international eSIM: no refund, no
+   operation). **A task, for them, is what a sale becomes when the connection to the provider fails.** So `Task` is
+   shared and keeps its name and its routes; a new line adds the nullable columns its failed sale needs and loosens
+   `packageId` then (both metadata-only). This is the one place where decision 2's "own tables" does not apply.
 3. **Money goes only through the ledger**, with a sale that carries its provider, its cost and its ladder. **A line's
    pricing may be anything — a fixed price, a percentage of the price, a commission for each layer of the chain — but
    what the entry stores is the result: a ladder of integer agorot per layer** (ADR 0026). A percentage is worked out

@@ -137,7 +137,7 @@ slice's working paper, the decisions are here.
 
 **Models and tables.** Postpaid, take the prefix `Postpaid` (model name = table name, as today): `Company`,
 `Package`, `PackageDuration`, `PackageRenewal`, `PackageSwitch`, `PackageAddon`, `UserPackage`, `SellPrice`, `Line`,
-`LineCountSnapshot`; and `Task`, `TaskNote` **if the owner answers that each line has its own tasks** (below). Every
+`LineCountSnapshot` (10 models). `Task` and `TaskNote` stay shared (below). Every
 other model is shared and keeps its name, `Provider` and `Offer` included (**`Offer` is shared**: it has no package or
 company link — the earlier text of this spec that listed offers as postpaid was wrong). The postpaid columns of shared
 tables stay as they are (`WalletEntry.lineId` / `msisdn` / `packageName` / `companyName`,
@@ -148,15 +148,14 @@ the lines (`lines…`, 18 with the line transfer), the activation settlement (`t
 `provider-decisions`, `tasks/:id/provider-decision[/approval]`), the packages and their settings, the companies, the
 provider's catalog (`providers/:code/catalog/…`, `POST companies`, `POST packages`), the shelf and sell prices, the
 per-account package terms (`packages/:code/…`, `users/:login/packages…`, `users/:login/ops`); the company picture
-becomes `/pictures/postpaid/companies/:code`. 57 routes and the picture; the 8 routes of the tasks list with them if
-tasks are per line. **Stay:** accounts, auth, wallets, finance, the ledger, the provider machinery (`providers`,
+becomes `/pictures/postpaid/companies/:code`. 56 routes and the picture; the tasks list stays (below). **Stay:** accounts, auth, wallets, finance, the ledger, the provider machinery (`providers`,
 `provider-accounts`, `reconciliations`, `provider-operations`), `reports/*`, `home` / `overview` / `me` (the one place
 that reads across lines: a new line adds its part to the answer), offers, notices, system, the account transfer
 (`users/:login/transfer…`: the tree is shared, the lines travel with it).
 
 **Pages.** Under `/postpaid/…`: numbers, packages, companies, and the line's providers, provider accounts and provider
 operations (their API stays shared: a provider record belongs to one line, ADR 0028 decision 2a, so its pages sit with
-its line); tasks with them if per line. The redirect aliases of old addresses (`/operations`, `/reports/orders`,
+its line). The redirect aliases of old addresses (`/operations`, `/reports/orders`,
 `/reports/sales`, `/companies/[code]/[provider]`, `/providers/[code]/[packageCode]`) are deleted: nothing is kept in
 an old form (the owner's standing rule). Stored page paths (`Notice.href`, `Offer.actionHref`) are rewritten by the
 slice's migration.
@@ -172,10 +171,15 @@ turns the first into "the line hands the ledger its ladder" (ADR 0028, decision 
 grant codes, written migrations, response JSON keys, relation field names, queue names, environment variables. A new
 line's activity actions and notice kinds carry its prefix, as its entry kinds do.
 
-**The one question for the owner — tasks.** `Task` is shaped for postpaid (a package, a number, an activation kind),
-so a new line cannot reuse it; what is open is how the office works: one «المهام» inbox with every line's tasks, or
-each line's tasks under its own heading. Recommended: per line (`PostpaidTask`, `/v1/postpaid/tasks`, «المهام» under
-«الفواتير»), as with companies and providers; the count on the heading stays.
+**Tasks are general** (the owner, 2026-11-19: "keep the tasks general for now"). The other lines are simple: their
+sales are direct operations at the provider, with no number and almost no later operation (a card has one, a refund;
+a game top-up has no cancel; an international eSIM has neither), and **a task is only what a sale becomes when the
+connection to the provider fails**. So there is one «المهام» inbox for every line: `Task` and `TaskNote` keep their
+names, the tasks routes (`/v1/tasks…`) and pages (`/tasks…`) stay where they are, the sidebar item stays at the top.
+What a task of today carries for postpaid (its package, number, activation kind) stays; a new line's failed sale
+becomes a task by the columns it needs, added then (a nullable column and dropping `NOT NULL` on `packageId` are
+metadata-only). Completing a postpaid task runs the postpaid line's own handler, which is why
+`POST /v1/postpaid/tasks/:id/complete` and the provider decisions sit under the line while the list is shared.
 
 ## Out of scope
 
