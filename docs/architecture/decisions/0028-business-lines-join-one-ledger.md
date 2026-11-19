@@ -3,7 +3,7 @@
 - Date: 2026-11-19
 - Status: **accepted in part** — the owner, 2026-11-19: one wallet for every line («المحفظة مشتركة أكيد للكل»); the
   other lines may price by a percentage and pay the chain a commission as postpaid does; "anything that can be prepared or
-  renamed now, do it now, before launch". **Open:** moving the postpaid routes and pages under their own prefix (decision 7), put to the owner. The lines' names are the owner's (section "Names").
+  renamed now, do it now, before launch". Decision 7 (names) answered the same day: section "Names". The lines' names are the owner's (section "Names").
 - Spec: `docs/superpowers/specs/2026-11-19-business-lines-foundation.md`. Plan:
   `docs/superpowers/plans/2026-11-19-business-lines-foundation.md`.
 - Builds on ADR 0020 (modules and their surfaces), 0025 (an operation's provider and cost on its entry), 0026 (each
@@ -82,6 +82,9 @@ The owner named the lines: the subscriptions line built so far is **postpaid** (
 **prepaid** («بيربيد»; first called «توكمان»). In code, routes and pages: `postpaid`, `prepaid`, `games`,
 `travel-esim`. Earlier drafts and the discussion called the postpaid line "bills" and the prepaid line "cards"; the bare wallet-entry kinds of today
 are the postpaid line's, and a new line's kinds carry its prefix (`prepaid.…`, `games.…`).
+
+**`postpaid` is the word of the API and of the backend's names** (routes, modules, models and tables of what is
+the postpaid line's alone); **on screen the line stays «الفواتير»**. The slice that renames is the spec's F.7.
 
 ## Deliberately not built now (waiting costs nothing)
 

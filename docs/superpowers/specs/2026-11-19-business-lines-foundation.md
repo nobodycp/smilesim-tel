@@ -106,14 +106,26 @@ bookmark exists before launch — after it, a rename breaks both):
 - **API:** the postpaid-only routes move under `/v1/postpaid/…` (`/v1/postpaid/packages`, `/v1/postpaid/lines`,
   `/v1/postpaid/companies`, `/v1/postpaid/sell-prices`, `/v1/postpaid/offers`), no alias kept. Shared routes stay.
 - **Web:** the postpaid pages move under `/postpaid/…` (`/postpaid/numbers`, `/postpaid/packages`, `/postpaid/companies`); the
-  sidebar groups them under one heading, «بوست بيد», so the next line is a second heading and not a reshuffle.
+  sidebar groups them under one heading, so the next line is a second heading and not a reshuffle. **What the
+  user reads stays «الفواتير»** (the owner, 2026-11-19: `postpaid` is the word of the API and of the backend's names;
+  on screen it is «الفواتير» only): the heading, the page titles and every text keep the word of today.
 - **The four lines' words** in code and URLs: `postpaid` («بوست بيد», the line built so far), `prepaid` («بيربيد», the cards line),
   `games`, `travel-esim` (the local eSIM swap keeps the word `esim`).
 - **Companies and providers by line** (the owner, 2026-11-19; ADR 0028, decision 2a): the postpaid line's companies and
   providers sit under the postpaid heading with the rest of it («الشركات والرزم», «المزودون», «حسابات المزودين»,
   «عمليات المزودين»), so the next line brings its own under its own heading and nothing is ever listed mixed.
-- **Not renamed:** the wallet-entry kinds of postpaid (bare words by rule, ADR 0028), the tables (`Package`, `Line`,
-  `Company`: a table rename is instant at any size, and the code's modules already scope them), the modules.
+- **The backend's names** (the owner, 2026-11-19: "use postpaid in the API and in the backend's names"): what is
+  the postpaid line's alone carries the word, so that a table or a module named `Company` or `Package` is never read
+  as "of every line" once prepaid has its own. The inventory (first step of the slice) classifies every Prisma model,
+  module and route as **shared** (accounts, auth, wallets and the ledger, the provider machinery, notices, the
+  activity log, monitoring, platform) or **postpaid** (companies, packages and their durations, renewals, switches
+  and add-ons, lines, the per-account package terms and sell prices, offers, the line tasks and their settlement),
+  and decides the mixed ones (`Task`, `ProviderOperation`, the home and overview reads) one by one. Postpaid models
+  and tables take the prefix (`PostpaidCompany`, `PostpaidPackage`, `PostpaidLine`, …: a table rename is a
+  metadata-only `ALTER TABLE … RENAME`, written as plain SQL migrations with the constraints and indexes renamed with
+  them); postpaid-only modules are named for the line (ADR 0020 amended in the same slice).
+- **Not renamed:** the wallet-entry kinds of postpaid (bare words by rule, ADR 0028: entries are never rewritten,
+  and a kind is a stored value, not a name), and every text the user reads.
 
 The slice, once approved, starts with the inventory: every route and page classified shared or postpaid, the mixed ones
 (`tasks`, `home`, `overview`, `provider-operations`) decided one by one in the plan before any file moves.
