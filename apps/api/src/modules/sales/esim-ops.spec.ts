@@ -154,10 +154,14 @@ async function stage() {
     sellPrice: { findMany: async () => [] },
     provider: { findMany: async () => [provider] },
     walletEntry: {
-      findMany: async (args?: { where?: { kind?: { in?: string[] } } }) => {
-        const kinds = args?.where?.kind?.in;
+      findMany: async (args?: { where?: { kind?: { in?: string[] } | string; providerId?: { not: null } | string } }) => {
+        const where = args?.where ?? {};
+        const kinds = typeof where.kind === 'string' ? [where.kind] : where.kind?.in;
+        // A provider's operation is an entry that stored a provider (spec F.5); a column a row does not carry is NULL.
+        const provider = where.providerId;
         return entries
           .filter((row) => (kinds ? kinds.includes(String(row.kind)) : true))
+          .filter((row) => (provider === undefined ? true : typeof provider === 'string' ? row.providerId === provider : row.providerId != null))
           .map((row) => ({ ...row, actor: { loginName: 'admin', nickname: 'الإدارة' }, user: { loginName: 'pos1', layer: 'pos' } }));
       },
       findFirst: async () => null,
