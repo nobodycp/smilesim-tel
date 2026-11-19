@@ -2,9 +2,8 @@
 
 - Date: 2026-11-19
 - Status: **accepted in part** — the owner, 2026-11-19: one wallet for every line («المحفظة مشتركة أكيد للكل»); the
-  other lines may price by a percentage and pay the chain a commission as bills do; "anything that can be prepared or
-  renamed now, do it now, before launch". **Open:** moving the bills routes and pages under their own prefix (decision 7), put to the owner. The cards line's
-  word is the owner's: «توكمان» (`talkman`).
+  other lines may price by a percentage and pay the chain a commission as postpaid does; "anything that can be prepared or
+  renamed now, do it now, before launch". **Open:** moving the postpaid routes and pages under their own prefix (decision 7), put to the owner. The lines' names are the owner's (section "Names").
 - Spec: `docs/superpowers/specs/2026-11-19-business-lines-foundation.md`. Plan:
   `docs/superpowers/plans/2026-11-19-business-lines-foundation.md`.
 - Builds on ADR 0020 (modules and their surfaces), 0025 (an operation's provider and cost on its entry), 0026 (each
@@ -32,7 +31,7 @@ point they left open.
   (balance, ledger, reconciliation, gate, credentials) serves a provider of any line.
 - Tasks, notices, the activity log, grants (a list that only grows), the request log.
 
-What is bills-only: `Line` (`msisdn` unique, `endsAt`), `Package` (renewal prices, durations, the `auto*` / `allow*`
+What is postpaid-only: `Line` (`msisdn` unique, `endsAt`), `Package` (renewal prices, durations, the `auto*` / `allow*`
 flags), `Company` (a telecom operator), `periods.ts`, the provider adapter's `products()`, the reconciliation's match
 key (number, day, amount).
 
@@ -43,12 +42,12 @@ key (number, day, amount).
    never reuses `Package`, `Line` or `Task` with made-up values: no dummy renewal price, no fake number. The shared
    part is what it writes: wallet entries through `WalletLedger`, provider operations, tasks, notices.
 2a. **Companies and providers are kept apart by line** (the owner, 2026-11-19: Cellcom sells cards as it sells
-   subscriptions, but the two are not related; cards hardly ever change while bills are the daily work; mixing them
+   subscriptions, but the two are not related; cards hardly ever change while postpaid is the daily work; mixing them
    would confuse — "separate the providers and the companies for each line, even in the same place, with tabs and
-   names of their own"). So: **a line has its own companies** (its own table: `Company` stays the bills line's telecom
+   names of their own"). So: **a line has its own companies** (its own table: `Company` stays the postpaid line's telecom
    operators; "Cellcom" of the cards line is another row of another table, never the same record), and **a provider
    record belongs to exactly one line** (one `Provider` table, because the balance, ledger and reconciliation are the
-   same machinery; a line stamp on it, `bills` for every provider of today, added with the first new line — a
+   same machinery; a line stamp on it, `postpaid` for every provider of today, added with the first new line — a
    constant-default column is metadata-only). A real supplier that serves two lines is two provider records, each with
    its own balance and books; if such a supplier keeps one balance for both, the first line that meets it decides how
    its statement is split, in its own spec. On the screens each line has its own «الشركات» and «المزودون»; none lists
@@ -62,8 +61,8 @@ key (number, day, amount).
    margins and no error. It is refused instead (spec, F.3): a silent zero profit becomes a refusal.
 5. **Words are reserved.** A wallet-entry kind names one thing for ever (entries are never rewritten). The bare kinds
    of today (`activate`, `charge`, `extend`, `reactivate`, `disconnect`, `switch`, `esim`, `sim`, `refresh`,
-   `transfer`, `rename`, `freeze`, `unfreeze`, `addon`) belong to bills. `charge` is a renewal; `esim` is the local
-   eSIM swap: the international eSIM takes another word. A new line's kinds carry its prefix (`cards.…`, `games.…`).
+   `transfer`, `rename`, `freeze`, `unfreeze`, `addon`) belong to postpaid. `charge` is a renewal; `esim` is the local
+   eSIM swap: the international eSIM takes another word. A new line's kinds carry its prefix (`prepaid.…`, `games.…`).
    A sum over kinds is an allow-list (a new kind is absent until its line adds it, never counted under another
    heading); **a statement** — an account's own wallet page — **lists by exclusion**, so nothing that moved a balance
    is hidden.
@@ -72,10 +71,17 @@ key (number, day, amount).
    a large table (a changed partial-index predicate is two releases: build the new index, then change the code and
    drop the old). One such migration is proven through the deployment before launch (spec, F.6), because every later
    addition depends on it.
-7. **Names** (open, the owner's): whether the bills-only API routes and pages move under a prefix of their own now
-   (`/v1/bills/…`, `/bills/…`) so that every line reads the same way, and the words for the four lines. Spec, F.7.
+7. **Names** (open, the owner's): whether the postpaid-only API routes and pages move under a prefix of their own now
+   (`/v1/postpaid/…`, `/postpaid/…`) so that every line reads the same way, and the words for the four lines. Spec, F.7.
 8. **A line is off until it is whole**: a server-side switch, off by default, comes with the first new line; no
    reconciliation for a line until it has a match key.
+
+## Names (the owner, 2026-11-19)
+
+The owner named the lines: the subscriptions line built so far is **postpaid** («بوست بيد»), the cards line is
+**prepaid** («بيربيد»; first called «توكمان»). In code, routes and pages: `postpaid`, `prepaid`, `games`,
+`travel-esim`. Earlier drafts and the discussion called the postpaid line "bills" and the prepaid line "cards"; the bare wallet-entry kinds of today
+are the postpaid line's, and a new line's kinds carry its prefix (`prepaid.…`, `games.…`).
 
 ## Deliberately not built now (waiting costs nothing)
 
@@ -87,4 +93,4 @@ a second provider-adapter interface. Each comes with the first line that needs i
 
 - Before launch: the refusals and guards of the spec (F.2–F.6), and the renames the owner approves (F.7).
 - A new line's spec starts from this ADR: its tables, its kinds with their prefix, its ladder builder, its on/off
-  switch, its pages under its own prefix, and a spec that pins the bills figures unchanged with its rows present.
+  switch, its pages under its own prefix, and a spec that pins the postpaid figures unchanged with its rows present.

@@ -12,11 +12,11 @@ Status: F.1–F.6 approved by the owner's request; **F.7 (names) waits for the o
 ## The owner's answers (2026-11-19)
 
 - **Companies and providers are separate for each line**, even when the name is the same (Cellcom of the cards line
-  is not Cellcom of bills). Nothing to build now beyond the navigation of F.7: the bills line's are the ones that
+  is not Cellcom of postpaid). Nothing to build now beyond the navigation of F.7: the postpaid line's are the ones that
   exist; a new line brings its own companies table and its own provider records (ADR 0028, decision 2a).
 
 - **The wallet is shared by every line.** Nothing to build.
-- **The other lines may price by a percentage, and pay the chain a commission as bills do.** Nothing to build: an
+- **The other lines may price by a percentage, and pay the chain a commission as postpaid does.** Nothing to build: an
   entry stores the resulting amounts per layer (ADR 0028, decision 3), so a percentage rule is a new line's own
   pricing table and builder, and every profit figure reads its sales as it reads today's.
 
@@ -95,27 +95,27 @@ API applies migrations at container start (`prisma migrate deploy`).
 
 The question the owner asked: will the API's names be affected later. As they stand: yes, in one way. The shared
 parts are named for what they are (`users`, `wallets`, `finance`, `tasks`, `providers`, `provider-accounts`,
-`reports`, `notices`, `system`). The bills-only parts hold general words: `/v1/packages`, `/v1/lines`,
+`reports`, `notices`, `system`). The postpaid-only parts hold general words: `/v1/packages`, `/v1/lines`,
 `/v1/companies`, `/v1/sell-prices`, `/v1/offers`, and the pages `/packages`, `/companies`, `/numbers`. When cards and
-games arrive with `/v1/cards/products`, `/v1/games/products`, bills would be the one line with no prefix, and
-"packages" would mean "the bills line's packages" for ever.
+games arrive with `/v1/prepaid/products`, `/v1/games/products`, postpaid would be the one line with no prefix, and
+"packages" would mean "the postpaid line's packages" for ever.
 
 Proposed (the owner prefers the clearest contract even when the rename is wide; data is trial data; no client or
 bookmark exists before launch — after it, a rename breaks both):
 
-- **API:** the bills-only routes move under `/v1/bills/…` (`/v1/bills/packages`, `/v1/bills/lines`,
-  `/v1/bills/companies`, `/v1/bills/sell-prices`, `/v1/bills/offers`), no alias kept. Shared routes stay.
-- **Web:** the bills pages move under `/bills/…` (`/bills/numbers`, `/bills/packages`, `/bills/companies`); the
-  sidebar groups them under one heading, «الفواتير», so the next line is a second heading and not a reshuffle.
-- **The four lines' words** in code and URLs: `bills`, `talkman` (the owner's word for the cards line, «توكمان»),
+- **API:** the postpaid-only routes move under `/v1/postpaid/…` (`/v1/postpaid/packages`, `/v1/postpaid/lines`,
+  `/v1/postpaid/companies`, `/v1/postpaid/sell-prices`, `/v1/postpaid/offers`), no alias kept. Shared routes stay.
+- **Web:** the postpaid pages move under `/postpaid/…` (`/postpaid/numbers`, `/postpaid/packages`, `/postpaid/companies`); the
+  sidebar groups them under one heading, «بوست بيد», so the next line is a second heading and not a reshuffle.
+- **The four lines' words** in code and URLs: `postpaid` («بوست بيد», the line built so far), `prepaid` («بيربيد», the cards line),
   `games`, `travel-esim` (the local eSIM swap keeps the word `esim`).
-- **Companies and providers by line** (the owner, 2026-11-19; ADR 0028, decision 2a): the bills line's companies and
-  providers sit under the bills heading with the rest of it («الشركات والرزم», «المزودون», «حسابات المزودين»,
+- **Companies and providers by line** (the owner, 2026-11-19; ADR 0028, decision 2a): the postpaid line's companies and
+  providers sit under the postpaid heading with the rest of it («الشركات والرزم», «المزودون», «حسابات المزودين»,
   «عمليات المزودين»), so the next line brings its own under its own heading and nothing is ever listed mixed.
-- **Not renamed:** the wallet-entry kinds of bills (bare words by rule, ADR 0028), the tables (`Package`, `Line`,
+- **Not renamed:** the wallet-entry kinds of postpaid (bare words by rule, ADR 0028), the tables (`Package`, `Line`,
   `Company`: a table rename is instant at any size, and the code's modules already scope them), the modules.
 
-The slice, once approved, starts with the inventory: every route and page classified shared or bills, the mixed ones
+The slice, once approved, starts with the inventory: every route and page classified shared or postpaid, the mixed ones
 (`tasks`, `home`, `overview`, `provider-operations`) decided one by one in the plan before any file moves.
 
 ## Out of scope

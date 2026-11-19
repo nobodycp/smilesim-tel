@@ -9,4 +9,4 @@ One verified slice at a time; each ticked with its commit hash.
 - [ ] **F.4 Kind guards**: one spec tying the code's kind lists to the index and CHECK predicates, the web's names and the sums' allow-lists; the reserved words.
 - [ ] **F.5 One provider predicate**: every read of a provider's operations uses `providerId IS NOT NULL`.
 - [ ] **F.6 Online migration proven**: one `CREATE INDEX CONCURRENTLY` migration through the dev start and the trial server's deployment, with writes running; the operator guide says how.
-- [ ] **F.7 Names**: bills-only API routes under `/v1/bills/…`, pages under `/bills/…`, the sidebar heading; waits for the owner's answer on the names.
+- [ ] **F.7 Names**: postpaid-only API routes under `/v1/postpaid/…`, pages under `/postpaid/…`, the sidebar heading; waits for the owner's answer on the names.
