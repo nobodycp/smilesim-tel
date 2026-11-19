@@ -127,7 +127,7 @@ suite('one definition of a provider\'s operation (PostgreSQL)', () => {
     expect(await wallets.providerCostUpTo(ids.provider, null)).toBe(purchases.get(ids.provider));
   });
 
-  it('reads one provider\'s operations from the partial index', async () => {
+  it('reads one provider\'s operations, and every provider\'s newest first, from the partial indexes', async () => {
     const rollback = new Error('rollback');
     let plans: string[] = [];
     await prisma.$transaction(async (tx) => {
@@ -136,21 +136,29 @@ suite('one definition of a provider\'s operation (PostgreSQL)', () => {
         INSERT INTO "WalletEntry" ("id", "userId", "actorId", "amount", "balanceAfter", "kind", "providerId", "providerCost", "createdAt")
         SELECT '${tag}-x' || n, '${u.pos}', '${u.owner}', 0, 0, 'freeze', '${ids.other}', 0, now() - n * interval '1 minute'
         FROM generate_series(1, 3000) AS n`);
+      // And many more entries that are no provider's operation (money movements), newer than all of them.
+      await tx.$executeRawUnsafe(`
+        INSERT INTO "WalletEntry" ("id", "userId", "actorId", "amount", "balanceAfter", "kind", "createdAt")
+        SELECT '${tag}-y' || n, '${u.pos}', '${u.owner}', 0, 0, 'fund', now() + n * interval '1 second'
+        FROM generate_series(1, 30000) AS n`);
       await tx.$executeRawUnsafe('ANALYZE "WalletEntry"');
       const plan = async (sql: string) => (await tx.$queryRawUnsafe<{ 'QUERY PLAN': string }[]>(`EXPLAIN (COSTS OFF) ${sql}`)).map((row) => row['QUERY PLAN']).join('\n');
       plans = [
         await plan(`SELECT "id" FROM "WalletEntry" WHERE "providerId" = '${ids.provider}' ORDER BY "createdAt" DESC, "id" DESC LIMIT 81`),
         await plan(`SELECT "id" FROM "WalletEntry" WHERE "providerId" = '${ids.provider}' AND "kind" = 'charge' ORDER BY "createdAt" DESC, "id" DESC LIMIT 81`),
+        // Every provider's operations newest first (F.6: the index built CONCURRENTLY for this read).
+        await plan(`SELECT "id" FROM "WalletEntry" WHERE "providerId" IS NOT NULL ORDER BY "createdAt" DESC, "id" DESC LIMIT 81`),
       ];
       throw rollback;
     }, { timeout: 30_000 }).catch((error: unknown) => {
       if (error !== rollback) throw error;
     });
-    expect(plans).toHaveLength(2);
+    expect(plans).toHaveLength(3);
     expect(plans[0]).toContain('WalletEntry_provider_createdAt_id');
+    expect(plans[2]).toContain('WalletEntry_operation_createdAt_id');
     // With the screen's kind filter the planner may take the kind's own index instead (a rare kind): an index still.
     expect(plans[1]).toMatch(/Index (Only )?Scan/);
     expect(plans[1]).not.toContain('Seq Scan');
-    expect(await prisma.walletEntry.count({ where: { id: { startsWith: `${tag}-x` } } })).toBe(0);
+    expect(await prisma.walletEntry.count({ where: { OR: [{ id: { startsWith: `${tag}-x` } }, { id: { startsWith: `${tag}-y` } }] } })).toBe(0);
   });
 });

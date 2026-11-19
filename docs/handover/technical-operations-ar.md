@@ -298,6 +298,33 @@ scripts/backup/verify-latest.sh <ملف إعدادات فيه R2 للقراءة 
 - النشر يُطلَب يدوياً من Coolify لكل تطبيق. التراجع من Coolify إلى صورة سابقة محفوظة، بعد استرجاع القاعدة إن لزم.
 - تجربة الترقية مسبقاً على نسخة مستعادة: `verify-restore.sh ... --keep` ثم `rehearse-upgrade.sh`.
 
+### 13.1 الـmigration «أونلاين»: فهرس يُبنى والنظام شغّال (المواصفة 2026-11-19 F.6، ADR 0028 القرار 6)
+
+بعد الإطلاق لا نوقف الكتابة لكل تعديل على القاعدة: الإضافة تكون جدولاً جديداً، أو عموداً يقبل الفراغ، أو قيداً `NOT VALID` ثم `VALIDATE`، أو فهرساً بـ`CREATE INDEX CONCURRENTLY`. أول migration من هذا النوع: `20261119110000_operations_newest_first` (الفهرس `WalletEntry_operation_createdAt_id` على عمليات المزوّدين الأحدث أولاً، لقائمة «عمليات المزودين» بلا مزوّد محدد و`reports/operations`).
+
+**كيف تتصرف عند الإقلاع.** الـAPI تشغّل `npx prisma migrate deploy` قبل أن تبدأ (`apps/api/Dockerfile`؛ النسخة المحلية `scripts/dev-local.sh`). جُرِّب على Prisma 7.10 (قاعدة مؤقتة، 2026-11-19): Prisma **لا تضع** أوامر الـmigration داخل transaction، بل تنفّذها أمراً أمراً؛ لذلك `CONCURRENTLY` يعمل، وإن فشل أمر بقي ما قبله مطبَّقاً. لهذا نكتب أمر `CONCURRENTLY` **وحده** في ملفه. أثناء البناء القراءة والكتابة على الجدول تستمر (في التجربة: جدول فيه نحو 3.5 مليون قيد، وكتابة متواصلة أثناء النشر: نحو 4000 إدخال، أبطؤها 23 ms). الإقلاع ينتظر حتى ينتهي البناء: على جدول كبير قد يأخذ دقائق، وفحص الصحة في Coolify يجب أن يسمح بذلك.
+
+**إن فشل البناء** (انقطاع، نفاد مساحة، أو فهرس فريد على بيانات مكرّرة):
+- يبقى الفهرس في القاعدة **INVALID**: لا يُستعمل في القراءة، لكنه يُحدَّث مع كل كتابة.
+- Prisma تسجّل الـmigration فاشلة (`P3018`)، وعند كل إقلاع تالٍ ترفض المتابعة (`P3009`): **الـAPI لا تقلع** حتى يُعالَج.
+- لا تكتب `IF NOT EXISTS` في هذه الـmigrations: جُرِّب، فهو يترك الفهرس الـINVALID كما هو ويسجّل الـmigration ناجحة.
+
+**التنظيف** (من psql على قاعدة الخادم، ثم من حاوية الـAPI أو بصورة الـAPI نفسها):
+```sql
+-- 1. ما الفهارس غير الصالحة؟
+SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;
+-- 2. احذفه دون قفل الكتابة (لا يعمل داخل transaction)
+DROP INDEX CONCURRENTLY IF EXISTS "WalletEntry_operation_createdAt_id";
+```
+```sh
+# 3. علّم الـmigration «مُتراجَع عنها» ثم أعد النشر (أو أعد تشغيل الـAPI): تُطبَّق من جديد
+npx prisma migrate resolve --rolled-back 20261119110000_operations_newest_first
+npx prisma migrate deploy
+```
+الفحص بعدها (المتوقَّع `true`، و`0` فهارس غير صالحة): `SELECT indisvalid FROM pg_index WHERE indexrelid = '"WalletEntry_operation_createdAt_id"'::regclass;`. `scripts/backup/rehearse-upgrade.sh` يفحص وجود الفهرس وأن لا فهرس INVALID.
+
+⏳ جُرِّب محلياً (قاعدة مؤقتة مع كتابة متواصلة، وقاعدة الاختبار). لم يُجرَّب بعد على خادم التجربة: يُثبت مع النشر القادم والكتابة شغّالة، وحتى ذلك الحين الشريحة F.6 غير مكتملة. لم يُطبَّق على قاعدة التطوير المحلية (يُطبَّق عند تشغيل النسخة المحلية التالي).
+
 **ترحيل رموز eSIM القديمة (Backfill):** يدوي ولا يعمل عند الإقلاع. داخل حاوية الـAPI:
 ```bash
 node dist/cli/seal-secrets.js --dry-run     # يعدّ فقط

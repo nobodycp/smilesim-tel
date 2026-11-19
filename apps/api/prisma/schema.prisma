@@ -160,7 +160,9 @@ model WalletEntry {
    * no foreign key on purpose: the key's lock on the provider's row would wait on the send gate under the wallet lock.
    * The provider books read it through a partial index Prisma cannot state: `WalletEntry_provider_createdAt_id`
    * (`providerId`, `createdAt` DESC, `id` DESC) INCLUDE (`providerCost`) WHERE `providerId` IS NOT NULL (migration
-   * `20261117220000_provider_ledger_index`). The CHECK `WalletEntry_operation_priced` is validated by
+   * `20261117220000_provider_ledger_index`). Every provider's operations newest first (spec 2026-11-19 F.5/F.6):
+   * `WalletEntry_operation_createdAt_id` (`createdAt` DESC, `id` DESC) WHERE `providerId` IS NOT NULL, built
+   * CONCURRENTLY (migration `20261119110000_operations_newest_first`). The CHECK `WalletEntry_operation_priced` is validated by
    * `20261117220100_provider_ledger_validate` when no stored row breaks it.
    */
   providerId   String?

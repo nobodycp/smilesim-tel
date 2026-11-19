@@ -1,0 +1,14 @@
+-- The provider operations newest first, every provider (spec 2026-11-19-business-lines-foundation, F.5 and F.6):
+-- «عمليات المزودين» with no provider chosen, `GET /v1/reports/operations` and `finance?scope=operations` read
+-- `"providerId" IS NOT NULL` ordered by ("createdAt" DESC, "id" DESC). `WalletEntry_provider_createdAt_id` leads with
+-- the provider, so it serves one provider's list and the books' sums, not this order; without this index the read
+-- walks every entry newest first and drops the ones with no provider. Partial, so Prisma cannot state it (named in
+-- `schema.prisma`, checked by `scripts/backup/rehearse-upgrade.sh`).
+--
+-- The first online migration (ADR 0028, decision 6): built CONCURRENTLY, so reads and writes of "WalletEntry" go on
+-- while it builds. It is the only statement of this file on purpose: `prisma migrate deploy` runs a migration's
+-- statements one by one with no transaction around them (CONCURRENTLY cannot run inside one), so a failure leaves the
+-- statements before it applied; alone, a failure leaves only this index, INVALID, and the migration marked failed
+-- (the API then refuses to start, P3009). No IF NOT EXISTS: it would keep an INVALID index of this name and record
+-- the migration as applied. The operator guide (`docs/handover/technical-operations-ar.md`, §13) says how to clean it.
+CREATE INDEX CONCURRENTLY "WalletEntry_operation_createdAt_id" ON "WalletEntry" ("createdAt" DESC, "id" DESC) WHERE "providerId" IS NOT NULL;
