@@ -53,9 +53,10 @@ suite('wallet moves under concurrency (PostgreSQL)', () => {
 
   const debit = (amount: number) => {
     const inner = service as unknown as Internals;
-    // A charge is an operation: its entry carries a provider and a cost (ADR 0025). No line, so no price ladder is read.
+    // A switch's difference is an operation that moves money and is no sale: its entry carries a provider and a cost
+    // (ADR 0025) and no ladder. A sale (`charge`) needs its line's ladder since spec F.3; this spec has no line.
     const sale: Sale = { msisdn: '', lineId: '', companyName: '', packageName: '', packagePrice: amount, providerId: 'race', providerCost: amount };
-    return inner.runTx((tx) => inner.move(tx, posId, -amount, posId, 'charge', '', sale));
+    return inner.runTx((tx) => inner.move(tx, posId, -amount, posId, 'switch', '', sale));
   };
 
   it('keeps every concurrent debit: no update is lost', async () => {

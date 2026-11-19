@@ -170,7 +170,11 @@ model WalletEntry {
   periodEndsAt DateTime?
   /** What the branch pays the provider for the whole period this row bought (or, for a switch, reprices to), without the eSIM fee. Empty on rows written before it was kept. */
   periodCost   Int?
-  /** A sale's price chain at the time (profit-ladder.ts `Ladder`): what each layer paid and the sell price. */
+  /**
+   * A sale's price chain at the time (profit-ladder.ts `Ladder`): what each layer paid and the sell price. A sale kind
+   * that moves money out always has one: `WalletLedger.post` refuses it otherwise, and so does the CHECK
+   * `WalletEntry_sale_has_ladder` (raw SQL, migration `20261119100000_sale_has_ladder`; spec 2026-11-19 F.3).
+   */
   ladder       Json?
   /** Why a manual movement was made: deposit, return, correction or settlement. */
   reason       String?

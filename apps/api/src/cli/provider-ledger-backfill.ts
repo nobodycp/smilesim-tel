@@ -3,7 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { DISCONNECT_FEE, heldEsimFee, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
+import { DISCONNECT_FEE, SALE_KINDS, heldEsimFee, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
 import { esimPriceOf } from '../modules/catalog';
 import { PROVIDER_RELEASED_NOTE } from '../modules/platform/stored-text';
 import { PREPAID_KINDS } from '../modules/sales/line-pricing';
@@ -50,6 +50,10 @@ import { markProviderLosses, rewriteOperationColumns, writeGivenBack, type Marke
 // `--leave-unresolved` is passed: those entries then stay as they are (in no provider's books, as the books read
 // them already), everything else is written, and the CHECK is left NOT VALID (it still checks every new row). When
 // no stored row breaks the CHECK at the end, it is validated in the same transaction. A second run changes nothing.
+// An old sale it writes that has no ladder (the stored-margins backfill could not build one: it lists it) would break
+// the CHECK `WalletEntry_sale_has_ladder` (spec F.3; PostgreSQL checks every CHECK, NOT VALID ones too, on a row an
+// UPDATE writes): that CHECK is then dropped and added again NOT VALID around the write, in this transaction, and the
+// run says so; it stays NOT VALID until those sales are decided.
 //
 // Exit code 0: committed (or, in a dry run, rolled back). 1: unresolved entries and no flag; nothing was changed.
 // 2: it could not run; nothing was changed. It prints ids, kinds, provider codes and money, never a whole number or
@@ -58,6 +62,8 @@ import { markProviderLosses, rewriteOperationColumns, writeGivenBack, type Marke
 const log = logger('ProviderLedgerBackfill');
 
 const CHECK = 'WalletEntry_operation_priced';
+const SALE_CHECK = 'WalletEntry_sale_has_ladder';
+const SALES = Object.keys(SALE_KINDS);
 
 /** Only these points of sale's entries: a spec on a shared database. Unset: every entry. */
 export type BackfillScope = { userIds: string[] };
@@ -86,6 +92,8 @@ export type BackfillRun = {
   lossesLeft: { id: string; kind: string; reason: string }[];
   /** Per provider code: purchases before and after. */
   purchases: { code: string; before: number; after: number }[];
+  /** Old sales written that keep no ladder: the CHECK `WalletEntry_sale_has_ladder` was lifted around the write (F.3). */
+  liftedSaleCheck: number;
   /** After the writes, in the whole table: operation entries without a provider or a cost. */
   breaking: number;
   validated: boolean;
@@ -104,6 +112,7 @@ type Packaged = PackagePriceRow & { providerId: string };
 type Entry = {
   id: string;
   kind: string;
+  amount?: number;
   lineId: string | null;
   providerId: string | null;
   providerCost: number | null;
@@ -211,7 +220,7 @@ async function purchasesByProvider(tx: Prisma.TransactionClient, scope: Backfill
 /** Writes the provider and cost of every operation entry (in `scope`), validates the CHECK when it holds, and commits unless asked not to. */
 export async function backfillProviderLedger(prisma: PrismaClient, options: BackfillOptions = {}): Promise<BackfillRun> {
   const scope = options.scope;
-  const run: BackfillRun = { dryRun: Boolean(options.dryRun), entries: 0, attributed: [], moved: [], priced: [], unresolved: [], stopped: false, written: 0, losses: [], givenBack: [], lossesLeft: [], purchases: [], breaking: 0, validated: false, committed: false };
+  const run: BackfillRun = { dryRun: Boolean(options.dryRun), entries: 0, attributed: [], moved: [], priced: [], unresolved: [], stopped: false, written: 0, losses: [], givenBack: [], lossesLeft: [], purchases: [], liftedSaleCheck: 0, breaking: 0, validated: false, committed: false };
   try {
     await transaction(
       prisma,
@@ -223,7 +232,7 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
           where: { kind: { in: PROVIDER_OPERATION_KINDS }, ...(scope ? { userId: { in: scope.userIds } } : {}) },
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           select: {
-            id: true, kind: true, lineId: true, providerId: true, providerCost: true, periodCost: true, esimPrice: true, ladder: true, createdAt: true,
+            id: true, kind: true, amount: true, lineId: true, providerId: true, providerCost: true, periodCost: true, esimPrice: true, ladder: true, createdAt: true,
             line: { select: { id: true, endsAt: true, terms: true, package: { include: { company: { select: { code: true } }, provider: { select: { code: true } } } } } },
           },
         });
@@ -262,7 +271,14 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
           throw new RolledBack();
         }
 
+        const unladdered = new Set(entries.filter((row) => SALES.includes(row.kind) && (row.amount ?? 0) < 0 && row.ladder === null).map((row) => row.id));
+        run.liftedSaleCheck = writes.filter((row) => unladdered.has(row.id)).length;
+        if (run.liftedSaleCheck > 0) await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" DROP CONSTRAINT "${SALE_CHECK}"`);
         run.written = await rewriteOperationColumns(tx, writes);
+        if (run.liftedSaleCheck > 0) {
+          const kinds = SALES.map((kind) => `'${kind}'`).join(', ');
+          await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" ADD CONSTRAINT "${SALE_CHECK}" CHECK (NOT ("kind" IN (${kinds}) AND "amount" < 0) OR "ladder" IS NOT NULL) NOT VALID`);
+        }
         run.written += await markOldLosses(tx, scope, code, run);
         run.written += await writeOldGivenBack(tx, scope, code, run);
         const after = await purchasesByProvider(tx, scope);
@@ -371,6 +387,9 @@ export function backfillLines(run: BackfillRun): string[] {
   for (const row of run.givenBack) lines.push(`given_back: entry ${row.id} for task ${row.taskId} (${row.provider}) cost ${row.cost} at ${row.at.toISOString()} (the package's cost now)`);
   for (const row of run.lossesLeft) lines.push(`sold at 0, left unmarked: entry ${row.id} (${row.kind}): ${row.reason}`);
   for (const row of run.purchases) lines.push(`provider ${row.code}: purchases ${row.before} -> ${row.after}`);
+  if (run.liftedSaleCheck > 0) {
+    lines.push(`check ${SALE_CHECK}: lifted around ${run.liftedSaleCheck} old sale(s) without a ladder and added again NOT VALID (stored-margins-backfill lists them under "no ladder")`);
+  }
   lines.push(
     run.validated
       ? `check ${CHECK}: validated`

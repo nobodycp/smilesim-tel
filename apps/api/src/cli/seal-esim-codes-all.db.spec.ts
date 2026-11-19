@@ -84,7 +84,9 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     });
     await prisma.task.createMany({ data: tasks });
     await prisma.taskNote.createMany({ data: tasks.slice(0, 4).map((row) => ({ id: randomUUID(), taskId: row.id, authorId: row.posId, body: 'a note' })) });
-    await prisma.walletEntry.createMany({ data: ids.poses.map((userId, at) => ({ id: randomUUID(), userId, actorId: userId, kind: 'activate', providerId: ids.provider, providerCost: 0, amount: -3500, balanceAfter: 46_500, lineId: lines[at * 12].id })) });
+    // A sale keeps its ladder and margins (the CHECKs `WalletEntry_sale_has_ladder`, `WalletEntry_sale_margins`).
+    const ladderOf = (userId: string) => ({ kind: 'subscription', chain: [userId], costs: { [userId]: 3500 }, posSell: 3500 });
+    await prisma.walletEntry.createMany({ data: ids.poses.map((userId, at) => ({ id: randomUUID(), userId, actorId: userId, kind: 'activate', providerId: ids.provider, providerCost: 0, amount: -3500, balanceAfter: 46_500, lineId: lines[at * 12].id, ladder: ladderOf(userId), chainPosId: userId, posMargin: 0, branchMargin: 0 })) });
     return { clearLines: 8 * ids.poses.length, clearTasks: 5 * ids.poses.length, lines: lines.length, tasks: tasks.length };
   };
 

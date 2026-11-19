@@ -261,6 +261,13 @@ export class WalletLedger {
         : REFUND_KINDS.has(kind)
           ? await this.refundOf(tx, amount, sale)
           : null;
+    // A sale is never written without its margins (ADR 0028, decision 4; spec F.3): a sale kind that moves money out
+    // with no ladder is refused before the INSERT, and the caller's transaction rolls back (the balance above too).
+    // The CHECK `WalletEntry_sale_has_ladder` says the same in the database.
+    if (amount < 0 && SALE_KINDS[kind] && !priced) {
+      log.error(`a ${kind} entry of ${amount} on wallet ${userId} has no ladder: refused, nothing was written`);
+      throw new Error(`a ${kind} sale is written without its ladder (ADR 0028, decision 4)`);
+    }
     // An operation's provider, cost and loss mark, fixed now (ADR 0025; P.7): part of this INSERT, no statement of their own.
     const operation = operationColumns(kind, sale, false, amount);
     await tx.walletEntry.create({
@@ -322,7 +329,8 @@ export class WalletLedger {
 
   /**
    * The price chain of a sale as it stands now, kept on its wallet entry so each layer's margin stays what it was
-   * (profit-ladder.ts). Null for an entry that is not a sale, or a line or package that cannot be read.
+   * (profit-ladder.ts). Null for an entry that is not a sale, or a line or package that cannot be read: `post` then
+   * refuses the sale (spec F.3).
    *
    * The seller's path is the one the caller read before its transaction and priced the sale on (`sale.path`); it
    * is confirmed here, under the wallet lock, by its accounts' rows alone (`AccountTree.confirmedPath`), and a path

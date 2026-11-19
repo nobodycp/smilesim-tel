@@ -409,6 +409,21 @@ SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_provider_los
 
 ما يراه المكتب: «دليل تسليم العميل» §12. ⏳ لم يُنشر على أي خادم، ولم تُطبَّق الـmigration على قاعدة التطوير المحلية (طُبِّقت على قاعدة الاختبار فقط): تُطبَّق عند تشغيل النسخة المحلية التالي (`npm run dev:local` يشغّل `prisma migrate deploy`).
 
+**لا بيع بلا أرباح محسوبة (المواصفة 2026-11-19 F.3، ADR 0028 القرار 4).** قبل هذا كان البيع الذي لا يُبنى سلّم أسعاره (رقم شروطه لا تسمّي باقة، باقة لا توجد، بيع بلا رقم) يُكتب بلا أرباح وبلا أي خطأ: المال يتحرك وربح كل طبقة عليه صفر. الآن `WalletLedger.post` يرفضه قبل الكتابة بخطأ داخلي (500) يذكر نوع العملية، وتتراجع المعاملة كلها فلا يتحرك رصيد، ويُكتب سطر خطأ في السجل («has no ladder: refused»). لم نجد اليوم طريقاً عادياً يصل إليه (كل رقم يُنشأ بشروط تسمّي باقته، والباقات لا تُحذف ولا يتغير رمزها). الإرجاع (`disconnect` بمبلغ موجب) والعمليات بمبلغ صفر لا يمسّها الرفض. ما يلزم في التحديث:
+
+1. مع النشر تُطبَّق `20261119100000_sale_has_ladder`: قيد `WalletEntry_sale_has_ladder` (بيع من `activate` / `charge` / `extend` / `reactivate` بمبلغ سالب ⇒ له `ladder`) يُضاف `NOT VALID` (لا قراءة للجدول تحت القفل)، ثم يُفعَّل في الـmigration نفسها **فقط إن لم يوجد صف يخالفه**؛ وإلا يبقى `NOT VALID` مع `WARNING` في سجل الإقلاع، والكتابات الجديدة تُفحَص في الحالتين. لا أمر يُشغَّل بعده.
+2. قبل النشر على خادم فيه بيانات (العدد المتوقَّع `0`؛ أمر `stored-margins-backfill` يذكر هذه الصفوف تحت «no ladder»):
+```sql
+SELECT count(*) FROM "WalletEntry" WHERE "kind" IN ('activate', 'charge', 'extend', 'reactivate') AND "amount" < 0 AND "ladder" IS NULL;
+```
+3. بعد النشر (المتوقَّع `true`؛ `false` يعني أن صفاً قديماً يخالفه: اعرضه بالاستعلام أعلاه وقرّر مع المالك):
+```sql
+SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_sale_has_ladder';
+```
+   `scripts/backup/rehearse-upgrade.sh` يفحص وجود القيد.
+
+⏳ لم يُنشر على أي خادم؛ طُبِّقت الـmigration على قاعدة الاختبار فقط (تُطبَّق على قاعدة التطوير عند تشغيل النسخة المحلية التالي).
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال

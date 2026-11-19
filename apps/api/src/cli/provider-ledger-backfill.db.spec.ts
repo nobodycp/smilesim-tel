@@ -79,11 +79,11 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
       entry('dact', 'activate', ids.lineD, 3000, '2026-10-11T10:00:00.000Z', sold),
       // No cost kept: the settlement at its own time, by today's rule: 1000 + 50 − 3000.
       entry('ddisc', 'disconnect', ids.lineD, null, '2026-10-21T09:00:00.000Z', { packagePrice: 3500 }),
+      // Stored under A by name matching, while its line holds B's package of the same name: moved to B, cost kept.
+      entry('named', 'activate', ids.lineB, 2000, '2026-10-08T10:00:00.000Z', { providerId: ids.providerA }),
     ]);
-    // Stored under A by name matching, while its line holds B's package of the same name: moved to B, cost kept.
-    await prisma.walletEntry.create({ data: entry('named', 'activate', ids.lineB, 2000, '2026-10-08T10:00:00.000Z', { providerId: ids.providerA }) });
-    // Written by today's writers: already right, never touched.
-    await prisma.walletEntry.create({ data: entry('today', 'extend', ids.lineA, 1600, '2026-11-01T10:00:00.000Z', { providerId: ids.providerA }) });
+    // Written by today's writers: already right, never touched. A sale keeps its ladder and margins (F.3).
+    await prisma.walletEntry.create({ data: entry('today', 'extend', ids.lineA, 1600, '2026-11-01T10:00:00.000Z', { providerId: ids.providerA, ladder, chainPosId: ids.pos, posMargin: 500, branchMargin: 1550 }) });
   });
 
   afterAll(async () => {
@@ -154,6 +154,10 @@ suite('the provider ledger\'s backfill (PostgreSQL)', () => {
     expect(lines).toContain(`provider pl-${tag}-a: purchases 3600 -> 12500`);
     expect(lines).toContain(`cost: entry ${entryId('cdisc')} (disconnect, pl-${tag}-a) 1050 -> -1950 (the provider gives back the open periods' cost 3000 (slice P.6))`);
     expect(lines.slice(-2)).toEqual(['check WalletEntry_operation_priced: validated', 'dry run: rolled back, nothing was changed']);
+    // The old sales it writes keep no ladder (stored before the margins): the sale ladder CHECK is lifted around the
+    // write and added again NOT VALID (spec F.3), and the run says so.
+    expect(done.liftedSaleCheck).toBe(6);
+    expect(lines).toContain('check WalletEntry_sale_has_ladder: lifted around 6 old sale(s) without a ladder and added again NOT VALID (stored-margins-backfill lists them under "no ladder")');
     expect(await stored()).toEqual(BEFORE);
   });
 
