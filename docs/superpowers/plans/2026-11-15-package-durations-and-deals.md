@@ -70,7 +70,7 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   restart and task completion; price by the new period's start against `priceUntil`; a deferred task settles at
   its held price. `transfers.service.ts`: a number on a deal keeps it; transfer to an excluded or hidden
   account is refused. Spec with two concurrent callers of `endDeal`.
-- [ ] **D.9 Providers.** `ProviderProduct.durations` in `providers/directory/adapters/provider-adapter.ts` and
+- [ ] **D.9 Providers.** `ProviderProduct.durations` in `postpaid/catalog/provider-catalog/adapters/provider-adapter.ts` and
   `simulated-adapter.ts` (a Sky-like provider, 5 and 15 days); import proposes durations; drift pass on the
   provider-health timer with one notice per change.
 - [ ] **D.10 Retire the old columns.** Count of packages whose activation ladder differs from renewal is zero

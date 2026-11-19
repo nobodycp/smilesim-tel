@@ -84,8 +84,8 @@ doc: WECOM, XPhone. (doc)
 
 ### 4.1 Catalog (what "add a package from the provider" reads)
 
-Our port: `ProviderAdapter` (`apps/api/src/modules/providers/directory/adapters/provider-adapter.ts`), with `companies()`
-and `products(companyCode)`.
+Our port: `ProviderAdapter` (`apps/api/src/modules/postpaid/catalog/provider-catalog/adapters/provider-adapter.ts`;
+`providers/directory/adapters/` until slice F.7e), with `companies()` and `products(companyCode)`.
 
 | Ours (`ProviderProduct`) | Areen `GetPrograms` | Note |
 |---|---|---|

@@ -138,3 +138,38 @@ reads`). It reads what the others did; it changes none of their rules, no money,
   `DeskRepository.openUnseenAlerts` counts the `Alert` table, a read of one number, the same way monitoring reads
   the tables below it. Nothing else of monitoring is read from below.
 
+
+## Amended by slice F.7e (2026-11-19): a business line's modules carry its name; a fourteenth module, `site`
+
+ADR 0028 ("Names"): `postpaid` is the backend's word for what is the postpaid line's alone. The three modules that
+are the postpaid line's live under `modules/postpaid/` and carry the line's name in the map
+(`architecture-map.fixture.ts`): `postpaid-catalog` (`modules/postpaid/catalog/`, was `modules/catalog/`),
+`postpaid-pricing` (`modules/postpaid/pricing/`, was `modules/pricing/`) and `postpaid-sales`
+(`modules/postpaid/sales/`, was `modules/sales/`). Their layering inside and their surfaces (`index.ts`) are as they
+were. Every other module is shared by the lines and keeps its name and place; `tasks` stays general (the owner: one
+inbox for every line).
+
+What the catalog held that every line shares became a module of its own, **`site`** (`modules/site/`, surface
+`modules/site/index.ts`): the site identity (`site/branding/`, which the map gave to `catalog` until then), the
+offers (`site/offers/`: no package or company link) and the offer picture route (`site/pictures/`, `GET
+/pictures/offers/:id`), with how every picture route answers (`sendPicture`, `PictureQuery`) and what a picture is
+(`site/rules/pictures.ts`). The pictures controller became two under the same prefix: the company mark stays the
+postpaid catalog's. Adding to the catalog from a provider (`provider-catalog.*` and the catalog adapter it asks)
+moved from `providers/directory/` into `postpaid/catalog/provider-catalog/`, with its own repository and schemas
+(the same queries and bodies); its routes are the same.
+
+The fourteen modules: `platform`, `identity`, `auditing`, `notifications`, `access`, `site`, `postpaid-catalog`,
+`postpaid-pricing`, `wallets`, `providers`, `tasks`, `postpaid-sales`, `reporting`, `monitoring`.
+
+`DEPENDS_ON` is no wider: `site` may import `access` and `platform` (what `catalog` could); `postpaid-catalog` imports
+`site`, which was inside it before, so whatever could reach the catalog reaches the same files now. The other
+entries are the old ones with the new names. **Known edges from shared modules into postpaid**, kept exactly as wide
+as they were and named in the fixture: `wallets` → `postpaid-pricing` (the ledger builds the postpaid ladder itself:
+`SALE_KINDS`, `REFUND_KINDS`, `ladderOf`, `refundLadder`, `Ladder`, `PriceLadder`, `costsAtProvider`, `TermsModule`),
+`providers` → `postpaid-catalog` (and `postpaid-pricing` below it: provider settings read postpaid rules), and
+`tasks` reading the postpaid catalog through `providers` (`Action`, `simRulesOf`). The first new line turns the
+ledger's edge into "the line hands the ledger its ladder" (ADR 0028, decision 3).
+
+Paths named in the dated records before this day (older amendments here, ADRs 0021–0027, plans, specs, reviews)
+are the old ones: `catalog/…`, `pricing/…` and `sales/…` are now under `modules/postpaid/`, `branding/` and
+`catalog/offers/` under `modules/site/`.

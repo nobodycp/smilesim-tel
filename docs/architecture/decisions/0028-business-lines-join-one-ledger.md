@@ -94,6 +94,7 @@ are the postpaid line's, and a new line's kinds carry its prefix (`prepaid.…`,
 the postpaid line's alone); **on screen the line stays «الفواتير»**. The slice that renames is the spec's F.7.
 Done for the models and tables (F.7d, migration `20261119130000_postpaid_table_names`): the ten postpaid models and
 tables carry the prefix `Postpaid`; `Task` and `TaskNote` stay general; relation fields, shared columns and responses unchanged.
+Done for the modules (F.7e, ADR 0020 amended 2026-11-19): `postpaid-catalog`, `postpaid-pricing`, `postpaid-sales` under `modules/postpaid/`; what they shared went to a module `site`; `tasks` stays general.
 
 ## Deliberately not built now (waiting costs nothing)
 
