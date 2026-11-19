@@ -3,7 +3,8 @@
 - Date: 2026-11-19
 - Status: **accepted in part** — the owner, 2026-11-19: one wallet for every line («المحفظة مشتركة أكيد للكل»); the
   other lines may price by a percentage and pay the chain a commission as bills do; "anything that can be prepared or
-  renamed now, do it now, before launch". **Open:** the names (decision 7), put to the owner.
+  renamed now, do it now, before launch". **Open:** moving the bills routes and pages under their own prefix (decision 7), put to the owner. The cards line's
+  word is the owner's: «توكمان» (`talkman`).
 - Spec: `docs/superpowers/specs/2026-11-19-business-lines-foundation.md`. Plan:
   `docs/superpowers/plans/2026-11-19-business-lines-foundation.md`.
 - Builds on ADR 0020 (modules and their surfaces), 0025 (an operation's provider and cost on its entry), 0026 (each
@@ -27,8 +28,8 @@ point they left open.
   `packageName`, `companyName` are nullable. A sale with no phone number fits.
 - **The stored ladder and margins** (ADR 0026): amounts per layer on the entry; every profit sum reads them, never
   the package.
-- **The provider's books** (ADR 0025): `providerId` and `providerCost` on the entry; `ProviderEntry`. A provider is
-  not tied to one line (Areen lists games beside subscriptions): one provider, one balance.
+- **The provider's books** (ADR 0025): `providerId` and `providerCost` on the entry; `ProviderEntry`. The machinery
+  (balance, ledger, reconciliation, gate, credentials) serves a provider of any line.
 - Tasks, notices, the activity log, grants (a list that only grows), the request log.
 
 What is bills-only: `Line` (`msisdn` unique, `endsAt`), `Package` (renewal prices, durations, the `auto*` / `allow*`
@@ -41,6 +42,17 @@ key (number, day, amount).
 2. **A new line gets its own tables** for its products and its orders (and its stock of codes, if it has one). It
    never reuses `Package`, `Line` or `Task` with made-up values: no dummy renewal price, no fake number. The shared
    part is what it writes: wallet entries through `WalletLedger`, provider operations, tasks, notices.
+2a. **Companies and providers are kept apart by line** (the owner, 2026-11-19: Cellcom sells cards as it sells
+   subscriptions, but the two are not related; cards hardly ever change while bills are the daily work; mixing them
+   would confuse — "separate the providers and the companies for each line, even in the same place, with tabs and
+   names of their own"). So: **a line has its own companies** (its own table: `Company` stays the bills line's telecom
+   operators; "Cellcom" of the cards line is another row of another table, never the same record), and **a provider
+   record belongs to exactly one line** (one `Provider` table, because the balance, ledger and reconciliation are the
+   same machinery; a line stamp on it, `bills` for every provider of today, added with the first new line — a
+   constant-default column is metadata-only). A real supplier that serves two lines is two provider records, each with
+   its own balance and books; if such a supplier keeps one balance for both, the first line that meets it decides how
+   its statement is split, in its own spec. On the screens each line has its own «الشركات» and «المزودون»; none lists
+   another line's.
 3. **Money goes only through the ledger**, with a sale that carries its provider, its cost and its ladder. **A line's
    pricing may be anything — a fixed price, a percentage of the price, a commission for each layer of the chain — but
    what the entry stores is the result: a ladder of integer agorot per layer** (ADR 0026). A percentage is worked out
@@ -68,7 +80,7 @@ key (number, day, amount).
 ## Deliberately not built now (waiting costs nothing)
 
 A "business line" column on the existing tables (a constant-default column is metadata-only at any size; kind and the
-line's own tables tell the rows apart), a generic product/order model, a stock of codes, currencies, per-line grants,
+line's own tables tell the rows apart; the provider's line stamp of decision 2a comes with the first new line), a generic product/order model, a stock of codes, currencies, per-line grants,
 a second provider-adapter interface. Each comes with the first line that needs it.
 
 ## Consequences

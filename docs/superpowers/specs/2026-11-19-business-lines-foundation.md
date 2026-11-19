@@ -11,6 +11,10 @@ Status: F.1–F.6 approved by the owner's request; **F.7 (names) waits for the o
 
 ## The owner's answers (2026-11-19)
 
+- **Companies and providers are separate for each line**, even when the name is the same (Cellcom of the cards line
+  is not Cellcom of bills). Nothing to build now beyond the navigation of F.7: the bills line's are the ones that
+  exist; a new line brings its own companies table and its own provider records (ADR 0028, decision 2a).
+
 - **The wallet is shared by every line.** Nothing to build.
 - **The other lines may price by a percentage, and pay the chain a commission as bills do.** Nothing to build: an
   entry stores the resulting amounts per layer (ADR 0028, decision 3), so a percentage rule is a new line's own
@@ -103,8 +107,11 @@ bookmark exists before launch — after it, a rename breaks both):
   `/v1/bills/companies`, `/v1/bills/sell-prices`, `/v1/bills/offers`), no alias kept. Shared routes stay.
 - **Web:** the bills pages move under `/bills/…` (`/bills/numbers`, `/bills/packages`, `/bills/companies`); the
   sidebar groups them under one heading, «الفواتير», so the next line is a second heading and not a reshuffle.
-- **The four lines' words** in code and URLs: `bills`, `cards`, `games`, `travel-esim` (the local eSIM swap keeps the
-  word `esim`).
+- **The four lines' words** in code and URLs: `bills`, `talkman` (the owner's word for the cards line, «توكمان»),
+  `games`, `travel-esim` (the local eSIM swap keeps the word `esim`).
+- **Companies and providers by line** (the owner, 2026-11-19; ADR 0028, decision 2a): the bills line's companies and
+  providers sit under the bills heading with the rest of it («الشركات والرزم», «المزودون», «حسابات المزودين»,
+  «عمليات المزودين»), so the next line brings its own under its own heading and nothing is ever listed mixed.
 - **Not renamed:** the wallet-entry kinds of bills (bare words by rule, ADR 0028), the tables (`Package`, `Line`,
   `Company`: a table rename is instant at any size, and the code's modules already scope them), the modules.
 
