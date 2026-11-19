@@ -28,7 +28,7 @@ import type { RequestLogFilters } from '../api';
 import { CELL_SUB, PANE_HEAD, PANE_TITLE, routeText } from '../kit';
 import { useSystemOwner } from '../use-system-owner';
 
-// The filters in the address (`?status=5xx&route=/v1/lines/:id`). `status` is a class of answers here; the API also
+// The filters in the address (`?status=5xx&route=/v1/postpaid/lines/:id`). `status` is a class of answers here; the API also
 // takes one status (`404`), which a link may carry and the menu then shows as its own choice. `from` / `to` are days
 // from the date fields, or two moments from an alert's link (`2026-11-17T10:02:00.000Z`), which the API takes as they
 // are and the page says in a line under the filters.

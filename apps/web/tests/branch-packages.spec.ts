@@ -33,7 +33,7 @@ const twoProviders = {
 };
 
 test('the branch reaches packages through their company: one table, provider, prices, margin, status', async ({ page }) => {
-  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
+  await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/packages`);
   await expect(page).toHaveURL(`${admin}/companies`);
   await expect(page.getByTestId('sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
@@ -57,7 +57,7 @@ test('the branch reaches packages through their company: one table, provider, pr
 });
 
 test('the provider filter narrows a company\'s packages, and the old company-provider page lands on it', async ({ page }) => {
-  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
+  await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/companies/wecom/sky`);
   await expect(page).toHaveURL(`${admin}/companies/wecom?provider=sky`);
   await expect(page.locator('tbody tr')).toHaveCount(1);
@@ -81,13 +81,13 @@ test('the package page edits its details', async ({ page }) => {
     modes: { activate: 'auto', charge: 'auto', extend: 'auto', disconnect: 'auto', freeze: 'auto', switch: 'auto', rename: 'auto', sim: 'auto' },
   };
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/prices': () => ({ body: { offers: [] } }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/prices': () => ({ body: { offers: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: shelf }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
-    'PATCH /packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
-    'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
+    'GET /postpaid/companies': () => ({ body: shelf }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
+    'PATCH /postpaid/packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
+    'PATCH /postpaid/packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
   // The package page's old address moves to its company's (spec 2026-11-09-admin-review, 4).
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
@@ -99,7 +99,7 @@ test('the package page edits its details', async ({ page }) => {
   // with its price beside it; turned off here, it saves at once with the other details as they are.
   const esim = page.getByTestId('package-esim');
   await expect(esim.getByLabel('سعر eSIM')).toBeVisible();
-  const switched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
+  const switched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/postpaid/packages/lian-wecom-500/details'));
   await esim.getByRole('switch', { name: 'الرزمة متاحة كـ eSIM' }).click();
   expect((await switched).postDataJSON()).toMatchObject({ dataGb: 500, smsCount: null, minutes: -1, details: '', esimAvailable: false });
   // Porting and card-to-bill (spec 2026-11-16-package-page, P.5): both off, with no mode to choose; turning one on
@@ -108,7 +108,7 @@ test('the package page edits its details', async ({ page }) => {
   await expect(kinds.getByRole('switch', { name: 'نيود' })).toHaveAttribute('aria-checked', 'false');
   await expect(kinds.getByRole('switch', { name: 'تحويل من كرت لفاتورة' })).toHaveAttribute('aria-checked', 'false');
   await expect(kinds.getByRole('radiogroup')).toHaveCount(0);
-  const ported = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/mode'));
+  const ported = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/postpaid/packages/lian-wecom-500/mode'));
   await kinds.getByRole('switch', { name: 'نيود' }).click();
   expect((await ported).postDataJSON()).toEqual({ portMode: 'manual' });
   // The details are edited on the same tab (spec 2026-11-16-package-page, P.2); eSIM is not one of their fields.
@@ -121,7 +121,7 @@ test('the package page edits its details', async ({ page }) => {
   // Suspension period (spec 2026-11-08-overview-and-reports-nav, I): 90 days when the sheet carries none.
   await expect(page.getByLabel('مدة تعليق الرقم (بالأيام)')).toHaveValue('90');
   await page.getByLabel('مدة تعليق الرقم (بالأيام)').fill('60');
-  const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
+  const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/postpaid/packages/lian-wecom-500/details'));
   await page.getByTestId('package-details-form').getByRole('button', { name: 'حفظ' }).click();
   // The details leave eSIM to its switch.
   expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60 });
@@ -135,7 +135,7 @@ test('the point of sale sees the details on the package card and the subscribe s
     autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,
     price: 2700, renewalPrice: 2700, canActivate: true, sellPrice: null, sellRenewalPrice: null, sellDefault: null, sellRenewalDefault: null,
   };
-  await serveApi(page, 'pos', { 'GET /packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
+  await serveApi(page, 'pos', { 'GET /postpaid/packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
   await page.goto('/packages');
   await page.getByRole('button', { name: /ويكوم/ }).click();
   const card = page.getByTestId('pack-card');
@@ -151,11 +151,11 @@ test('the point of sale sees the details on the package card and the subscribe s
 
 test('the company list turns a package on and off, and the package page only shows its state', async ({ page }) => {
   await serveApi(page, 'branch', {
-    'GET /companies': () => ({ body: twoProviders }),
-    'PATCH /packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
+    'GET /postpaid/companies': () => ({ body: twoProviders }),
+    'PATCH /postpaid/packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
   });
   await page.goto(`${admin}/companies/wecom`);
-  const sent = page.waitForRequest((request) => request.url().endsWith('/packages/lian-wecom-300/mode') && request.method() === 'PATCH');
+  const sent = page.waitForRequest((request) => request.url().endsWith('/postpaid/packages/lian-wecom-300/mode') && request.method() === 'PATCH');
   await page.locator('tr', { hasText: '300 جيجا' }).getByRole('switch').click();
   expect((await sent).postDataJSON()).toEqual({ enabled: true });
 });

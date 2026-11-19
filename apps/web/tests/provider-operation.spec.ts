@@ -68,7 +68,7 @@ for (const [phase, label, hint, money] of phases) {
   test(`an operation that is ${phase} says so, says what became of the amount, and shows only the buttons the API allows`, async ({ page }) => {
     await serveApi(page, 'branch', {
       'GET /tasks/t1': () => ({ body: { task: taskIn(phase), events: [] } }),
-      'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase, decisions: [] }) }),
+      'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ phase, decisions: [] }) }),
     });
     await page.goto(`${admin}/tasks/t1`);
     await expect(panel(page)).toBeVisible();
@@ -135,7 +135,7 @@ test('a point of sale reads where its activation stands and the amount, not the 
 test('an account the API refuses the decision view sees the refusal, and no decision', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } }),
   });
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).getByRole('alert')).toHaveText('غير مسموح');
@@ -145,7 +145,7 @@ test('an account the API refuses the decision view sees the refusal, and no deci
 test('the task\'s submitter is told it decides nothing here', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], blocked: 'own-task' }) }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], blocked: 'own-task' }) }),
   });
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page)).toContainText('أنت مُرسِل هذه المهمة، فلا تتخذ قراراً عليها.');
@@ -158,10 +158,10 @@ test('confirm success: the form checks what the API will, sends it once, and the
   let applied = false;
   const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: applied ? taskIn('applied') : taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: applied ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'confirm-success', providerRef: 'REF-77', accountLoginName: 'admin' })] }) : viewOf() }),
-    'POST /tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' }, delay: 300 }; },
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: applied ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'confirm-success', providerRef: 'REF-77', accountLoginName: 'admin' })] }) : viewOf() }),
+    'POST /postpaid/tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' }, delay: 300 }; },
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).getByRole('button', { name: 'تأكيد النجاح' })).toBeVisible();
   await expect(panel(page).getByRole('button', { name: 'إعلان الفشل' })).toBeVisible();
@@ -199,15 +199,15 @@ test('confirm success: the form checks what the API will, sends it once, and the
   await expect(panel(page).getByTestId('po-history')).toContainText('تأكيد النجاح');
   await expect(panel(page).getByTestId('po-history')).toContainText('REF-77');
   expect(calls.filter((call) => call === 'GET /tasks/t1').length).toBeGreaterThanOrEqual(2);
-  expect(calls.filter((call) => call === 'POST /tasks/t1/provider-decision')).toHaveLength(1);
+  expect(calls.filter((call) => call === 'POST /postpaid/tasks/t1/provider-decision')).toHaveLength(1);
 });
 
 test('a confirmation whose line could not be made says so, and the ticket shows the exception', async ({ page }) => {
   let decided = false;
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: decided ? taskIn('exception') : taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: decided ? viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) : viewOf() }),
-    'POST /tasks/t1/provider-decision': () => { decided = true; return { body: { ok: true, outcome: 'exception', reason: 'number-taken' } }; },
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: decided ? viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) : viewOf() }),
+    'POST /postpaid/tasks/t1/provider-decision': () => { decided = true; return { body: { ok: true, outcome: 'exception', reason: 'number-taken' } }; },
   });
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'تأكيد النجاح' }).click();
@@ -222,10 +222,10 @@ test('declare failure is sent as a proposal; its proposer is then told another a
   let proposed = false;
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: proposed ? viewOf({ decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }), history: [record({ accountLoginName: 'admin' })] }) : viewOf() }),
-    'POST /tasks/t1/provider-decision': () => { proposed = true; return { body: { ok: true, outcome: 'proposed' } }; },
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: proposed ? viewOf({ decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }), history: [record({ accountLoginName: 'admin' })] }) : viewOf() }),
+    'POST /postpaid/tasks/t1/provider-decision': () => { proposed = true; return { body: { ok: true, outcome: 'proposed' } }; },
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'إعلان الفشل' }).click();
   await expect(dialog(page)).toContainText('اقتراح يحتاج موافقة حساب مخوَّل ثانٍ');
@@ -250,10 +250,10 @@ test('declare failure is sent as a proposal; its proposer is then told another a
 test('apply corrected on a plain exception asks for no eSIM code, and release is a proposal that says where the money goes', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
-    'POST /tasks/t1/provider-decision': () => ({ body: { ok: true, outcome: 'applied' } }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
+    'POST /postpaid/tasks/t1/provider-decision': () => ({ body: { ok: true, outcome: 'applied' } }),
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'تحرير بعد نجاح المزوّد' }).click();
   await expect(dialog(page)).toContainText('تُرفض المهمة ويُعاد المبلغ المحجوز إلى نقطة البيع، ولا يُنشأ خط');
@@ -278,12 +278,12 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
   let applied = false;
   const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: applied ? taskIn('applied', { esim: true }) : taskIn('exception', { esim: true, operation: { phase: 'exception', reason: 'esim-code-missing', decisions: true } }), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: applied
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: applied
       ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'apply-corrected', suppliedEsimCode: true, accountLoginName: 'admin' })] })
       : viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: false, esimCode: true } }) }),
-    'POST /tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' } }; },
+    'POST /postpaid/tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' } }; },
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page)).toContainText('لم يصل رمز تفعيل eSIM');
   await panel(page).getByRole('button', { name: 'تطبيق ببيانات مصحَّحة' }).click();
@@ -318,15 +318,15 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
 
 test('the queue and the decision view are given no eSIM code, and moving from one task to another shows nothing of the first', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
-    'GET /provider-decisions': (url) => ({ body: { nextCursor: null, total: 2, totals: { approval: 0, decision: 2 }, items: url.searchParams.get('waiting') === 'approval' ? [] : [
+    'GET /postpaid/provider-decisions': (url) => ({ body: { nextCursor: null, total: 2, totals: { approval: 0, decision: 2 }, items: url.searchParams.get('waiting') === 'approval' ? [] : [
       { taskId: 'ta', action: 'activate', msisdn: '0550000001', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:00:00.000Z', ...viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'] }), needs: undefined, history: undefined },
       { taskId: 'tb', action: 'activate', msisdn: '0550000002', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:05:00.000Z', ...viewOf(), needs: undefined, history: undefined },
     ] } }),
     // Task A is done and carries its line's code; task B is slow to answer and has none.
     'GET /tasks/ta': () => ({ body: { task: taskIn('applied', { id: 'ta', esim: true, esimQr: QR_A, msisdn: '0550000001' }), events: [] } }),
-    'GET /tasks/ta/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [] }) }),
+    'GET /postpaid/tasks/ta/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [] }) }),
     'GET /tasks/tb': () => ({ body: { task: taskIn('unknown', { id: 'tb', msisdn: '0550000002' }), events: [] }, delay: 900 }),
-    'GET /tasks/tb/provider-decision': () => ({ body: viewOf() }),
+    'GET /postpaid/tasks/tb/provider-decision': () => ({ body: viewOf() }),
   });
   await page.goto(`${admin}/tasks/decisions?waiting=decision`);
   await expect(page.getByTestId('po-row')).toHaveCount(2);
@@ -360,12 +360,12 @@ test('a second account approves a proposed release after reading what it does to
   await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: approved ? taskIn('exception', { status: 'cancelled', hold: 'released' }) : taskIn('exception'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: approved
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: approved
       ? viewOf({ phase: 'exception', reason: 'number-taken', decisions: [], history: [record({ decision: 'release-after-success' }), record({ sequence: 2, type: 'approved', decision: 'release-after-success', accountLoginName: 'acc2', evidenceKind: null, note: '' })] })
       : viewOf({ phase: 'exception', reason: 'number-taken', decisions: [], canApprove: true, canRefuse: true, proposal: record({ decision: 'release-after-success', providerRef: 'REF-9' }), history: [record({ decision: 'release-after-success', providerRef: 'REF-9' })] }) }),
-    'POST /tasks/t1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' }, delay: 250 }; },
+    'POST /postpaid/tasks/t1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' }, delay: 250 }; },
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
   const proposal = panel(page).getByTestId('po-proposal');
   await expect(proposal).toContainText('تحرير بعد نجاح المزوّد');
@@ -394,10 +394,10 @@ test('a second account refuses a proposal: nothing changes, and a decision can b
   await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: refused ? viewOf() : viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
-    'POST /tasks/t1/provider-decision/approval': () => { refused = true; return { body: { ok: true, outcome: 'refused' } }; },
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: refused ? viewOf() : viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
+    'POST /postpaid/tasks/t1/provider-decision/approval': () => { refused = true; return { body: { ok: true, outcome: 'refused' } }; },
   });
-  const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/postpaid/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).getByTestId('po-proposal')).toContainText('بالموافقة تصبح العملية فاشلة وتنتقل المهمة إلى الفرع. المبلغ يبقى محجوزاً.');
   await panel(page).getByRole('button', { name: 'رفض الاقتراح' }).click();
@@ -413,7 +413,7 @@ test('a proposal that went stale is offered for refusal only, and says why', asy
   await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: taskIn('applied'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [], canApprove: false, canRefuse: true, proposal: record() }) }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [], canApprove: false, canRefuse: true, proposal: record() }) }),
   });
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).getByTestId('po-proposal')).toContainText('تغيّرت حالة العملية بعد هذا الاقتراح. يمكن رفضه فقط.');
@@ -427,9 +427,9 @@ test('a 409 says the operation changed, closes the form and reads the ticket aga
   let moved = false;
   const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: moved ? taskIn('applied') : taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: moved ? viewOf({ phase: 'applied', decisions: [] }) : viewOf() }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: moved ? viewOf({ phase: 'applied', decisions: [] }) : viewOf() }),
     // The provider's own answer arrived first.
-    'POST /tasks/t1/provider-decision': () => { moved = true; return { status: 409, body: { message: 'القرار لا ينطبق على حالة العملية الآن', code: 'DECISION_NOT_APPLICABLE' } }; },
+    'POST /postpaid/tasks/t1/provider-decision': () => { moved = true; return { status: 409, body: { message: 'القرار لا ينطبق على حالة العملية الآن', code: 'DECISION_NOT_APPLICABLE' } }; },
   });
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'تأكيد النجاح' }).click();
@@ -440,14 +440,14 @@ test('a 409 says the operation changed, closes the form and reads the ticket aga
   await expect(page.getByText('نُفّذ القرار')).toHaveCount(0);
   await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('تم التفعيل');
   await expect(panel(page).getByRole('button')).toHaveCount(0);
-  expect(calls.filter((call) => call === 'POST /tasks/t1/provider-decision')).toHaveLength(1);
+  expect(calls.filter((call) => call === 'POST /postpaid/tasks/t1/provider-decision')).toHaveLength(1);
 });
 
 test('a refusal of the request itself stays in the form with its message, and what was typed stays too', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
-    'POST /tasks/t1/provider-decision': () => ({ status: 409, body: { message: 'الرقم مستخدم', code: 'NUMBER_TAKEN' } }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
+    'POST /postpaid/tasks/t1/provider-decision': () => ({ status: 409, body: { message: 'الرقم مستخدم', code: 'NUMBER_TAKEN' } }),
   });
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'تطبيق ببيانات مصحَّحة' }).click();
@@ -462,10 +462,10 @@ test('a refusal of the request itself stays in the form with its message, and wh
 test('a lost connection is said in the form: no success is claimed and nothing is sent again by itself', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf() }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf() }),
   });
   let posts = 0;
-  await page.route('**/api/v1/tasks/t1/provider-decision', async (route) => {
+  await page.route('**/api/v1/postpaid/tasks/t1/provider-decision', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     posts += 1;
     await route.abort('connectionfailed');
@@ -502,12 +502,12 @@ test('the queue keeps what waits for a second approval and what waits for a deci
   let approved = false;
   const calls = await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
-    'GET /provider-decisions': (url) => queueAnswer(url, approved
+    'GET /postpaid/provider-decisions': (url) => queueAnswer(url, approved
       ? [queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]
       : [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
-    'POST /tasks/q1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' } }; },
+    'POST /postpaid/tasks/q1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' } }; },
   });
-  const sent = sentTo(page, '/v1/tasks/q1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/postpaid/tasks/q1/provider-decision/approval');
   await page.goto(`${admin}/tasks/decisions`);
   await expect(page.getByRole('heading', { level: 1, name: 'قرارات عمليات المزوّد' })).toBeVisible();
   // The first tab is the second approval; both tabs carry the API's counts.
@@ -526,7 +526,7 @@ test('the queue keeps what waits for a second approval and what waits for a deci
   await expect(row).toContainText('الرقم مأخوذ');
   await expect(row).toContainText('تطبيق ببيانات مصحَّحة · تحرير بعد نجاح المزوّد');
   await expect(row.getByRole('button')).toHaveCount(0);
-  expect(calls).toContain('GET /provider-decisions?waiting=decision');
+  expect(calls).toContain('GET /postpaid/provider-decisions?waiting=decision');
   await tab(page, 'بانتظار موافقة ثانية').click();
   await row.getByRole('button', { name: 'موافقة' }).click();
   await dialog(page).getByRole('button', { name: 'تأكيد الموافقة' }).click();
@@ -537,14 +537,14 @@ test('the queue keeps what waits for a second approval and what waits for a deci
   await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toBeVisible();
   await expect(tab(page, 'بانتظار موافقة ثانية')).not.toContainText('1');
   await expect(tab(page, 'بانتظار قرار')).toContainText('1');
-  expect(calls.filter((call) => call === 'GET /provider-decisions?waiting=approval').length).toBeGreaterThanOrEqual(2);
+  expect(calls.filter((call) => call === 'GET /postpaid/provider-decisions?waiting=approval').length).toBeGreaterThanOrEqual(2);
 });
 
 test('the queue pages by the API\'s total and cursor: more than two hundred operations are all reachable, none twice', async ({ page }) => {
   // 230 undecided operations and 3 proposals, served fifty at a time by cursor, as the API does.
   const all = Array.from({ length: 230 }, (_, index) => ({ ...queueRow(`w${index}`, { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }), msisdn: `05${String(50000000 + index)}` }));
   const calls = await serveApi(page, 'branch', {
-    'GET /provider-decisions': (url) => {
+    'GET /postpaid/provider-decisions': (url) => {
       if (url.searchParams.get('waiting') !== 'decision') return { body: { items: [], nextCursor: null, total: url.searchParams.get('waiting') ? 0 : 233, totals: { approval: 3, decision: 230 } } };
       const from = Number((url.searchParams.get('cursor') ?? 'c0').slice(1));
       return { body: { items: all.slice(from, from + 50), nextCursor: from + 50 < all.length ? `c${from + 50}` : null, total: 230, totals: { approval: 3, decision: 230 } } };
@@ -577,7 +577,7 @@ test('the queue pages by the API\'s total and cursor: more than two hundred oper
 
 test('the queue shows the proposer and the submitter why they may not answer, and offers them no button', async ({ page }) => {
   await serveApi(page, 'branch', {
-    'GET /provider-decisions': (url) => queueAnswer(url, [
+    'GET /postpaid/provider-decisions': (url) => queueAnswer(url, [
       queueRow('q1', { decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }) }),
       queueRow('q2', { decisions: [], blocked: 'own-task' }),
     ]),
@@ -593,7 +593,7 @@ test('the queue shows the proposer and the submitter why they may not answer, an
 test('the queue is empty, is refused, or fails: each is said, and none shows a row', async ({ page }) => {
   let mode: 'empty' | 'refused' | 'down' = 'empty';
   await serveApi(page, 'branch', {
-    'GET /provider-decisions': (url) => (mode === 'empty' ? queueAnswer(url, []) : mode === 'refused' ? { status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } } : { status: 500, body: { message: 'حدث خطأ في الخادم. أعد المحاولة', code: 'SERVER_ERROR' } }),
+    'GET /postpaid/provider-decisions': (url) => (mode === 'empty' ? queueAnswer(url, []) : mode === 'refused' ? { status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } } : { status: 500, body: { message: 'حدث خطأ في الخادم. أعد المحاولة', code: 'SERVER_ERROR' } }),
   });
   await page.goto(`${admin}/tasks/decisions`);
   await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toBeVisible();
@@ -615,9 +615,9 @@ test('the tasks page links to the queue for an account that may decide, with the
   ];
   await serveApi(page, 'branch', {
     'GET /tasks': () => ({ body: { items: rows, nextCursor: null, total: rows.length } }),
-    'GET /packages': () => ({ body: { packages: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [] } }),
     // One page of two rows out of a queue of 237: the link shows the queue's total.
-    'GET /provider-decisions': () => ({ body: { items: [queueRow('q1'), queueRow('q2')], nextCursor: 'c50', total: 237, totals: { approval: 12, decision: 225 } } }),
+    'GET /postpaid/provider-decisions': () => ({ body: { items: [queueRow('q1'), queueRow('q2')], nextCursor: 'c50', total: 237, totals: { approval: 12, decision: 225 } } }),
   });
   await page.goto(`${admin}/tasks`);
   const link = page.getByRole('link', { name: /قرارات المزوّد/ });
@@ -639,7 +639,7 @@ for (const [who, me] of [
     const calls = await serveApi(page, 'branch', {
       'GET /me': () => ({ body: { ...me, stops: [], balance: 0, ceiling: 0 } }),
       'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
-      'GET /packages': () => ({ body: { packages: [] } }),
+      'GET /postpaid/packages': () => ({ body: { packages: [] } }),
     });
     await page.goto(`${admin}/tasks`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -662,8 +662,8 @@ for (const [device, width, height] of widths) {
       await serveApi(page, 'branch', {
         'GET /me': () => ({ body: accountant }),
         'GET /tasks/t1': () => ({ body: { task: taskIn('exception', { esim: true, operation: { phase: 'exception', reason: 'esim-code-missing', decisions: true } }), events: [] } }),
-        'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: true, esimCode: true }, history: [record({ decision: 'release-after-success' }), record({ sequence: 2, type: 'refused', decision: 'release-after-success', accountLoginName: 'acc2', evidenceKind: null, note: '' })] }) }),
-        'GET /provider-decisions': (url) => queueAnswer(url, [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5', note: `${NOTE} ${NOTE} ${NOTE}` }) }), queueRow('q3', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ decision: 'release-after-success' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
+        'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: true, esimCode: true }, history: [record({ decision: 'release-after-success' }), record({ sequence: 2, type: 'refused', decision: 'release-after-success', accountLoginName: 'acc2', evidenceKind: null, note: '' })] }) }),
+        'GET /postpaid/provider-decisions': (url) => queueAnswer(url, [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5', note: `${NOTE} ${NOTE} ${NOTE}` }) }), queueRow('q3', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ decision: 'release-after-success' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
       });
       const html = page.locator('html');
       const fits = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
@@ -736,7 +736,7 @@ test('the Hebrew copy is complete on the ticket: no key shows through', async ({
   await page.context().addCookies([{ name: 'smilesim-locale', value: 'he', url: admin }]);
   await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
-    'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
+    'GET /postpaid/tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
   });
   await page.goto(`${admin}/tasks/t1`);
   const region = page.getByRole('region', { name: 'פעולת ספק' });

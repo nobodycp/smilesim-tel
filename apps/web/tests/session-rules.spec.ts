@@ -55,8 +55,8 @@ test('the owner\'s own settings hold only the account: no layer rules there any 
 test('the owner edits one account from its page\'s «إعدادات الحساب»: contact, two-step and its own session values', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
-    'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
+    'GET /postpaid/users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
   });
   const saved: unknown[] = [];
   const contact: unknown[] = [];
@@ -115,8 +115,8 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
 test('making an account required under a layer left on SMS saves it with the app', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
-    'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
+    'GET /postpaid/users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
   });
   const modes: unknown[] = [];
   let settings = {

@@ -29,8 +29,8 @@ test('the packages tab folds each company, keeps one line per package, and edits
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: sheet }),
-    'PUT /users/pos1/packages/alloha-150': () => ({ body: { ...row('alloha-150', '150 جيجا', 'alloha'), hidden: true } }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: sheet }),
+    'PUT /postpaid/users/pos1/packages/alloha-150': () => ({ body: { ...row('alloha-150', '150 جيجا', 'alloha'), hidden: true } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1#packages');
   await expect(page.getByRole('tab')).toHaveCount(4);
@@ -57,7 +57,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
   await expect(locked.getByRole('switch')).toBeDisabled();
   await expect(locked.getByText('موقوف من فوق')).toBeVisible();
 
-  const toggle = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/users/pos1/packages/alloha-150'));
+  const toggle = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/postpaid/users/pos1/packages/alloha-150'));
   await open.getByRole('switch').click();
   expect((await toggle).postDataJSON()).toEqual({ hidden: true });
 
@@ -69,7 +69,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
   await page.getByRole('menuitem', { name: 'تعديل السعر' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('اشتراك').fill('36.5');
-  const price = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/users/pos1/packages/alloha-150'));
+  const price = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/postpaid/users/pos1/packages/alloha-150'));
   await dialog.getByRole('button', { name: 'حفظ' }).click();
   expect((await price).postDataJSON()).toEqual({ price: 3650, renewalPrice: null });
   await expect(dialog).toHaveCount(0);
@@ -78,7 +78,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
 test('a search opens the companies it finds', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: sheet }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: sheet }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1#packages');
   await page.getByLabel('الرزمة').fill('100');
@@ -103,7 +103,7 @@ test('the number operations section shows ten cards and marks an inherited stop'
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [{ op: 'charge', login: 'ma1' }] } }),
+    'GET /postpaid/users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [{ op: 'charge', login: 'ma1' }] } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1#ops');
   await expect(page.getByRole('tab', { name: /عمليات الأرقام/ })).toHaveAttribute('aria-selected', 'true');

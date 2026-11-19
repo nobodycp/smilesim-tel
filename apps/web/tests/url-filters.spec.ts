@@ -8,11 +8,11 @@ const admin = 'http://admin.localhost:3910';
 test('numbers read their filters from the address, write them back, and follow back/forward', async ({ page }) => {
   const asked: string[] = [];
   await serveApi(page, 'branch', {
-    'GET /lines': (url) => {
+    'GET /postpaid/lines': (url) => {
       asked.push(url.searchParams.get('status') ?? '');
       return { body: { items: [], poses: [], nextCursor: null, total: 0 } };
     },
-    'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
   });
   await page.goto(`${admin}/numbers?status=frozen`);
   const status = page.getByLabel('الحالة');

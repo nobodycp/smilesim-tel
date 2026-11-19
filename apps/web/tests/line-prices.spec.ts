@@ -25,9 +25,9 @@ const grouped = { current: 3500, groups: [{ price: 3500, count: 20 }, { price: 4
 function userRoutes(): Routes {
   return {
     'GET /users/pos': () => ({ body: account }),
-    'GET /users/pos/packages': () => ({ body: userSheet(row('lian-wecom-150', '150 جيجا')) }),
-    'GET /packages/lian-wecom-150/line-prices': () => ({ body: grouped }),
-    'PUT /packages/lian-wecom-150/line-prices': () => ({ body: { ok: true, lines: 50 } }),
+    'GET /postpaid/users/pos/packages': () => ({ body: userSheet(row('lian-wecom-150', '150 جيجا')) }),
+    'GET /postpaid/packages/lian-wecom-150/line-prices': () => ({ body: grouped }),
+    'PUT /postpaid/packages/lian-wecom-150/line-prices': () => ({ body: { ok: true, lines: 50 } }),
   };
 }
 
@@ -61,7 +61,7 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
   expect((await put).postDataJSON()).toEqual({ scope: 'pos', groups: [{ from: 3500, to: 3700 }, { from: 4100, to: 3900 }] });
   await expect(page.getByText('تم تحديث 50 رقماً')).toBeVisible();
   await expect(dialog).toHaveCount(0);
-  await expect.poll(() => calls.filter((call) => call === 'GET /users/pos/packages').length).toBeGreaterThan(1);
+  await expect.poll(() => calls.filter((call) => call === 'GET /postpaid/users/pos/packages').length).toBeGreaterThan(1);
 });
 
 test('one click on save sends a price typed without Enter', async ({ page }) => {
@@ -141,8 +141,8 @@ test('a refused price keeps the dialog open when save is pressed', async ({ page
 test('a package without renewable numbers has no entry, and an empty table says so', async ({ page }) => {
   await serveApi(page, 'agent', {
     ...userRoutes(),
-    'GET /users/pos/packages': () => ({ body: userSheet(row('lian-wecom-150', '150 جيجا'), row('lian-wecom-400', '400 جيجا', { lines: 0 })) }),
-    'GET /packages/lian-wecom-150/line-prices': () => ({ body: { current: 3500, groups: [] } }),
+    'GET /postpaid/users/pos/packages': () => ({ body: userSheet(row('lian-wecom-150', '150 جيجا'), row('lian-wecom-400', '400 جيجا', { lines: 0 })) }),
+    'GET /postpaid/packages/lian-wecom-150/line-prices': () => ({ body: { current: 3500, groups: [] } }),
   });
   await page.goto('http://agent.localhost:3910/users/pos');
   await page.getByRole('tab', { name: 'الرزم والأسعار' }).click();
@@ -175,24 +175,24 @@ const sheet = {
 
 function sheetRoutes(): Routes {
   return {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({
       body: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null }],
     }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
     // The account-numbers tab (spec 2026-11-16-package-page, P.3).
-    'GET /packages/lian-wecom-500/line-accounts': () => ({
+    'GET /postpaid/packages/lian-wecom-500/line-accounts': () => ({
       body: { accounts: [{ loginName: 'pos1', nickname: 'نقطة بيع', parentLoginName: 'ag1', parentNickname: 'وكيل', lines: 13, activeLines: 12, price: 3200 }] },
     }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   };
 }
 
 test('the package sheet opens the table for the whole system and then for one account', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     ...sheetRoutes(),
-    'GET /packages/lian-wecom-500/line-prices': (url) => ({
+    'GET /postpaid/packages/lian-wecom-500/line-prices': (url) => ({
       body: url.searchParams.get('scope') === 'all'
         ? { current: null, groups: [{ price: 3200, count: 1 }, { price: 4000, count: 1 }] }
         : { current: 3200, groups: [{ price: 2900, count: 1 }] },
@@ -210,7 +210,7 @@ test('the package sheet opens the table for the whole system and then for one ac
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(2);
   await expect(dialog.getByRole('button', { name: 'اتباع تسعيرة السلسلة' })).toBeVisible();
-  expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=all');
+  expect(calls).toContain('GET /postpaid/packages/lian-wecom-500/line-prices?scope=all');
 
   // Opening it again for an account reads that account's table, not the one just closed.
   await dialog.getByRole('button', { name: 'إلغاء' }).click();
@@ -219,7 +219,7 @@ test('the package sheet opens the table for the whole system and then for one ac
   await block.locator('tbody tr').filter({ hasText: 'pos1' }).getByRole('button', { name: 'تعديل السعر' }).click();
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
   await expect(dialog.getByRole('button', { name: 'اتباع السعر الحالي (32.00 ₪)' })).toBeVisible();
-  expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
+  expect(calls).toContain('GET /postpaid/packages/lian-wecom-500/line-prices?scope=pos1');
 });
 
 // UI maintenance P0.7 (3.2-02): the phone card rules for price editors are limited to data tables drawn as cards
@@ -228,7 +228,7 @@ test('on a phone the line prices dialog keeps its price fields at their width', 
   await page.setViewportSize({ width: 375, height: 812 });
   await serveApi(page, 'branch', {
     ...sheetRoutes(),
-    'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3200, count: 1 }, { price: 123456, count: 12 }] } }),
+    'GET /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3200, count: 1 }, { price: 123456, count: 12 }] } }),
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
   await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
@@ -242,8 +242,8 @@ test('on a phone the line prices dialog keeps its price fields at their width', 
 test('a custom price row opens the table for its account', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     ...sheetRoutes(),
-    'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: 2900, groups: [{ price: 3200, count: 2 }] } }),
-    'PUT /packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 2 } }),
+    'GET /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { current: 2900, groups: [{ price: 3200, count: 2 }] } }),
+    'PUT /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 2 } }),
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
@@ -252,7 +252,7 @@ test('a custom price row opens the table for its account', async ({ page }) => {
   await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
-  expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
+  expect(calls).toContain('GET /postpaid/packages/lian-wecom-500/line-prices?scope=pos1');
 
   const put = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/line-prices'));
   await dialog.getByRole('button', { name: 'اتباع السعر الحالي (29.00 ₪)' }).click();
@@ -265,10 +265,10 @@ test('opening the table again after a save waits for the new table instead of sh
   let saved = false;
   await serveApi(page, 'agent', {
     ...userRoutes(),
-    'GET /packages/lian-wecom-150/line-prices': () => (saved
+    'GET /postpaid/packages/lian-wecom-150/line-prices': () => (saved
       ? { body: { current: 3700, groups: [{ price: 3700, count: 150 }] }, delay: 800 }
       : { body: grouped }),
-    'PUT /packages/lian-wecom-150/line-prices': () => {
+    'PUT /postpaid/packages/lian-wecom-150/line-prices': () => {
       saved = true;
       return { body: { ok: true, lines: 20 } };
     },

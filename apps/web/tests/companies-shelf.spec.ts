@@ -23,7 +23,7 @@ const shelf = {
 
 test('the branch opens the company shelf', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
-    'GET /companies': () => ({ body: shelf }),
+    'GET /postpaid/companies': () => ({ body: shelf }),
   });
 
   await page.goto(`${admin}/companies`);
@@ -52,7 +52,7 @@ test('the branch opens the company shelf', async ({ page }) => {
   await expect(page.getByRole('tab', { name: /Providers/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('columnheader', { name: 'Active numbers' })).toBeVisible();
   await expect(page.locator('tbody tr').filter({ hasText: 'ليان' }).getByRole('link', { name: 'ليان' })).toHaveAttribute('href', '/providers/lian');
-  expect(calls).toContain('GET /companies');
+  expect(calls).toContain('GET /postpaid/companies');
 });
 
 test('an agent is sent away without loading the company shelf', async ({ page }) => {
@@ -65,12 +65,12 @@ test('an agent is sent away without loading the company shelf', async ({ page })
   await page.goto(`${admin}/companies`);
 
   await expect(page).toHaveURL(`${admin}/`);
-  expect(calls).not.toContain('GET /companies');
+  expect(calls).not.toContain('GET /postpaid/companies');
 });
 
 test('the package sheet shows both ladders, targets, and selectable numbers', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({
       body: {
         code: 'lian-wecom-500',
         name: '500 جيجا',
@@ -102,8 +102,8 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
       },
     }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: shelf }),
-    'GET /lines': () => ({
+    'GET /postpaid/companies': () => ({ body: shelf }),
+    'GET /postpaid/lines': () => ({
       body: {
         items: [{
           id: 'line-1',
@@ -123,10 +123,10 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
         nextCursor: null,
       },
     }),
-    'PUT /packages/lian-wecom-500/renewals': () => ({ body: { ok: true } }),
-    'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3000, count: 1 }] } }),
-    'GET /packages/lian-wecom-500/line-accounts': () => ({ body: { accounts: [] } }),
-    'PUT /packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 1 } }),
+    'PUT /postpaid/packages/lian-wecom-500/renewals': () => ({ body: { ok: true } }),
+    'GET /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3000, count: 1 }] } }),
+    'GET /postpaid/packages/lian-wecom-500/line-accounts': () => ({ body: { accounts: [] } }),
+    'PUT /postpaid/packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 1 } }),
   });
 
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
@@ -144,13 +144,13 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   await dialog.getByRole('textbox').fill('40');
   await dialog.getByRole('textbox').press('Enter');
   await dialog.getByRole('button', { name: 'حفظ' }).click();
-  await expect.poll(() => calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=all');
-  await expect.poll(() => calls).toContain('PUT /packages/lian-wecom-500/line-prices');
+  await expect.poll(() => calls).toContain('GET /postpaid/packages/lian-wecom-500/line-prices?scope=all');
+  await expect.poll(() => calls).toContain('PUT /postpaid/packages/lian-wecom-500/line-prices');
   await expect(dialog).toHaveCount(0);
   await page.getByRole('tab', { name: 'التجديد' }).click();
   await page.getByLabel(/500 جيجا · 3 أشهر/).check();
   await page.getByRole('button', { name: 'حفظ', exact: true }).click();
-  await expect.poll(() => calls).toContain('PUT /packages/lian-wecom-500/renewals');
+  await expect.poll(() => calls).toContain('PUT /postpaid/packages/lian-wecom-500/renewals');
   await page.getByRole('tab', { name: 'الأرقام' }).click();
   const checks = page.getByRole('checkbox');
   await expect(checks).toHaveCount(2);

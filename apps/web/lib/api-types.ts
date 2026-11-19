@@ -231,7 +231,7 @@ export type ProviderRow = {
   name: string;
   companies: {
     name: string;
-    /** The mark's URL (`/api/pictures/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
+    /** The mark's URL (`/api/pictures/postpaid/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
     image: string | null;
     packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean; autoActivate?: boolean }[];
   }[];
@@ -248,7 +248,7 @@ export type Shelf = {
   companies: {
     code: string;
     name: string;
-    /** The mark's URL (`/api/pictures/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
+    /** The mark's URL (`/api/pictures/postpaid/companies/<code>?v=…`, speed plan PF.7), or null when the company has none. */
     image: string | null;
     sim: SimRules;
     esimPrice: number;
@@ -445,7 +445,7 @@ export type LineRow = {
   packageCode: string;
   packageName: string;
   companyName: string;
-  /** The company mark's versioned URL (`/api/pictures/companies/<code>?v=`), null when it has none: an image `src` only. */
+  /** The company mark's versioned URL (`/api/pictures/postpaid/companies/<code>?v=`), null when it has none: an image `src` only. */
   companyImage: string | null;
   posLoginName: string;
   posPrice: number;
@@ -470,7 +470,7 @@ export type LineRow = {
   addons?: { id: string; name: string; price: number }[];
 };
 /**
- * One line as `GET /v1/lines/:id` answers it. A list row carries no eSIM code (ADR 0019, D17): the detail is
+ * One line as `GET /v1/postpaid/lines/:id` answers it. A list row carries no eSIM code (ADR 0019, D17): the detail is
  * the one place a screen reads it from, and the API records each such read.
  */
 export type LineDetail = LineRow & { esimQr: string | null };
@@ -588,7 +588,7 @@ export type DisconnectQuote = {
   runsNow: boolean;
 };
 /**
- * POST /v1/tasks/:id/provider-decision (ADR 0019, D15): applied at once, left as a proposal for a second
+ * POST /v1/postpaid/tasks/:id/provider-decision (ADR 0019, D15): applied at once, left as a proposal for a second
  * account, or on record with the line still to be made (`exception`, which alone carries `reason`).
  */
 export type ProviderDecisionAnswer = {
@@ -596,7 +596,7 @@ export type ProviderDecisionAnswer = {
   outcome: 'applied' | 'proposed' | 'exception';
   reason?: 'number-taken' | 'sim-taken' | 'target-missing' | 'esim-code-missing';
 };
-/** POST /v1/tasks/:id/provider-decision/approval: what the second account's answer came to. */
+/** POST /v1/postpaid/tasks/:id/provider-decision/approval: what the second account's answer came to. */
 export type ProviderDecisionApprovalAnswer = {
   ok: true;
   outcome: 'approved' | 'refused';
@@ -733,12 +733,12 @@ export type DecisionStanding = {
   canRefuse: boolean;
   blocked: string | null;
 };
-/** GET /v1/tasks/:id/provider-decision. */
+/** GET /v1/postpaid/tasks/:id/provider-decision. */
 export type DecisionView = DecisionStanding & {
   needs: { number: boolean; esimCode: boolean };
   history: DecisionRecord[];
 };
-/** One row of GET /v1/provider-decisions. */
+/** One row of GET /v1/postpaid/provider-decisions. */
 export type WaitingDecision = DecisionStanding & {
   taskId: string;
   action: string;

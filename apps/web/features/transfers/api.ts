@@ -8,5 +8,5 @@ export const transfersApi = {
   transferPreview: (loginName: string, parentLoginName: string) =>
     request<TransferPreview>('GET', `/v1/users/${segment(loginName)}/transfer-preview${queryString({ parentLoginName })}`),
   transferLine: (id: string, posLoginName: string, linePrices: TransferLinePrices) =>
-    request<{ ok: true }>('POST', `/v1/lines/${segment(id)}/transfer`, { posLoginName, linePrices }),
+    request<{ ok: true }>('POST', `/v1/postpaid/lines/${segment(id)}/transfer`, { posLoginName, linePrices }),
 };

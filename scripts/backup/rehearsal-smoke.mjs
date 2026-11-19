@@ -51,24 +51,24 @@ const cookie = signIn.sid;
 if (/^sid=sess-/.test(cookie)) fail('the new session cookie is still a row id');
 ok('signing in works, and a wrong password is refused');
 
-const lines = await call('GET', '/v1/lines', { cookie });
-if (lines.status !== 200 || !Array.isArray(lines.data?.items) || typeof lines.data.total !== 'number' || !('nextCursor' in lines.data)) fail('GET /v1/lines does not answer { items, nextCursor, total }');
+const lines = await call('GET', '/v1/postpaid/lines', { cookie });
+if (lines.status !== 200 || !Array.isArray(lines.data?.items) || typeof lines.data.total !== 'number' || !('nextCursor' in lines.data)) fail('GET /v1/postpaid/lines does not answer { items, nextCursor, total }');
 ok(`the numbers list answers its envelope (${lines.data.total} lines for this account)`);
-const esims = await call('GET', '/v1/lines?sim=esim', { cookie });
+const esims = await call('GET', '/v1/postpaid/lines?sim=esim', { cookie });
 if (esims.status !== 200 || esims.data.items.some((row) => !row.esim)) fail('the SIM / eSIM filter');
 const withCode = esims.data.items.find((row) => typeof row.esimQr === 'string');
 if (withCode) {
-  const detail = await call('GET', `/v1/lines/${withCode.id}`, { cookie });
+  const detail = await call('GET', `/v1/postpaid/lines/${withCode.id}`, { cookie });
   if (detail.status !== 200 || typeof detail.data?.line?.esimQr !== 'string' || !detail.data.line.esimQr.startsWith('data:image/')) fail('an eSIM code stored before the upgrade is not read from the line detail');
   ok('an eSIM code stored before the upgrade is read from the line detail');
 } else ok('SKIPPED: this account has no eSIM with a code');
 if (process.env.REHEARSAL_OTHER_LINE) {
-  const other = await call('GET', `/v1/lines/${process.env.REHEARSAL_OTHER_LINE}`, { cookie });
+  const other = await call('GET', `/v1/postpaid/lines/${process.env.REHEARSAL_OTHER_LINE}`, { cookie });
   if (other.status !== 404) fail('a line outside the account\'s tree is not answered 404');
   ok('a line outside the account\'s tree answers 404');
 }
-const packages = await call('GET', '/v1/packages', { cookie });
-if (packages.status !== 200 || !Array.isArray(packages.data?.packages)) fail('GET /v1/packages');
+const packages = await call('GET', '/v1/postpaid/packages', { cookie });
+if (packages.status !== 200 || !Array.isArray(packages.data?.packages)) fail('GET /v1/postpaid/packages');
 ok(`packages answer under their new codes (${packages.data.packages.length})`);
 const tasks = await call('GET', '/v1/tasks', { cookie });
 if (tasks.status !== 200 || !Array.isArray(tasks.data?.items)) fail('GET /v1/tasks');

@@ -16,11 +16,11 @@ const account = {
 test('the user page heads with its status, actions and wallet cards', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: { summary: { total: 3, visible: 3, custom: 2 }, companies: [] } }),
-    'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: { summary: { total: 3, visible: 3, custom: 2 }, companies: [] } }),
+    'GET /postpaid/users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),
     'POST /wallets/pos1/fund': () => ({ body: { ok: true } }),
     'POST /wallets/pos1/deduct': () => ({ body: { ok: true } }),
-    'GET /lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
+    'GET /postpaid/lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const head = page.getByTestId('page-head');
@@ -50,10 +50,10 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).getByTestId('tab-count')).toHaveText('2');
   await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).getByTestId('tab-count')).toHaveText('1');
   // The numbers are read only once their tab opens, narrowed to this account.
-  expect(calls.some((call) => call.startsWith('GET /lines'))).toBe(false);
+  expect(calls.some((call) => call.startsWith('GET /postpaid/lines'))).toBe(false);
   await page.getByRole('tab', { name: 'أرقام الحساب' }).click();
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
-  expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('loginName=pos1'))).toBe(true);
+  expect(calls.some((call) => call.startsWith('GET /postpaid/lines?') && call.includes('loginName=pos1'))).toBe(true);
 
   await wallet.click();
   await page.getByRole('menuitem', { name: 'تمويل' }).click();

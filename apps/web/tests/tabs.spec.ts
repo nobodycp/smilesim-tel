@@ -11,8 +11,8 @@ const account = {
 test('tabs move with the arrow keys and keep one tab in the Tab order', async ({ page }) => {
   await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
-    'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
-    'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
+    'GET /postpaid/users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
+    'GET /postpaid/users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const tabs = page.getByRole('tab');

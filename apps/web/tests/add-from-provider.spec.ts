@@ -16,15 +16,15 @@ const providerModes = { activate: 'auto', charge: 'manual', extend: 'manual', di
 test('a package is added from a provider product: details, add-ons, inherited modes, prices', async ({ page }) => {
   const sent: unknown[] = [];
   await serveApi(page, 'branch', {
-    'GET /companies': () => ({ body: shelf }),
+    'GET /postpaid/companies': () => ({ body: shelf }),
     'GET /providers': () => ({ body: providers }),
     'GET /providers/sky/settings': () => ({ body: { code: 'sky', name: 'سكاي', modes: providerModes, esimPrice: null } }),
-    'GET /providers/sky/catalog/products': () => ({ body: { simulated: true, products: [product('sky-cellcom-300', '300 جيجا', true), product('sky-cellcom-250', '250 جيجا', false)] } }),
-    'POST /packages': () => ({ body: { ok: true, code: 'sky-cellcom-250', companyCode: 'cellcom' } }),
-    'GET /packages/sky-cellcom-250/sheet': () => ({ status: 404, body: { message: 'غير موجود', code: 'NOT_FOUND' } }),
+    'GET /postpaid/providers/sky/catalog/products': () => ({ body: { simulated: true, products: [product('sky-cellcom-300', '300 جيجا', true), product('sky-cellcom-250', '250 جيجا', false)] } }),
+    'POST /postpaid/packages': () => ({ body: { ok: true, code: 'sky-cellcom-250', companyCode: 'cellcom' } }),
+    'GET /postpaid/packages/sky-cellcom-250/sheet': () => ({ status: 404, body: { message: 'غير موجود', code: 'NOT_FOUND' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/v1/packages')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/packages')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/companies/cellcom`);
   await page.getByRole('link', { name: 'إضافة رزمة' }).click();
@@ -70,16 +70,16 @@ test('a package is added from a provider product: details, add-ons, inherited mo
 test('a company is added from the provider with its SIM rules', async ({ page }) => {
   const sent: unknown[] = [];
   await serveApi(page, 'branch', {
-    'GET /companies': () => ({ body: shelf }),
+    'GET /postpaid/companies': () => ({ body: shelf }),
     'GET /providers': () => ({ body: providers }),
-    'GET /providers/lian/catalog/companies': () => ({ body: { simulated: true, companies: [
+    'GET /postpaid/providers/lian/catalog/companies': () => ({ body: { simulated: true, companies: [
       { code: 'cellcom', name: 'سلكوم', sim: { length: null, prefix: '', esim: true }, esimPrice: 500, added: true },
       { code: 'golan', name: 'جولان تليكوم', sim: { length: 19, prefix: '89972', esim: true }, esimPrice: 500, added: false },
     ] } }),
-    'POST /companies': () => ({ body: { ok: true, code: 'golan' } }),
+    'POST /postpaid/companies': () => ({ body: { ok: true, code: 'golan' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/v1/companies')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/companies')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/companies`);
   await page.getByRole('link', { name: 'إضافة شركة' }).click();

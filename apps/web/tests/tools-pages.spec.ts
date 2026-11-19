@@ -82,8 +82,8 @@ test.describe('DataTable and EmptyState', () => {
 
   test('an empty list shows .empty inside the pane with no inline style; the ledger lists keep their head', async ({ page }) => {
     await serveApi(page, 'branch', {
-      'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
-      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+      'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /finance': () => ({ body: { items: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/numbers`);
@@ -178,10 +178,10 @@ test.describe('useAction and lineActions', () => {
   test('the line card runs an action once, even on a double click, then says so and reloads', async ({ page }) => {
     let reads = 0;
     const calls = await serveApi(page, 'branch', {
-      'GET /lines/ln1': () => { reads += 1; return { body: card('active') }; },
-      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /postpaid/lines/ln1': () => { reads += 1; return { body: card('active') }; },
+      'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
+      'POST /postpaid/lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
     });
     await page.goto(`${admin}/numbers/ln1`);
     const extend = page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true });
@@ -191,38 +191,38 @@ test.describe('useAction and lineActions', () => {
     await extend.dblclick();
     await expect(page.getByRole('status')).toContainText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => reads).toBe(before + 1);
-    expect(calls.filter((call) => call.startsWith('POST /lines/ln1/extend'))).toHaveLength(1);
+    expect(calls.filter((call) => call.startsWith('POST /postpaid/lines/ln1/extend'))).toHaveLength(1);
   });
 
   // The card's three reads are cached apart: an action on the number asks for the number again, not the catalog
   // or the accounts (they used to be read again, one after the other, on every action).
   test('an action on the line card reads the number again and leaves the catalog and the accounts alone', async ({ page }) => {
     const calls = await serveApi(page, 'branch', {
-      'GET /lines/ln1': () => ({ body: card('active') }),
-      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /postpaid/lines/ln1': () => ({ body: card('active') }),
+      'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
+      'POST /postpaid/lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
     });
     await page.goto(`${admin}/numbers/ln1`);
     await expect(page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
-    const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /directory?mine=1') };
+    const before = { line: count('GET /postpaid/lines/ln1'), packages: count('GET /postpaid/packages'), users: count('GET /directory?mine=1') };
     await page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('تم التنفيذ وخصم الرصيد.');
-    await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
+    await expect.poll(() => count('GET /postpaid/lines/ln1')).toBe(before.line + 1);
     await page.waitForTimeout(300);
-    expect(count('GET /packages')).toBe(before.packages);
+    expect(count('GET /postpaid/packages')).toBe(before.packages);
     expect(count('GET /directory?mine=1')).toBe(before.users);
   });
 
   test('a refused action shows the error, leaves the card as it was, and can be tried again', async ({ page }) => {
     let tries = 0;
     await serveApi(page, 'branch', {
-      'GET /lines/ln1': () => ({ body: card('active') }),
-      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /postpaid/lines/ln1': () => ({ body: card('active') }),
+      'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'GET /lines/ln1/disconnect-quote': () => ({ body: { amount: 2850, runsNow: true } }),
-      'POST /lines/ln1/disconnect': () => { tries += 1; return { status: 400, body: { message: 'بيانات غير صالحة' } }; },
+      'GET /postpaid/lines/ln1/disconnect-quote': () => ({ body: { amount: 2850, runsNow: true } }),
+      'POST /postpaid/lines/ln1/disconnect': () => { tries += 1; return { status: 400, body: { message: 'بيانات غير صالحة' } }; },
     });
     await page.goto(`${admin}/numbers/ln1`);
     const disconnect = async () => {
@@ -240,12 +240,12 @@ test.describe('useAction and lineActions', () => {
 
   test('the list menu and the line card come from the same rules; only the card offers freeze', async ({ page }) => {
     await serveApi(page, 'branch', {
-      'GET /lines': () => ({ body: { items: [line('ln1', 'active'), line('ln2', 'frozen'), line('ln3', 'disconnected'), line('ln4', 'active', { opsLocked: true })], poses: [], nextCursor: null } }),
-      'GET /lines/ln1': () => ({ body: card('active') }),
-      'GET /lines/ln2': () => ({ body: card('frozen') }),
-      'GET /lines/ln3': () => ({ body: card('disconnected') }),
-      'GET /lines/ln4': () => ({ body: card('active', { opsLocked: true }) }),
-      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /postpaid/lines': () => ({ body: { items: [line('ln1', 'active'), line('ln2', 'frozen'), line('ln3', 'disconnected'), line('ln4', 'active', { opsLocked: true })], poses: [], nextCursor: null } }),
+      'GET /postpaid/lines/ln1': () => ({ body: card('active') }),
+      'GET /postpaid/lines/ln2': () => ({ body: card('frozen') }),
+      'GET /postpaid/lines/ln3': () => ({ body: card('disconnected') }),
+      'GET /postpaid/lines/ln4': () => ({ body: card('active', { opsLocked: true }) }),
+      'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
     });
     const listItems = async (n: number) => {
@@ -286,7 +286,7 @@ test.describe('reports', () => {
   test('each report draws the table its answer calls for', async ({ page }) => {
     await serveApi(page, 'branch', Object.fromEntries(
       // The tasks and numbers reports read the lists themselves; the other two have their own routes.
-      Object.entries(kinds).map(([kind, body]) => [kind === 'tasks' ? 'GET /tasks' : kind === 'numbers' ? 'GET /lines' : `GET /reports/${kind}`, () => ({ body })]),
+      Object.entries(kinds).map(([kind, body]) => [kind === 'tasks' ? 'GET /tasks' : kind === 'numbers' ? 'GET /postpaid/lines' : `GET /reports/${kind}`, () => ({ body })]),
     ));
     const head = (selector: string) => page.getByTestId('data-table').locator(selector);
     await page.goto(`${admin}/reports/providers`);
@@ -322,12 +322,12 @@ test.describe('shell', () => {
     const calls = await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'GET /lines': () => ({ body: { items: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
+      'GET /postpaid/lines': () => ({ body: { items: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
     });
     await page.goto(`${admin}/`);
     await page.getByTestId('search-field').getByRole('searchbox').fill('055');
     await expect(page.getByTestId('search-item')).toHaveCount(2);
-    expect(calls.filter((call) => call.startsWith('GET /lines')).every((call) => !call.includes('cursor'))).toBe(true);
+    expect(calls.filter((call) => call.startsWith('GET /postpaid/lines')).every((call) => !call.includes('cursor'))).toBe(true);
   });
 
   // The accounts are read once when the box opens and filtered as the reader types; numbers go to the server.
@@ -336,7 +336,7 @@ test.describe('shell', () => {
     const calls = await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),
-      'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+      'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/`);
     const field = page.getByTestId('search-field').getByRole('searchbox');

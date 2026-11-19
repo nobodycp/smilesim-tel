@@ -13,13 +13,13 @@ const line = {
 test('a number asks for one of its package\'s extra operations, which becomes a task', async ({ page }) => {
   const sent: unknown[] = [];
   await serveApi(page, 'branch', {
-    'GET /lines/ln1': () => ({ body: { line, history: [] } }),
-    'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+    'GET /postpaid/lines/ln1': () => ({ body: { line, history: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
-    'POST /lines/ln1/addon': () => ({ body: { applied: false, taskId: 't9' } }),
+    'POST /postpaid/lines/ln1/addon': () => ({ body: { applied: false, taskId: 't9' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/v1/lines/ln1/addon')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/lines/ln1/addon')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/numbers/ln1`);
   await page.getByRole('button', { name: 'العمليات الإضافية' }).click();
@@ -33,8 +33,8 @@ test('a number asks for one of its package\'s extra operations, which becomes a 
 
 test('a number with no extra operations shows no such tile', async ({ page }) => {
   await serveApi(page, 'branch', {
-    'GET /lines/ln1': () => ({ body: { line: { ...line, addons: [] }, history: [] } }),
-    'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+    'GET /postpaid/lines/ln1': () => ({ body: { line: { ...line, addons: [] }, history: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
   });
   await page.goto(`${admin}/numbers/ln1`);

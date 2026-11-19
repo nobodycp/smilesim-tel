@@ -398,8 +398,8 @@ const line = {
 function serveNumber(page: Page, patch: Record<string, unknown> = {}, extra: Routes = {}) {
   return serveApi(page, 'agent', {
     'GET /me': () => ({ body: me('agent', 'agent1', ['transferLines'], patch) }),
-    'GET /lines/ln1': () => ({ body: { line, history: [] } }),
-    'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+    'GET /postpaid/lines/ln1': () => ({ body: { line, history: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [user('pos1', 'نقطة ١', 'pos', 'agent1'), user('pos2', 'نقطة ٢', 'pos', 'agent1')] } }),
     ...extra,
   });
@@ -407,7 +407,7 @@ function serveNumber(page: Page, patch: Record<string, unknown> = {}, extra: Rou
 
 for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const) {
   test(`number detail sends linePrices ${wire} with the transfer`, async ({ page }) => {
-    await serveNumber(page, {}, { 'POST /lines/ln1/transfer': () => ({ body: { ok: true } }) });
+    await serveNumber(page, {}, { 'POST /postpaid/lines/ln1/transfer': () => ({ body: { ok: true } }) });
     await page.goto(`${agent}/numbers/ln1`);
     await page.getByRole('button', { name: 'نقل', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'نقل', exact: true });
@@ -423,7 +423,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
     await expect(choice).toBeFocused();
     await expect(submit).toBeEnabled();
 
-    const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/v1/lines/ln1/transfer'));
+    const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/v1/postpaid/lines/ln1/transfer'));
     await submit.click();
     expect((await sent).postDataJSON()).toEqual({ posLoginName: 'pos2', linePrices: wire });
   });

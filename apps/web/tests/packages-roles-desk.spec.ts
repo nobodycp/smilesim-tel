@@ -12,7 +12,7 @@ test('roles puts the create button on the title row', async ({ page }) => {
 });
 
 test('package steps stay on the point-of-sale door', async ({ page }) => {
-  await page.route('**/v1/packages**', (route) =>
+  await page.route('**/v1/postpaid/packages**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   await page.goto('/packages');

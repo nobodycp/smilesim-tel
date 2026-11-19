@@ -3,14 +3,14 @@ import type { HiddenAccountRow, LineAccountRow, NewPackage, PackageAddon, Packag
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
-  packages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/v1/packages'),
-  companies: () => request<Shelf>('GET', '/v1/companies'),
-  setCompanyImage: (code: string, image: string | null) => request<{ ok: true }>('PUT', `/v1/companies/${segment(code)}/image`, { image }),
+  packages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/v1/postpaid/packages'),
+  companies: () => request<Shelf>('GET', '/v1/postpaid/companies'),
+  setCompanyImage: (code: string, image: string | null) => request<{ ok: true }>('PUT', `/v1/postpaid/companies/${segment(code)}/image`, { image }),
   setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>
-    request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/v1/companies/${segment(code)}/sim`, sim),
+    request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/v1/postpaid/companies/${segment(code)}/sim`, sim),
   setSellPrice: (code: string, price: number, renewalPrice?: number | null) =>
-    request<{ price: number; renewalPrice: number | null }>('PUT', `/v1/sell-prices/${segment(code)}`, { price, renewalPrice }),
-  clearSellPrice: (code: string) => request<{ ok: true }>('DELETE', `/v1/sell-prices/${segment(code)}`),
+    request<{ price: number; renewalPrice: number | null }>('PUT', `/v1/postpaid/sell-prices/${segment(code)}`, { price, renewalPrice }),
+  clearSellPrice: (code: string) => request<{ ok: true }>('DELETE', `/v1/postpaid/sell-prices/${segment(code)}`),
   providers: () => request<{ providers: ProviderRow[] }>('GET', '/v1/providers'),
   providerSettings: (code: string) =>
     request<ProviderSettings>('GET', `/v1/providers/${segment(code)}/settings`),
@@ -19,30 +19,30 @@ export const catalogApi = {
   setProviderMode: (code: string, action: string, mode: string) =>
     request<{ ok: true }>('PATCH', `/v1/providers/${segment(code)}/settings`, { action, mode }),
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
-    request<{ ok: true }>('PATCH', `/v1/packages/${segment(code)}/mode`, body),
+    request<{ ok: true }>('PATCH', `/v1/postpaid/packages/${segment(code)}/mode`, body),
   setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays?: number; esimAvailable?: boolean; offer?: boolean; offerNote?: string }) =>
-    request<{ ok: true }>('PATCH', `/v1/packages/${segment(code)}/details`, body),
-  packageAddons: (code: string) => request<{ addons: PackageAddon[] }>('GET', `/v1/packages/${segment(code)}/addons`),
-  addPackageAddon: (code: string, body: { name: string; price: number }) => request<{ addons: PackageAddon[] }>('POST', `/v1/packages/${segment(code)}/addons`, body),
+    request<{ ok: true }>('PATCH', `/v1/postpaid/packages/${segment(code)}/details`, body),
+  packageAddons: (code: string) => request<{ addons: PackageAddon[] }>('GET', `/v1/postpaid/packages/${segment(code)}/addons`),
+  addPackageAddon: (code: string, body: { name: string; price: number }) => request<{ addons: PackageAddon[] }>('POST', `/v1/postpaid/packages/${segment(code)}/addons`, body),
   savePackageAddon: (code: string, id: string, body: Partial<Pick<PackageAddon, 'name' | 'price' | 'active' | 'position'>>) =>
-    request<{ addons: PackageAddon[] }>('PATCH', `/v1/packages/${segment(code)}/addons/${segment(id)}`, body),
-  removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/v1/packages/${segment(code)}/addons/${segment(id)}`),
+    request<{ addons: PackageAddon[] }>('PATCH', `/v1/postpaid/packages/${segment(code)}/addons/${segment(id)}`, body),
+  removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/v1/postpaid/packages/${segment(code)}/addons/${segment(id)}`),
   // The points of sale that hold numbers on a package (spec 2026-11-16-package-page, P.3).
-  packageHiddenAccounts: (code: string) => request<{ accounts: HiddenAccountRow[] }>('GET', `/v1/packages/${segment(code)}/hidden-accounts`),
-  packageLineAccounts: (code: string) => request<{ accounts: LineAccountRow[] }>('GET', `/v1/packages/${segment(code)}/line-accounts`),
+  packageHiddenAccounts: (code: string) => request<{ accounts: HiddenAccountRow[] }>('GET', `/v1/postpaid/packages/${segment(code)}/hidden-accounts`),
+  packageLineAccounts: (code: string) => request<{ accounts: LineAccountRow[] }>('GET', `/v1/postpaid/packages/${segment(code)}/line-accounts`),
   // A package's durations (package plan D.3): the same unit and count again replaces the prices.
   savePackageDuration: (code: string, body: Pick<PackageDuration, 'unit' | 'count' | 'branchCost' | 'mainPrice' | 'agentPrice' | 'posPrice' | 'subscriberPrice'> & { enabled?: boolean }) =>
-    request<{ ok: true }>('PUT', `/v1/packages/${segment(code)}/durations`, body),
-  removePackageDuration: (code: string, id: string) => request<{ ok: true }>('DELETE', `/v1/packages/${segment(code)}/durations/${segment(id)}`),
+    request<{ ok: true }>('PUT', `/v1/postpaid/packages/${segment(code)}/durations`, body),
+  removePackageDuration: (code: string, id: string) => request<{ ok: true }>('DELETE', `/v1/postpaid/packages/${segment(code)}/durations/${segment(id)}`),
   // Adding from the provider (spec 2026-11-09-admin-review, 3): query, then add.
   providerCatalogCompanies: (code: string) =>
-    request<{ simulated: boolean; companies: ProviderCatalogCompany[] }>('GET', `/v1/providers/${segment(code)}/catalog/companies`),
+    request<{ simulated: boolean; companies: ProviderCatalogCompany[] }>('GET', `/v1/postpaid/providers/${segment(code)}/catalog/companies`),
   providerCatalogProducts: (code: string, company: string) =>
-    request<{ simulated: boolean; products: ProviderCatalogProduct[] }>('GET', `/v1/providers/${segment(code)}/catalog/products${queryString({ company })}`),
+    request<{ simulated: boolean; products: ProviderCatalogProduct[] }>('GET', `/v1/postpaid/providers/${segment(code)}/catalog/products${queryString({ company })}`),
   createCompany: (body: { providerCode: string; companyCode: string; name: string; simLength: number | null; simPrefix: string; esim: boolean; esimPrice: number }) =>
-    request<{ ok: true; code: string }>('POST', '/v1/companies', body),
-  createPackage: (body: NewPackage) => request<{ ok: true; code: string; companyCode: string }>('POST', '/v1/packages', body),
-  packageSheet: (code: string) => request<PackageSheet>('GET', `/v1/packages/${segment(code)}/sheet`),
+    request<{ ok: true; code: string }>('POST', '/v1/postpaid/companies', body),
+  createPackage: (body: NewPackage) => request<{ ok: true; code: string; companyCode: string }>('POST', '/v1/postpaid/packages', body),
+  packageSheet: (code: string) => request<PackageSheet>('GET', `/v1/postpaid/packages/${segment(code)}/sheet`),
   setChain: (code: string, body: Partial<{
     branchCost: number;
     mainPrice: number;
@@ -56,9 +56,9 @@ export const catalogApi = {
     renewalSubscriberPrice: number;
     esimPrice: number | null;
   }>) =>
-    request<{ ok: true }>('PATCH', `/v1/packages/${segment(code)}/chain`, body),
+    request<{ ok: true }>('PATCH', `/v1/postpaid/packages/${segment(code)}/chain`, body),
   setPackageRenewals: (code: string, targets: string[]) =>
-    request<{ ok: true }>('PUT', `/v1/packages/${segment(code)}/renewals`, { targets }),
+    request<{ ok: true }>('PUT', `/v1/postpaid/packages/${segment(code)}/renewals`, { targets }),
   setPackageSwitches: (code: string, targets: string[]) =>
-    request<{ ok: true }>('PUT', `/v1/packages/${segment(code)}/switches`, { targets }),
+    request<{ ok: true }>('PUT', `/v1/postpaid/packages/${segment(code)}/switches`, { targets }),
 };

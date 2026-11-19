@@ -23,7 +23,7 @@ import type { ErrorFilters } from '../api';
 import { CELL_SUB, routeText } from '../kit';
 import { useSystemOwner } from '../use-system-owner';
 
-// The filters in the address (`?route=/v1/lines/:id&from=2026-11-17`), as the request log keeps its own.
+// The filters in the address (`?route=/v1/postpaid/lines/:id&from=2026-11-17`), as the request log keeps its own.
 const FILTER_KEYS = ['route', 'from', 'to'] as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 

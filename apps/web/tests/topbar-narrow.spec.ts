@@ -75,7 +75,7 @@ for (const locale of ['ar', 'en']) {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
     await serveApi(page, 'pos', {
       'GET /notices': () => ({ body: { unread: items.length, nextCursor: null, items } }),
-      'GET /lines': () => ({ body: { items: lines, poses: [], nextCursor: null, total: lines.length } }),
+      'GET /postpaid/lines': () => ({ body: { items: lines, poses: [], nextCursor: null, total: lines.length } }),
     });
     for (const [width, height] of [[667, 320], [320, 480]]) {
       await page.setViewportSize({ width, height });
@@ -142,7 +142,7 @@ test('the topbar language is the login page\'s menu: the current language, a men
 // Wide screens too (spec 2026-11-09-admin-review, 6.5 and 7): at 1280px nothing in the topbar leaves the screen and
 // the page does not scroll sideways; the message lists every topbar control's box if it does.
 test('the topbar fits a 1280px screen without a sideways scroll', async ({ page }) => {
-  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: { companies: [] } }) });
+  await serveApi(page, 'branch', { 'GET /postpaid/companies': () => ({ body: { companies: [] } }) });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('http://admin.localhost:3910/companies');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

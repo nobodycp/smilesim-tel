@@ -112,7 +112,7 @@ createServer((req, res) => {
         }));
         return;
       }
-      if (url.pathname === '/v1/packages') {
+      if (url.pathname === '/v1/postpaid/packages') {
         res.writeHead(200, json).end(
           JSON.stringify({
             packages: [
@@ -128,7 +128,7 @@ createServer((req, res) => {
         );
         return;
       }
-      if (url.pathname === '/v1/lines') {
+      if (url.pathname === '/v1/postpaid/lines') {
         linesLog.push(Object.fromEntries(url.searchParams));
         const status = url.searchParams.get('status');
         const cursor = url.searchParams.get('cursor');

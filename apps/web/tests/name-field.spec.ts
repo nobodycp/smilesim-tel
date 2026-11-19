@@ -13,7 +13,7 @@ const packages = [
 
 test('a filter is typed: closest names first, keys move, Enter picks, × clears', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
-    'GET /packages': () => ({ body: { packages, companies: [] } }),
+    'GET /postpaid/packages': () => ({ body: { packages, companies: [] } }),
     'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/tasks');
@@ -56,8 +56,8 @@ test('a filter is typed: closest names first, keys move, Enter picks, × clears'
 
 test('Esc closes the list and leaves a dialog around the field open', async ({ page }) => {
   await serveApi(page, 'branch', {
-    'GET /lines': () => ({ body: { items: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
-    'GET /packages': () => ({ body: { packages: packages.map((row) => ({ ...row, forSale: true, enabled: true })), companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: packages.map((row) => ({ ...row, forSale: true, enabled: true })), companies: [] } }),
   });
   await page.goto('http://admin.localhost:3910/numbers');
   await page.getByRole('button', { name: 'تفعيل رقم' }).first().click();

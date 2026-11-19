@@ -18,15 +18,15 @@ test('a reload keeps typed chain prices and refreshes untouched ones', async ({ 
   await page.setViewportSize({ width: 1440, height: 900 });
   let sheet = base;
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
-    'PATCH /packages/lian-wecom-500/mode': () => {
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
+    'PATCH /postpaid/packages/lian-wecom-500/mode': () => {
       sheet = { ...base, agentPrice: 3100, modes: { ...base.modes, charge: 'manual' } };
       return { body: { ok: true } };
     },
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'الأسعار' }).click();
@@ -55,11 +55,11 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
     createdAt: '2026-11-01T00:00:00.000Z', operations: null,
   });
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: { ...base, lines: 3, activeLines: 3 } }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: { ...base, lines: 3, activeLines: 3 } }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': (url) => ({
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': (url) => ({
       body: url.searchParams.get('cursor') === 'p2'
         ? { items: [line('03')], poses: [], nextCursor: null, total: 3 }
         : { items: [line('01'), line('02')], poses: [], nextCursor: 'p2', total: 3 },
@@ -76,25 +76,25 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
 test('a mode change re-reads the sheet and its custom prices, not the companies, the accounts or the closed numbers tab', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const calls = await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: base }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
-    'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: base }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
+    'PATCH /postpaid/packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
   const count = (key: string) => calls.filter((call) => call.startsWith(key)).length;
-  const keys = ['GET /packages/lian-wecom-500/sheet', 'GET /lines', 'GET /packages/lian-wecom-500/custom-prices', 'GET /directory?mine=1', 'GET /companies'];
+  const keys = ['GET /postpaid/packages/lian-wecom-500/sheet', 'GET /postpaid/lines', 'GET /postpaid/packages/lian-wecom-500/custom-prices', 'GET /directory?mine=1', 'GET /postpaid/companies'];
   const before = Object.fromEntries(keys.map((key) => [key, count(key)]));
   await page.getByRole('radiogroup', { name: 'التشغيل شحن' }).getByRole('radio', { name: 'مهمة فرع' }).click();
-  await expect.poll(() => count('GET /packages/lian-wecom-500/sheet')).toBe(before['GET /packages/lian-wecom-500/sheet'] + 1);
-  await expect.poll(() => count('GET /packages/lian-wecom-500/custom-prices')).toBe(before['GET /packages/lian-wecom-500/custom-prices'] + 1);
+  await expect.poll(() => count('GET /postpaid/packages/lian-wecom-500/sheet')).toBe(before['GET /postpaid/packages/lian-wecom-500/sheet'] + 1);
+  await expect.poll(() => count('GET /postpaid/packages/lian-wecom-500/custom-prices')).toBe(before['GET /postpaid/packages/lian-wecom-500/custom-prices'] + 1);
   await page.waitForTimeout(300);
-  expect(count('GET /lines')).toBe(0);
+  expect(count('GET /postpaid/lines')).toBe(0);
   expect(count('GET /directory?mine=1')).toBe(before['GET /directory?mine=1']);
-  expect(count('GET /companies')).toBe(before['GET /companies']);
+  expect(count('GET /postpaid/companies')).toBe(before['GET /postpaid/companies']);
   await page.getByRole('tab', { name: 'الأرقام' }).click();
-  await expect.poll(() => count('GET /lines')).toBe(1);
+  await expect.poll(() => count('GET /postpaid/lines')).toBe(1);
 });

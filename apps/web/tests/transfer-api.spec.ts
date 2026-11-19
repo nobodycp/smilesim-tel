@@ -60,7 +60,7 @@ test('transferPreview asks about the new parent in the query', async () => {
 test('transferLine posts the point of sale and the price choice', async () => {
   const { sent, result } = await sentBy({ ok: true }, () => api.transferLine('ln1', 'pos2', 'recapture'));
   expect(sent).toEqual([
-    { path: '/v1/lines/ln1/transfer', method: 'POST', body: { posLoginName: 'pos2', linePrices: 'recapture' } },
+    { path: '/v1/postpaid/lines/ln1/transfer', method: 'POST', body: { posLoginName: 'pos2', linePrices: 'recapture' } },
   ]);
   expect(result).toEqual({ ok: true, status: 200, data: { ok: true } });
 });

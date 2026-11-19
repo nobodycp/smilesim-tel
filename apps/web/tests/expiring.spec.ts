@@ -18,8 +18,8 @@ const overview = {
 // «ينتهي قريباً» (roadmap N2): days left on every active number, a warning when three or fewer, a filter, and a home card.
 test('numbers show the days left and filter the lines ending soon; the home counts them', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
-    'GET /lines': () => ({ body: { items: [line('l1', '0550000001', 2), line('l2', '0550000002', 20), line('l3', '0550000003', 1, 'disconnected')], poses: [], nextCursor: null, total: 3 } }),
-    'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [line('l1', '0550000001', 2), line('l2', '0550000002', 20), line('l3', '0550000003', 1, 'disconnected')], poses: [], nextCursor: null, total: 3 } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /home': () => ({ body: { pendingTasks: 1, activeLines: 2, inactiveLines: 1, expiringLines: 1, operations: [] } }),
     'GET /overview': () => ({ body: overview }),
   });
@@ -32,7 +32,7 @@ test('numbers show the days left and filter the lines ending soon; the home coun
   await expect(rows.nth(2).getByTestId(/^days-/)).toHaveText('—');
 
   await chooseOption(page.getByRole('combobox', { name: 'الحالة' }), 'expiring');
-  await expect.poll(() => calls.some((call) => call.startsWith('GET /lines?') && call.includes('status=expiring'))).toBe(true);
+  await expect.poll(() => calls.some((call) => call.startsWith('GET /postpaid/lines?') && call.includes('status=expiring'))).toBe(true);
 
   // The home's numbers donut carries «ينتهي قريباً» as a slice that links to the filter.
   await page.goto('http://admin.localhost:3910/');

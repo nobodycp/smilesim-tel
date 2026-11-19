@@ -20,13 +20,13 @@ const customRow = {
 test('the custom prices tab lists priced accounts and edits them inline', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const calls = await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [customRow] }),
-    'PUT /packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ...customRow, price: 3100 } }),
-    'DELETE /packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ok: true } }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [customRow] }),
+    'PUT /postpaid/packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ...customRow, price: 3100 } }),
+    'DELETE /postpaid/packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ok: true } }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
@@ -44,7 +44,7 @@ test('the custom prices tab lists priced accounts and edits them inline', async 
 
   await row.getByRole('button', { name: /إجراءات/ }).click();
   await page.getByRole('menuitem', { name: 'إرجاع للافتراضي' }).click();
-  await expect.poll(() => calls).toContain('DELETE /packages/lian-wecom-500/custom-prices/pos1');
+  await expect.poll(() => calls).toContain('DELETE /postpaid/packages/lian-wecom-500/custom-prices/pos1');
 });
 
 test('the custom prices table sorts by each account own price and by a signed difference', async ({ page }) => {
@@ -56,11 +56,11 @@ test('the custom prices table sorts by each account own price and by a signed di
     { ...customRow, loginName: 'pos3', nickname: 'ج', price: 3700 },
   ];
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: rows }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: rows }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
@@ -87,11 +87,11 @@ test('the custom prices table sorts by each account own price and by a signed di
 test('on a phone the custom price cells take the card row and keep their fields inside', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [{ ...customRow, renewalPrice: 123456 }] }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [{ ...customRow, renewalPrice: 123456 }] }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();

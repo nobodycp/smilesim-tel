@@ -68,10 +68,10 @@ for (const combo of combos) {
     await context.addCookies([{ name: 'smilesim-locale', value: locale, url }, { name: 'smilesim-theme', value: theme, url }]);
     await page.request.post(`${url}/api/auth/login`, { headers: { 'x-door': `${door}.localhost:${PORT}`, 'content-type': 'application/json' }, data: JSON.stringify({ loginName: user, password: '123456' }) });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const shelf = await get(page, url, '/v1/companies');
+    const shelf = await get(page, url, '/v1/postpaid/companies');
     const cellcom = (shelf.companies ?? []).find((c: { code: string }) => c.code === 'cellcom');
     const ids = {
-      line: (await get(page, url, '/v1/lines')).items?.[0]?.id ?? 'x',
+      line: (await get(page, url, '/v1/postpaid/lines')).items?.[0]?.id ?? 'x',
       task: (await get(page, url, '/v1/tasks')).items?.[0]?.id ?? 'x',
       company: 'cellcom',
       package: cellcom?.providers?.flatMap((p: { packages: { code: string }[] }) => p.packages)?.[0]?.code ?? 'x',

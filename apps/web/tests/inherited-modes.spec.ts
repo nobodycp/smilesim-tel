@@ -18,15 +18,15 @@ const sheet = {
 test('the run tab shows which modes follow the provider and sends «inherit» to follow it again', async ({ page }) => {
   const sent: unknown[] = [];
   await serveApi(page, 'branch', {
-    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
-    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
+    'GET /postpaid/packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /postpaid/packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'GET /users': () => ({ body: { users: [] } }),
-    'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
-    'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
+    'GET /postpaid/companies': () => ({ body: { companies: [] } }),
+    'GET /postpaid/lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
+    'PATCH /postpaid/packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'PATCH' && request.url().endsWith('/v1/packages/lian-wecom-500/mode')) sent.push(request.postDataJSON());
+    if (request.method() === 'PATCH' && request.url().endsWith('/v1/postpaid/packages/lian-wecom-500/mode')) sent.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();

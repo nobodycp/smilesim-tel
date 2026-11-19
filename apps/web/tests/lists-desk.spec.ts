@@ -15,7 +15,7 @@ test('finance, audit, and providers fill the desk', async ({ page }) => {
   await page.route('**/v1/providers', empty(JSON.stringify({
     providers: [{ code: 'cell', name: 'سلكوم', companies: [] }],
   })));
-  await page.route('**/v1/companies', empty(JSON.stringify({ companies: [] })));
+  await page.route('**/v1/postpaid/companies', empty(JSON.stringify({ companies: [] })));
   await page.goto('http://admin.localhost:3910/finance');
   await expectFullTable(page, 'المالية');
   await page.goto('http://admin.localhost:3910/provider-operations');

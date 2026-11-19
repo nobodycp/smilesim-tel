@@ -18,15 +18,15 @@ export const tasksApi = {
   addTaskNote: (id: string, text: string, internal = false) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/notes`, { text, ...(internal ? { internal: true } : {}) }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/release`),
-  completeTask: (id: string, body: CompleteTaskBody) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/complete`, body),
+  completeTask: (id: string, body: CompleteTaskBody) => request<{ ok: true }>('POST', `/v1/postpaid/tasks/${segment(id)}/complete`, body),
   rejectTask: (id: string, reason: string) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/reject`, { reason }),
   cancelTask: (id: string) => request<{ ok: true }>('POST', `/v1/tasks/${segment(id)}/cancel`),
   // Decisions by people on a task's provider operation (ADR 0019, D15). The body may carry an eSIM code: it goes
   // in the request and nowhere else.
-  providerDecisionView: (id: string) => request<DecisionView>('GET', `/v1/tasks/${segment(id)}/provider-decision`),
+  providerDecisionView: (id: string) => request<DecisionView>('GET', `/v1/postpaid/tasks/${segment(id)}/provider-decision`),
   // The queue, a page at a time (`Page`), with how many wait in all for a second approval and for a first decision.
   providerDecisions: (query?: { waiting?: string; cursor?: string | null }) =>
-    request<Page<WaitingDecision> & { totals: { approval: number; decision: number } }>('GET', `/v1/provider-decisions${queryString(query)}`),
-  decideProviderOperation: (id: string, body: ProviderDecisionBody) => request<ProviderDecisionAnswer>('POST', `/v1/tasks/${segment(id)}/provider-decision`, body),
-  answerProviderDecision: (id: string, approve: boolean) => request<ProviderDecisionApprovalAnswer>('POST', `/v1/tasks/${segment(id)}/provider-decision/approval`, { approve }),
+    request<Page<WaitingDecision> & { totals: { approval: number; decision: number } }>('GET', `/v1/postpaid/provider-decisions${queryString(query)}`),
+  decideProviderOperation: (id: string, body: ProviderDecisionBody) => request<ProviderDecisionAnswer>('POST', `/v1/postpaid/tasks/${segment(id)}/provider-decision`, body),
+  answerProviderDecision: (id: string, approve: boolean) => request<ProviderDecisionApprovalAnswer>('POST', `/v1/postpaid/tasks/${segment(id)}/provider-decision/approval`, { approve }),
 };

@@ -68,7 +68,7 @@ async function catalog(): Promise<{ P: Pack; Q: Pack; M: Pack }> {
 async function snap(line: Line): Promise<Snap> {
   const [ops, card, finance] = await Promise.all([
     apiCall<{ items: { kind: string; cost: number }[] }>(admin, 'admin', 'GET', `/v1/provider-operations?q=${line.msisdn}`),
-    apiCall<{ history: { action: string }[] }>(admin, 'admin', 'GET', `/v1/lines/${line.id}`),
+    apiCall<{ history: { action: string }[] }>(admin, 'admin', 'GET', `/v1/postpaid/lines/${line.id}`),
     apiCall<{ items: { kind: string }[] }>(admin, 'admin', 'GET', `/v1/finance?q=${line.msisdn}`),
   ]);
   const entries = await sql<Entry>(`SELECT id, kind, amount, note, "packageName", "periodDays" FROM "WalletEntry" WHERE "lineId" = $1 ORDER BY "createdAt"`, [line.id]);
@@ -242,18 +242,18 @@ test.beforeAll(async ({ browser }) => {
   pos = await context.newPage();
   await login(admin, 'admin', 'branch');
   await login(pos, 'pos', 'pos');
-  await apiCall(admin, 'admin', 'GET', '/v1/packages');
+  await apiCall(admin, 'admin', 'GET', '/v1/postpaid/packages');
   ({ P, Q, M } = await catalog());
   const keys = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim'];
   for (const pack of [P, Q, M]) {
     for (const action of keys) {
-      await apiCall(admin, 'admin', 'PATCH', `/v1/packages/${pack.code}/mode`, {
+      await apiCall(admin, 'admin', 'PATCH', `/v1/postpaid/packages/${pack.code}/mode`, {
         action,
         mode: pack === M && action === 'activate' ? 'manual' : 'auto',
       });
     }
   }
-  await apiCall(admin, 'admin', 'PUT', `/v1/packages/${P.code}/switches`, { targets: [Q.code] });
+  await apiCall(admin, 'admin', 'PUT', `/v1/postpaid/packages/${P.code}/switches`, { targets: [Q.code] });
   const made = await sql(`SELECT 1 FROM "User" WHERE "loginName" = 'pos2'`);
   if (made.length === 0) {
     await apiCall(admin, 'admin', 'POST', '/v1/users', { loginName: 'pos2', nickname: 'pos2', password: 'audit-pos2-pass', layer: 'pos', parentLoginName: 'agent' });
@@ -380,7 +380,7 @@ test('the point of sale activates a manual package as a task the branch complete
   const done = await snap(line);
   expect.soft(done.entries.map((row) => row.kind), 'one activate row').toEqual(['activate']);
   expect.soft(count(done.ops, (row) => row.kind === 'activate'), 'activate in provider operations').toBe(1);
-  const again = await admin.request.post(`${DOORS.admin}/api/v1/tasks/${task[0].id}/complete`, {
+  const again = await admin.request.post(`${DOORS.admin}/api/v1/postpaid/tasks/${task[0].id}/complete`, {
     headers: { 'x-door': new URL(DOORS.admin).host },
     data: { note: 'مرة ثانية' },
   });
@@ -485,9 +485,9 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
 
     const startBalance = await balance('pos');
     const body = { packageCode: P.code, posLoginName: 'pos', msisdn: '', currentDetails: '', outcome: 'success' };
-    await expect(apiCall(pos, 'pos', 'POST', '/v1/lines', { ...body, esim: false, iccid: `${PREFIX}0001` }), 'short SIM').rejects.toThrow(/400 .*SIM_LENGTH/);
-    await expect(apiCall(pos, 'pos', 'POST', '/v1/lines', { ...body, esim: false, iccid: good(1).replace(PREFIX, '8997201') }), 'other prefix').rejects.toThrow(/400 .*SIM_PREFIX/);
-    await expect(apiCall(pos, 'pos', 'POST', '/v1/lines', { ...body, esim: true, iccid: '' }), 'eSIM where the company has none').rejects.toThrow(/400 .*ESIM_UNSUPPORTED/);
+    await expect(apiCall(pos, 'pos', 'POST', '/v1/postpaid/lines', { ...body, esim: false, iccid: `${PREFIX}0001` }), 'short SIM').rejects.toThrow(/400 .*SIM_LENGTH/);
+    await expect(apiCall(pos, 'pos', 'POST', '/v1/postpaid/lines', { ...body, esim: false, iccid: good(1).replace(PREFIX, '8997201') }), 'other prefix').rejects.toThrow(/400 .*SIM_PREFIX/);
+    await expect(apiCall(pos, 'pos', 'POST', '/v1/postpaid/lines', { ...body, esim: true, iccid: '' }), 'eSIM where the company has none').rejects.toThrow(/400 .*ESIM_UNSUPPORTED/);
     expect.soft(await balance('pos'), 'a refused SIM moves no money').toBe(startBalance);
 
     await pos.goto(`${DOORS.pos}/packages`);
@@ -510,7 +510,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     const line = await newestLine('pos');
     expect.soft((await lineByMsisdn(line.msisdn))?.iccid, 'the line holds the typed SIM').toBe(good(1));
 
-    await expect(apiCall(pos, 'pos', 'POST', `/v1/lines/${line.id}/sim`, { iccid: good(2).replace(PREFIX, '8997201'), outcome: 'success' }), 'swap to another prefix')
+    await expect(apiCall(pos, 'pos', 'POST', `/v1/postpaid/lines/${line.id}/sim`, { iccid: good(2).replace(PREFIX, '8997201'), outcome: 'success' }), 'swap to another prefix')
       .rejects.toThrow(/400 .*SIM_PREFIX/);
     const note = await onCard(pos, 'pos', line, 'تبديل الشريحة', {
       fill: async (page) => {
@@ -527,6 +527,6 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     expect.soft(note, 'a fitting SIM swaps').toBe(NOTE_DONE);
     expect.soft((await lineByMsisdn(line.msisdn))?.iccid, 'the line holds the new SIM').toBe(good(2));
   } finally {
-    await apiCall(admin, 'admin', 'PUT', `/v1/companies/${P.companyCode}/sim`, { length: null, prefix: '', esim: true });
+    await apiCall(admin, 'admin', 'PUT', `/v1/postpaid/companies/${P.companyCode}/sim`, { length: null, prefix: '', esim: true });
   }
 });

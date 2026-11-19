@@ -11,7 +11,7 @@ const base = {
 test('an agent sees its own buy price and writes a sell price', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const calls = await serveApi(page, 'agent', {
-    'GET /packages': () => ({
+    'GET /postpaid/packages': () => ({
       body: {
         companies: [],
         packages: [
@@ -20,8 +20,8 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
         ],
       },
     }),
-    'PUT /sell-prices/lian-wecom-400': () => ({ body: { price: 3900, renewalPrice: null } }),
-    'DELETE /sell-prices/lian-wecom-150': () => ({ body: { ok: true } }),
+    'PUT /postpaid/sell-prices/lian-wecom-400': () => ({ body: { price: 3900, renewalPrice: null } }),
+    'DELETE /postpaid/sell-prices/lian-wecom-150': () => ({ body: { ok: true } }),
   });
   await page.goto('http://agent.localhost:3910/packages');
 
@@ -37,15 +37,15 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
   const field = row400.getByRole('textbox', { name: /اشتراك/ });
   await expect(field).toHaveValue('');
   await expect(field).toHaveAttribute('placeholder', '35');
-  const put = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/sell-prices/lian-wecom-400'));
+  const put = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/postpaid/sell-prices/lian-wecom-400'));
   await field.fill('39');
   await row400.getByRole('button', { name: 'حفظ' }).click();
   expect((await put).postDataJSON()).toEqual({ price: 3900, renewalPrice: null });
-  await expect.poll(() => calls.filter((call) => call.startsWith('GET /packages')).length).toBeGreaterThan(1);
+  await expect.poll(() => calls.filter((call) => call.startsWith('GET /postpaid/packages')).length).toBeGreaterThan(1);
 
   // Only a row with its own sell price offers the reset; it sends the DELETE and empties the field.
   await expect(row400.getByRole('button', { name: 'إجراءات 400 جيجا' })).toHaveCount(0);
-  const del = page.waitForRequest((request) => request.method() === 'DELETE' && request.url().endsWith('/sell-prices/lian-wecom-150'));
+  const del = page.waitForRequest((request) => request.method() === 'DELETE' && request.url().endsWith('/postpaid/sell-prices/lian-wecom-150'));
   await row150.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
   await page.getByRole('menuitem', { name: 'إرجاع للافتراضي' }).click();
   await del;
@@ -57,7 +57,7 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
 test('on a phone the sell cell takes the card row and keeps its fields inside', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await serveApi(page, 'agent', {
-    'GET /packages': () => ({
+    'GET /postpaid/packages': () => ({
       body: {
         companies: [],
         packages: [
@@ -90,7 +90,7 @@ test('on a phone the sell cell takes the card row and keeps its fields inside', 
 
 test('the point of sale sees its effective price and a stopped activation', async ({ page }) => {
   await serveApi(page, 'pos', {
-    'GET /packages': () => ({
+    'GET /postpaid/packages': () => ({
       body: {
         companies: [],
         packages: [

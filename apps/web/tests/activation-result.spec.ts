@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveApi } from './desk';
 
 // The result of an activation made at once (plan 2026-11-10-activation-settlement, S.5c web step): the eSIM code
-// shown is the one the answer of `POST /v1/lines` carries. No detail is asked for, no list row is read for it
+// shown is the one the answer of `POST /v1/postpaid/lines` carries. No detail is asked for, no list row is read for it
 // (the list is served WITHOUT `esimQr`), and nothing of it stays once the result is closed.
 
 const QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -13,17 +13,17 @@ const listRow = {
 };
 const pack = { code: 'cell-400', name: '400 جيجا', companyName: 'سلكوم', providerName: 'سكاي', sellable: true, activateInput: 'generated', sim: { length: null, prefix: '', esim: true } };
 
-/** Serves the numbers page for the branch; `answer` is what `POST /v1/lines` gives. Returns the calls and the bodies sent. */
+/** Serves the numbers page for the branch; `answer` is what `POST /v1/postpaid/lines` gives. Returns the calls and the bodies sent. */
 async function serve(page: Page, answer: unknown) {
   const sent: unknown[] = [];
   const calls = await serveApi(page, 'branch', {
-    'GET /lines': () => ({ body: { items: [listRow], total: 1, nextCursor: null, poses: [{ loginName: 'pos', nickname: 'نقطة بيع' }] } }),
-    'GET /packages': () => ({ body: { packages: [pack], companies: [] } }),
-    'POST /lines': () => ({ body: answer }),
+    'GET /postpaid/lines': () => ({ body: { items: [listRow], total: 1, nextCursor: null, poses: [{ loginName: 'pos', nickname: 'نقطة بيع' }] } }),
+    'GET /postpaid/packages': () => ({ body: { packages: [pack], companies: [] } }),
+    'POST /postpaid/lines': () => ({ body: answer }),
     'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 1, inactiveLines: 0, expiringLines: 0, operations: [] } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/v1/lines')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/postpaid/lines')) sent.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/numbers');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
@@ -48,7 +48,7 @@ test('an eSIM activated at once shows the code its own answer carries, asks for 
   expect(sent).toHaveLength(1);
   expect(sent[0]).toMatchObject({ esim: true, packageCode: 'cell-400', posLoginName: 'pos' });
   // The code came with the answer: no line's detail was asked for, for the new line or any other.
-  expect(calls.filter((call) => /^GET \/lines\/[^?]+/.test(call))).toEqual([]);
+  expect(calls.filter((call) => /^GET \/postpaid\/lines\/[^?]+/.test(call))).toEqual([]);
 
   // Closed: the result leaves, and nothing of the code is left on the page, in the address or in storage.
   await result(page).getByRole('button', { name: 'موافق' }).last().click();
@@ -66,7 +66,7 @@ test('an eSIM activated at once shows the code its own answer carries, asks for 
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   await expect(result(page)).toHaveCount(0);
   await expect(page.getByTestId('qr-tile')).toHaveCount(0);
-  expect(calls.filter((call) => /^GET \/lines\/[^?]+/.test(call))).toEqual([]);
+  expect(calls.filter((call) => /^GET \/postpaid\/lines\/[^?]+/.test(call))).toEqual([]);
 });
 
 test('a plain SIM activated at once shows its number and serial, and no QR', async ({ page }) => {
@@ -81,7 +81,7 @@ test('a plain SIM activated at once shows its number and serial, and no QR', asy
   await expect(result(page).locator('dl').first()).toContainText('SIM');
   await expect(result(page).getByTestId('qr-tile')).toHaveCount(0);
   expect(sent[0]).toMatchObject({ esim: false, iccid: '8997202000000000088' });
-  expect(calls.filter((call) => /^GET \/lines\/[^?]+/.test(call))).toEqual([]);
+  expect(calls.filter((call) => /^GET \/postpaid\/lines\/[^?]+/.test(call))).toEqual([]);
 });
 
 test('an activation that became a branch task says so and shows no code', async ({ page }) => {

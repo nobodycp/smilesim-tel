@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('line card keeps its tabs and stretches the pane', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.route('**/v1/lines/ln1**', (route) =>
+  await page.route('**/v1/postpaid/lines/ln1**', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
