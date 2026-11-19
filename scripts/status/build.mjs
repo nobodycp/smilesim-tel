@@ -92,7 +92,10 @@ const data = {
     webSpecs: count('apps/web/tests', (n) => n.endsWith('.spec.ts')),
     migrations: readdirSync(join(ROOT, 'apps/api/prisma/migrations'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
     adrs: readdirSync(join(ROOT, 'docs/architecture/decisions')).filter((f) => /^\d{4}-/.test(f)).length,
-    modules: readdirSync(join(ROOT, 'apps/api/src/modules'), { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== 'testing').length,
+    // A business line's folder (`postpaid/`) holds its modules (slice F.7e): each of them counts, not the folder.
+    modules: readdirSync(join(ROOT, 'apps/api/src/modules'), { withFileTypes: true })
+      .filter((e) => e.isDirectory() && e.name !== 'testing')
+      .reduce((n, e) => n + (e.name === 'postpaid' ? readdirSync(join(ROOT, 'apps/api/src/modules', e.name), { withFileTypes: true }).filter((d) => d.isDirectory()).length : 1), 0),
   },
 };
 

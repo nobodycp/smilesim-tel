@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Test } from '@nestjs/testing';
-import type { TransferKind } from '../sales/transfers/transfer-rules';
+import type { TransferKind } from '../postpaid/sales/transfers/transfer-rules';
 import { UnitOfWork } from './unit-of-work';
 import type { TransferNoticePayload } from './notices';
 

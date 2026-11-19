@@ -1,4 +1,4 @@
-import { conflictLines, maskedTail, type ReservationConflict } from '../modules/sales/reservation.rules';
+import { conflictLines, maskedTail, type ReservationConflict } from '../modules/postpaid/sales/reservation.rules';
 import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { report } from './reservation-conflicts';
 

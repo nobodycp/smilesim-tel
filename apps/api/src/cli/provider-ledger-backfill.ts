@@ -3,11 +3,11 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { DISCONNECT_FEE, SALE_KINDS, heldEsimFee, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/pricing';
-import { esimPriceOf } from '../modules/catalog';
+import { DISCONNECT_FEE, SALE_KINDS, heldEsimFee, lineTermsOf, packageActivationCost, providerBranchCost, type PackagePriceRow } from '../modules/postpaid/pricing';
+import { esimPriceOf } from '../modules/postpaid/catalog';
 import { PROVIDER_RELEASED_NOTE } from '../modules/platform/stored-text';
-import { PREPAID_KINDS } from '../modules/sales/line-pricing';
-import { daysOf, periodsAt, periodsCost, settleDisconnect, windowMonthsOf, type OpenPeriod, type PrepaidRow } from '../modules/sales/rules/periods';
+import { PREPAID_KINDS } from '../modules/postpaid/sales/line-pricing';
+import { daysOf, periodsAt, periodsCost, settleDisconnect, windowMonthsOf, type OpenPeriod, type PrepaidRow } from '../modules/postpaid/sales/rules/periods';
 import { PROVIDER_OPERATION_KINDS } from '../modules/wallets/provider-cost';
 import { markProviderLosses, rewriteOperationColumns, writeGivenBack, type MarkedEntry, type RepricedEntry } from '../modules/wallets/wallet-ledger';
 

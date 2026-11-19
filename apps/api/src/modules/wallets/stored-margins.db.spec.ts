@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../db';
 import type { Prisma } from '../../generated/prisma/client';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { marginOf, type Ladder } from '../pricing';
+import { marginOf, type Ladder } from '../postpaid/pricing';
 import type { NoticeService } from '../notifications/notice.service';
 import { ApiFacade } from '../testing/api-facade';
 import type { Sale } from './sale';

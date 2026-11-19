@@ -1,5 +1,5 @@
 import { WalletsRepository } from './wallets.repository';
-import { SALE_KINDS, type Ladder } from '../pricing';
+import { SALE_KINDS, type Ladder } from '../postpaid/pricing';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree, visibleAccountIds } from '../access';
 import { PROVIDER_CHARGED_LATER_NOTE, UnitOfWork, dayRange, fail, parseInput, after, countUpTo, cursorPosition, page, searchTerms, FEED_PAGE } from '../platform';

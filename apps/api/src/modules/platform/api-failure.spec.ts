@@ -3,7 +3,7 @@ import { Controller, Get, Param, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
-import { applyErrorOf } from '../sales/settlement/activation-settlement.rules';
+import { applyErrorOf } from '../postpaid/sales/settlement/activation-settlement.rules';
 import { API_PROVIDERS } from './api-providers';
 import { ApiFailure, fail } from './api-failure';
 import { errorCode } from './log';

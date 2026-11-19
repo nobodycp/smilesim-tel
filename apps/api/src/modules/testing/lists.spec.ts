@@ -18,7 +18,7 @@ import { NoticeInboxService } from '../notifications/notice-inbox.service';
 import type { NoticeService } from '../notifications/notice.service';
 import { ReportsRepository } from '../reporting/reports/reports.repository';
 import { ReportsService } from '../reporting/reports/reports.service';
-import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../sales/rules/line-filters';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../postpaid/sales/rules/line-filters';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.

@@ -5,7 +5,7 @@ import { AccountTree, holdsAny, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
-import { expiringWhere, suspendedWhere } from '../../sales';
+import { expiringWhere, suspendedWhere } from '../../postpaid/sales';
 import { ProviderAccountsService, ProviderHealthService } from '../../providers';
 import { InsightsService } from '../reports/insights.service';
 import { taskWhereFor } from '../../tasks';

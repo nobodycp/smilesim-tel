@@ -5,9 +5,12 @@ import { dirname, join, normalize } from 'node:path';
 // against the target with this map, so a rule does not depend on a folder's name: a file that moves
 // keeps its owner by changing one line here, and a file no line here covers fails `unmapped-file`.
 //
+// The modules of one business line carry its name (ADR 0028; slice F.7e): `postpaid-catalog`, `postpaid-pricing` and
+// `postpaid-sales` live in `modules/postpaid/<name>/`. Every other module is shared by the lines.
+//
 // Test-only (`*.fixture.ts`): the build leaves it out.
 
-export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'site', 'catalog', 'pricing', 'wallets', 'providers', 'tasks', 'sales', 'reporting', 'monitoring'] as const;
+export const MODULES = ['platform', 'identity', 'auditing', 'notifications', 'access', 'site', 'postpaid-catalog', 'postpaid-pricing', 'wallets', 'providers', 'tasks', 'postpaid-sales', 'reporting', 'monitoring'] as const;
 export type ModuleName = (typeof MODULES)[number];
 /** `app`: the composition roots (bootstrap, middleware, the worker's start). It may import any module; no module imports it. */
 export type Owner = ModuleName | 'app';
@@ -29,17 +32,23 @@ export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   notifications: ['access', 'platform'],
   // ADR 0020, amended 2026-11-19 (slice F.7e): what every business line shares on the site — the site identity, the
   // offers and their pictures, how a picture is served. Taken out of the catalog, which is the postpaid line's; the
-  // catalog's company marks are served through it.
+  // postpaid catalog's company marks are served through it.
   site: ['access', 'platform'],
-  catalog: ['site', 'access', 'platform'],
-  pricing: ['catalog', 'access', 'platform'],
-  wallets: ['pricing', 'platform'],
-  providers: ['wallets', 'catalog', 'notifications', 'platform'],
+  'postpaid-catalog': ['site', 'access', 'platform'],
+  'postpaid-pricing': ['postpaid-catalog', 'access', 'platform'],
+  // Known edges from shared to postpaid (slice F.7e, kept exactly as wide as before the move): the ledger builds the
+  // postpaid ladder itself (`wallets` -> `postpaid-pricing`: `SALE_KINDS`, `REFUND_KINDS`, `ladderOf`,
+  // `refundLadder`, `Ladder`, `PriceLadder`, `costsAtProvider`, `TermsModule`); provider settings read postpaid
+  // rules (`providers` -> `postpaid-catalog`, and `postpaid-pricing` below it); and `tasks` reads the postpaid
+  // catalog through `providers` (`Action`, `simRulesOf`). The first new line turns the ledger's into "the line
+  // hands the ledger its ladder" (ADR 0028, decision 3).
+  wallets: ['postpaid-pricing', 'platform'],
+  providers: ['wallets', 'postpaid-catalog', 'notifications', 'platform'],
   // Slice R.4: a task and its provider operation are locked together, and a task asks what its operation allows
   // (ADR 0019 D6, D7); the integration knows nothing of tasks, so the edge points this way only.
   tasks: ['providers', 'wallets', 'notifications', 'access', 'platform'],
-  sales: ['tasks', 'providers', 'pricing', 'wallets', 'catalog', 'platform'],
-  reporting: ['sales', 'tasks', 'providers', 'wallets', 'platform'],
+  'postpaid-sales': ['tasks', 'providers', 'postpaid-pricing', 'wallets', 'postpaid-catalog', 'platform'],
+  reporting: ['postpaid-sales', 'tasks', 'providers', 'wallets', 'platform'],
   // ADR 0020, amended for the system monitor (2026-11-17): above the others it reads (sessions, the actor, notices
   // for its alerts, the providers' health); no module imports it.
   monitoring: ['providers', 'notifications', 'access', 'identity', 'platform'],
@@ -71,16 +80,16 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/notifications\//, 'notifications'],
   // ── access (the actor, grants, roles, the account tree, accounts) ────────────────────────────────
   [/^modules\/access\//, 'access'],
-  // ── site (shared by every line: the site identity, offers, pictures) ─────────────────────────────────────
+  // ── site (shared by every line: the site identity, offers, pictures) ──────────────────────────────
   [/^modules\/site\//, 'site'],
-  // ── catalog, pricing ──────────────────────────────────────────────────────────────────────────────
-  [/^modules\/catalog\//, 'catalog'],
-  [/^modules\/pricing\//, 'pricing'],
-  // ── wallets, providers, tasks, sales, reporting ───────────────────────────────────────────────────
+  // ── the postpaid line: catalog, pricing, sales (slice F.7e) ───────────────────────────────────────
+  [/^modules\/postpaid\/catalog\//, 'postpaid-catalog'],
+  [/^modules\/postpaid\/pricing\//, 'postpaid-pricing'],
+  [/^modules\/postpaid\/sales\//, 'postpaid-sales'],
+  // ── wallets, providers, tasks, reporting ──────────────────────────────────────────────────────────
   [/^modules\/wallets\//, 'wallets'],
   [/^modules\/providers\//, 'providers'],
   [/^modules\/tasks\//, 'tasks'],
-  [/^modules\/sales\//, 'sales'],
   [/^modules\/reporting\//, 'reporting'],
   // ── monitoring (the system monitor: the request log, status, alerts) ──────────────────────────────
   [/^modules\/monitoring\//, 'monitoring'],

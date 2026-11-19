@@ -8,7 +8,7 @@ import { emptyTables } from './empty-tables';
 import { apiTestApp } from './api-test-app';
 import { hashOnce } from './test-hash';
 import { AuditQuery } from '../auditing/audit.schemas';
-import { LinesQuery } from '../sales/lines.schemas';
+import { LinesQuery } from '../postpaid/sales/lines.schemas';
 import { NoticesQuery } from '../notifications/notices.schemas';
 import { TasksQuery } from '../tasks/tasks.schemas';
 import { FinanceQuery } from '../wallets/wallets.schemas';

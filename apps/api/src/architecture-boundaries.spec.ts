@@ -135,12 +135,12 @@ describe('module boundaries, on the source as it is', () => {
       auditing: 'modules/auditing/index.ts',
       notifications: 'modules/notifications/index.ts',
       site: 'modules/site/index.ts',
-      catalog: 'modules/catalog/index.ts',
-      pricing: 'modules/pricing/index.ts',
+      'postpaid-catalog': 'modules/postpaid/catalog/index.ts',
+      'postpaid-pricing': 'modules/postpaid/pricing/index.ts',
       wallets: 'modules/wallets/index.ts',
       providers: 'modules/providers/index.ts',
       tasks: 'modules/tasks/index.ts',
-      sales: 'modules/sales/index.ts',
+      'postpaid-sales': 'modules/postpaid/sales/index.ts',
       reporting: 'modules/reporting/index.ts',
       monitoring: 'modules/monitoring/index.ts',
     };
@@ -180,7 +180,7 @@ describe('module boundaries, on the source as it is', () => {
     const back = edges.filter((edge) => {
       const from = ownerOf(edge.from);
       const to = ownerOf(edge.to);
-      return (from === 'tasks' && to === 'sales') || (from === 'providers' && (to === 'tasks' || to === 'sales'));
+      return (from === 'tasks' && to === 'postpaid-sales') || (from === 'providers' && (to === 'tasks' || to === 'postpaid-sales'));
     });
     expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
   });
@@ -254,7 +254,7 @@ const made = (files: Record<string, string>): SourceFile[] => Object.entries(fil
 const owners = (map: Record<string, string>) => (file: string) => (map[file.split('/')[0]] ?? null) as ReturnType<typeof ownerOf>;
 
 describe('the rules catch what they are for (made-up cases)', () => {
-  const byFolder = owners({ wallets: 'wallets', sales: 'sales', tasks: 'tasks', platform: 'platform', boot: 'app' });
+  const byFolder = owners({ wallets: 'wallets', sales: 'postpaid-sales', tasks: 'tasks', platform: 'platform', boot: 'app' });
 
   it('reads imports: plain, type-only, re-exports, side-effect and dynamic; and ignores packages', () => {
     const found = importEdges(made({
@@ -271,7 +271,7 @@ describe('the rules catch what they are for (made-up cases)', () => {
       'boot/main.ts': "import { complete } from '../sales/completion';",
       'platform/uow.ts': '',
     }));
-    expect(layeringViolations(cases, byFolder).map((hit) => hit.text)).toEqual(['wallets -> sales  (sales/completion.ts)', 'wallets -> app  (boot/main.ts)']);
+    expect(layeringViolations(cases, byFolder).map((hit) => hit.text)).toEqual(['wallets -> postpaid-sales  (sales/completion.ts)', 'wallets -> app  (boot/main.ts)']);
   });
 
   it('layering: a type-only import upward is still a violation', () => {
@@ -285,7 +285,7 @@ describe('the rules catch what they are for (made-up cases)', () => {
       'sales/b.ts': "import { z } from '../tasks/a';", 'sales/c.ts': '',
       'wallets/w.ts': "import { p } from '../platform/p';", 'platform/p.ts': '',
     }));
-    expect(mutualModules(cases, byFolder)).toEqual(['sales <-> tasks']);
+    expect(mutualModules(cases, byFolder)).toEqual(['postpaid-sales <-> tasks']);
   });
 
   it('cycles: a cycle through three files of two modules is found; one inside a module is not; a type-only one is not', () => {
@@ -325,13 +325,13 @@ describe('the rules catch what they are for (made-up cases)', () => {
     const files = made({
       'modules/access/access.module.ts': "import { AuthModule } from '../auth/auth.module';\nimport { AccountTree } from './account-tree';\nimport { UnitOfWork } from '../platform/unit-of-work';\nexport const LIST = [AccountTree, UnitOfWork];\n@Module({ imports: [AuthModule], providers: LIST, exports: [...LIST, AuthModule] })",
       'modules/access/account-tree.ts': '', 'modules/platform/unit-of-work.ts': '', 'modules/auth/auth.module.ts': '',
-      'modules/catalog/core/core.module.ts': "import { Companies } from '../companies';\n@Module({ exports: [Companies] })", 'modules/catalog/companies.ts': '',
-      'modules/sales/kernel/sale.ts': '',
+      'modules/postpaid/catalog/core/core.module.ts': "import { Companies } from '../companies';\n@Module({ exports: [Companies] })", 'modules/postpaid/catalog/companies.ts': '',
+      'modules/postpaid/sales/kernel/sale.ts': '',
     });
     expect(catchAllModules(files).map((hit) => `${hit.file}: ${hit.text}`)).toEqual([
       'modules/access/access.module.ts: exports UnitOfWork, owned by platform',
       'modules/access/access.module.ts: exports AuthModule, owned by identity',
-      'modules/sales/kernel/sale.ts: a kernel by name',
+      'modules/postpaid/sales/kernel/sale.ts: a kernel by name',
     ]);
   });
 

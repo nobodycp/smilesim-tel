@@ -5,7 +5,7 @@ import type { PrismaClient } from '../../../generated/prisma/client';
 import { visibleAccountIds } from '../../access/account-visibility';
 import type { Actor } from '../../access/types';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
+import { expiringWhere, suspendedWhere } from '../../postpaid/sales/rules/line-filters';
 import { taskWhereFor } from '../../tasks/task-access';
 import { ServiceGraph } from '../../testing/service-graph';
 import { DeskRepository } from './desk.repository';

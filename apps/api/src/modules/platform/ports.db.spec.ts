@@ -10,7 +10,7 @@ import { NoticeService, type NoticeBus } from '../notifications/notice.service';
 import { NoticeWriterModule } from '../notifications/notice-writer.module';
 import { AccountTree } from '../access/account-tree';
 import { UnitOfWork } from './unit-of-work';
-import { PriceLadder } from '../pricing/price-ladder';
+import { PriceLadder } from '../postpaid/pricing/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { ActivityRecorder } from './activity';
 import { NOTICE_WRITER } from './notices';

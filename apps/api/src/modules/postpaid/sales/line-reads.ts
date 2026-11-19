@@ -1,0 +1,193 @@
+import { parseInput, esimCodeOrFail, fail, after, countUpTo, cursorPosition, page, searchTerms, LINES_PAGE } from '../../platform';
+import { esimCodeReaders } from '../../tasks';
+import { LinesQuery } from './lines.schemas';
+import { LinesRepository } from './lines.repository';
+import { AccountTree, accountsById, visibleAccountIds } from '../../access';
+import { Injectable } from '@nestjs/common';
+import type { Actor, PathNode } from '../../access';
+import { isSuspended, linesWhere } from './rules/line-filters';
+import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf } from '../catalog';
+import { deniedOpsFor, visibleTo, type OpKey } from '../pricing';
+import { lineHistory } from './line-history';
+import { canActivateFor, opKeyOf, type RunnablePackage } from './line-ops';
+
+/** Entries that put time on a line: the newest one is the last recharge shown on the card. */
+const RECHARGE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
+
+/** A company's mark URL from the request's one read of the marks; null when the company has none (or there is none). */
+function markOf(marks: ReadonlyMap<string, string>, company: { code: string } | null): string | null {
+  return (company && marks.get(company.code)) ?? null;
+}
+
+/** Numbers as they are read: the paged list and one number's card with its history and the operations it offers. */
+@Injectable()
+export class LineReads {
+  constructor(private readonly tree: AccountTree, private readonly repo: LinesRepository) {}
+
+  /** The suspension periods the packages use, so the suspended filter has one cut-off per period. */
+  async suspendPeriods(): Promise<number[]> {
+    const rows = await this.repo.suspendPeriods();
+    return rows.map((row) => row.suspendAfterDays);
+  }
+
+  async list(actor: Actor, input: LinesQuery = {}) {
+    const query = parseInput(LinesQuery, input);
+    const accounts = await this.tree.accounts();
+    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
+    // `loginName` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below
+    // it (the user page's «الأرقام»). An account outside the viewer's tree gives nothing.
+    const target = query.loginName ? accounts.find((account) => account.loginName === query.loginName) : undefined;
+    const within = query.loginName ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
+    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
+    const terms = searchTerms(query.q);
+    const [periods, namedPackageIds] = await Promise.all([
+      query.status === 'suspended' ? this.suspendPeriods() : [],
+      terms ? this.repo.packageIdsNamed(terms.names) : [],
+    ]);
+    // The branch sees every point of sale: its own list sends no ids (database plan DB.10). Narrowed to one account,
+    // it sends that account's.
+    const where = linesWhere(actor.layer === 'branch' && !query.loginName ? null : posIds, query, periods, namedPackageIds);
+    const [rows, counted, marks] = await Promise.all([
+      // The cursor joins the filter instead of replacing its own conditions (the search sits under `AND` in it).
+      this.repo.linesPage({ AND: [where, ...after(cursorPosition(query.cursor))] }, LINES_PAGE + 1),
+      countUpTo((take) => this.repo.countLines(where, take)),
+      this.repo.markUrls(),
+    ]);
+    const { items, nextCursor } = page(rows, LINES_PAGE);
+    // One map of the accounts and one visible set for the whole request (plan 2026-11-17-speed, PF.2): each row's
+    // path and the points of sale reuse them instead of walking the tree again.
+    const byId = accountsById(accounts);
+    return {
+      ...counted,
+      items: items.map((row) => ({
+        id: row.id,
+        msisdn: row.msisdn,
+        iccid: row.iccid,
+        // The eSIM code is not in a list (ADR 0019, D17; plan slice S.5c): it is read from the line's detail.
+        esim: row.esim,
+        status: row.status,
+        /** The subscription ended at least the package's period ago (spec 2026-11-08-overview-and-reports-nav, I). */
+        suspended: isSuspended(row, row.package.suspendAfterDays),
+        packageCode: row.package.code,
+        packageName: row.package.name,
+        companyName: row.package.company?.name ?? '',
+        // The mark's URL (speed plan PF.7), or null when the company has none: the bytes never travel in a list.
+        companyImage: markOf(marks, row.package.company),
+        posLoginName: row.pos.loginName,
+        posPrice: row.package.posPrice,
+        createdAt: row.createdAt.toISOString(),
+        endsAt: row.endsAt.toISOString(),
+        operations: this.operationsFor({ ...row, denied: deniedOpsFor(this.tree.pathOf(row.posId, accounts, byId)) }),
+      })),
+      nextCursor,
+      // The points of sale the viewer may activate for, with the first page only: a page read on from a cursor has
+      // none, and the screen keeps the first page's (lib/use-paged.ts, `extra`).
+      ...(query.cursor
+        ? {}
+        : {
+            poses: accounts
+              .filter((account) => account.layer === 'pos' && canActivateFor(actor, account, accounts, visible))
+              .map((account) => ({ loginName: account.loginName, nickname: account.nickname })),
+          }),
+    };
+  }
+
+  async detail(actor: Actor, id: string) {
+    const line = await this.repo.lineCard(id);
+    if (!line) fail(404, 'NOT_FOUND');
+    const accounts = await this.tree.accounts();
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(404, 'NOT_FOUND');
+    const posPath = this.tree.pathOf(line.posId, accounts);
+    const denied = deniedOpsFor(posPath);
+    // The point of sale's chain above it, each only when the viewer may see that account (owner, 2026-11-11).
+    const seen = visibleAccountIds(actor.id, actor.layer, accounts);
+    const above = (layer: string) => {
+      const node = posPath.find((step) => step.layer === layer);
+      return node && seen.has(node.id) ? node.loginName : '';
+    };
+    const [tasks, entries, marks] = await Promise.all([
+      this.repo.tasksOfLine(line.id),
+      this.repo.entriesOfLine(line.id),
+      this.repo.markUrls(),
+    ]);
+    const packageIds = [...new Set(tasks.flatMap((task) => [task.packageId, task.nextPackageId].filter((id): id is string => !!id)))];
+    const packages = packageIds.length
+      ? await this.repo.packagesByIds(packageIds)
+      : [];
+    const byPackage = new Map(packages.map((row) => [row.id, row]));
+    const history = lineHistory(line, entries, tasks, byPackage);
+    const recharge = entries.find((entry) => RECHARGE_KINDS.includes(entry.kind))
+      ?? (entries.length >= 40
+        ? await this.repo.lastEntryOfKinds(line.id, RECHARGE_KINDS)
+        : null);
+    return {
+      line: {
+        id: line.id,
+        msisdn: line.msisdn,
+        iccid: line.iccid,
+        esim: line.esim,
+        // Handed to the line's point of sale, the accounts above it on its path and the branch; anyone else
+        // gets none, and it is not even opened for them. Whoever reads this detail today is one of those.
+        esimQr: esimCodeReaders(line.posId, accounts).has(actor.id) ? esimCodeOrFail(line.esimQr, `line ${line.id}`) : null,
+        lastRechargeAt: recharge ? recharge.createdAt.toISOString() : null,
+        esimPrice: esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company }).price,
+        status: line.status,
+        packageCode: line.package.code,
+        packageName: line.package.name,
+        companyName: line.package.company?.name ?? '',
+        posLoginName: actor.layer === 'pos' ? '' : line.pos.loginName,
+        agentLoginName: above('agent'),
+        mainAgentLoginName: above('main_agent'),
+        posPrice: line.package.posPrice,
+        dataGb: line.package.dataGb,
+        // The package's allowance, for the number's «الاستهلاك» (-1 unlimited, null not set; owner 2026-11-11).
+        smsCount: line.package.smsCount,
+        minutes: line.package.minutes,
+        months: line.package.months,
+        subscriberPrice: line.package.subscriberPrice,
+        companyImage: markOf(marks, line.package.company),
+        sim: simRulesOf(line.package.company, line.package),
+        switchTargets: await this.visibleSwitchTargets(line.packageId, posPath),
+        opsLocked: line.opsLocked,
+        createdAt: line.createdAt.toISOString(),
+        endsAt: line.endsAt.toISOString(),
+        operations: this.operationsFor({ ...line, denied }),
+        // The package's extra operations the number may ask for (spec 2026-11-09, 3).
+        addons: line.status === 'disconnected' ? [] : (await this.repo.activeAddons(line.packageId)),
+      },
+      history,
+    };
+  }
+
+  private operationsFor(line: {
+    status: string;
+    endsAt: Date;
+    opsLocked?: boolean;
+    package: RunnablePackage & { company?: { esim?: boolean } | null; esimAvailable?: boolean };
+    denied?: ReadonlySet<OpKey>;
+  }): string[] {
+    const denied = line.denied ?? new Set<OpKey>();
+    const keys: string[] = offeredOperations(
+      { status: line.status, endsAt: line.endsAt, opsLocked: line.opsLocked ?? false },
+      (action) => resolvePackageMode(line.package.actionModes, line.package, action),
+    );
+    // An eSIM request is always a branch task: the employee attaches the serial and the QR picture.
+    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null, line.package).esim) keys.push('esim');
+    // A refresh is a provider operation on a live subscription: active numbers only, like the rest.
+    if (line.status === 'active' && !line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
+    return keys.filter((key) => {
+      const stop = opKeyOf(key);
+      return !stop || !denied.has(stop);
+    });
+  }
+
+  /** Switch targets saved on the package that the selling account may see. */
+  private async visibleSwitchTargets(packageId: string, posPath: PathNode[]): Promise<string[]> {
+    const saved = await this.repo.switchTargets(packageId);
+    if (saved.length === 0) return [];
+    const terms = await this.repo.accountTerms(saved.map((item) => item.target.id), posPath.map((node) => node.id));
+    return saved
+      .filter((item) => visibleTo(posPath, terms.filter((row) => row.packageId === item.target.id), item.target))
+      .map((item) => item.target.code);
+  }
+}

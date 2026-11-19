@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
-import { SALE_KINDS } from '../../pricing';
+import { SALE_KINDS } from '../../postpaid/pricing';
 import { PROVIDER_OPERATION_KINDS } from '../provider-cost';
 
 // Specs only. Wallet entries as they were stored before the provider ledger's first release (ADR 0025, P.1) and

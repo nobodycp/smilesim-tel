@@ -5,11 +5,11 @@ import type { PrismaService } from '../platform/prisma.service';
 import { AccountTree } from '../access/account-tree';
 import { ActorResolver } from '../access/actor-resolver';
 import { UnitOfWork } from '../platform/unit-of-work';
-import { LineAccess } from '../sales/line-access';
+import { LineAccess } from '../postpaid/sales/line-access';
 import { NoticeService } from '../notifications/notice.service';
 import type { NoticeWriter } from '../platform/notices';
 import { LayerRoles } from '../access/roles/layer-roles';
-import { PriceLadder } from '../pricing/price-ladder';
+import { PriceLadder } from '../postpaid/pricing/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
 
 /**

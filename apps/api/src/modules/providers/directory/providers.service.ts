@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { fail, parseInput } from '../../platform';
 import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
-import { normalizeActionModes, packageModeData } from '../../catalog';
+import { normalizeActionModes, packageModeData } from '../../postpaid/catalog';
 import { ProviderEsimPriceBody, ProviderModeBody } from '../providers.schemas';
 
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */

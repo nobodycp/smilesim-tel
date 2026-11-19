@@ -2,15 +2,15 @@ import 'reflect-metadata';
 import { OPTIONAL_DEPS_METADATA, PARAMTYPES_METADATA, SELF_DECLARED_DEPS_METADATA } from '@nestjs/common/constants';
 import { AccountTree } from '../modules/access/account-tree';
 import { ActorResolver } from '../modules/access/actor-resolver';
-import { ActivationSettlement } from '../modules/sales/settlement/activation-settlement';
-import { LinePricing } from '../modules/sales/line-pricing';
-import { LinesRepository } from '../modules/sales/lines.repository';
-import { TaskCompletion } from '../modules/sales/settlement/task-completion';
+import { ActivationSettlement } from '../modules/postpaid/sales/settlement/activation-settlement';
+import { LinePricing } from '../modules/postpaid/sales/line-pricing';
+import { LinesRepository } from '../modules/postpaid/sales/lines.repository';
+import { TaskCompletion } from '../modules/postpaid/sales/settlement/task-completion';
 import { ProviderOperationsRepository } from '../modules/providers/integration/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../modules/providers/integration/operations/provider-operations.service';
 import { TasksRepository } from '../modules/tasks/tasks.repository';
 import { TasksService } from '../modules/tasks/tasks.service';
-import { PriceLadder } from '../modules/pricing/price-ladder';
+import { PriceLadder } from '../modules/postpaid/pricing/price-ladder';
 import { WalletLedger } from '../modules/wallets/wallet-ledger';
 
 // The worker's money path, composed from ONE description (slice R.5; audit finding H2). Before it, the worker

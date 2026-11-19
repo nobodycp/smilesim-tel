@@ -5,7 +5,7 @@ import { createPrismaClient } from '../../db';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { ApiFailure } from '../platform/api-failure';
 import { UnitOfWork } from '../platform/unit-of-work';
-import { operationKey } from '../sales/settlement/activation-settlement.rules';
+import { operationKey } from '../postpaid/sales/settlement/activation-settlement.rules';
 import type { NoticeService } from '../notifications/notice.service';
 import { ProviderOperationsRepository } from '../providers/integration/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';

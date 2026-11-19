@@ -1,7 +1,7 @@
 import type { Actor } from '../../access/types';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { LineReads } from '../../sales/line-reads';
-import { LinesRepository } from '../../sales/lines.repository';
+import { LineReads } from '../../postpaid/sales/line-reads';
+import { LinesRepository } from '../../postpaid/sales/lines.repository';
 import { ServiceGraph } from '../../testing/service-graph';
 import { DeskRepository } from './desk.repository';
 import { DeskService } from './desk.service';

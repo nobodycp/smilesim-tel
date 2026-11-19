@@ -5,7 +5,7 @@ import { AccountTree } from '../access';
 import type { Sale } from './sale';
 import { operationColumns, type ProviderLoss } from './provider-cost';
 import { uncoveredDebit, withinCeiling } from './ceiling';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../pricing';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, PriceLadder } from '../postpaid/pricing';
 import { NO_MARGINS, chainIdsOf, lossMargins, marginColumns, storedChainIds, type ChainIds, type MarginColumns } from './stored-margins';
 
 const log = logger('WalletLedger');

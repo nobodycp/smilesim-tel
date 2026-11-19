@@ -8,11 +8,11 @@ import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOpera
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor } from '../access';
-import type { Action } from '../catalog';
+import type { Action } from '../postpaid/catalog';
 import type { WrittenNotice } from '../notifications';
 import { excerpt, type TaskNoticePayload } from '../notifications';
 import { taskCountsOf, taskStatusOf, type TaskCounts } from './task-status';
-import { simRulesOf } from '../catalog';
+import { simRulesOf } from '../postpaid/catalog';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
 import { assertOperationAllows, withdrawOperation } from './task-operation';

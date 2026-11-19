@@ -1,6 +1,6 @@
 import type { Prisma } from '../../generated/prisma/client';
 import { fail } from '../platform';
-import { REFUND_KINDS, SALE_KINDS, marginOf, type Ladder } from '../pricing';
+import { REFUND_KINDS, SALE_KINDS, marginOf, type Ladder } from '../postpaid/pricing';
 
 // Each sale's and refund's margins, stored on its wallet entry (ADR 0026). The entry's `ladder` is the source; these
 // columns are its projection by `marginOf`, written in the entry's own INSERT and never updated. A chain holds one

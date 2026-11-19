@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { createPrismaClient } from '../../../db';
-import { REFUND_KINDS, SALE_KINDS } from '../../pricing';
+import { REFUND_KINDS, SALE_KINDS } from '../../postpaid/pricing';
 
 // PostgreSQL only (TEST_DATABASE_URL). The partial index `WalletEntry_sale_or_refund_createdAt_id` (migration
 // 20261117150000_newest_first_indexes) serves the overview and the reports only while its predicate names the same

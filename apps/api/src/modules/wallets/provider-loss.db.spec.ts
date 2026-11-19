@@ -19,7 +19,7 @@ import { WalletsService } from './wallets.service';
 // point of sale (DB.5 P.7)": an operation the provider was paid for while the point of sale was charged nothing is a
 // purchase (its provider and its cost stored), the branch's loss (`branchMargin` = − cost), and marked with why. Each
 // path is driven as the office runs it; the approval of a release after the provider's success is driven in
-// `sales/settlement/provider-decisions.db.spec.ts` (item 21), and its old cases by the backfill here.
+// `postpaid/sales/settlement/provider-decisions.db.spec.ts` (item 21), and its old cases by the backfill here.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 

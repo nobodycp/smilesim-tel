@@ -8,8 +8,8 @@ export class LayerRoles {
   constructor(private readonly uow: UnitOfWork) {}
 
   /**
-   * The four layer roles exist. Run when the API starts (`catalog/catalog-seed.ts`), before it serves anything, so
-   * no read has to make them (plan backend-loose-ends A.3: a GET writes nothing).
+   * The four layer roles exist. Run when the API starts (`postpaid/catalog/shipped/catalog-seed.ts`), before it
+   * serves anything, so no read has to make them (plan backend-loose-ends A.3: a GET writes nothing).
    */
   async ensureLayerRoles(): Promise<void> {
     for (const layer of LAYER_ORDER) {

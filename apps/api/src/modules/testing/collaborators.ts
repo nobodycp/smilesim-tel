@@ -1,6 +1,6 @@
-import { LineAccess } from '../sales/line-access';
+import { LineAccess } from '../postpaid/sales/line-access';
 import { LayerRoles } from '../access/roles/layer-roles';
-import { PriceLadder } from '../pricing/price-ladder';
+import { PriceLadder } from '../postpaid/pricing/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { AccountTree } from '../access/account-tree';
 import { ActorResolver } from '../access/actor-resolver';

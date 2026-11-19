@@ -1,4 +1,4 @@
-import type { Action } from '../catalog';
+import type { Action } from '../postpaid/catalog';
 import { TASK_STATUSES } from './task-status';
 import { queryCursor, queryOneOf, queryText } from '../platform';
 import { z } from 'zod';

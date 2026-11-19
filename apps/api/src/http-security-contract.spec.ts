@@ -251,7 +251,7 @@ describe('authorization and activity follow the controller, not the path', () =>
       ['health.controller.ts', ''],
       ...AUTH_CONTROLLERS.map((file) => [file, '']),
       // Public reads (speed PF.7): no session to check, nothing to record.
-      ['modules/catalog/pictures/pictures.controller.ts', ''],
+      ['modules/postpaid/catalog/pictures/pictures.controller.ts', ''],
       ['modules/site/branding/branding.controller.ts', ''],
       ['modules/site/pictures/offer-pictures.controller.ts', ''],
     ]);

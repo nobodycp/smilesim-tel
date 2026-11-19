@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork } from '../../platform';
-import { REFUND_KINDS, SALE_KINDS } from '../../pricing';
+import { REFUND_KINDS, SALE_KINDS } from '../../postpaid/pricing';
 import type { MarginView } from '../../wallets';
 
 /** One viewer's sales and refunds over a period: whose margins (ADR 0026) and the instants, `to` inclusive. */

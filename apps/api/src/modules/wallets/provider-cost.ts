@@ -1,4 +1,4 @@
-import { costsAtProvider } from '../pricing';
+import { costsAtProvider } from '../postpaid/pricing';
 import type { Sale } from './sale';
 
 // The provider and the cost every operation's wallet entry stores (ADR 0025); the provider books are sums of them.

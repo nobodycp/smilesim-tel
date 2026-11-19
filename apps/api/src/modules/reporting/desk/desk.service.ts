@@ -3,8 +3,8 @@ import { AccountTree, isOwner, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
 import { taskWhereFor } from '../../tasks';
-import { deniedOpsFor, parseOps, serializeOps } from '../../pricing';
-import { expiringWhere } from '../../sales';
+import { deniedOpsFor, parseOps, serializeOps } from '../../postpaid/pricing';
+import { expiringWhere } from '../../postpaid/sales';
 
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */
 @Injectable()

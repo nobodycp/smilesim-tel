@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../platform';
-import { companyMarkUrls } from '../catalog';
+import { companyMarkUrls } from '../postpaid/catalog';
 
 /**
  * The database as this domain reads and writes it: providers, their ledger entries and reconciliations (adding to the catalog from a provider is the postpaid catalog's since slice F.7e). One method per query, named for what it

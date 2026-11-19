@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { REFUND_KINDS, SALE_KINDS } from './modules/pricing';
+import { REFUND_KINDS, SALE_KINDS } from './modules/postpaid/pricing';
 import { PROVIDER_OPERATION_KINDS } from './modules/wallets/provider-cost';
 import { POSTPAID_KINDS, MONEY_KINDS, MOVES_NO_PROFIT, OFF_THE_STATEMENT, isLineKind } from './modules/wallets/entry-kinds';
 import { WALLET_ENTRY_KINDS } from './modules/wallets/wallets.schemas';

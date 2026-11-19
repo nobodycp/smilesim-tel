@@ -4,7 +4,7 @@ import { createPrismaClient } from '../../../db';
 import type { PrismaClient } from '../../../generated/prisma/client';
 import type { Actor } from '../../access/types';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Ladder } from '../../pricing';
+import type { Ladder } from '../../postpaid/pricing';
 import { ServiceGraph } from '../../testing/service-graph';
 import { chainIdsOf, marginColumns } from '../../wallets/stored-margins';
 import { WalletsRepository } from '../../wallets/wallets.repository';

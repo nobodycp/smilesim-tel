@@ -5,7 +5,7 @@ import type { PrismaClient, WalletEntry } from '../../generated/prisma/client';
 import type { Actor } from '../access/types';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { PROVIDER_CHARGED_LATER_NOTE, PROVIDER_RELEASED_NOTE } from '../platform/stored-text';
-import type { Ladder } from '../pricing';
+import type { Ladder } from '../postpaid/pricing';
 import { ProviderAccountsService } from '../providers/account/provider-accounts.service';
 import { ProvidersRepository } from '../providers/providers.repository';
 import { DeskRepository } from '../reporting/desk/desk.repository';

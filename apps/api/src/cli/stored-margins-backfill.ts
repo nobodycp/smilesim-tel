@@ -3,7 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client';
 import { createPrismaClient } from '../db';
 import { errorCode, logger } from '../modules/platform/log';
 import { transaction } from '../modules/platform/unit-of-work';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, type SellRow, type TermRow } from '../modules/pricing';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder, type SellRow, type TermRow } from '../modules/postpaid/pricing';
 import { PROVIDER_OPERATION_KINDS } from '../modules/wallets/provider-cost';
 import { chainIdsOf, marginBreaks, marginColumns, type ChainIds } from '../modules/wallets/stored-margins';
 import { rewriteMarginColumns, type MarginedEntry } from '../modules/wallets/wallet-ledger';
