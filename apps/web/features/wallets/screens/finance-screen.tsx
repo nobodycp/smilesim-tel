@@ -25,7 +25,7 @@ import { LossBadge } from '../../../components/loss-badge';
 
 const KINDS = [
   'fund', 'self_fund', 'deduct', 'deduct_in', 'hold', 'release',
-  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim',
+  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'addon',
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;

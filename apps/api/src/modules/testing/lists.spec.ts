@@ -26,7 +26,7 @@ import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhe
 type Row = Record<string, unknown>;
 type Where = Record<string, unknown>;
 
-const OPERATORS = ['in', 'contains', 'not', 'lt', 'gt', 'gte', 'lte'];
+const OPERATORS = ['in', 'notIn', 'contains', 'not', 'lt', 'gt', 'gte', 'lte'];
 
 function scalar(value: unknown) {
   return value instanceof Date ? value.getTime() : value;
@@ -40,6 +40,7 @@ function holds(value: unknown, condition: unknown): boolean {
     return Object.entries(spec).every(([operator, expected]) => {
       if (operator === 'mode') return true;
       if (operator === 'in') return (expected as unknown[]).includes(value);
+      if (operator === 'notIn') return !(expected as unknown[]).includes(value);
       if (operator === 'contains') {
         const fold = (text: unknown) => (spec.mode === 'insensitive' ? String(text).toLowerCase() : String(text));
         return value != null && fold(value).includes(fold(expected));

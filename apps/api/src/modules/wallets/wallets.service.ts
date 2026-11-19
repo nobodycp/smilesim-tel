@@ -9,6 +9,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, isOpenLoss, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
+import { OFF_THE_STATEMENT } from './entry-kinds';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
 import type { Sale } from './sale';
@@ -88,11 +89,15 @@ export class WalletsService {
     return { ok: true };
   }
 
-  /** The signed-in account's own wallet («المحفظة»). The tree's entries are «المالية» (`finance`). */
+  /**
+   * The signed-in account's own wallet («المحفظة»). The tree's entries are «المالية» (`finance`). A statement: every
+   * entry of the account but the ones that move no balance (`OFF_THE_STATEMENT`, spec F.2), so the rows explain every
+   * change of `balanceAfter`. The kind filter takes any kind on the page; one off it is ignored, as before. Served by
+   * `WalletEntry_userId_createdAt_id_idx` (the kind is a filter on the account's rows).
+   */
   async ledger(actor: Actor, input: LedgerQuery = {}) {
     const query = parseInput(LedgerQuery, input);
-    const allowed = [...PROVIDER_OPERATION_KINDS, 'fund', 'self_fund', 'deduct', 'deduct_in'];
-    const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
+    const kind = query.kind && !OFF_THE_STATEMENT.includes(query.kind) ? query.kind : '';
     const { from, to } = dayRange(query.from, query.to);
     const createdAt = {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
@@ -100,7 +105,7 @@ export class WalletsService {
     };
     const where: Prisma.WalletEntryWhereInput = {
       userId: actor.id,
-      kind: { in: kind ? [kind] : allowed },
+      kind: kind || { notIn: [...OFF_THE_STATEMENT] },
       ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
       ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
