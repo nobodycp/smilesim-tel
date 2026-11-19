@@ -55,15 +55,15 @@ describe('WalletsService.finance', () => {
     expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }]);
   });
 
-  it('keeps the line operations only with scope=operations, and still narrows by kind', async () => {
+  it('keeps the line operations only with scope=operations — the entries that stored a provider (F.5) — and still narrows by kind', async () => {
     const seen: { where?: Record<string, unknown> } = {};
     const wallets = service(seen);
     await wallets.finance(actor('agent', 'agent'), { scope: 'operations' });
-    expect(seen.where?.AND).toEqual([{ kind: { in: expect.arrayContaining(['activate', 'charge', 'rename', 'disconnect']) } }]);
-    expect(((seen.where?.AND as { kind: { in: string[] } }[])[0]).kind.in).not.toContain('fund');
+    expect(seen.where?.AND).toEqual([{ providerId: { not: null } }]);
+    expect(seen.where?.kind).toBeUndefined();
     await wallets.finance(actor('agent', 'agent'), { scope: 'operations', kind: 'charge' });
     expect(seen.where?.kind).toBe('charge');
-    expect(seen.where?.AND).toEqual([{ kind: { in: expect.arrayContaining(['charge']) } }]);
+    expect(seen.where?.AND).toEqual([{ providerId: { not: null } }]);
   });
 
   it('gives the branch every account\'s share of a sale, branch first, and nothing for other entries', async () => {

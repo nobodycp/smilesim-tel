@@ -1,9 +1,10 @@
-import { CursorQuery, PROVIDER_OPERATION_KINDS } from '../../wallets';
+import { CursorQuery } from '../../wallets';
 import { parseInput, fail, after, capList, cappedTotal, countUpTo, cursorPosition, page, FEED_PAGE } from '../../platform';
 import { ReportsRepository } from './reports.repository';
 import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
+import type { Prisma } from '../../../generated/prisma/client';
 
 /** Branch reports: providers and packages, and the provider-operations ledger. */
 @Injectable()
@@ -29,10 +30,10 @@ export class ReportsService {
     };
   }
 
-  /** One page of the wallet entries of provider operations, newest first. */
+  /** One page of the wallet entries of provider operations — the entries that stored a provider (spec F.5) — newest first. */
   async operations(actor: Actor, input: CursorQuery = {}) {
     this.gate(actor);
-    return this.entryReport(parseInput(CursorQuery, input).cursor, PROVIDER_OPERATION_KINDS);
+    return this.entryReport(parseInput(CursorQuery, input).cursor, { providerId: { not: null } });
   }
 
   private gate(actor: Actor) {
@@ -40,8 +41,7 @@ export class ReportsService {
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
   }
 
-  private async entryReport(cursor: string | undefined, kinds?: string[]) {
-    const where = kinds ? { kind: { in: kinds } } : {};
+  private async entryReport(cursor: string | undefined, where: Prisma.WalletEntryWhereInput = {}) {
     const [read, counted] = await Promise.all([
       this.repo.entriesPage({ ...where, AND: after(cursorPosition(cursor)) }, FEED_PAGE + 1),
       countUpTo((take) => this.repo.entryCount(where, take)),

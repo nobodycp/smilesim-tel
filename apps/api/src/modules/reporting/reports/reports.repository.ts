@@ -46,13 +46,14 @@ export class ReportsRepository {
   }
 
   /**
-   * The provider operations of these kinds over the dates, by the provider each stored: how many, the cost they
-   * stored (ADR 0025), the branch's margin the sales and refunds among them stored (ADR 0026), and the newest.
+   * The provider operations over the dates — the entries that stored a provider (spec F.5), whatever their kind —
+   * by that provider: how many, the cost they stored (ADR 0025), the branch's margin the sales and refunds among them
+   * stored (ADR 0026), and the newest. The predicate is the partial index `WalletEntry_provider_createdAt_id`'s.
    */
-  providerFigures(kinds: string[], createdAt: Prisma.DateTimeFilter | undefined) {
+  providerFigures(createdAt: Prisma.DateTimeFilter | undefined) {
     return this.uow.prisma.walletEntry.groupBy({
       by: ['providerId'],
-      where: { kind: { in: kinds }, providerId: { not: null }, ...(createdAt ? { createdAt } : {}) },
+      where: { providerId: { not: null }, ...(createdAt ? { createdAt } : {}) },
       _count: { _all: true },
       _sum: { providerCost: true, branchMargin: true },
       _max: { createdAt: true },

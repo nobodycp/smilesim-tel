@@ -4,7 +4,9 @@ import type { Sale } from './sale';
 // The provider and the cost every operation's wallet entry stores (ADR 0025); the provider books are sums of them.
 
 // The kinds are also listed in the CHECK `WalletEntry_operation_priced` (migration 20261117210000_provider_ledger_stored);
-// provider-priced-entries.db.spec.ts compares the two lists.
+// provider-priced-entries.db.spec.ts compares the two lists. No read selects a provider's operations by this list: they
+// read the stored fact, `providerId IS NOT NULL` (spec F.5; provider-predicate.db.spec.ts), so a kind of a new line
+// that stores a provider is in the books and the lists at once.
 export const PROVIDER_OPERATION_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
 
 const OPERATION_KINDS = new Set(PROVIDER_OPERATION_KINDS);

@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import type { Actor, Account } from '../access';
 import { CeilingBody, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
-import { PROVIDER_OPERATION_KINDS, isOpenLoss, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
+import { isOpenLoss, lossWhere, type LossFilter, type ProviderLoss } from './provider-cost';
 import { OFF_THE_STATEMENT } from './entry-kinds';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { marginViewOf, marginWhere, saleOrRefundWhere, storedMarginOf, type MarginView } from './stored-margins';
@@ -159,13 +159,15 @@ export class WalletsService {
    * Every filter runs in the database: the provider, the kind, a part of the number, the entry's time (`from` and
    * `to` inclusive), `priced` (a cost other than 0: what a provider's ledger and a statement list), `loss` (the
    * operations marked as the branch's loss, spec DB.5 P.7), and `take`; `named` adds each row's account's login.
-   * An operation entry always carries both columns (the CHECK `WalletEntry_operation_priced`).
+   * An operation entry always carries both columns (the CHECK `WalletEntry_operation_priced`). A provider's operation
+   * is an entry that stored a provider (`providerId IS NOT NULL`, spec F.5): the predicate of the partial index
+   * `WalletEntry_provider_createdAt_id`, the same the provider's books sum; the kind is only the screen's filter.
    */
   async providerOperations(filter: { providerId?: string; kind?: string; msisdn?: string; from?: Date | null; to?: Date | null; priced?: boolean; loss?: LossFilter; take?: number; named?: boolean } = {}) {
     const rows = await this.repo.operationsAtProviders(
       {
-        kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
-        ...(filter.providerId ? { providerId: filter.providerId } : {}),
+        providerId: filter.providerId || { not: null },
+        ...(filter.kind ? { kind: filter.kind } : {}),
         ...(filter.priced ? { providerCost: { not: 0 } } : {}),
         ...lossWhere(filter.loss),
         ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
@@ -266,7 +268,8 @@ export class WalletsService {
       // of open tasks, which move no money but change what is spendable.
       ...(query.scope === 'money' ? { AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }] } : {}),
       // `scope=operations` keeps the line operations only (spec 2026-11-09-admin-review, 1): what «العمليات» listed.
-      ...(query.scope === 'operations' ? { AND: [{ kind: { in: PROVIDER_OPERATION_KINDS } }] } : {}),
+      // The line operations: the entries that stored a provider (spec F.5), as the provider's books read them.
+      ...(query.scope === 'operations' ? { AND: [{ providerId: { not: null } }] } : {}),
       ...(query.kind ? { kind: query.kind } : {}),
       ...lossWhere(query.loss),
       ...(query.layer ? { user: { layer: query.layer } } : {}),

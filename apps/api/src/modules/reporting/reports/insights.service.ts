@@ -5,7 +5,7 @@ import { AccountTree, requireGrant, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import type { Actor } from '../../access';
-import { PROVIDER_OPERATION_KINDS, csvOf } from '../../wallets';
+import { csvOf } from '../../wallets';
 
 // The «التقارير» page (spec 2026-11-08-reports, roadmap N5): balances and providers, each scoped to the signed-in
 // account's chain like the ledger, with totals and a CSV of the same filters. Sales and orders left by spec
@@ -90,7 +90,7 @@ export class InsightsService {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const query = parseInput(PeriodQuery, input);
-    const [groups, providers] = await Promise.all([this.repo.providerFigures(PROVIDER_OPERATION_KINDS, dateRange(query)), this.repo.providerNames()]);
+    const [groups, providers] = await Promise.all([this.repo.providerFigures(dateRange(query)), this.repo.providerNames()]);
     const providerOf = new Map(providers.map((provider) => [provider.id, provider]));
     const list = groups
       .flatMap((row) => {
