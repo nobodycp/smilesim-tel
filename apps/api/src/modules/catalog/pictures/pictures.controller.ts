@@ -16,7 +16,7 @@ import { PicturesService, type Picture } from './pictures.service';
 export class PicturesController {
   constructor(private readonly pictures: PicturesService) {}
 
-  @Get('companies/:code')
+  @Get('postpaid/companies/:code')
   @ApiOperation({ summary: 'A company mark as bytes (public; immutable for a year only under the current ?v=version)' })
   @ApiParam({ name: 'code' })
   @ApiZodQuery(PictureQuery)

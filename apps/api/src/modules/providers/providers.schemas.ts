@@ -23,7 +23,7 @@ export type ProviderModeBody = z.input<typeof ProviderModeBody>;
 /** A name the owner may leave out, to take the provider's own. */
 const ownName = optionalText(80);
 
-/** POST companies — a company the provider sells, with its SIM rules; what is left out is taken from the provider. */
+/** POST postpaid/companies — a company the provider sells, with its SIM rules; what is left out is taken from the provider. */
 export const CompanyCreateBody = z.object({
   providerCode: code,
   companyCode: code,
@@ -48,7 +48,7 @@ const modes = z.object(Object.fromEntries(ACTION_KEYS.map((key) => [key, askedMo
 /** The most extra operations a new package may carry. */
 export const NEW_PACKAGE_ADDONS_MAX = 20;
 
-/** POST packages — a package from one of the provider's products: facts, prices, extra operations, run modes. */
+/** POST postpaid/packages — a package from one of the provider's products: facts, prices, extra operations, run modes. */
 export const PackageCreateBody = z.object({
   providerCode: code,
   companyCode: code,
@@ -108,7 +108,7 @@ export type ReconciliationBody = z.input<typeof ReconciliationBody>;
 export const ReconciliationItemBody = z.object({ status: z.enum(['open', 'resolved']), note });
 export type ReconciliationItemBody = z.input<typeof ReconciliationItemBody>;
 
-/** GET providers/:code/catalog/products — the company whose products are listed. */
+/** GET postpaid/providers/:code/catalog/products — the company whose products are listed. */
 export const CatalogProductsQuery = z.object({ company: queryText(64) });
 export type CatalogProductsQuery = z.input<typeof CatalogProductsQuery>;
 

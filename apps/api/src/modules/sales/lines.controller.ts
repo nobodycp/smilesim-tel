@@ -20,7 +20,7 @@ const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQ
 export class LinesController {
   constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads, private readonly activity: ActivityRecorder, private readonly decisions: ProviderDecisions) {}
 
-  @Get('lines')
+  @Get('postpaid/lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
   @ApiZodQuery(LinesQuery)
   @ApiErrorResponse(400, 401, 403)
@@ -28,7 +28,7 @@ export class LinesController {
     return this.reads.list(actor, query);
   }
 
-  @Get('lines/:id')
+  @Get('postpaid/lines/:id')
   @ApiOperation({ summary: 'Single line detail' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
@@ -40,7 +40,7 @@ export class LinesController {
     return answer;
   }
 
-  @Post('lines')
+  @Post('postpaid/lines')
   @ApiOperation({ summary: 'Activate a new line' })
   @ApiZodBody(ActivateBody)
   @ApiErrorResponse(401, 403, 400)
@@ -53,7 +53,7 @@ export class LinesController {
     return this.lineDesk.activate(actor, body, { key, replayed: () => res.setHeader(REPLAY_HEADER, 'true') });
   }
 
-  @Post('lines/:id/charge')
+  @Post('postpaid/lines/:id/charge')
   @ApiOperation({ summary: 'Charge / top-up a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -67,7 +67,7 @@ export class LinesController {
     return this.lineDesk.operate(actor, id, 'charge', body);
   }
 
-  @Post('lines/:id/refresh')
+  @Post('postpaid/lines/:id/refresh')
   @ApiOperation({ summary: 'Update a line without changing its fields' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -81,7 +81,7 @@ export class LinesController {
     return this.lineDesk.refresh(actor, id, body);
   }
 
-  @Get('lines/:id/disconnect-quote')
+  @Get('postpaid/lines/:id/disconnect-quote')
   @ApiOperation({ summary: 'What a disconnect would return to the point of sale now, and whether it runs at once' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)
@@ -89,7 +89,7 @@ export class LinesController {
     return this.lineDesk.disconnectQuote(actor, id);
   }
 
-  @Post('lines/:id/disconnect')
+  @Post('postpaid/lines/:id/disconnect')
   @ApiOperation({ summary: 'Disconnect a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -103,7 +103,7 @@ export class LinesController {
     return this.lineDesk.operate(actor, id, 'disconnect', body);
   }
 
-  @Post('lines/:id/unfreeze')
+  @Post('postpaid/lines/:id/unfreeze')
   @ApiOperation({ summary: 'Unfreeze a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -117,7 +117,7 @@ export class LinesController {
     return this.lineDesk.operate(actor, id, 'unfreeze', body);
   }
 
-  @Post('lines/:id/freeze')
+  @Post('postpaid/lines/:id/freeze')
   @ApiOperation({ summary: 'Freeze a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -131,7 +131,7 @@ export class LinesController {
     return this.lineDesk.operate(actor, id, 'freeze', body);
   }
 
-  @Post('lines/:id/extend')
+  @Post('postpaid/lines/:id/extend')
   @ApiOperation({ summary: 'Extend a line subscription' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(ExtendBody)
@@ -145,7 +145,7 @@ export class LinesController {
     return this.lineDesk.extend(actor, id, body);
   }
 
-  @Post('lines/:id/reactivate')
+  @Post('postpaid/lines/:id/reactivate')
   @ApiOperation({ summary: 'Reactivate a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(OutcomeBody)
@@ -159,7 +159,7 @@ export class LinesController {
     return this.lineDesk.reactivate(actor, id, body);
   }
 
-  @Post('lines/:id/rename')
+  @Post('postpaid/lines/:id/rename')
   @ApiOperation({ summary: 'Rename / change MSISDN on a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(RenameLineBody)
@@ -173,7 +173,7 @@ export class LinesController {
     return this.lineDesk.rename(actor, id, body);
   }
 
-  @Post('lines/:id/esim')
+  @Post('postpaid/lines/:id/esim')
   @ApiOperation({ summary: 'Request an eSIM for a line; always a branch task priced from the company, provider, or package' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)
@@ -182,7 +182,7 @@ export class LinesController {
     return this.lineDesk.requestEsim(actor, id);
   }
 
-  @Post('lines/:id/addon')
+  @Post('postpaid/lines/:id/addon')
   @ApiOperation({ summary: "Request one of the package's extra operations; always a manual branch task holding its price" })
   @ApiParam({ name: 'id' })
   @ApiZodBody(AddonBody)
@@ -192,7 +192,7 @@ export class LinesController {
     return this.lineDesk.requestAddon(actor, id, body);
   }
 
-  @Post('lines/:id/sim')
+  @Post('postpaid/lines/:id/sim')
   @ApiOperation({ summary: 'Swap to a SIM the branch already holds (physical or eSIM); free' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(SwapSimBody)
@@ -206,7 +206,7 @@ export class LinesController {
     return this.lineDesk.swapSim(actor, id, body);
   }
 
-  @Post('lines/:id/switch')
+  @Post('postpaid/lines/:id/switch')
   @ApiOperation({ summary: 'Switch package on a line' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(SwitchPackageBody)
@@ -220,7 +220,7 @@ export class LinesController {
     return this.lineDesk.switchPackage(actor, id, body);
   }
 
-  @Post('tasks/:id/complete')
+  @Post('postpaid/tasks/:id/complete')
   @ApiOperation({ summary: 'Complete a task; an eSIM request takes the serial and QR, a number change takes the new number' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(CompleteTaskBody)
@@ -234,7 +234,7 @@ export class LinesController {
     return this.lineDesk.completeTask(actor, id, body);
   }
 
-  @Get('provider-decisions')
+  @Get('postpaid/provider-decisions')
   @ApiOperation({ summary: 'The provider operations that wait for a person: proposals to answer, and those not decided on yet' })
   @ApiZodQuery(ProviderDecisionsQuery)
   @ApiErrorResponse(400, 401, 403)
@@ -242,7 +242,7 @@ export class LinesController {
     return this.decisions.waiting(actor, query);
   }
 
-  @Get('tasks/:id/provider-decision')
+  @Get('postpaid/tasks/:id/provider-decision')
   @ApiOperation({ summary: 'A task\'s provider operation as an account that may decide reads it: what it may do, the open proposal, the record' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
@@ -250,7 +250,7 @@ export class LinesController {
     return this.decisions.view(actor, id);
   }
 
-  @Post('tasks/:id/provider-decision')
+  @Post('postpaid/tasks/:id/provider-decision')
   @ApiOperation({ summary: 'Decide on a task\'s provider operation: applied at once, or a proposal for a second account' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(ProviderDecisionBody)
@@ -264,7 +264,7 @@ export class LinesController {
     return this.decisions.decide(actor, id, body);
   }
 
-  @Post('tasks/:id/provider-decision/approval')
+  @Post('postpaid/tasks/:id/provider-decision/approval')
   @ApiOperation({ summary: 'Approve or refuse the proposed decision on a task\'s provider operation, as a second account' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(ProviderDecisionApprovalBody)
@@ -278,7 +278,7 @@ export class LinesController {
     return this.decisions.answer(actor, id, body);
   }
 
-  @Post('lines/:id/company-switch')
+  @Post('postpaid/lines/:id/company-switch')
   @ApiOperation({ summary: 'Switch the carrier. Fields are not defined yet, so the request is rejected.' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)

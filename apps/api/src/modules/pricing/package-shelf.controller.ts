@@ -15,14 +15,14 @@ export class PackageShelfController {
   constructor(private readonly shelf: PackageShelfService) {}
 
   // Slice R.8: from `PackagesController`, the same paths, decorators and answers.
-  @Get('packages')
+  @Get('postpaid/packages')
   @ApiOperation({ summary: 'Package catalogue for the door' })
   @ApiErrorResponse(401, 403)
   packages(@Actor() actor: ActorShape) {
     return this.shelf.list(actor);
   }
 
-  @Put('sell-prices/:code')
+  @Put('postpaid/sell-prices/:code')
   @ApiOperation({ summary: "Set the caller's own sell price for a package (main agent or agent)" })
   @ApiParam({ name: 'code' })
   @ApiZodBody(SellPriceBody)
@@ -36,7 +36,7 @@ export class PackageShelfController {
     return this.shelf.setSellPrice(actor, code, body);
   }
 
-  @Delete('sell-prices/:code')
+  @Delete('postpaid/sell-prices/:code')
   @ApiOperation({ summary: "Clear the caller's own sell price for a package; the layer column applies again" })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)

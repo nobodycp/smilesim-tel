@@ -14,7 +14,7 @@ import { TermsService } from './terms.service';
 export class TermsController {
   constructor(private readonly termDesk: TermsService) {}
 
-  @Get('packages/:code/custom-prices')
+  @Get('postpaid/packages/:code/custom-prices')
   @ApiOperation({ summary: 'Accounts whose price for this package differs from their default' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -22,7 +22,7 @@ export class TermsController {
     return this.termDesk.customPrices(actor, code);
   }
 
-  @Put('packages/:code/custom-prices/:loginName')
+  @Put('postpaid/packages/:code/custom-prices/:loginName')
   @ApiOperation({ summary: 'Set a special price for one account on this package' })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'loginName' })
@@ -38,7 +38,7 @@ export class TermsController {
     return this.termDesk.setCustomPrice(actor, code, loginName, body);
   }
 
-  @Delete('packages/:code/custom-prices/:loginName')
+  @Delete('postpaid/packages/:code/custom-prices/:loginName')
   @ApiOperation({ summary: 'Return an account to the default price for this package' })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'loginName' })
@@ -52,7 +52,7 @@ export class TermsController {
     return this.termDesk.clearCustomPrice(actor, code, loginName);
   }
 
-  @Get('packages/:code/hidden-accounts')
+  @Get('postpaid/packages/:code/hidden-accounts')
   @ApiOperation({ summary: 'The accounts this package is hidden from by their own row, each with how many accounts sit under it (branch)' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -60,7 +60,7 @@ export class TermsController {
     return this.termDesk.hiddenAccounts(actor, code);
   }
 
-  @Get('packages/:code/line-accounts')
+  @Get('postpaid/packages/:code/line-accounts')
   @ApiOperation({ summary: 'The points of sale that hold numbers on this package: how many, how many active, and their renewal price today (branch)' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -68,7 +68,7 @@ export class TermsController {
     return this.termDesk.lineAccounts(actor, code);
   }
 
-  @Get('packages/:code/line-prices')
+  @Get('postpaid/packages/:code/line-prices')
   @ApiOperation({ summary: 'The renewable numbers of this package grouped by the renewal price they carry' })
   @ApiParam({ name: 'code' })
   @ApiZodQuery(LinePricesQuery)
@@ -77,7 +77,7 @@ export class TermsController {
     return this.termDesk.linePrices(actor, code, query);
   }
 
-  @Put('packages/:code/line-prices')
+  @Put('postpaid/packages/:code/line-prices')
   @ApiOperation({ summary: 'Reprice the renewable numbers of this package, one price group at a time' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(LinePricesBody)
@@ -91,7 +91,7 @@ export class TermsController {
     return this.termDesk.setLinePrices(actor, code, body);
   }
 
-  @Get('users/:loginName/packages')
+  @Get('postpaid/users/:loginName/packages')
   @ApiOperation({ summary: 'Packages as this account sees and pays for them' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
@@ -99,7 +99,7 @@ export class TermsController {
     return this.termDesk.userPackages(actor, loginName);
   }
 
-  @Put('users/:loginName/packages')
+  @Put('postpaid/users/:loginName/packages')
   @ApiOperation({ summary: 'Hide or show several packages for this account' })
   @ApiParam({ name: 'loginName' })
   @ApiZodBody(UserPackagesBulkBody)
@@ -113,7 +113,7 @@ export class TermsController {
     return this.termDesk.setUserPackagesBulk(actor, loginName, body);
   }
 
-  @Put('users/:loginName/packages/:code')
+  @Put('postpaid/users/:loginName/packages/:code')
   @ApiOperation({ summary: 'Hide, show, or price one package for this account' })
   @ApiParam({ name: 'loginName' })
   @ApiParam({ name: 'code' })
@@ -129,7 +129,7 @@ export class TermsController {
     return this.termDesk.setUserPackage(actor, loginName, code, body);
   }
 
-  @Get('users/:loginName/ops')
+  @Get('postpaid/users/:loginName/ops')
   @ApiOperation({ summary: 'Line operations stopped on this account, own and inherited' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
@@ -137,7 +137,7 @@ export class TermsController {
     return this.termDesk.userOps(actor, loginName);
   }
 
-  @Put('users/:loginName/ops')
+  @Put('postpaid/users/:loginName/ops')
   @ApiOperation({ summary: 'Set the line operations stopped on this account' })
   @ApiParam({ name: 'loginName' })
   @ApiZodBody(UserOpsBody)

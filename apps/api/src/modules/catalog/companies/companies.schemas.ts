@@ -12,7 +12,7 @@ export const simPrefix = z.string().trim().regex(/^\d{0,10}$/);
 export const simLength = z.number().int().min(SIM_LENGTH_MIN).max(SIM_LENGTH_MAX);
 
 /**
- * PUT companies/:code/sim — the SIM rules and, when sent, the eSIM price. `readSimRules` (rules/sim-rules.ts) still
+ * PUT postpaid/companies/:code/sim — the SIM rules and, when sent, the eSIM price. `readSimRules` (rules/sim-rules.ts) still
  * checks the prefix against the length.
  */
 export const CompanySimBody = z.object({
@@ -31,7 +31,7 @@ export const COMPANY_IMAGE_BYTES = 50_000;
 export const COMPANY_IMAGE_CHARS = 70_000;
 
 /**
- * PUT companies/:code/image — the company's picture as a data URL; an empty or absent picture clears it. The
+ * PUT postpaid/companies/:code/image — the company's picture as a data URL; an empty or absent picture clears it. The
  * service checks the picture's type and its size in bytes: a URL (what the lists carry, speed plan PF.7) or an
  * oversized mark is `INVALID`.
  */

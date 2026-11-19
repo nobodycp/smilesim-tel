@@ -15,7 +15,7 @@ import { ProviderCatalogService } from './provider-catalog.service';
 export class ProviderCatalogController {
   constructor(private readonly catalog: ProviderCatalogService) {}
 
-  @Get('providers/:code/catalog/companies')
+  @Get('postpaid/providers/:code/catalog/companies')
   @ApiOperation({ summary: 'The companies the provider sells, each marked when already added (simulated for now)' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -23,7 +23,7 @@ export class ProviderCatalogController {
     return this.catalog.companies(actor, code);
   }
 
-  @Get('providers/:code/catalog/products')
+  @Get('postpaid/providers/:code/catalog/products')
   @ApiOperation({ summary: 'The provider products for one company, each marked when already added (simulated for now)' })
   @ApiParam({ name: 'code' })
   @ApiZodQuery(CatalogProductsQuery)
@@ -32,7 +32,7 @@ export class ProviderCatalogController {
     return this.catalog.products(actor, code, query);
   }
 
-  @Post('companies')
+  @Post('postpaid/companies')
   @ApiOperation({ summary: 'Add a company the provider sells, with its SIM rules and eSIM price' })
   @ApiZodBody(CompanyCreateBody)
   @ApiErrorResponse(401, 403, 400, 404, 409)
@@ -41,7 +41,7 @@ export class ProviderCatalogController {
     return this.catalog.createCompany(actor, body);
   }
 
-  @Post('packages')
+  @Post('postpaid/packages')
   @ApiOperation({ summary: 'Add a package from a provider product: facts, prices, extra operations, run modes' })
   @ApiZodBody(PackageCreateBody)
   @ApiErrorResponse(401, 403, 400, 404, 409)

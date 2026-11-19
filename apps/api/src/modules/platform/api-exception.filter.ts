@@ -70,7 +70,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 
   /**
-   * One entry: `500 GET /v1/lines/:id request <id>: TypeError unclassified`, then the frames one a line. Nothing of
+   * One entry: `500 GET /v1/postpaid/lines/:id request <id>: TypeError unclassified`, then the frames one a line. Nothing of
    * the request but its id, method and pattern; nothing of the error but what `errorReport` keeps.
    */
   private log(status: number, where: RequestPlace, report: ErrorReport, error: unknown): void {

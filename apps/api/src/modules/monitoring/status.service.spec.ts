@@ -27,7 +27,7 @@ function healthy(): Stands {
       carriedMigrations: async () => ['a', 'b'],
     },
     redis: { configured: () => true, ping: async () => undefined, usedMemory: async () => 1_000_000, counts: async (name: string) => ({ name, waiting: 0, active: 0, failed: 0 }) },
-    requests: { totals: async () => ({ count: 200, refused: 3, failed: 1 }), routeFigures: async () => ({ slowest: [{ method: 'GET', route: '/v1/lines', calls: 9, medianMs: 40, p95Ms: 90 }], busiest: [] }) },
+    requests: { totals: async () => ({ count: 200, refused: 3, failed: 1 }), routeFigures: async () => ({ slowest: [{ method: 'GET', route: '/v1/postpaid/lines', calls: 9, medianMs: 40, p95Ms: 90 }], busiest: [] }) },
     providers: { current: async () => [{ code: 'sky', name: 'Sky', status: 'working', reason: null, failures: 0, available: 10, alertFloor: 0 }] },
   };
 }
@@ -54,7 +54,7 @@ describe('StatusService', () => {
     expect(parts.postgres.figures).toEqual({ pingMs: expect.any(Number), connections: 7, sizeBytes: 12_345_678 });
     expect(parts.redis.figures).toEqual({ configured: true, pingMs: expect.any(Number), usedMemoryBytes: 1_000_000 });
     expect(parts.queues.figures).toEqual({ configured: true, queues: MONITORED_QUEUES.map((name) => ({ name, waiting: 0, active: 0, failed: 0 })) });
-    expect(parts.requests.figures).toEqual({ windowMinutes: 15, count: 200, failed: 1, errorRate: 0.005, slowestRoute: { method: 'GET', route: '/v1/lines', p95Ms: 90 } });
+    expect(parts.requests.figures).toEqual({ windowMinutes: 15, count: 200, failed: 1, errorRate: 0.005, slowestRoute: { method: 'GET', route: '/v1/postpaid/lines', p95Ms: 90 } });
     expect(parts.schema.figures).toEqual({ carried: 2, applied: 2, missing: [] });
   });
 

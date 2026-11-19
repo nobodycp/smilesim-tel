@@ -69,7 +69,7 @@ describe('providers and companies over HTTP', () => {
     expect(lian.code).toBe('lian');
     expect(lian.companies.map((c: { name: string }) => c.name)).toEqual(['الوها', 'ويكوم']);
     expect(lian.companies[0]).toEqual({
-      name: 'الوها', image: '/api/pictures/companies/alloha?v=0123456789abcdef',
+      name: 'الوها', image: '/api/pictures/postpaid/companies/alloha?v=0123456789abcdef',
       packages: [{ code: 'p1', name: 'n-p1', dataGb: 50, months: 1, price: 1200, enabled: true, autoActivate: true, autoCharge: false, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: false, autoSim: true, allowDisconnect: true }],
     });
     // A company with no mark: null (speed plan PF.7; it was '' while the list carried the bytes).
@@ -107,33 +107,33 @@ describe('providers and companies over HTTP', () => {
   });
 
   it('saves company SIM rules and refuses bad rules, other layers and unknown companies', async () => {
-    const ok = await as('owner', 'put', '/v1/companies/wecom/sim', { length: 19, prefix: ' 8997 ', esim: true, esimPrice: 200 });
+    const ok = await as('owner', 'put', '/v1/postpaid/companies/wecom/sim', { length: 19, prefix: ' 8997 ', esim: true, esimPrice: 200 });
     expect(ok.body).toEqual({ ok: true, sim: { length: 19, prefix: '8997', esim: true }, esimPrice: 200 });
     expect(writes[0].args).toEqual({ where: { id: 'c2' }, data: { iccidLength: 19, iccidPrefix: '8997', esim: true, esimPrice: 200 } });
-    expect((await as('owner', 'put', '/v1/companies/wecom/sim', { length: 19, prefix: 'abc', esim: true })).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('pos1', 'put', '/v1/companies/wecom/sim', { length: 19, prefix: '', esim: false })).status).toBe(403);
-    expect((await as('owner', 'put', '/v1/companies/none/sim', { length: 19, prefix: '', esim: false })).status).toBe(404);
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/sim', { length: 19, prefix: 'abc', esim: true })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('pos1', 'put', '/v1/postpaid/companies/wecom/sim', { length: 19, prefix: '', esim: false })).status).toBe(403);
+    expect((await as('owner', 'put', '/v1/postpaid/companies/none/sim', { length: 19, prefix: '', esim: false })).status).toBe(404);
   });
 
   it('sets or clears a company image by its code and checks the picture', async () => {
     const png = `data:image/png;base64,${Buffer.alloc(64, 1).toString('base64')}`;
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: png })).body).toEqual({ ok: true });
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: '' })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: png })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: '' })).body).toEqual({ ok: true });
     expect(writes.map((w) => w.args)).toEqual([
       { where: { id: 'c2' }, data: { image: png } },
       { where: { id: 'c2' }, data: { image: null } },
     ]);
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: 'data:image/gif;base64,AAAA' })).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('owner', 'put', '/v1/companies/none/image', { image: '' })).status).toBe(404);
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: 7 })).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('pos1', 'put', '/v1/companies/wecom/image', { image: '' })).status).toBe(403);
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: 'data:image/gif;base64,AAAA' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/none/image', { image: '' })).status).toBe(404);
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: 7 })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('pos1', 'put', '/v1/postpaid/companies/wecom/image', { image: '' })).status).toBe(403);
   });
 
   it('takes a new mark up to 50 KB and refuses a bigger one or the URL a list carries (decision 11, speed plan PF.7)', async () => {
     const webp = (bytes: number) => `data:image/webp;base64,${Buffer.alloc(bytes, 2).toString('base64')}`;
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: webp(50_000) })).body).toEqual({ ok: true });
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: webp(50_001) })).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('owner', 'put', '/v1/companies/wecom/image', { image: '/api/pictures/companies/wecom?v=0123456789abcdef' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: webp(50_000) })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: webp(50_001) })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/v1/postpaid/companies/wecom/image', { image: '/api/pictures/postpaid/companies/wecom?v=0123456789abcdef' })).body).toMatchObject({ code: 'INVALID' });
     expect(writes.map((w) => w.args)).toEqual([{ where: { id: 'c2' }, data: { image: webp(50_000) } }]);
   });
 });

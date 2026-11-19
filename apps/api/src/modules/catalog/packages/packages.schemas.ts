@@ -23,7 +23,7 @@ const position = z.number().int().min(-2_147_483_648).max(2_147_483_647);
 /** GB, minutes or messages: null is "not stated", -1 is "unlimited". */
 const fact = z.number().int().min(-1).max(1_000_000).nullable();
 
-/** PUT sell-prices/:code — the caller's own sell price; a renewal price left out or null is cleared. */
+/** PUT postpaid/sell-prices/:code — the caller's own sell price; a renewal price left out or null is cleared. */
 export const SellPriceBody = z.object({ price: agorot, renewalPrice: optionalAgorot });
 export type SellPriceBody = z.input<typeof SellPriceBody>;
 
@@ -32,7 +32,7 @@ const flag = z.boolean().optional();
 /** How a package offers porting or card-to-bill: not at all, as a branch task, or directly to the provider. */
 export const ACTIVATION_KIND_MODES = ['off', 'manual', 'auto'] as const;
 
-/** PATCH packages/:code/mode — any of the run flags, or one action with its mode (`inherit` follows the provider). */
+/** PATCH postpaid/packages/:code/mode — any of the run flags, or one action with its mode (`inherit` follows the provider). */
 export const PackageModeBody = z.object({
   autoActivate: flag,
   autoCharge: flag,
@@ -59,7 +59,7 @@ export const PackageModeBody = z.object({
 });
 export type PackageModeBody = z.input<typeof PackageModeBody>;
 
-/** PATCH packages/:code/details — the package facts and its extra text. */
+/** PATCH postpaid/packages/:code/details — the package facts and its extra text. */
 export const PackageDetailsBody = z.object({
   dataGb: fact,
   smsCount: fact,
@@ -77,7 +77,7 @@ export type PackageDetailsBody = z.input<typeof PackageDetailsBody>;
 const addonName = z.string().trim().min(1).max(60);
 const addonPrice = z.number().int().min(0).max(ADDON_PRICE_MAX);
 
-/** PATCH packages/:code/addons/:id — any of the name, the price, on/off and the place in the list. */
+/** PATCH postpaid/packages/:code/addons/:id — any of the name, the price, on/off and the place in the list. */
 export const PackageAddonUpdateBody = z.object({
   name: addonName.optional(),
   price: addonPrice.optional(),
@@ -86,7 +86,7 @@ export const PackageAddonUpdateBody = z.object({
 });
 export type PackageAddonUpdateBody = z.input<typeof PackageAddonUpdateBody>;
 
-/** POST packages/:code/addons — a new extra operation: the name is required, the price is 0 when left out. */
+/** POST postpaid/packages/:code/addons — a new extra operation: the name is required, the price is 0 when left out. */
 export const PackageAddonBody = PackageAddonUpdateBody.extend({ name: addonName });
 export type PackageAddonBody = z.input<typeof PackageAddonBody>;
 
@@ -95,7 +95,7 @@ export const DURATION_DAYS_MAX = 3650;
 export const DURATION_MONTHS_MAX = 120;
 
 /**
- * PUT packages/:code/durations — one duration of a package with its whole price ladder (package plan D.3). The
+ * PUT postpaid/packages/:code/durations — one duration of a package with its whole price ladder (package plan D.3). The
  * unit and the count name the row: the same pair again replaces its prices.
  */
 export const PackageDurationBody = z
@@ -113,7 +113,7 @@ export const PackageDurationBody = z
   .refine((body) => body.unit === 'day' || body.count <= DURATION_MONTHS_MAX, { path: ['count'] });
 export type PackageDurationBody = z.input<typeof PackageDurationBody>;
 
-/** PATCH packages/:code/chain — any of the subscription and renewal prices; the eSIM price may be cleared with null. */
+/** PATCH postpaid/packages/:code/chain — any of the subscription and renewal prices; the eSIM price may be cleared with null. */
 export const PackageChainBody = z.object({
   branchCost: agorot.optional(),
   mainPrice: agorot.optional(),
@@ -132,6 +132,6 @@ export type PackageChainBody = z.input<typeof PackageChainBody>;
 /** The most packages one package may renew or switch into. */
 export const PACKAGE_TARGETS_MAX = 500;
 
-/** PUT packages/:code/renewals and PUT packages/:code/switches — the codes of the target packages. */
+/** PUT postpaid/packages/:code/renewals and PUT postpaid/packages/:code/switches — the codes of the target packages. */
 export const PackageTargetsBody = z.object({ targets: z.array(z.string().min(1).max(64)).max(PACKAGE_TARGETS_MAX) });
 export type PackageTargetsBody = z.input<typeof PackageTargetsBody>;

@@ -14,7 +14,7 @@ import { TransfersService } from './transfers.service';
 export class TransfersController {
   constructor(private readonly transferDesk: TransfersService) {}
 
-  @Post('lines/:id/transfer')
+  @Post('postpaid/lines/:id/transfer')
   @ApiOperation({ summary: 'Transfer a line to another POS' })
   @ApiParam({ name: 'id' })
   @ApiZodBody(TransferLineBody)

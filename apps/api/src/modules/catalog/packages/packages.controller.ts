@@ -14,7 +14,7 @@ import { PackagesService } from './packages.service';
 export class PackagesController {
   constructor(private readonly packageDesk: PackagesService) {}
 
-  @Get('packages/:code/sheet')
+  @Get('postpaid/packages/:code/sheet')
   @ApiOperation({ summary: 'Package pricing / chain sheet' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -22,7 +22,7 @@ export class PackagesController {
     return this.packageDesk.sheet(actor, code);
   }
 
-  @Patch('packages/:code/details')
+  @Patch('postpaid/packages/:code/details')
   @ApiOperation({ summary: 'Set package details: GB, minutes, messages (null not stated, -1 unlimited) and extra text' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(PackageDetailsBody)
@@ -32,7 +32,7 @@ export class PackagesController {
     return this.packageDesk.setDetails(actor, code, body);
   }
 
-  @Get('packages/:code/addons')
+  @Get('postpaid/packages/:code/addons')
   @ApiOperation({ summary: "A package's extra operations (branch)" })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
@@ -40,7 +40,7 @@ export class PackagesController {
     return this.packageDesk.addons(actor, code);
   }
 
-  @Post('packages/:code/addons')
+  @Post('postpaid/packages/:code/addons')
   @ApiOperation({ summary: 'Add an extra operation to a package: name and price' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(PackageAddonBody)
@@ -50,7 +50,7 @@ export class PackagesController {
     return this.packageDesk.saveAddon(actor, code, body);
   }
 
-  @Patch('packages/:code/addons/:id')
+  @Patch('postpaid/packages/:code/addons/:id')
   @ApiOperation({ summary: "Change a package's extra operation: name, price, on/off, position" })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'id' })
@@ -61,7 +61,7 @@ export class PackagesController {
     return this.packageDesk.saveAddon(actor, code, body, id);
   }
 
-  @Delete('packages/:code/addons/:id')
+  @Delete('postpaid/packages/:code/addons/:id')
   @ApiOperation({ summary: "Delete a package's extra operation" })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'id' })
@@ -71,7 +71,7 @@ export class PackagesController {
     return this.packageDesk.removeAddon(actor, code, id);
   }
 
-  @Patch('packages/:code/chain')
+  @Patch('postpaid/packages/:code/chain')
   @ApiOperation({ summary: 'Update package price chain' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(PackageChainBody)
@@ -85,7 +85,7 @@ export class PackagesController {
     return this.packageDesk.setChain(actor, code, body);
   }
 
-  @Put('packages/:code/durations')
+  @Put('postpaid/packages/:code/durations')
   @ApiOperation({ summary: 'Add a duration to a package, or replace the prices of the one with the same unit and count' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(PackageDurationBody)
@@ -95,7 +95,7 @@ export class PackagesController {
     return this.packageDesk.saveDuration(actor, code, body);
   }
 
-  @Delete('packages/:code/durations/:id')
+  @Delete('postpaid/packages/:code/durations/:id')
   @ApiOperation({ summary: "Delete a package's duration (not the one that mirrors its own months)" })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'id' })
@@ -105,7 +105,7 @@ export class PackagesController {
     return this.packageDesk.removeDuration(actor, code, id);
   }
 
-  @Put('packages/:code/renewals')
+  @Put('postpaid/packages/:code/renewals')
   @Activity('package_renewals', 'package', param('code'))
   @ApiOperation({ summary: 'Set renewal targets for a package' })
   @ApiParam({ name: 'code' })
@@ -119,7 +119,7 @@ export class PackagesController {
     return this.packageDesk.setTargets(actor, code, 'renewals', body);
   }
 
-  @Put('packages/:code/switches')
+  @Put('postpaid/packages/:code/switches')
   @Activity('package_switches', 'package', param('code'))
   @ApiOperation({ summary: 'Set switch targets for a package' })
   @ApiParam({ name: 'code' })
@@ -133,7 +133,7 @@ export class PackagesController {
     return this.packageDesk.setTargets(actor, code, 'switches', body);
   }
 
-  @Patch('packages/:code/mode')
+  @Patch('postpaid/packages/:code/mode')
   @ApiOperation({ summary: 'Set package sale/visibility mode flags' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(PackageModeBody)

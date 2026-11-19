@@ -72,7 +72,7 @@ const PACKAGE_SHEET_KEYS = [
 // One duration of a package on its sheet (package plan D.2).
 const PACKAGE_DURATION_KEYS = ['id', 'unit', 'count', 'days', 'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice', 'noDisconnect', 'forSale', 'enabled'];
 
-// GET /v1/packages: one row a package on sale. The price columns above the viewer and the run modes come as
+// GET /v1/postpaid/packages: one row a package on sale. The price columns above the viewer and the run modes come as
 // null outside the branch (plan backend-loose-ends B.4).
 const PACKAGE_ROW_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'activateMode', 'sellable', 'activateInput', 'canPort', 'canConvert', 'offer', 'offerNote', 'noDisconnect', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
@@ -223,7 +223,7 @@ describe('office response shapes', () => {
     expect(counts).toEqual({ working: 4, done: 2, rejected: 0, cancelled: 0 });
   });
 
-  it('answers /v1/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
+  it('answers /v1/postpaid/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
     const row = {
       id: 'ln-1',
       msisdn: '0550000001',
@@ -254,10 +254,10 @@ describe('office response shapes', () => {
       line: { findMany: async () => [row], count: async () => 1 },
       $queryRaw: async () => [{ code: 'cellcom', version: '0123456789abcdef' }],
     });
-    expect((await marked.service.lines(marked.gate)).items[0].companyImage).toBe('/api/pictures/companies/cellcom?v=0123456789abcdef');
+    expect((await marked.service.lines(marked.gate)).items[0].companyImage).toBe('/api/pictures/postpaid/companies/cellcom?v=0123456789abcdef');
   });
 
-  it('answers /v1/companies with the fixed company shelf and package counts', async () => {
+  it('answers /v1/postpaid/companies with the fixed company shelf and package counts', async () => {
     const packageRows = [
       {
         code: 'lian-wecom-500',
@@ -285,7 +285,7 @@ describe('office response shapes', () => {
     expect(wecom!.sim).toEqual({ length: 19, prefix: '8997202', esim: false });
     expect(wecom!.esimPrice).toBe(400);
     // The mark by URL, never its bytes (speed plan PF.7); null for a company without one (it was '').
-    expect(wecom!.image).toBe('/api/pictures/companies/wecom?v=0123456789abcdef');
+    expect(wecom!.image).toBe('/api/pictures/postpaid/companies/wecom?v=0123456789abcdef');
     expect(shelf.companies.find((company) => company.code === 'kalam')?.image).toBeNull();
     expect(shelf.companies.find((company) => company.code === 'kalam')?.esimPrice).toBe(500);
     expect(shelf.companies.find((company) => company.code === 'kalam')?.sim).toEqual({ length: null, prefix: '', esim: true });
@@ -465,7 +465,7 @@ describe('office response shapes', () => {
 
   it('answers the request log and its summary with the pinned keys, and never a session, an id of who entered or a body', async () => {
     const row = {
-      id: 'r1', at: new Date('2026-11-17T10:00:00Z'), durationMs: 12, method: 'GET', route: '/v1/lines/:id', path: '/v1/lines/abc', status: 200, code: '',
+      id: 'r1', at: new Date('2026-11-17T10:00:00Z'), durationMs: 12, method: 'GET', route: '/v1/postpaid/lines/:id', path: '/v1/postpaid/lines/abc', status: 200, code: '',
       actorId: 'pos1', actorLoginName: 'pos1', operatorId: 'admin', layer: 'pos', ip: '127.0.0.1', userAgent: 'agent', requestId: 'q1', bytesIn: 0, bytesOut: 40,
     };
     const prisma = {
@@ -473,7 +473,7 @@ describe('office response shapes', () => {
       user: { findMany: async () => [{ id: 'admin', loginName: 'admin' }], findUnique: async () => null },
       $queryRaw: async (strings: TemplateStringsArray) =>
         strings.join('').includes('percentile_cont')
-          ? [{ list: 'slowest', method: 'GET', route: '/v1/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }, { list: 'busiest', method: 'GET', route: '/v1/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }]
+          ? [{ list: 'slowest', method: 'GET', route: '/v1/postpaid/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }, { list: 'busiest', method: 'GET', route: '/v1/postpaid/lines/:id', calls: 1, medianMs: 12, p95Ms: 12 }]
           : [{ count: 1, refused: 0, failed: 0 }],
     };
     const service = new RequestLogService(new RequestLogRepository({ prisma } as unknown as UnitOfWork), { flush: async () => undefined } as unknown as RequestLogWriter);
@@ -566,7 +566,7 @@ describe('office response shapes', () => {
   });
 
   it('answers the server errors grouped, and both clearings, with the pinned keys (M.4)', async () => {
-    const group = { method: 'GET', route: '/v1/lines/:id', name: 'TypeError', message: 'unclassified', count: 2, firstAt: new Date('2026-11-17T10:00:00Z'), lastAt: new Date('2026-11-17T11:00:00Z'), lastRequestId: 'q2', stack: 'f (dist/a.js:1:1)\ng (dist/b.js:2:2)' };
+    const group = { method: 'GET', route: '/v1/postpaid/lines/:id', name: 'TypeError', message: 'unclassified', count: 2, firstAt: new Date('2026-11-17T10:00:00Z'), lastAt: new Date('2026-11-17T11:00:00Z'), lastRequestId: 'q2', stack: 'f (dist/a.js:1:1)\ng (dist/b.js:2:2)' };
     const prisma = {
       requestError: { count: async () => 2, deleteMany: async () => ({ count: 2 }) },
       requestLog: { deleteMany: async () => ({ count: 5 }) },
@@ -583,12 +583,12 @@ describe('office response shapes', () => {
     expect(keysOf(await service.clearErrors(owner))).toEqual(['removed']);
   });
 
-  it('answers /v1/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
+  it('answers /v1/postpaid/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
     const tables = { package: { findMany: async () => [catalogPackage] }, $queryRaw: async () => [{ code: 'wecom', version: '0123456789abcdef' }] };
     const asBranch = await serviceWith(tables);
     const branchShelf = await asBranch.service.packages(asBranch.gate);
     // The marks of the listed companies by URL, never their bytes (speed plan PF.7).
-    expect(branchShelf.companies).toEqual([{ name: 'ويكوم', image: '/api/pictures/companies/wecom?v=0123456789abcdef' }]);
+    expect(branchShelf.companies).toEqual([{ name: 'ويكوم', image: '/api/pictures/postpaid/companies/wecom?v=0123456789abcdef' }]);
     const branchRow = branchShelf.packages[0];
     expect(keysOf(branchRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
     expect(branchRow).toMatchObject({

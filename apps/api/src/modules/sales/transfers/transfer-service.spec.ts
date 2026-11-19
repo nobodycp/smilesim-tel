@@ -973,12 +973,12 @@ describe('the transfer routes under /v1', () => {
     ]);
   });
 
-  it('POST lines/:id/transfer hands the service the whole body: the point of sale and the price choice', async () => {
+  it('POST postpaid/lines/:id/transfer hands the service the whole body: the point of sale and the price choice', async () => {
     const { service, gates, accounts, line } = await sellers();
     edit(accounts, 'ag1', { liveGrants: 'transferLines' });
     app = await appFor(service);
     const post = (gate: { sessionId: string }, body: object) =>
-      request(app!.getHttpServer()).post('/v1/lines/ln1/transfer').set('Cookie', `sid=${gate.sessionId}`).send(body);
+      request(app!.getHttpServer()).post('/v1/postpaid/lines/ln1/transfer').set('Cookie', `sid=${gate.sessionId}`).send(body);
 
     const forbidden = await post(gates.ag1, lineMove());
     expect(forbidden.status).toBe(403);

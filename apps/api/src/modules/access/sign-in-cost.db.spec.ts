@@ -81,7 +81,7 @@ suite('a signed-in request reads (PostgreSQL)', () => {
     expect(me.filter((sql) => sql.includes('"LayerPolicy"'))).toEqual([]);
     expect(wholeTree(me)).toHaveLength(1);
     expect(me).toHaveLength(9);
-    const lines = await count('pos', '/v1/lines');
+    const lines = await count('pos', '/v1/postpaid/lines');
     expect(signIn(lines)).toHaveLength(7);
     expect(writes(lines)).toEqual([]);
     expect(wholeTree(lines)).toHaveLength(1);
@@ -93,7 +93,7 @@ suite('a signed-in request reads (PostgreSQL)', () => {
     expect(writes(me)).toEqual([]);
     expect(wholeTree(me)).toHaveLength(1);
     expect(me).toHaveLength(6);
-    const lines = await count('owner', '/v1/lines');
+    const lines = await count('owner', '/v1/postpaid/lines');
     expect(signIn(lines)).toHaveLength(3);
     expect(wholeTree(lines)).toHaveLength(1);
   });

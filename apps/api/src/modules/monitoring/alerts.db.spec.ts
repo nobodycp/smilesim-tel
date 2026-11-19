@@ -137,9 +137,9 @@ suite('the alerts in PostgreSQL: the pass, its notices, and the owner\'s routes'
     await refused('/v1/system/versions/check', `${probeIp.replace(/\.\d+$/, '')}.1`);
     await pass.round(at(2));
     expect((await ours()).filter((alert) => alert.kind === 'rate_limit')).toEqual([]);
-    await refused('/v1/lines/:id/extend', `${probeIp.replace(/\.\d+$/, '')}.2`);
+    await refused('/v1/postpaid/lines/:id/extend', `${probeIp.replace(/\.\d+$/, '')}.2`);
     await pass.round(at(2));
-    expect((await ours()).filter((alert) => alert.kind === 'rate_limit').map((alert) => alert.path)).toEqual(['/v1/lines/:id/extend']);
+    expect((await ours()).filter((alert) => alert.kind === 'rate_limit').map((alert) => alert.path)).toEqual(['/v1/postpaid/lines/:id/extend']);
   });
 
   it('raises an open alert by what came after it, with no second notice, and closes it after 30 quiet minutes', async () => {

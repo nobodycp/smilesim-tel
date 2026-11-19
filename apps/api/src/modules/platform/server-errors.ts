@@ -10,7 +10,7 @@ export type ServerErrorDraft = {
   requestId: string;
   at: Date;
   method: string;
-  /** The route pattern (`/v1/lines/:id`); empty when no route matched. */
+  /** The route pattern (`/v1/postpaid/lines/:id`); empty when no route matched. */
   route: string;
   /** What `errorReport` (`log.ts`) keeps of the error: its class, a code for its message, the top of its stack. */
   name: string;

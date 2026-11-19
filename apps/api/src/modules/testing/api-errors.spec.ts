@@ -66,7 +66,7 @@ describe('office refusals', () => {
 
   it('answers 403 FORBIDDEN when a point of sale adds a company', async () => {
     const response = await request(app.getHttpServer())
-      .post('/v1/companies')
+      .post('/v1/postpaid/companies')
       .set('Cookie', `sid=${posSession}`)
       .send({ providerCode: 'sky', companyCode: 'golan' });
     expect(response.status).toBe(403);

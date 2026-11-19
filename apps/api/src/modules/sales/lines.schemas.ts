@@ -102,11 +102,11 @@ export type ProviderDecisionApprovalBody = z.input<typeof ProviderDecisionApprov
 /** The two parts of the decisions queue: a proposal to answer, or nothing decided yet. */
 export const WAITING_FOR = ['approval', 'decision'] as const;
 
-/** GET provider-decisions — the queue, a page at a time; `waiting` keeps one of its two parts. */
+/** GET postpaid/provider-decisions — the queue, a page at a time; `waiting` keeps one of its two parts. */
 export const ProviderDecisionsQuery = z.object({ cursor: queryCursor, waiting: queryOneOf(WAITING_FOR) });
 export type ProviderDecisionsQuery = z.input<typeof ProviderDecisionsQuery>;
 
-/** GET lines — the filters of the numbers list. `expiring` is not a stored status: it reads the end date. */
+/** GET postpaid/lines — the filters of the numbers list. `expiring` is not a stored status: it reads the end date. */
 export const LinesQuery = z.object({
   cursor: queryCursor,
   q: queryText(),

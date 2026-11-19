@@ -19,8 +19,8 @@ import { ProviderOperationsQuery } from '../providers/providers.schemas';
 // parameter the route does not name is ignored. Called as the branch owner over empty tables.
 
 const REFUSED: [path: string, why: string][] = [
-  ['/v1/lines?status=bogus', 'a status that is not one'],
-  ['/v1/lines?status=active&status=frozen', 'a filter sent twice'],
+  ['/v1/postpaid/lines?status=bogus', 'a status that is not one'],
+  ['/v1/postpaid/lines?status=active&status=frozen', 'a filter sent twice'],
   ['/v1/tasks?status=open', 'a task status that is not one'],
   ['/v1/tasks?action=explode', 'an operation that is not one'],
   ['/v1/notices?group=everything', 'a group that is not one'],
@@ -55,8 +55,8 @@ const REFUSED: [path: string, why: string][] = [
 ];
 
 const ACCEPTED = [
-  '/v1/lines?status=expiring&q=055&utm_source=mail',
-  '/v1/lines?status=&q=',
+  '/v1/postpaid/lines?status=expiring&q=055&utm_source=mail',
+  '/v1/postpaid/lines?status=&q=',
   '/v1/tasks?status=working&action=activate&fbclid=1',
   '/v1/notices?group=wallet&unread=1',
   '/v1/notices?limit=10',
@@ -74,7 +74,7 @@ const ACCEPTED = [
   '/v1/system/requests?method=DELETE&path=%25lines_&ip=10.0.&unmatched=1',
   '/v1/system/requests/summary?method=POST&path=/v1/&ip=127.&unmatched=0',
   '/v1/system/requests/summary?status=5xx&from=2026-11-17T00:00:00Z',
-  '/v1/system/errors?route=/v1/lines/:id&from=2026-11-17&to=2026-11-17',
+  '/v1/system/errors?route=/v1/postpaid/lines/:id&from=2026-11-17&to=2026-11-17',
 ];
 
 describe('query filters', () => {
@@ -108,7 +108,7 @@ describe('query filters', () => {
   });
 
   it('judges the session before the query', async () => {
-    const anonymous = await request(app.getHttpServer()).get('/v1/lines?status=bogus');
+    const anonymous = await request(app.getHttpServer()).get('/v1/postpaid/lines?status=bogus');
     expect(anonymous.status).toBe(401);
   });
 });

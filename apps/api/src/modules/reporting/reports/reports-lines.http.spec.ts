@@ -71,9 +71,9 @@ describe('reports and line refusals over HTTP', () => {
   });
 
   it('refuses a disconnect quote and a reactivation on a number locked for a package switch', async () => {
-    expect((await as('owner', 'get', '/v1/lines/ln1/disconnect-quote')).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
-    expect((await as('owner', 'post', '/v1/lines/ln1/reactivate', { outcome: 'success' })).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
+    expect((await as('owner', 'get', '/v1/postpaid/lines/ln1/disconnect-quote')).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
+    expect((await as('owner', 'post', '/v1/postpaid/lines/ln1/reactivate', { outcome: 'success' })).body).toMatchObject({ code: 'SWITCH_PACKAGE_FIRST' });
     // The outcome is judged before the number is read.
-    expect((await as('owner', 'post', '/v1/lines/ln1/reactivate', { outcome: 'maybe' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'post', '/v1/postpaid/lines/ln1/reactivate', { outcome: 'maybe' })).body).toMatchObject({ code: 'INVALID' });
   });
 });

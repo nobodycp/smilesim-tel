@@ -7,7 +7,7 @@ import type { Actor as ActorShape } from '../access';
 import { TaskNoteBody, TaskRejectBody, TasksQuery } from './tasks.schemas';
 import { TasksService } from './tasks.service';
 
-// POST /v1/tasks/:id/complete is served by LinesController: closing a task applies a line operation
+// POST /v1/postpaid/tasks/:id/complete is served by LinesController: closing a task applies a line operation
 // (lines/task-completion.ts).
 @ApiTags('tasks')
 @ApiCookieAuth('sid')

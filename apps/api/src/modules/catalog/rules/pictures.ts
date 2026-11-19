@@ -32,7 +32,7 @@ export function markVersion(dataUrl: string): string {
 }
 
 export function companyMarkUrl(code: string, version: string): string {
-  return `${PICTURES_PATH}/companies/${encodeURIComponent(code)}?v=${version}`;
+  return `${PICTURES_PATH}/postpaid/companies/${encodeURIComponent(code)}?v=${version}`;
 }
 
 /** An offer's version is its `updatedAt` in milliseconds. */

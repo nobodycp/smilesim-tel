@@ -51,7 +51,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
   /** The manual route: the simulated provider refuses, so a task is opened. */
   const body = (over: Record<string, unknown> = {}) => ({ packageCode: `rk-${tag}`, posLoginName: `rk-${tag}-posa`, outcome: 'fail', ...over });
   const post = (who: keyof typeof u | { cookie: string }, sent: Record<string, unknown>, requestKey?: string, on: INestApplication = app) => {
-    const call = request(on.getHttpServer()).post('/v1/lines').set('Cookie', typeof who === 'string' ? cookie[who] : who.cookie);
+    const call = request(on.getHttpServer()).post('/v1/postpaid/lines').set('Cookie', typeof who === 'string' ? cookie[who] : who.cookie);
     return (requestKey === undefined ? call : call.set('Idempotency-Key', requestKey)).send(sent);
   };
   const tasks = () => prisma.task.findMany({ where: { posId: { in: [u.posA, u.posB] } }, orderBy: { createdAt: 'asc' } });

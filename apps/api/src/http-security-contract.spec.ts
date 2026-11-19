@@ -168,7 +168,7 @@ describe('the write routes, as the source has them', () => {
     expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(32);
     // The empty prefix is the health probe: one read, no write. `pictures` is two public reads (speed PF.7).
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'pictures', 'v1']);
-    expect(routes.filter((route) => route.controller === 'pictures').map(named).sort()).toEqual(['GET /pictures/companies/:code', 'GET /pictures/offers/:id']);
+    expect(routes.filter((route) => route.controller === 'pictures').map(named).sort()).toEqual(['GET /pictures/offers/:id', 'GET /pictures/postpaid/companies/:code']);
     // One prefix for the resources (slice R.11c): no route is declared under `office`.
     expect([...RESOURCE_PREFIXES]).toEqual(['v1']);
     expect(routes.filter((route) => route.path.startsWith('/office'))).toEqual([]);

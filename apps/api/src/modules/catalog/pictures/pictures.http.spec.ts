@@ -59,19 +59,19 @@ describe('the picture routes', () => {
   it('serves a company mark with no session: its bytes, its type, a year under the current ?v= and no-cache otherwise', async () => {
     const version = markVersion(mark);
     expect(version).toBe(createHash('md5').update(mark).digest('hex').slice(0, 16));
-    const named = await get(`/pictures/companies/wecom?v=${version}`);
+    const named = await get(`/pictures/postpaid/companies/wecom?v=${version}`);
     expect(named.status).toBe(200);
     expect(named.headers['content-type']).toBe('image/webp');
     expect(named.headers['cache-control']).toBe('public, max-age=31536000, immutable');
     expect(named.headers.etag).toBe(`"${version}"`);
     expect(named.body).toEqual(webpBytes);
-    for (const path of ['/pictures/companies/wecom', '/pictures/companies/wecom?v=0123456789abcdef']) {
+    for (const path of ['/pictures/postpaid/companies/wecom', '/pictures/postpaid/companies/wecom?v=0123456789abcdef']) {
       const other = await get(path);
       expect({ path, status: other.status, cache: other.headers['cache-control'] }).toEqual({ path, status: 200, cache: 'no-cache' });
       expect(other.body).toEqual(webpBytes);
     }
     // The ETag is the version: a browser that revalidates the bare URL is answered 304 with no bytes.
-    const again = await request(app.getHttpServer()).get('/pictures/companies/wecom').set('If-None-Match', `"${version}"`);
+    const again = await request(app.getHttpServer()).get('/pictures/postpaid/companies/wecom').set('If-None-Match', `"${version}"`);
     expect(again.status).toBe(304);
     // The route reads the picture column of one row, nothing else.
     expect(selects.at(-1)).toEqual({ image: true });
@@ -79,7 +79,7 @@ describe('the picture routes', () => {
 
   it('answers 404 for a company with no mark, an unknown one, and a stored value that is not a picture', async () => {
     for (const code of ['kalam', 'none', 'odd']) {
-      const answer = await request(app.getHttpServer()).get(`/pictures/companies/${code}`);
+      const answer = await request(app.getHttpServer()).get(`/pictures/postpaid/companies/${code}`);
       expect({ code, status: answer.status, body: answer.body.code }).toEqual({ code, status: 404, body: 'NOT_FOUND' });
     }
   });
@@ -104,7 +104,7 @@ describe('the picture routes', () => {
   });
 
   it('builds the URLs the lists carry, as the web reaches the API', () => {
-    expect(companyMarkUrl('wecom', 'abc')).toBe('/api/pictures/companies/wecom?v=abc');
+    expect(companyMarkUrl('wecom', 'abc')).toBe('/api/pictures/postpaid/companies/wecom?v=abc');
     expect(offerPictureUrl(OFFER_ID, updatedAt)).toBe(`/api/pictures/offers/${OFFER_ID}?v=${updatedAt.getTime()}`);
   });
 });
@@ -148,7 +148,7 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
 
   it('reads the marks as code and MD5 only: the picture never leaves the database', async () => {
     const { uow, statements } = recording();
-    expect(await companyMarkUrls(uow.prisma)).toEqual(new Map([['wecom', '/api/pictures/companies/wecom?v=abcdef0123456789']]));
+    expect(await companyMarkUrls(uow.prisma)).toEqual(new Map([['wecom', '/api/pictures/postpaid/companies/wecom?v=abcdef0123456789']]));
     const selected = /SELECT([\s\S]*)FROM/.exec(statements[0])![1];
     expect(selected.replace(/\s+/g, ' ').trim()).toBe(`"code", left(md5("image"), 16) AS "version"`);
     // The same version as the route computes over the same text.
@@ -176,7 +176,7 @@ describe('the lists read no picture column (speed plan PF.7)', () => {
     await lines.lineCard('ln-1');
     await lines.packagesByIds(['pk-1']);
     // The mark's URL comes from the one read of code and MD5 the shelves use.
-    expect(await lines.markUrls()).toEqual(new Map([['wecom', '/api/pictures/companies/wecom?v=abcdef0123456789']]));
+    expect(await lines.markUrls()).toEqual(new Map([['wecom', '/api/pictures/postpaid/companies/wecom?v=abcdef0123456789']]));
     expect(statements).toHaveLength(1);
     const tasks = new TasksRepository(uow);
     await tasks.packageNames();

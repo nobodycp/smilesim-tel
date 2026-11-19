@@ -14,14 +14,14 @@ import { CompaniesService } from './companies.service';
 export class CompaniesController {
   constructor(private readonly companyDesk: CompaniesService) {}
 
-  @Get('companies')
+  @Get('postpaid/companies')
   @ApiOperation({ summary: 'Companies shelf' })
   @ApiErrorResponse(401, 403)
   companies(@Actor() actor: ActorShape) {
     return this.companyDesk.shelf(actor);
   }
 
-  @Put('companies/:code/image')
+  @Put('postpaid/companies/:code/image')
   @Activity('company_image', 'company', param('code'))
   @ApiOperation({ summary: 'Set or clear a company mark / image' })
   @ApiZodBody(CompanyImageBody)
@@ -30,7 +30,7 @@ export class CompaniesController {
     return this.companyDesk.setImage(actor, code, body);
   }
 
-  @Put('companies/:code/sim')
+  @Put('postpaid/companies/:code/sim')
   @ApiOperation({ summary: 'Set company SIM rules (ICCID length, prefix, eSIM)' })
   @ApiParam({ name: 'code' })
   @ApiZodBody(CompanySimBody)

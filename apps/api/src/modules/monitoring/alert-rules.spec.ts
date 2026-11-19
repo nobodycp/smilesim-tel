@@ -49,11 +49,11 @@ describe('each rule opens at its threshold and not one under it', () => {
     expect(rateLimitRule([])).toEqual([]);
     expect(limitOf({ method: 'POST', path: '/auth/login' })).toBe('sign_in');
     expect(limitOf({ method: 'POST', path: '/auth/two-factor/verify' })).toBe('sign_in');
-    expect(limitOf({ method: 'POST', path: '/v1/lines' })).toBe('session_writes');
-    expect(limitOf({ method: 'GET', path: '/v1/lines' })).toBe('session_requests');
-    const found = rateLimitRule([row('/auth/login', 'POST', 1), row('/v1/lines', 'GET', 3, 'pos1'), row('/v1/home', 'GET', 1, 'pos1'), row('/v1/lines', 'POST', 2, 'pos1')]);
+    expect(limitOf({ method: 'POST', path: '/v1/postpaid/lines' })).toBe('session_writes');
+    expect(limitOf({ method: 'GET', path: '/v1/postpaid/lines' })).toBe('session_requests');
+    const found = rateLimitRule([row('/auth/login', 'POST', 1), row('/v1/postpaid/lines', 'GET', 3, 'pos1'), row('/v1/home', 'GET', 1, 'pos1'), row('/v1/postpaid/lines', 'POST', 2, 'pos1')]);
     expect(keys(found).sort()).toEqual(['rate_limit session_requests account:pos1', 'rate_limit session_writes account:pos1', 'rate_limit sign_in ip:10.0.0.9']);
-    expect(found.find((f) => f.key === 'session_requests account:pos1')).toMatchObject({ count: 4, subject: { loginName: 'pos1', accountId: 'id-pos1', ip: '', path: '/v1/lines', detail: 'session_requests' } });
+    expect(found.find((f) => f.key === 'session_requests account:pos1')).toMatchObject({ count: 4, subject: { loginName: 'pos1', accountId: 'id-pos1', ip: '', path: '/v1/postpaid/lines', detail: 'session_requests' } });
     expect(found.find((f) => f.key === 'sign_in ip:10.0.0.9')).toMatchObject({ count: 1, subject: { loginName: '', ip: '10.0.0.9', path: '/auth/login', detail: 'sign_in' } });
   });
 
@@ -77,14 +77,14 @@ describe('each rule opens at its threshold and not one under it', () => {
 
   it('the system is failing: 5xx over 5 % of enough requests, or 10 crashes of one route', () => {
     const all = (requests: number, failed: number) => ({ requests, failed, firstAt: at(0), lastAt: at(60) });
-    const route = (crashes: number) => ({ method: 'GET', route: '/v1/lines/:id', crashes, ...events(crashes) });
+    const route = (crashes: number) => ({ method: 'GET', route: '/v1/postpaid/lines/:id', crashes, ...events(crashes) });
     // 5 % is not over 5 %; one more is.
     expect(failingRule(all(100, 5), [])).toEqual([]);
     expect(keys(failingRule(all(100, 6), []))).toEqual(['system_failing share']);
     // One crash on a quiet system is not "the system is failing" (`FAILING_MIN_REQUESTS`).
     expect(failingRule(all(FAILING_MIN_REQUESTS - 1, FAILING_MIN_REQUESTS - 1), [])).toEqual([]);
     expect(failingRule(all(0, 0), [route(FAILING_ROUTE_CRASHES - 1)])).toEqual([]);
-    expect(failingRule(all(0, 0), [route(FAILING_ROUTE_CRASHES)])).toMatchObject([{ key: 'route GET /v1/lines/:id', count: FAILING_ROUTE_CRASHES, subject: { method: 'GET', route: '/v1/lines/:id', detail: 'route' } }]);
+    expect(failingRule(all(0, 0), [route(FAILING_ROUTE_CRASHES)])).toMatchObject([{ key: 'route GET /v1/postpaid/lines/:id', count: FAILING_ROUTE_CRASHES, subject: { method: 'GET', route: '/v1/postpaid/lines/:id', detail: 'route' } }]);
   });
 
   it('a service is down: a part down without a break for two minutes', () => {

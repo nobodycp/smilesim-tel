@@ -97,7 +97,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   /** An automatic activation at the provider: which route it took, by what it left in the database. */
   const sell = async () => {
-    const got = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial() }, `s12-key-${randomUUID()}`);
+    const got = await call('pos', 'post', '/v1/postpaid/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial() }, `s12-key-${randomUUID()}`);
     if (typeof got.body.taskId !== 'string') return { route: `${got.status} ${String(got.body.code)}`, taskId: '', operationId: '' };
     const operation = await prisma.providerOperation.findUnique({ where: { taskId: got.body.taskId } });
     return { route: operation ? 'dispatch' : 'manual', taskId: got.body.taskId, operationId: operation?.id ?? '' };
@@ -489,7 +489,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await status()).toMatchObject({ eligible: true, workerReady: true, opens: true });
       expect((await sell()).route).toBe('dispatch');
       // The request cannot ask for it or against it: the hint is not read on this route, in production there is none.
-      const hinted = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial(), outcome: 'success' }, `s12-key-${randomUUID()}`);
+      const hinted = await call('pos', 'post', '/v1/postpaid/lines', { packageCode: code, posLoginName: name('pos'), iccid: serial(), outcome: 'success' }, `s12-key-${randomUUID()}`);
       expect(hinted.body).toEqual({ applied: false, taskId: expect.any(String) });
       // Each condition in turn, as the API's own settings.
       for (const settings of [{ dispatch: null }, { dispatch: '0' }, { adapters: `${code}-other` }, { target: null }, { target: 'live' as const }, { adapters: '*' }]) {
@@ -1819,7 +1819,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   describe('a worker that does not send still settles, and an eSIM result it cannot open is left as it is (S.12b.0)', () => {
     const ESIM = 'LPA:1$smdp.s12b0.example$S12A-ESIM-ACTIVATION-CODE-9Q4W7E2R6T';
     const sellEsim = async () => {
-      const got = await call('pos', 'post', '/v1/lines', { packageCode: code, posLoginName: name('pos'), esim: true }, `s12-key-${randomUUID()}`);
+      const got = await call('pos', 'post', '/v1/postpaid/lines', { packageCode: code, posLoginName: name('pos'), esim: true }, `s12-key-${randomUUID()}`);
       const row = await prisma.providerOperation.findUniqueOrThrow({ where: { taskId: String(got.body.taskId) } });
       return { taskId: String(got.body.taskId), operationId: row.id };
     };
