@@ -3,10 +3,10 @@
 import { DateField } from '../../../components/date-field';
 import { Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { AccountName } from '../../../components/account-name';
-import { PagedTable, type Column } from '../../../components/data-table';
+import { PagedTable, type Column, type RowMore } from '../../../components/data-table';
 import { Desk, Money, Pane, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { api, type FinanceRow } from '../../../lib/api';
@@ -16,11 +16,9 @@ import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectItem } from '../../../components/ui/select';
-import { Dialog } from '../../../components/dialog';
 import { useDesk } from '../../../lib/desk-session';
 import { CsvLink } from '../../reports/report-kit';
-import { Fact, Facts } from '../../../components/facts';
-import { PageActions, ReasonTag, SectionHead, kindCellClass, type ReasonTone } from '../ledger-parts';
+import { PageActions, ReasonTag, SectionHead, cellSubClass, kindCellClass, type ReasonTone } from '../ledger-parts';
 import { LossBadge } from '../../../components/loss-badge';
 
 const KINDS = [
@@ -64,13 +62,14 @@ export function FinanceScreen() {
   const [q, setQ] = useState(() => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  // Every entry by default (owner 2026-11-09); «الحركات المالية فقط» keeps the money movements, «العمليات فقط» the
-  // line operations (spec 2026-11-09-admin-review, 1; the old «العمليات» page lands here with `?scope=operations`).
+  // The money by default (the owner's point 7 of 2026-11-19: the movements on the wallets; the API's predicate);
+  // «كل العمليات» (`all`) every entry, the operations that moved nothing included; «العمليات فقط» the line operations
+  // (spec 2026-11-09-admin-review, 1; the home's «كل العمليات» link lands here with `?scope=operations`). An old
+  // `?scope=money` is the default.
   const [scope, setScope] = useState(() => {
     const asked = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('scope') ?? '';
-    return asked === 'money' || asked === 'operations' ? asked : '';
+    return asked === 'all' || asked === 'operations' ? asked : '';
   });
-  const [chainOf, setChainOf] = useState<FinanceRow | null>(null);
   const { me } = useDesk();
   // The operations marked as the branch's loss (spec DB.5 P.7): a filter of the branch's only (the API refuses it to
   // any other layer, and sends the mark to the branch alone).
@@ -81,8 +80,15 @@ export function FinanceScreen() {
     pick(await api.finance({ kind, layer, q, from, to, scope, loss: lossAsked, cursor }), pageRows),
   );
 
-  // The design's ledger: the time, the reason as a coloured tag, what it was about, the amount, my margin, the balance
-  // after. The account, its layer, who did it, the number and the package sit together in «التفاصيل».
+  // One fact a column (spec 2026-11-19-finance-ledger-columns, the owner's change of 2026-11-19): the amount is the
+  // movement on the wallet, for every viewer; the balance before and after are around it; everything else explains
+  // it. The time, the reason, the account (for a viewer with accounts below it), the number, the package, the amount,
+  // the viewer's own cost, sell and margin (a sale or refund only), the balance before and after. When the width is
+  // short the package leaves first, then the sell price, the margin, the account and the cost (`fold`); the arrow
+  // reads them under the row, with the facts that have no column. The time, the reason, the number, the amount and
+  // the two balances always stay.
+  const pos = me?.layer === 'pos';
+  const none = '—';
   const columns: Column<FinanceRow>[] = [
     { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
@@ -93,55 +99,74 @@ export function FinanceScreen() {
           <ReasonTag tone={reasonTone(row.kind)} data-testid={`reason-${reasonTone(row.kind)}`}>{movementName(t, row.kind)}</ReasonTag>
           <LossBadge loss={row.loss} />
           {row.reason && row.reason !== 'deposit' ? <Badge variant="muted">{reasonName(t, row.reason)}</Badge> : null}
-          {row.held ? <Badge variant="warning" dot>{t.held} <Money value={Math.abs(row.held)} /></Badge> : null}
-          {/* An eSIM sale pays the package price plus this fee in one entry; the tag explains the amount. */}
+          {/* An eSIM sale pays the package price plus a fee in one entry: a quick mark here, the fee under the arrow. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
-            <Badge variant="muted" dot title={t.esimSaleTagTitle}>
-              {t.esimSaleTag}
-              <Money value={row.esimPrice} />
-            </Badge>
+            <Badge variant="muted" dot title={t.esimSaleTagTitle}>{t.esimSaleTag}</Badge>
           )}
         </span>
       ),
     },
-    {
-      key: 'detail',
-      header: t.detailsColumn,
-      kind: 'wrap',
-      render: (row) => (
-        <span className="grid min-w-55 gap-0.5">
-          <span>
-            {[row.msisdn ? <bdi key="n" dir="ltr">{row.msisdn}</bdi> : null, row.packageName || null, row.companyName || null, row.note || null]
-              .filter(Boolean)
-              .reduce<ReactNode[]>((all, part, index) => (index ? [...all, ' · ', part] : [part]), [])}
-            {!row.msisdn && !row.packageName && !row.note ? '—' : null}
-          </span>
-          <span className="block text-sm leading-1-3 font-normal text-muted">
-            <AccountName login={row.loginName} />
-            {row.layer ? <> · {layerName(t, row.layer)}</> : null}
-            {row.actorLoginName && row.actorLoginName !== row.loginName ? <> · {t.actedBy}: <AccountName login={row.actorLoginName} /></> : null}
-          </span>
+    ...(pos ? [] : [{
+      key: 'account',
+      header: t.account,
+      fold: 4,
+      render: (row: FinanceRow) => (
+        <span className="grid gap-0.5">
+          <AccountName login={row.loginName} />
+          {row.layer ? <span className={cellSubClass}>{layerName(t, row.layer)}</span> : null}
         </span>
       ),
+    }]),
+    { key: 'number', header: t.number, kind: 'msisdn', render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : none) },
+    {
+      key: 'package',
+      header: t.packageName,
+      fold: 1,
+      cell: 'whitespace-normal',
+      render: (row) => (row.packageName ? (
+        <span className="grid gap-0.5">
+          <span>{row.packageName}</span>
+          {row.companyName ? <span className={cellSubClass}>{row.companyName}</span> : null}
+        </span>
+      ) : none),
     },
     // Money in reads «+», money out «−»: the sign carries the direction, the colour only repeats it.
-    { key: 'amount', header: t.amount, num: true, render: (row) => (row.amount === 0 ? '—' : <Money value={row.amount} signed />) },
-    {
-      key: 'margin',
-      header: t.myMargin,
-      num: true,
-      render: (row) => {
-        if (row.margin == null) return '—';
-        if (!row.shares) return <Money value={row.margin} signed />;
-        return (
-          <Button type="button" variant="link" onClick={() => setChainOf(row)} title={t.sharesOpen} aria-label={`${t.sharesOpen}: ${row.msisdn}`}>
-            <Money value={row.margin} signed />
-          </Button>
-        );
-      },
-    },
-    { key: 'after', header: t.balanceAfterShort, num: true, render: (row) => <Money value={row.balanceAfter} /> },
+    { key: 'amount', header: t.amount, num: true, render: (row) => (row.amount === 0 ? none : <Money value={row.amount} signed />) },
+    // The viewer's own prices on a sale or refund, from the entry's stored ladder: never the movement (an eSIM sale's
+    // amount holds the fee beside the package's cost). Empty on any other row.
+    { key: 'cost', header: t.costPrice, num: true, fold: 5, render: (row) => (row.cost == null ? none : <Money value={row.cost} />) },
+    { key: 'sell', header: t.sellPrice, num: true, fold: 2, render: (row) => (row.sell == null ? none : <Money value={row.sell} />) },
+    { key: 'margin', header: t.margin, num: true, fold: 3, render: (row) => (row.margin == null ? none : <Money value={row.margin} signed />) },
+    { key: 'before', header: t.balanceBefore, num: true, render: (row) => <Money value={row.balanceBefore} /> },
+    { key: 'after', header: t.balanceAfter, num: true, render: (row) => <Money value={row.balanceAfter} /> },
   ];
+
+  // What the arrow opens besides the folded columns: the facts no column holds.
+  const more: RowMore<FinanceRow> = {
+    label: t.rowDetails,
+    facts: (row) => [
+      ...(row.actorLoginName && row.actorLoginName !== row.loginName ? [{ key: 'actor', label: t.actedBy, value: <AccountName login={row.actorLoginName} /> }] : []),
+      ...(row.note ? [{ key: 'note', label: t.note, value: row.note }] : []),
+      // An eSIM sale pays the package price plus this fee in one entry.
+      ...(row.esimPrice != null && row.kind !== 'esim' ? [{ key: 'esim', label: t.esimFee, value: <Money value={row.esimPrice} /> }] : []),
+      ...(row.held ? [{ key: 'held', label: t.held, value: <Money value={Math.abs(row.held)} /> }] : []),
+      ...(row.loss ? [{ key: 'loss', label: t.lossFilter, value: <LossBadge loss={row.loss} /> }] : []),
+      // The branch: what every account in the sale's chain earned on it, branch first.
+      ...(row.shares?.length ? [{
+        key: 'shares',
+        label: t.sharesTitle,
+        value: (
+          <span className="grid gap-0.5">
+            {row.shares.map((share) => (
+              <span key={share.loginName}>
+                {layerName(t, share.layer)} · <AccountName login={share.loginName} />: <Money value={share.margin} signed />
+              </span>
+            ))}
+          </span>
+        ),
+      }] : []),
+    ],
+  };
 
   return (
     <Desk
@@ -161,8 +186,8 @@ export function FinanceScreen() {
         <label>
           {t.financeScope}
           <Select value={scope} onValueChange={setScope}>
-            <SelectItem value="">{t.financeScopeAll}</SelectItem>
-            <SelectItem value="money">{t.financeScopeMoney}</SelectItem>
+            <SelectItem value="">{t.financeScopeMoney}</SelectItem>
+            <SelectItem value="all">{t.financeScopeAll}</SelectItem>
             <SelectItem value="operations">{t.financeScopeOperations}</SelectItem>
           </Select>
         </label>
@@ -211,19 +236,8 @@ export function FinanceScreen() {
         </label>
       </FilterBar>
       <Pane>
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />
+        <PagedTable list={list} columns={columns} more={more} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 8 }} />
       </Pane>
-      <Dialog open={chainOf !== null} title={t.sharesTitle} lede={t.sharesHint} closeLabel={t.closeMenu} size="confirm" onClose={() => setChainOf(null)}>
-        {chainOf?.shares ? (
-          <Facts variant="list">
-            {chainOf.shares.map((share) => (
-              <Fact key={share.loginName} label={<>{layerName(t, share.layer)} · <AccountName login={share.loginName} /></>}>
-                <Money value={share.margin} signed />
-              </Fact>
-            ))}
-          </Facts>
-        ) : null}
-      </Dialog>
     </Desk>
   );
 }

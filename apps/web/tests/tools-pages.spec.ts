@@ -94,10 +94,14 @@ test.describe('DataTable and EmptyState', () => {
 
     await page.goto(`${admin}/finance`);
     await expect(page.getByTestId('table-sheet').getByTestId('empty-state')).toHaveText('لا حركات بعد.');
-    // The design's ledger (Graphite): time, reason, details, amount, my margin, balance after; three are amounts.
+    // One fact a column (spec 2026-11-19-finance-ledger-columns): the six that never fold are there whatever the width,
+    // every money column reads as one (`data-num`), and the arrow's column names itself to readers only.
     const ledgerHead = page.getByTestId('table-sheet').getByTestId('data-table').locator('thead th');
-    await expect(ledgerHead).toHaveCount(6);
-    await expect.poll(() => withMark(ledgerHead, '[data-num]')).toBe(3);
+    for (const name of ['الوقت', 'السبب', 'الرقم', 'المبلغ', 'الرصيد قبل', 'الرصيد بعد']) await expect(ledgerHead.filter({ hasText: name })).toHaveCount(1);
+    const money = ['المبلغ', 'سعر التكلفة', 'سعر البيع', 'الهامش', 'الرصيد قبل', 'الرصيد بعد'];
+    const shownMoney = await ledgerHead.evaluateAll((all, names) => all.filter((cell) => names.includes(cell.textContent?.trim() ?? '')).length, money);
+    await expect.poll(() => withMark(ledgerHead, '[data-num]')).toBe(shownMoney);
+    await expect(ledgerHead.last()).toHaveText('تفاصيل العملية');
   });
 });
 

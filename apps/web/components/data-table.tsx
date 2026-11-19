@@ -1,5 +1,8 @@
-import { isValidElement, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, isValidElement, useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '../lib/cn';
 import { EmptyState } from './empty-state';
+import { Fact, Facts } from './facts';
 import { LoadFailed } from './load-failed';
 import { TableSkeleton } from './loading';
 import { Pagination, shouldShowPagination } from './ui/pagination';
@@ -23,7 +26,19 @@ export type Column<Row> = {
   cell?: string;
   // A plain value used when the header is clicked. The rendered cell is used when this is absent.
   sortValue?: (row: Row) => string | number | null | undefined;
+  // A column that leaves the row when the table does not fit its width, read under the row's arrow instead (`more`):
+  // the columns marked 1 leave first, then 2, and so on; a phone's cards drop every one of them.
+  fold?: number;
 };
+
+/** One labelled fact under a row's arrow that has no column (`more`). */
+export type RowFact = { key: string; label: ReactNode; value: ReactNode };
+
+/**
+ * The row's arrow (spec 2026-11-19-finance-ledger-columns): `facts` are what a row says beyond its columns; the arrow
+ * opens them under the row, after the folded columns' values. `label` names the arrow to readers.
+ */
+export type RowMore<Row> = { label: string; facts: (row: Row) => RowFact[] };
 
 type SortDir = 'asc' | 'desc';
 
@@ -59,6 +74,68 @@ function compareValues(left: string, right: string, numeric: boolean, locale: st
 /** The pager row under a table: a hairline above it, 4px / 12px / 8px padding. */
 const PAGER = 'border-t border-line px-3 pt-1 pb-2';
 
+/*
+ * The row's arrow: the ⋯ trigger's look (components/row-menu.tsx) — 28px, no border or fill, 6px corners,
+ * `--rd-faint`; `--rd-surface-3` and ink under the pointer and while open — with the crimson focus ring; the 16px
+ * chevron points down and turns over (180°, 200ms) while the row is open, the same in both directions.
+ */
+const ARROW = cn(
+  'group inline-flex size-7 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 text-faint',
+  'hover:bg-surface-3 hover:text-ink aria-expanded:bg-surface-3 aria-expanded:text-ink',
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent',
+);
+
+/*
+ * A table with an arrow writes a row's opened part under it only while it is open, so the zebra cannot count rows: it
+ * is laid by the row's place in the list instead — every second row and its opened part take the tint
+ * (`--rd-surface-2` at 55% on the cells; a phone's card ink at 3%, the card's own even-row tint lifted from the rest).
+ * Under the pointer a row's opened part takes the row's hover too.
+ */
+const TINT = { cards: 'sm:[tr>&]:bg-surface-2/55', plain: '[tr>&]:bg-surface-2/55' };
+const MORE_HOVER = { cards: 'sm:[tbody>tr:hover+tr>&]:bg-accent-soft', plain: '[tbody>tr:hover+tr>&]:bg-accent-soft' };
+const CARD_TINT = 'max-sm:bg-ink/3';
+const CARD_PLAIN = 'max-sm:even:bg-transparent';
+
+/** A phone's width (under 641px, `max-sm:`), where a table may draw its rows as cards; false on the server. */
+const PHONE = '(width < 641px)';
+function subscribePhone(onChange: () => void) {
+  const media = window.matchMedia(PHONE);
+  media.addEventListener('change', onChange);
+  return () => media.removeEventListener('change', onChange);
+}
+const usePhone = () => useSyncExternalStore(subscribePhone, () => window.matchMedia(PHONE).matches, () => false);
+
+/**
+ * How many fold steps (`Column.fold`) the table takes: none while it fits its box; then one more step each time the
+ * table overflows the box (watched on both, so each step is measured again), until it fits or every step is taken;
+ * every step on a phone that draws cards. The box widening, or the rows changing, starts again from none.
+ */
+function useFolds(table: HTMLTableElement | null, steps: number, cards: boolean, stamp: string) {
+  const [level, setLevel] = useState(0);
+  const phone = usePhone();
+  const [seen, setSeen] = useState(stamp);
+  if (stamp !== seen) {
+    setSeen(stamp);
+    setLevel(0);
+  }
+  useEffect(() => {
+    const box = table?.parentElement;
+    if (!steps || !table || !box) return undefined;
+    let width = box.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const next = box.clientWidth;
+      const wider = next > width;
+      width = next;
+      if (wider) setLevel(0);
+      else if (box.scrollWidth > box.clientWidth + 1) setLevel((current) => Math.min(current + 1, steps));
+    });
+    observer.observe(box);
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, [table, steps]);
+  return steps ? (phone && cards ? steps : level) : 0;
+}
+
 /**
  * A thin wrapper over `TableSheet` and `Table` (components/ui/table.tsx). It writes the table markup content-ui.mdc
  * defines and nothing else.
@@ -72,6 +149,9 @@ const PAGER = 'border-t border-line px-3 pt-1 pb-2';
  * A phone draws the rows as cards (`cards`, on by default); the lists already drawn as cards (tasks, notices) and the
  * roles matrix pass `cards={false}`. `striped={false}` drops the zebra (the notices). `cellClassName` and
  * `headClassName` add utilities to every body cell and every header cell (a list's own row height, a static head).
+ * `more` gives each row an arrow in a last column that opens the row's remaining facts under it; with it, the columns
+ * marked `fold` leave the row (step by step, measured) when the table would not fit its width, and are read there:
+ * the table never scrolls sideways for them (the finance list, spec 2026-11-19-finance-ledger-columns).
  */
 export function DataTable<Row>({
   columns,
@@ -91,6 +171,7 @@ export function DataTable<Row>({
   striped = true,
   cellClassName,
   headClassName,
+  more,
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -111,8 +192,19 @@ export function DataTable<Row>({
   striped?: boolean;
   cellClassName?: string;
   headClassName?: string;
+  /**
+   * The row's arrow: a last column whose button (`aria-expanded`) opens the row's remaining facts under it — the
+   * values of the columns folded away (`Column.fold`) and `more.facts` — labelled, one a line. A row with nothing
+   * more has no arrow.
+   */
+  more?: RowMore<Row>;
 }) {
   const { pageSize, setPageSize, locale } = usePrefs();
+  const [tableEl, setTableEl] = useState<HTMLTableElement | null>(null);
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const idBase = useId();
+  const steps = Math.max(0, ...columns.map((item) => item.fold ?? 0));
+  const folded = useFolds(tableEl, steps, cards, steps ? rows.map(rowKey).join('\n') : '');
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null);
   const paging = paginate ?? !bare;
   const stamp = paging ? `${pageSize}\n${rows.map(rowKey).join('\n')}` : '';
@@ -152,11 +244,29 @@ export function DataTable<Row>({
   // cards apply only while at least one row holds a named value.
   const labelOf = (item: Column<Row>) => (item.actions ? undefined : nodeText(item.header) || undefined);
   const carded = cards && visible.length > 0 && columns.some((item) => labelOf(item) !== undefined);
+  // The columns the width keeps; the folded ones are read under the arrow.
+  const shown = columns.filter((item) => !item.fold || item.fold > folded);
+  const away = columns.filter((item) => item.fold && item.fold <= folded);
+  const look = carded ? 'cards' : 'plain';
+  /** What the row's arrow opens: the folded columns that hold a value, then the row's own facts. */
+  const factsOf = (row: Row): RowFact[] => [
+    ...away.flatMap((item) => {
+      const value = item.render(row);
+      return blank(nodeText(value)) ? [] : [{ key: item.key, label: item.header, value }];
+    }),
+    ...(more?.facts(row) ?? []),
+  ];
+  const toggle = (key: string) => setOpened((current) => {
+    const next = new Set(current);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
+  });
   const table = (
-    <Table cards={carded} striped={striped} data-testid="data-table">
+    <Table ref={setTableEl} cards={carded} striped={striped && !more} data-testid="data-table">
       <THead>
         <TRow>
-          {columns.map((item) => {
+          {shown.map((item) => {
             const active = sort?.key === item.key;
             const dir = active ? sort.dir : null;
             return (
@@ -189,26 +299,70 @@ export function DataTable<Row>({
               </THeadCell>
             );
           })}
+          {more ? (
+            <THeadCell className={cn('w-10 px-2', headClassName)}>
+              <span className="sr-only">{more.label}</span>
+            </THeadCell>
+          ) : null}
         </TRow>
       </THead>
       <TBody>
-        {visible.map((row) => (
-          <TRow key={rowKey(row)}>
-            {columns.map((column) => (
-              <TCell
-                key={column.key}
-                label={labelOf(column)}
-                num={column.num}
-                actions={column.actions}
-                fit={column.fit}
-                kind={column.kind}
-                className={[cellClassName, column.cell].filter(Boolean).join(' ') || undefined}
-              >
-                {column.render(row)}
-              </TCell>
-            ))}
-          </TRow>
-        ))}
+        {visible.map((row, index) => {
+          const key = rowKey(row);
+          const tinted = Boolean(more) && striped && index % 2 === 1;
+          const cells = shown.map((column) => (
+            <TCell
+              key={column.key}
+              label={labelOf(column)}
+              num={column.num}
+              actions={column.actions}
+              fit={column.fit}
+              kind={column.kind}
+              className={cn(cellClassName, column.cell, tinted && TINT[look]) || undefined}
+            >
+              {column.render(row)}
+            </TCell>
+          ));
+          if (!more) return <TRow key={key}>{cells}</TRow>;
+          const facts = factsOf(row);
+          const open = facts.length > 0 && opened.has(key);
+          const detailId = `${idBase}-more-${key}`;
+          return (
+            <Fragment key={key}>
+              <TRow className={tinted ? CARD_TINT : CARD_PLAIN}>
+                {cells}
+                <TCell
+                  className={cn(
+                    'w-10 px-2',
+                    cellClassName,
+                    tinted && TINT[look],
+                    carded && 'max-sm:absolute max-sm:top-2 max-sm:end-2 max-sm:w-auto',
+                  )}
+                >
+                  {facts.length ? (
+                    <button type="button" className={ARROW} aria-expanded={open} aria-controls={open ? detailId : undefined} aria-label={more.label} title={more.label} onClick={() => toggle(key)} data-testid="row-more">
+                      <ChevronDown size={16} aria-hidden="true" className="size-4 transition-transform duration-base ease-standard group-aria-expanded:rotate-180" />
+                    </button>
+                  ) : null}
+                </TCell>
+              </TRow>
+              {open ? (
+                <TRow id={detailId} className={tinted ? CARD_TINT : CARD_PLAIN} data-testid="row-more-part">
+                  <TCell
+                    colSpan={shown.length + 1}
+                    className={cn('h-auto py-2.5 whitespace-normal max-sm:first:pe-0', tinted && TINT[look], MORE_HOVER[look])}
+                  >
+                    <div className="max-w-120">
+                      <Facts variant="list">
+                        {facts.map((fact) => <Fact key={fact.key} label={fact.label}>{fact.value}</Fact>)}
+                      </Facts>
+                    </div>
+                  </TCell>
+                </TRow>
+              ) : null}
+            </Fragment>
+          );
+        })}
       </TBody>
     </Table>
   );
@@ -271,6 +425,7 @@ export function PagedTable<Row>({
   striped?: boolean;
   cellClassName?: string;
   headClassName?: string;
+  more?: RowMore<Row>;
 }) {
   const { pageSize, setPageSize } = usePrefs();
   const [page, setPage] = useState(1);
