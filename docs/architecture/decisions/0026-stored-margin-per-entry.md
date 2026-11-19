@@ -323,3 +323,17 @@ newest hour (the clock moved an hour between the two reads; the added points are
 (`WalletEntry.providerLoss`, ADR 0025 "As built (P.7)") has no ladder and stores only `branchMargin` = − its provider
 cost: what `marginOf` gives on a ladder with every price below the branch at 0. Rule 6's invariant (`marginBreaks`)
 accepts that case and no other margin on a row without a ladder.
+
+**Amendment (2026-11-19): the ladder is the package sold, on the immediate and the task path alike.** A renewal that
+moves a number onto another package (`renewOnto`) was stored, when it ran at once (`LinesService.extend`), with the
+ladder and the seven margin columns of the package the line left: the debit ran before `extendLine`, and
+`WalletLedger.saleLadder` read the package from the line's terms. Its amount, price and provider cost were the
+target's. The task path (`task-completion.ts` `renew`) moves the line first and stored the target's. Proven by
+`sales/renewal-onto-target-ladder.db.spec.ts` before the fix (on the target's renewal prices the point of sale's
+margin was stored −800 instead of 700, the agent's 1,600 instead of 700, the main agent's 600 instead of 700, the
+branch's 300 instead of 400). Now the immediate renewal names its package on the sale (`Sale.packageCode`, the
+target's code) and the ladder is built on it; the order of the writes and the locks (line, then wallet) is unchanged,
+and so is the extension's statement count under the wallet lock (`sale-lock-tree.db.spec.ts`, 12 for a renewal on
+the line's own package; one fewer onto a target, the line's terms are not read). A restart (`charge`, `reactivate`)
+sells the line's own package, and a switch is no sale kind: neither had the defect. No stored `extend` entry on the
+local dev database was a renewal onto another package, so no stored margin needs rewriting there.

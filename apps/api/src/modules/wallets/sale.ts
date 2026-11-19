@@ -41,6 +41,12 @@ export type Sale = {
    * as 0: the provider was paid once, on the marked row.
    */
   charges?: { entryId: string; packageCode: string };
+  /**
+   * The package the sale's ladder is built on when the line's terms do not name it yet: set only by an immediate
+   * renewal onto another package (`renewOnto`), which debits before it moves the line. Left out, the ladder is built
+   * on the package the line's terms name, the package sold by every other sale.
+   */
+  packageCode?: string;
 };
 
 type SoldPackage = { name: string; posPrice: number; company: { name: string } | null; providerId: string };

@@ -338,11 +338,12 @@ export class WalletLedger {
    * plan DB.9, ADR 0023). The price rows are read here, under the lock, by the path's ids, as before. The path's
    * layers name the chain's accounts the entry stores its margins for (ADR 0026, `chainIdsOf`).
    */
-  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path' | 'charges'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
+  private async saleLadder(db: Db, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice' | 'path' | 'charges' | 'packageCode'>): Promise<{ ladder: Ladder; ids: ChainIds } | null> {
     const priceKind = SALE_KINDS[kind];
     if (!priceKind) return null;
-    // A given-back operation charged later (P.9) names its package: no line was made.
-    const code = sale.charges ? sale.charges.packageCode : await this.packageCodeOf(db, sale.lineId);
+    // A given-back operation charged later (P.9) names its package: no line was made. So does an immediate renewal
+    // onto another package: the line still names the package it leaves.
+    const code = sale.charges?.packageCode ?? sale.packageCode ?? (await this.packageCodeOf(db, sale.lineId));
     if (!code) return null;
     const path = await this.tree.confirmedPath(db, posId, sale.path);
     const [rows, subscriber] = await Promise.all([

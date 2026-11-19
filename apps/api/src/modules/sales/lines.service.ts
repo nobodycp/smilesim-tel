@@ -390,6 +390,8 @@ export class LinesService {
         period: periodOf(daysOf(windowMonthsOf(renewal.terms)), renewal.endsAt),
         periodCost,
         path: line.posPath,
+        // The line still names the package it leaves until `extendLine` below: the ladder is the target's.
+        ...(target ? { packageCode: target.code } : {}),
       });
       await this.repo.extendLine(tx, line.id, { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) });
     });
