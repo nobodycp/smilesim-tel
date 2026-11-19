@@ -236,7 +236,10 @@ suite('a given-back operation charged later (PostgreSQL)', () => {
   });
 
   it('the point of sale reads the charge as a debit with its note and its own margin, and no mark on either row', async () => {
-    const mine = await wallets.finance(actor(u.pos), {});
+    // Every entry (`scope=all`): the marked row moved 0, and the point of sale's money view, the default, lists only
+    // what moved its wallet (point 7 of 2026-11-19); the charge, a debit, is in both.
+    expect((await wallets.finance(actor(u.pos), {})).items.map((item) => item.id)).not.toContain(g.plain);
+    const mine = await wallets.finance(actor(u.pos), { scope: 'all' });
     const [charge] = await charges(g.plain);
     expect(mine.items.find((item) => item.id === charge.id)).toMatchObject({ kind: 'activate', amount: -P.posPrice, note: PROVIDER_CHARGED_LATER_NOTE, loss: null, margin: P.subscriberPrice - P.posPrice });
     expect(mine.items.find((item) => item.id === g.plain)).toMatchObject({ amount: 0, loss: null, margin: null });

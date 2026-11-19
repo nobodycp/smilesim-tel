@@ -35,7 +35,10 @@ export const WALLET_ENTRY_KINDS = ['fund', 'self_fund', 'deduct', 'deduct_in', '
 export const CursorQuery = z.object({ cursor: queryCursor });
 export type CursorQuery = z.input<typeof CursorQuery>;
 
-/** GET finance and GET finance/export — the tree's entries. `scope` keeps money movements or line operations. */
+/**
+ * GET finance and GET finance/export — the tree's entries. `scope` (spec 2026-11-19-finance-ledger-columns, the owner's
+ * point 7): none (or `money`) the money (the default), `all` every entry, `operations` the line operations.
+ */
 export const FinanceQuery = z.object({
   cursor: queryCursor,
   kind: queryOneOf(WALLET_ENTRY_KINDS),
@@ -43,7 +46,7 @@ export const FinanceQuery = z.object({
   q: queryText(),
   from: queryDay,
   to: queryDay,
-  scope: queryOneOf(['money', 'operations']),
+  scope: queryOneOf(['money', 'all', 'operations']),
   /** The operations marked as the branch's loss (spec DB.5 P.7): the branch only; another layer is refused. */
   loss: queryOneOf(LOSS_FILTERS),
 });

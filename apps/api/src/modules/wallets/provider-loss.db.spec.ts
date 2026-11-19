@@ -174,7 +174,10 @@ suite('paid at the provider, not charged to the point of sale (PostgreSQL)', () 
     const branch = await service.finance(owner, { loss: 'any', q: code('pos') });
     expect(branch.items).toHaveLength(5);
     expect(branch.items.every((row) => row.loss === 'priced_zero' && row.margin === -(row.kind === 'extend' ? Z.renewalBranchCost : Z.branchCost))).toBe(true);
-    const mine = await service.finance(pos, {});
+    // Every entry (`scope=all`): the marked rows moved 0, so the point of sale's money view, the default, leaves them out
+    // (point 7 of 2026-11-19), while the branch's keeps them (above).
+    expect((await service.finance(pos, {})).items.some((row) => branch.items.some((marked) => marked.id === row.id))).toBe(false);
+    const mine = await service.finance(pos, { scope: 'all' });
     expect(mine.items.length).toBeGreaterThan(5);
     expect(mine.items.every((row) => row.loss === null)).toBe(true);
     const ids_ = new Set(branch.items.map((row) => row.id));

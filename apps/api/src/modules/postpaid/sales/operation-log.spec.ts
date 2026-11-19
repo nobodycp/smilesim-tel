@@ -185,9 +185,11 @@ describe('an applied operation with no charge', () => {
     const card = await service.line(gate, 'ln1');
     expect(card.history.map((row) => row.action)).toContain('refresh');
 
-    // Finance lists every operation (owner 2026-11-09), the free ones included; the money view leaves them out.
-    const all = await service.finance(gate, { q: '0521000001' });
+    // Finance lists the money by default (the owner's point 7 of 2026-11-19): the refresh moved nothing, so only «كل
+    // العمليات» (`scope=all`) lists it; the default and `scope=money` leave it out.
+    const all = await service.finance(gate, { q: '0521000001', scope: 'all' });
     expect(all.items.map((row) => [row.kind, row.amount])).toEqual([['refresh', 0]]);
+    expect((await service.finance(gate, { q: '0521000001' })).items).toEqual([]);
     const money = await service.finance(gate, { q: '0521000001', scope: 'money' });
     expect(money.items).toEqual([]);
   });

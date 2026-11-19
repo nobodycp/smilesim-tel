@@ -5,7 +5,7 @@ import type { Actor } from '../access/types';
 import { WalletsService } from './wallets.service';
 
 // «المالية» (owner 2026-11-09: «شامله كل العمليات للاب والابناء الي تحته»): every entry of the viewer and the
-// accounts below it, operations that move no money included unless `scope=money`; the branch also reads what every
+// accounts below it, the money by default and every operation with `scope=all` (point 7 of 2026-11-19); the branch also reads what every
 // account in a sale's chain earned on it, as stored on the entry (ADR 0026).
 const accounts = [
   { id: 'branch', loginName: 'branch', nickname: 'b', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null },
@@ -44,15 +44,40 @@ function service(seen: { where?: Record<string, unknown> }) {
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: id === 'branch', grants: [], operatorId: id, impersonating: false });
 
 describe('WalletsService.finance', () => {
-  it('reads every entry by default, and only money movements with scope=money', async () => {
+  // The owner's point 7 (spec 2026-11-19-finance-ledger-columns): «المالية» is the movements on the wallets. By default
+  // (or `scope=money`) an entry that moved money, a hold or a release, and for the branch its loss marks; `all` keeps
+  // every entry, the operations that moved nothing included.
+  it('reads the money by default and with scope=money, and every entry with scope=all', async () => {
     const seen: { where?: Record<string, unknown> } = {};
     const wallets = service(seen);
+    const money = [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }];
     await wallets.finance(actor('agent', 'agent'), {});
-    expect(seen.where?.AND).toBeUndefined();
+    expect(seen.where?.AND).toEqual(money);
     expect(seen.where?.userId).toEqual({ in: expect.arrayContaining(['agent', 'pos']) });
     expect((seen.where?.userId as { in: string[] }).in).not.toContain('main');
     await wallets.finance(actor('agent', 'agent'), { scope: 'money' });
+    expect(seen.where?.AND).toEqual(money);
+    await wallets.finance(actor('agent', 'agent'), { scope: 'all' });
+    expect(seen.where?.AND).toBeUndefined();
+  });
+
+  it('keeps the branch\'s loss marks, which move 0, in its money view, so its loss filter still finds them', async () => {
+    const seen: { where?: Record<string, unknown> } = {};
+    const wallets = service(seen);
+    await wallets.finance(actor('branch', 'branch'), {});
+    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, { providerLoss: { not: null } }] }]);
+    await wallets.finance(actor('branch', 'branch'), { loss: 'any' });
+    expect(seen.where?.providerLoss).toEqual(expect.anything());
+    expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, { providerLoss: { not: null } }] }]);
+  });
+
+  it('writes the CSV with the same filter as the page', async () => {
+    const seen: { where?: Record<string, unknown> } = {};
+    const wallets = service(seen);
+    await wallets.financeCsv(actor('agent', 'agent'), {});
     expect(seen.where?.AND).toEqual([{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }]);
+    await wallets.financeCsv(actor('agent', 'agent'), { scope: 'all' });
+    expect(seen.where?.AND).toBeUndefined();
   });
 
   it('keeps the line operations only with scope=operations — the entries that stored a provider (F.5) — and still narrows by kind', async () => {

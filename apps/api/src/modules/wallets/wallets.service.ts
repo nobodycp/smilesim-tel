@@ -248,9 +248,11 @@ export class WalletsService {
     if (query.loss && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const accounts = await this.tree.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
+    const scope = scopeWhere(query.scope, actor.layer === 'branch');
     return {
       ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
       ...(await this.entryFilter(query, accounts)),
+      ...(scope ? { AND: [scope] } : {}),
     };
   }
 
@@ -266,13 +268,8 @@ export class WalletsService {
     const named = terms?.digits ? await this.repo.catalogNamed(terms.names) : { packageNamed: true, companyNamed: true };
     const search = financeSearch(terms, { loginIds: terms ? loginIdsContaining(accounts, terms.names) : [], ...named });
     return {
-      // Every entry of the viewer and the accounts below it (owner 2026-11-09: «شامله كل العمليات للاب والابناء»),
-      // operations that move no money included. `scope=money` keeps the money movements, and the holds and releases
-      // of open tasks, which move no money but change what is spendable.
-      ...(query.scope === 'money' ? { AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }] } : {}),
-      // `scope=operations` keeps the line operations only (spec 2026-11-09-admin-review, 1): what «العمليات» listed.
-      // The line operations: the entries that stored a provider (spec F.5), as the provider's books read them.
-      ...(query.scope === 'operations' ? { AND: [{ providerId: { not: null } }] } : {}),
+      // The list's `scope` is the finance list's own (`scopeWhere`, read by `financeWhere`): the profits read the same
+      // narrowing without it.
       ...(query.kind ? { kind: query.kind } : {}),
       ...lossWhere(query.loss),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
@@ -446,6 +443,22 @@ export class WalletsService {
       nextCursor,
     };
   }
+}
+
+/**
+ * What the finance list's `scope` keeps (spec 2026-11-19-finance-ledger-columns, the owner's point 7: «المالية» is the
+ * movements on the wallets). None or `money`, the default: an entry that moved money (`amount` not 0); a hold and a
+ * release, which move no balance but hold and free money of an open task; and for the branch the operations marked as
+ * its loss (P.7), which move 0 and are the branch's money (so the loss filter still finds them). `all`: every entry,
+ * the operations that moved nothing included (owner 2026-11-09: «شامله كل العمليات للاب والابناء»). `operations`: the
+ * line operations, the entries that stored a provider (spec F.5), as «العمليات» listed them (spec 2026-11-09-admin-review,
+ * 1). A row filter on the page's ordered read: `WalletEntry_createdAt_id_idx` for the branch, the
+ * `WalletEntry_userId_createdAt_id_idx` ranges of the visible accounts for another layer, as before.
+ */
+function scopeWhere(scope: string | undefined, branch: boolean): Prisma.WalletEntryWhereInput | null {
+  if (scope === 'all') return null;
+  if (scope === 'operations') return { providerId: { not: null } };
+  return { OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }, ...(branch ? [{ providerLoss: { not: null } }] : [])] };
 }
 
 /** The viewer's `cost` and `sell` on an entry (`storedPricesOf`), both null when it has none. */

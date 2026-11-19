@@ -171,7 +171,8 @@ suite('the profit figures read from the stored margins (PostgreSQL)', () => {
 
   it('gives each finance row the viewer\'s stored margin, and the branch every account\'s share', async () => {
     const mine = <Row extends { id: string }>(rows: Row[]) => rows.filter((row) => row.id.startsWith(tag));
-    const branch = mine((await wallets.finance(actor(u.owner), {})).items);
+    // Every entry (`scope=all`): the freeze f1 moved nothing, so the money view, the default, does not list it (point 7).
+    const branch = mine((await wallets.finance(actor(u.owner), { scope: 'all' })).items);
     const sale = branch.find((row) => row.id === `${tag}-s1`);
     expect(sale?.margin).toBe(500);
     expect(sale?.shares?.map((share) => [share.layer, share.margin])).toEqual([['branch', 500], ['main_agent', 500], ['agent', 300], ['pos', 700]]);
