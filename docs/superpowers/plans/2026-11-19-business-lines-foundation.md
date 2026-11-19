@@ -4,11 +4,11 @@ Spec: `docs/superpowers/specs/2026-11-19-business-lines-foundation.md`. Decision
 One verified slice at a time; each ticked with its commit hash.
 
 - [x] **F.1 The rules**: ADR 0028 written (one wallet, own tables per line, amounts on the entry whatever the pricing rule, reserved kind words, online additive migrations).
-- [ ] **F.2 Wallet page by exclusion**: an account's wallet page lists every entry that moved its balance (`addon` is missing today); the web names the kind.
-- [ ] **F.3 No sale without margins**: the ledger refuses a sale kind that moves money with no ladder; CHECK `WalletEntry_sale_has_ladder` (`NOT VALID`, validated when no row breaks it).
-- [ ] **F.4 Kind guards**: one spec tying the code's kind lists to the index and CHECK predicates, the web's names and the sums' allow-lists; the reserved words.
-- [ ] **F.5 One provider predicate**: every read of a provider's operations uses `providerId IS NOT NULL`.
-- [ ] **F.6 Online migration proven**: one `CREATE INDEX CONCURRENTLY` migration through the dev start and the trial server's deployment, with writes running; the operator guide says how.
+- [x] **F.2 Wallet page by exclusion**: an account's wallet page lists every entry that moved its balance (`addon` was missing); the web names the kind. (b3d7a868)
+- [x] **F.3 No sale without margins**: the ledger refuses a sale kind that moves money with no ladder; CHECK `WalletEntry_sale_has_ladder` (`NOT VALID`, validated when no row breaks it). No call site found that loses its ladder today; refunds left as they are. (642a8c48, f72dbf56)
+- [x] **F.4 Kind guards**: one spec tying the code's kind lists to the index and CHECK predicates, the web's names and the sums' allow-lists; the reserved words. (0837b1ba)
+- [x] **F.5 One provider predicate**: every read of a provider's operations uses `providerId IS NOT NULL`. (369e8aab; stand-in 80a75565)
+- [ ] **F.6 Online migration proven**: one `CREATE INDEX CONCURRENTLY` migration through the dev start and the trial server's deployment, with writes running; the operator guide says how. Proven locally (a throwaway database with a writer running, and the test database; b68bc6ac), waits for the trial server. Not yet applied by the dev copy's start.
 - [ ] **F.7 Names** (the owner, 2026-11-19: `postpaid` in the API and the backend's names; on screen «الفواتير»), in steps:
   - [ ] **F.7a Inventory**: every route, module and Prisma model classified shared or postpaid; the mixed ones decided; written into the spec.
   - [ ] **F.7b API routes**: the postpaid routes under `/v1/postpaid/…`, the web's client and the Playwright stand-ins with them; no alias.
