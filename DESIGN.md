@@ -14,7 +14,7 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (Tailwind migration T6.1; removed 2026-11-17, in git history) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
-Last verified: 2026-11-19 (business-lines F.7c: the sidebar's «الفواتير» section named). Before it: 2026-11-17 (clean-up CL.6: the plan pointers checked; speed PF.13: the Hebrew face not preloaded). The history of each change is in git.
+Last verified: 2026-11-19 (the row arrow of a `DataTable`, `more` / `fold`, finance list FL.2). Before it, 2026-11-19 (business-lines F.7c: the sidebar's «الفواتير» section named). Before it: 2026-11-17 (clean-up CL.6: the plan pointers checked; speed PF.13: the Hebrew face not preloaded). The history of each change is in git.
 `app/tailwind.css`).
 
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
@@ -616,6 +616,14 @@ not an action: it stays ink (D3).
   two to a row, ⋯ in the corner; a cell that holds price editors (the sell cell's fields and save, a `.price-pair`)
   takes the card's whole row and wraps there, a price field never wider than its cell; the task and notice lists and
   the roles matrix keep their own layout (`cards={false}`).
+- Row arrow (`DataTable` `more`, spec 2026-11-19-finance-ledger-columns; «المالية»): a last, narrow column (head for
+  readers only) whose 28px button has the ⋯ trigger's look (`--rd-faint`, no fill; `--rd-surface-3` and ink under the
+  pointer and while open; the crimson focus ring) with a 16px down chevron that turns over while open (the same in
+  both directions); it opens, under its row and spanning it, the row's remaining facts as a `Facts variant="list"`
+  (at most 30rem wide): the values of the columns folded away by the width (`Column.fold`, measured: they leave one
+  step at a time while the table would overflow, so the table never scrolls sideways for them; a phone's cards drop
+  them all) and the facts no column holds. The opened part takes its row's zebra tint and hover; a row with nothing
+  more has no arrow; on a phone the arrow sits in the card's corner as ⋯ does.
 - Row menu (`RowMenu`, `components/row-menu.tsx`, on `DropdownMenu`): the only contextual row action, a 28px
   horizontal ellipsis; the menu is the `DropdownMenu` look above.
 - Dialog (`components/dialog.tsx`): the `Dialog` look above; `size` is `confirm`, `form`, or `wide`; a header, a
