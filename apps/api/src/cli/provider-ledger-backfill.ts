@@ -271,14 +271,7 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
           throw new RolledBack();
         }
 
-        const unladdered = new Set(entries.filter((row) => SALES.includes(row.kind) && (row.amount ?? 0) < 0 && row.ladder === null).map((row) => row.id));
-        run.liftedSaleCheck = writes.filter((row) => unladdered.has(row.id)).length;
-        if (run.liftedSaleCheck > 0) await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" DROP CONSTRAINT "${SALE_CHECK}"`);
-        run.written = await rewriteOperationColumns(tx, writes);
-        if (run.liftedSaleCheck > 0) {
-          const kinds = SALES.map((kind) => `'${kind}'`).join(', ');
-          await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" ADD CONSTRAINT "${SALE_CHECK}" CHECK (NOT ("kind" IN (${kinds}) AND "amount" < 0) OR "ladder" IS NOT NULL) NOT VALID`);
-        }
+        run.written = await writeAroundSaleCheck(tx, run, entries, writes);
         run.written += await markOldLosses(tx, scope, code, run);
         run.written += await writeOldGivenBack(tx, scope, code, run);
         const after = await purchasesByProvider(tx, scope);
@@ -302,6 +295,22 @@ export async function backfillProviderLedger(prisma: PrismaClient, options: Back
     if (!(error instanceof RolledBack)) throw error;
   }
   return run;
+}
+
+/**
+ * Writes the providers and costs, around the CHECK `WalletEntry_sale_has_ladder` when an old sale among the writes
+ * keeps no ladder (spec F.3): PostgreSQL checks a NOT VALID CHECK too on a row an UPDATE writes. Dropped and added
+ * again NOT VALID in the caller's transaction; `run.liftedSaleCheck` counts those sales.
+ */
+async function writeAroundSaleCheck(tx: Prisma.TransactionClient, run: BackfillRun, entries: Entry[], writes: RepricedEntry[]): Promise<number> {
+  const unladdered = new Set(entries.filter((row) => SALES.includes(row.kind) && (row.amount ?? 0) < 0 && row.ladder === null).map((row) => row.id));
+  run.liftedSaleCheck = writes.filter((row) => unladdered.has(row.id)).length;
+  if (run.liftedSaleCheck === 0) return rewriteOperationColumns(tx, writes);
+  await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" DROP CONSTRAINT "${SALE_CHECK}"`);
+  const written = await rewriteOperationColumns(tx, writes);
+  const kinds = SALES.map((kind) => `'${kind}'`).join(', ');
+  await tx.$executeRawUnsafe(`ALTER TABLE "WalletEntry" ADD CONSTRAINT "${SALE_CHECK}" CHECK (NOT ("kind" IN (${kinds}) AND "amount" < 0) OR "ladder" IS NOT NULL) NOT VALID`);
+  return written;
 }
 
 /** The kinds a sale at 0 is marked on (`operationColumns`): an activation and the renewals, never a switch. */
