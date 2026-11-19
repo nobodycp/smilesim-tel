@@ -1,6 +1,6 @@
 # SmileSim — دليل المبرمج والمسؤول التقني
 
-آخر تحقق: 2026-11-17، على الكود محلياً: دفتر المزوّدين المحفوظ وأمر ملئه (البند 13)، حدود قاعدة البيانات وإعدادات الجداول (البند 14.1)، مراقبة النظام (البند 17) وترقية بيئات التشغيل (البند 18) ووضع Cloudflare أمام النظام (البند 19). قبله 2026-11-12 عند `3a2a3c1` (سكربتات النسخ الاحتياطي).
+آخر تحقق: 2026-11-19، على الكود محلياً: أسماء جداول الدفع الآجل (البند 13، F.7d). قبله 2026-11-17: دفتر المزوّدين المحفوظ وأمر ملئه (البند 13)، حدود قاعدة البيانات وإعدادات الجداول (البند 14.1)، مراقبة النظام (البند 17) وترقية بيئات التشغيل (البند 18) ووضع Cloudflare أمام النظام (البند 19). قبله 2026-11-12 عند `3a2a3c1` (سكربتات النسخ الاحتياطي).
 
 هذا الدليل يطابق الكود الفعلي. كل بند يحمل إحدى هذه العلامات:
 
@@ -451,6 +451,17 @@ SELECT convalidated FROM pg_constraint WHERE conname = 'WalletEntry_sale_has_lad
 
 ⏳ لم يُنشر على أي خادم؛ طُبِّقت الـmigration على قاعدة الاختبار فقط (تُطبَّق على قاعدة التطوير عند تشغيل النسخة المحلية التالي).
 
+**أسماء جداول الدفع الآجل (المواصفة 2026-11-19 F.7d، ADR 0028 القرار 6).** الـmigration `20261119130000_postpaid_table_names` تعيد تسمية **عشرة جداول في خطوة واحدة** (أمر `DO` واحد: إما تُطبَّق كلها أو لا شيء منها): `Company` ← `PostpaidCompany`، `Package` ← `PostpaidPackage`، `PackageDuration` ← `PostpaidPackageDuration`، `PackageRenewal` ← `PostpaidPackageRenewal`، `PackageSwitch` ← `PostpaidPackageSwitch`، `PackageAddon` ← `PostpaidPackageAddon`، `UserPackage` ← `PostpaidUserPackage`، `SellPrice` ← `PostpaidSellPrice`، `Line` ← `PostpaidLine`، `LineCountSnapshot` ← `PostpaidLineCountSnapshot`، ومعها كل مفتاح وقيد وفهرس يملكه الجدول ويبدأ اسمه باسمه القديم (مثلاً `Line_status_known` ← `PostpaidLine_status_known`، `Line_msisdn_trgm_idx` ← `PostpaidLine_msisdn_trgm_idx`). لا عمود ولا صف ولا قاعدة تتغير، والتسمية سريعة (أسماء فقط، بلا قراءة للجداول)، لكنها تأخذ قفلاً كاملاً قصيراً على الجداول العشرة. `Task` و`TaskNote` وأعمدة الجداول المشتركة (`WalletEntry.lineId`، `Task.packageId` …) ومفاتيحها الأجنبية (`WalletEntry_lineId_fkey` …) لا تتغير.
+- **صورة API أقدم لا تعمل على الأسماء الجديدة**، والجديدة لا تعمل على القديمة: الـAPI والـWorker والواجهة تُنشر **معاً** في نافذة واحدة، والموقع يتوقف قليلاً بين تطبيق الـmigration وتبديل الصور. هذا مقبول قبل الإطلاق فقط (ADR 0028 القرار 6)؛ بعد الإطلاق لا إعادة تسمية بهذا الشكل.
+- الفحص بعد النشر (المتوقَّع `10` ثم `0`):
+```sql
+SELECT count(*) FROM pg_class WHERE relkind = 'r' AND relname LIKE 'Postpaid%';
+SELECT count(*) FROM pg_class WHERE relkind = 'r' AND relname IN ('Company', 'Package', 'PackageDuration', 'PackageRenewal', 'PackageSwitch', 'PackageAddon', 'UserPackage', 'SellPrice', 'Line', 'LineCountSnapshot');
+```
+- كل استعلام يدوي يسمّي هذه الجداول يُكتب بالأسماء الجديدة (مثلاً `SELECT count(*) FROM "PostpaidLine"`). أمر `seal-secrets` يطبع سطر الخطوط باسم الجدول الجديد: `PostpaidLine.esimQr: …`. `scripts/backup/rehearse-upgrade.sh` يقارن عدد صفوف كل جدول قديم بالجدول بعد تسميته.
+
+⏳ لم يُنشر على أي خادم؛ طُبِّقت على قاعدة الاختبار فقط (`prisma migrate diff` بعدها فارغ). تُطبَّق على قاعدة التطوير عند تشغيل النسخة المحلية التالي.
+
 **تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال
@@ -497,8 +508,9 @@ node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).c
 - **الـmigration `20261117200000_table_settings`:** إعدادات تخزين لستة جداول (`fillfactor` لـ`Wallet` 70 ولـ`Session` 80؛ تنظيف أسرع لـ`ActivityEvent`؛ إحصاءات أحدث لـ`WalletEntry` و`Line`) والتحقق من ثلاثة شروط قديمة (`Wallet_held_not_negative`، `Line_status_known`، `Task_status_known`). كل أمر فيها يأخذ قفلاً خفيفاً (`SHARE UPDATE EXCLUSIVE`): القراءة والكتابة تستمران، ولا يُعاد كتابة أي جدول. **على الخادم يقرأ التحقق كل جدول من الثلاثة مرة واحدة** (`Wallet` و`Line` و`Task`)؛ يطول بحجمها ولا يوقف العمل. الشرط الذي يخالفه صف قديم **لا يُتحقَّق منه ولا تفشل الـmigration**: يبقى كما كان (يُفحص كل ما يُكتب من جديد) وتطبع القاعدة تحذيراً `WARNING ... left NOT VALID`. للتأكد بعد النشر:
   ```sql
   SELECT conname, convalidated FROM pg_constraint
-  WHERE conname IN ('Wallet_held_not_negative', 'Line_status_known', 'Task_status_known');
+  WHERE conname IN ('Wallet_held_not_negative', 'PostpaidLine_status_known', 'Task_status_known');
   ```
+  (منذ `20261119130000_postpaid_table_names` اسم الجدول `PostpaidLine` واسم شرطه `PostpaidLine_status_known`.)
   الثلاثة `t` هو المتوقَّع؛ وأي `f` يُبلَّغ به المبرمج مع عدد الصفوف المخالفة. ✅ مختبَر على القاعدتين المحليتين (لا صف مخالف، والثلاثة `t`)، ⏳ لم يُطبَّق على الخادم.
 
 ## 15. سياسة النسخ الاحتياطي والاسترجاع
@@ -609,7 +621,7 @@ node -e "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).c
 | الإشعارات (`Notice`) | المقروء 180 يوماً من كتابته، غير المقروء 365 يوماً | التنظيف اليومي |
 | الجلسات (`Session`) | المنتهية أو الملغاة 30 يوماً بعد انتهائها أو إلغائها | التنظيف اليومي |
 | رسائل عمليات المزوّد (`OutboxMessage`) | المنشورة 30 يوماً، وفقط إن طُبّقت عمليتها (ADR 0024) | التنظيف اليومي |
-| أعداد الخطوط اليومية (`LineCountSnapshot`) | 400 يوم | التنظيف اليومي |
+| أعداد الخطوط اليومية (`PostpaidLineCountSnapshot`) | 400 يوم | التنظيف اليومي |
 | سجل الدخول إلى حسابات أخرى (`AccessLog`) | دائماً (سجل تدقيق، قرار المالك) | لا يُحذف |
 
 **التنظيف اليومي** يقوم به الـWorker عند إقلاعه ثم كل 24 ساعة من وقت إقلاعه (لا في ساعة ثابتة). كل جدول يُنظَّف مستقلاً: فشل أحدها لا يوقف الباقي، وسطر السجل يذكر الأعداد فقط، والخطأ برمزه (`activity purge: …`، `notice purge: … read, … unread`، `session purge: …`، `outbox purge: …`، `line-count purge: …`، `monitoring purge: … requests, … errors, … alerts`). كل حذف على دفعات من 5,000 صف، فلا يطول حذف ملايين الصفوف كأمر واحد، حتى بعد توقف طويل للـWorker. حدود الحفظ كلها في ملف واحد: `apps/api/src/modules/platform/retention.ts` (ما عدا جداول المراقبة: `monitoring/thresholds.ts`). ما يُحذف من القاعدة **يبقى في النسخ الاحتياطية** التي أُخذت قبل حذفه، حتى تنتهي مدتها (البند 15). ✅ مختبَر على PostgreSQL محلياً (`monitoring/retention.db.spec.ts`، `platform/retention.db.spec.ts`، `outbox-retention.db.spec.ts`)، ⏳ لم يعمل على خادم.

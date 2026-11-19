@@ -59,20 +59,28 @@ failed=$(sql 'select count(*) from _prisma_migrations where finished_at is null'
 say "migrations: $before applied before, $applied after, none unfinished"
 
 # 2. Data after the migrations. Row counts of every table that existed before must be what the backup recorded.
+# A table a migration renamed is counted under its new name (migration 20261119130000_postpaid_table_names: the ten
+# postpaid tables took the prefix `Postpaid`), still listed under the name the backup recorded.
+renamed() {
+  case "$1" in
+    Company | Package | PackageDuration | PackageRenewal | PackageSwitch | PackageAddon | UserPackage | SellPrice | Line | LineCountSnapshot) echo "Postpaid$1" ;;
+    *) echo "$1" ;;
+  esac
+}
 sed -n 's/^table|\([^|]*\)|\([0-9]*\).*/\1|\2/p' "$manifest" | grep -v '^_prisma_migrations|' | LC_ALL=C sort > "$work/before"
 : > "$work/after"
 while IFS='|' read -r table _count; do
-  echo "$table|$(sql "select count(*) from \"$table\"")" >> "$work/after"
+  echo "$table|$(sql "select count(*) from \"$(renamed "$table")\"")" >> "$work/after"
 done < "$work/before"
 diff "$work/before" "$work/after" > "$work/counts.diff" || { sed -n 's/^[<>] \([^|]*\)|.*/  \1/p' "$work/counts.diff" | LC_ALL=C sort -u >&2; die "a table has a different number of rows after the migrations"; }
 check() { got=$(sql "$2"); [ "$got" = "$3" ] || die "after the migrations: $1 (expected $3, found $got)"; }
 check "sessions without a token hash" 'select count(*) from "Session" where "tokenHash" is null' 0
 check "sessions whose hash is not the hash of their old cookie" "select count(*) from \"Session\" where \"tokenHash\" <> encode(sha256(convert_to(id, 'UTF8')), 'hex')" 0
 check "notices that keep an old key" "select count(*) from \"Notice\" where payload ? 'toLogin' or payload ? 'fromLogin'" 0
-check "lines whose package code is not a package" "select count(*) from \"Line\" l where not exists (select 1 from \"Package\" p where p.code = l.terms ->> 'packageCode')" 0
-check "lines whose package code is not their own package's" "select count(*) from \"Line\" l join \"Package\" p on p.id = l.\"packageId\" where p.code <> l.terms ->> 'packageCode'" 0
-check "packages without a provider product code" 'select count(*) from "Package" where "providerProductCode" is null' 0
-check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
+check "lines whose package code is not a package" "select count(*) from \"PostpaidLine\" l where not exists (select 1 from \"PostpaidPackage\" p where p.code = l.terms ->> 'packageCode')" 0
+check "lines whose package code is not their own package's" "select count(*) from \"PostpaidLine\" l join \"PostpaidPackage\" p on p.id = l.\"packageId\" where p.code <> l.terms ->> 'packageCode'" 0
+check "packages without a provider product code" 'select count(*) from "PostpaidPackage" where "providerProductCode" is null' 0
+check "duplicate package codes" 'select count(*) from (select code from "PostpaidPackage" group by code having count(*) > 1) x' 0
 check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
 # Partial and expression indexes the schema cannot state, so `prisma migrate diff` does not see them either. A
 # concurrent build that failed leaves its index INVALID (spec F.6): a check below counts those, which must be none.
@@ -94,9 +102,9 @@ check "the provider loss CHECK, validated" "select count(*) from pg_constraint w
 check "the sale ladder CHECK" "select count(*) from pg_constraint where conname = 'WalletEntry_sale_has_ladder'" 1
 # Storage settings the schema cannot state either (migrations 20261117180000_request_log_indexes and
 # 20261117200000_table_settings). The latter's three CHECK validations depend on the copy's old rows, so not checked.
-check "table storage settings" "select count(*) from pg_class where relkind = 'r' and ((relname = 'RequestLog' and 'autovacuum_vacuum_scale_factor=0.02' = any(reloptions)) or (relname = 'ActivityEvent' and 'autovacuum_vacuum_scale_factor=0.02' = any(reloptions)) or (relname = 'Wallet' and 'fillfactor=70' = any(reloptions)) or (relname = 'Session' and 'fillfactor=80' = any(reloptions)) or (relname in ('WalletEntry', 'Line') and 'autovacuum_analyze_scale_factor=0.02' = any(reloptions)))" 6
+check "table storage settings" "select count(*) from pg_class where relkind = 'r' and ((relname = 'RequestLog' and 'autovacuum_vacuum_scale_factor=0.02' = any(reloptions)) or (relname = 'ActivityEvent' and 'autovacuum_vacuum_scale_factor=0.02' = any(reloptions)) or (relname = 'Wallet' and 'fillfactor=70' = any(reloptions)) or (relname = 'Session' and 'fillfactor=80' = any(reloptions)) or (relname in ('WalletEntry', 'PostpaidLine') and 'autovacuum_analyze_scale_factor=0.02' = any(reloptions)))" 6
 # The search's trigram indexes need the extension (migration 20261117170000_search_trigram).
-check "search extension and trigram indexes" "select (select count(*) from pg_extension where extname = 'pg_trgm') + (select count(*) from pg_indexes where indexname like '%_msisdn_trgm_idx' or indexname = 'Line_iccid_trgm_idx')" 5
+check "search extension and trigram indexes" "select (select count(*) from pg_extension where extname = 'pg_trgm') + (select count(*) from pg_indexes where indexname like '%_msisdn_trgm_idx' or indexname = 'PostpaidLine_iccid_trgm_idx')" 5
 say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes, reservation, raw-SQL and search indexes, the provider ledger's, the stored margins', the provider loss and the sale ladder CHECKs, the tables' storage settings as expected"
 
 # 3. The new API on the copy. A key and a Redis that exist for this run only.
@@ -131,9 +139,9 @@ grep -Eq "ESIM_CODE_UNSEALABLE|Refusing to start" "$work/api.log" && die "the AP
   env -i PATH="$PATH" HOME="$HOME" NODE_ENV=production DATABASE_URL="$url" REDIS_URL="redis://127.0.0.1:$((port + 1))" SECRETS_KEY="$key" \
     node dist/cli/seal-secrets.js --dry-run > "$work/seal.log" 2>&1
 ) || die "seal-secrets --dry-run failed on the copy"
-clear_lines=$(sql "select count(*) from \"Line\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
+clear_lines=$(sql "select count(*) from \"PostpaidLine\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
 clear_tasks=$(sql "select count(*) from \"Task\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
-grep -q "Line.esimQr: $clear_lines stored clear" "$work/seal.log" || die "the dry run's count of line codes is not what the copy holds"
+grep -q "PostpaidLine.esimQr: $clear_lines stored clear" "$work/seal.log" || die "the dry run's count of line codes is not what the copy holds"
 grep -q "Task.esimQr: $clear_tasks stored clear" "$work/seal.log" || die "the dry run's count of task codes is not what the copy holds"
 say "seal-secrets --dry-run: $clear_lines line code(s) and $clear_tasks task code(s) stored clear; nothing was sealed"
 

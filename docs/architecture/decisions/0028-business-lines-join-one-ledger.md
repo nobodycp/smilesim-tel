@@ -92,6 +92,8 @@ are the postpaid line's, and a new line's kinds carry its prefix (`prepaid.…`,
 
 **`postpaid` is the word of the API and of the backend's names** (routes, modules, models and tables of what is
 the postpaid line's alone); **on screen the line stays «الفواتير»**. The slice that renames is the spec's F.7.
+Done for the models and tables (F.7d, migration `20261119130000_postpaid_table_names`): the ten postpaid models and
+tables carry the prefix `Postpaid`; `Task` and `TaskNote` stay general; relation fields, shared columns and responses unchanged.
 
 ## Deliberately not built now (waiting costs nothing)
 
